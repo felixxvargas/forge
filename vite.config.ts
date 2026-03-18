@@ -10,12 +10,13 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
-      // Resolve absolute /utils imports (Supabase config)
       '/utils': path.resolve(__dirname, './utils'),
     },
   },
-  // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+  },
 })
