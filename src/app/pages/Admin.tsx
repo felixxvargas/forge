@@ -6,7 +6,6 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card } from '../components/ui/card';
 import { Shield, CheckCircle, XCircle, AlertCircle, FileCheck, Database } from 'lucide-react';
-import { UserInfoPanel } from '../components/UserInfoPanel';
 
 export default function Admin() {
   const [email, setEmail] = useState('');
@@ -140,7 +139,6 @@ export default function Admin() {
       {/* Content */}
       <div className="max-w-2xl mx-auto p-4 space-y-6">
         {/* User Info Panel */}
-        <UserInfoPanel />
         
         {/* Quick Actions */}
         <Card className="bg-zinc-900 border-zinc-800 p-4">
