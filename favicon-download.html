@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Forge Favicons</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: #fff;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #B8D84E;
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: #2a2a2a;
+      padding: 25px;
+      border-radius: 12px;
+      margin: 20px 0;
+      border: 1px solid #3a3a3a;
+    }
+    .images {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+    .image-card {
+      background: #333;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .image-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(184, 216, 78, 0.2);
+    }
+    .image-card h3 {
+      color: #B8D84E;
+      margin: 0 0 15px 0;
+      font-size: 1.1rem;
+    }
+    .preview {
+      background: #B8D84E;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+      display: inline-block;
+    }
+    .preview img {
+      display: block;
+      border-radius: 4px;
+    }
+    .filename {
+      color: #7C3AED;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      margin: 10px 0;
+      padding: 8px;
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #614596 0%, #7C3AED 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn:hover {
+      background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
+      transform: scale(1.05);
+    }
+    .instructions {
+      background: linear-gradient(135deg, #614596 0%, #7C3AED 100%);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .instructions h2 {
+      margin-top: 0;
+      color: #B8D84E;
+    }
+    .instructions ol {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 8px 0;
+    }
+    code {
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      color: #B8D84E;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status.done {
+      background: #22c55e;
+      color: white;
+    }
+    .status.pending {
+      background: #f59e0b;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚡ Forge Favicon Setup</h1>
+  <p class="subtitle">Download and install the new Forge favicons</p>
+
+  <div class="instructions">
+    <h2>📋 Quick Instructions</h2>
+    <ol>
+      <li>Click the <strong>Download</strong> button under each image</li>
+      <li>Save each file to the <code>/public/</code> directory with the exact filename shown</li>
+      <li>Refresh your browser to see the new favicons!</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>🎨 Favicon Images <span class="status pending">3 Files Needed</span></h2>
+    
+    <div class="images">
+      <!-- 128x128 Favicon -->
+      <div class="image-card">
+        <h3>Small Favicon</h3>
+        <div class="preview">
+          <img 
+            id="img-128" 
+            width="128" 
+            height="128" 
+            alt="128x128 Favicon"
+            crossorigin="anonymous"
+          >
+        </div>
+        <div class="filename">favicon-128.png</div>
+        <div style="color: #888; font-size: 0.85rem; margin: 8px 0;">128 × 128 pixels</div>
+        <button class="btn" onclick="downloadImage('img-128', 'favicon-128.png')">
+          📥 Download
+        </button>
+      </div>
+
+      <!-- 192x192 Favicon -->
+      <div class="image-card">
+        <h3>Medium Favicon</h3>
+        <div class="preview">
+          <img 
+            id="img-192" 
+            width="192" 
+            height="192" 
+            alt="192x192 Favicon"
+            crossorigin="anonymous"
+          >
+        </div>
+        <div class="filename">favicon-192.png</div>
+        <div style="color: #888; font-size: 0.85rem; margin: 8px 0;">192 × 192 pixels</div>
+        <button class="btn" onclick="downloadImage('img-192', 'favicon-192.png')">
+          📥 Download
+        </button>
+      </div>
+
+      <!-- 512x512 Apple Touch Icon -->
+      <div class="image-card">
+        <h3>Apple Touch Icon</h3>
+        <div class="preview">
+          <img 
+            id="img-512" 
+            width="200" 
+            height="200" 
+            alt="512x512 Apple Touch Icon"
+            crossorigin="anonymous"
+          >
+        </div>
+        <div class="filename">apple-touch-icon.png</div>
+        <div style="color: #888; font-size: 0.85rem; margin: 8px 0;">512 × 512 pixels</div>
+        <button class="btn" onclick="downloadImage('img-512', 'apple-touch-icon.png')">
+          📥 Download
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>✅ Already Completed</h2>
+    <ul style="list-style: none; padding: 0;">
+      <li>✓ <code>/public/favicon.svg</code> <span class="status done">Updated</span></li>
+      <li>✓ <code>/index.html</code> favicon references <span class="status done">Updated</span></li>
+      <li>✓ <code>/public/manifest.json</code> <span class="status done">Updated</span></li>
+      <li>✓ <code>/src/imports/head.html</code> PWA meta tags <span class="status done">Updated</span></li>
+    </ul>
+  </div>
+
+  <script type="module">
+    // Import the images using figma:asset scheme
+    import img128 from 'figma:asset/d12bafd984d0589b9548553939c0504f735540f4.png';
+    import img192 from 'figma:asset/ca013f4d8feeac458df9686ca8933c6b90b2b819.png';
+    import img512 from 'figma:asset/9869084a420b2c83882e34292863d2859d472a18.png';
+
+    // Set image sources
+    document.getElementById('img-128').src = img128;
+    document.getElementById('img-192').src = img192;
+    document.getElementById('img-512').src = img512;
+
+    // Download function
+    window.downloadImage = async function(imgId, filename) {
+      const img = document.getElementById(imgId);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      
+      ctx.drawImage(img, 0, 0);
+      
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Show success message
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Downloaded!';
+        btn.style.background = '#22c55e';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '';
+        }, 2000);
+      }, 'image/png');
+    };
+  </script>
+</body>
+</html>

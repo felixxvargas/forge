@@ -1,0 +1,114 @@
+I need help with 🔒 Supabase RLS Policies Needed for Forge Based on Forge's functionality, here are ALL the policies you need:
+
+📋 Table: kv_store_17285bd7 This is your main data table. You need 4 policies:
+
+SELECT - Enable read access for all users CREATE POLICY "Enable read access for all users" ON public.kv_store_17285bd7 FOR SELECT TO public USING (true); Why: Anyone can view posts, profiles, communities, etc.
+
+INSERT - Enable insert for authenticated users only CREATE POLICY "Enable insert for authenticated users only" ON public.kv_store_17285bd7 FOR INSERT TO authenticated WITH CHECK (true); Why: Only signed-in users can create posts, profiles, follow users, etc.
+
+UPDATE - Enable update for users based on user_id CREATE POLICY "Enable update for users based on user_id" ON public.kv_store_17285bd7 FOR UPDATE TO authenticated USING ( -- Allow if the row doesn't have a user_id (system data) -- OR if the user_id matches the authenticated user (value->>'userId' IS NULL) OR (value->>'userId' = auth.uid()::text) ) WITH CHECK ( (value->>'userId' IS NULL) OR (value->>'userId' = auth.uid()::text) ); Why: Users can only edit their own data (posts, profile, etc.)
+
+DELETE - Enable delete for users based on user_id CREATE POLICY "Enable delete for users based on user_id" ON public.kv_store_17285bd7 FOR DELETE TO authenticated USING ( -- Allow if the row doesn't have a user_id (system data) -- OR if the user_id matches the authenticated user (value->>'userId' IS NULL) OR (value->>'userId' = auth.uid()::text) ); Why: Users can only delete their own posts, leave communities, unfollow users, etc.
+
+📦 Storage Buckets (All 5 Buckets) You need policies for each of these buckets:
+
+forge-avatars forge-banners forge-post-media forge-community-icons forge-community-banners For Each Bucket, Create These Policies:
+
+SELECT - Public read access CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'forge-avatars'); Repeat for each bucket (change 'forge-avatars' to bucket name)
+
+INSERT - Authenticated users can upload CREATE POLICY "Authenticated users can upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'forge-avatars'); Repeat for each bucket
+
+UPDATE - Users can update their own files CREATE POLICY "Users can update their own files" ON storage.objects FOR UPDATE TO authenticated USING ( bucket_id = 'forge-avatars' AND auth.uid()::text = (storage.foldername(name))[1] ); Repeat for each bucket Note: This assumes files are organized by user ID folders
+
+DELETE - Users can delete their own files CREATE POLICY "Users can delete their own files" ON storage.objects FOR DELETE TO authenticated USING ( bucket_id = 'forge-avatars' AND auth.uid()::text = (storage.foldername(name))[1] ); Repeat for each bucket
+
+🎯 Step-by-Step: How to Create These Policies Option 1: Using Supabase Dashboard (Recommended) Go to your Supabase project Click "Table Editor" in sidebar Click on kv_store_17285bd7 table Click "RLS" tab (or the shield icon) Click "New Policy" Choose a template or click "Create policy from scratch" Copy/paste the SQL from above Click "Save policy" Repeat for each policy Option 2: Using SQL Editor Go to "SQL Editor" in Supabase sidebar Create a new query Copy ALL the SQL below and run it: -- ======================================== -- FORGE RLS POLICIES - COMPLETE SETUP -- ========================================
+
+-- 1. KV STORE POLICIES -- ========================================
+
+-- Enable read access for all users CREATE POLICY "Enable read access for all users" ON public.kv_store_17285bd7 FOR SELECT TO public USING (true);
+
+-- Enable insert for authenticated users only CREATE POLICY "Enable insert for authenticated users only" ON public.kv_store_17285bd7 FOR INSERT TO authenticated WITH CHECK (true);
+
+-- Enable update for users based on user_id CREATE POLICY "Enable update for users based on user_id" ON public.kv_store_17285bd7 FOR UPDATE TO authenticated USING ( (value->>'userId' IS NULL) OR (value->>'userId' = auth.uid()::text) ) WITH CHECK ( (value->>'userId' IS NULL) OR (value->>'userId' = auth.uid()::text) );
+
+-- Enable delete for users based on user_id CREATE POLICY "Enable delete for users based on user_id" ON public.kv_store_17285bd7 FOR DELETE TO authenticated USING ( (value->>'userId' IS NULL) OR (value->>'userId' = auth.uid()::text) );
+
+-- 2. STORAGE POLICIES - forge-avatars -- ========================================
+
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'forge-avatars');
+
+CREATE POLICY "Authenticated users can upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'forge-avatars');
+
+CREATE POLICY "Users can update their own files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'forge-avatars');
+
+CREATE POLICY "Users can delete their own files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'forge-avatars');
+
+-- 3. STORAGE POLICIES - forge-banners -- ========================================
+
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'forge-banners');
+
+CREATE POLICY "Authenticated users can upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'forge-banners');
+
+CREATE POLICY "Users can update their own files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'forge-banners');
+
+CREATE POLICY "Users can delete their own files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'forge-banners');
+
+-- 4. STORAGE POLICIES - forge-post-media -- ========================================
+
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'forge-post-media');
+
+CREATE POLICY "Authenticated users can upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'forge-post-media');
+
+CREATE POLICY "Users can update their own files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'forge-post-media');
+
+CREATE POLICY "Users can delete their own files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'forge-post-media');
+
+-- 5. STORAGE POLICIES - forge-community-icons -- ========================================
+
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'forge-community-icons');
+
+CREATE POLICY "Authenticated users can upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'forge-community-icons');
+
+CREATE POLICY "Users can update their own files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'forge-community-icons');
+
+CREATE POLICY "Users can delete their own files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'forge-community-icons');
+
+-- 6. STORAGE POLICIES - forge-community-banners -- ========================================
+
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'forge-community-banners');
+
+CREATE POLICY "Authenticated users can upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'forge-community-banners');
+
+CREATE POLICY "Users can update their own files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'forge-community-banners');
+
+CREATE POLICY "Users can delete their own files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'forge-community-banners'); Click "Run" Wait for success message 🔍 Verify Policies Were Created After creating policies, verify them:
+
+For Tables: Go to Table Editor → kv_store_17285bd7 Click RLS tab You should see 4 policies enabled: ✅ Enable read access for all users ✅ Enable insert for authenticated users only ✅ Enable update for users based on user_id ✅ Enable delete for users based on user_id For Storage: Go to Storage in sidebar Click on each bucket (e.g., forge-avatars) Click Policies tab You should see 4 policies for each bucket: ✅ Public read access ✅ Authenticated users can upload ✅ Users can update their own files ✅ Users can delete their own files 📊 Summary Total Policies Needed:
+
+Resource SELECT INSERT UPDATE DELETE Total kv_store_17285bd7 1 1 1 1 4 forge-avatars 1 1 1 1 4 forge-banners 1 1 1 1 4 forge-post-media 1 1 1 1 4 forge-community-icons 1 1 1 1 4 forge-community-banners 1 1 1 1 4 TOTAL 24 policies ✅ Next Steps Run the SQL script above in Supabase SQL Editor Verify all 24 policies were created then i can test forge website again
+
+
+
+
+Reasoned
+
+Reasoned
+Plan
+I'll create the requested RLS policies for the kv_store table and the five storage buckets. I will execute the SQL in your project so you don't need to copy/paste. If any policy creation fails (naming collisions, missing tables/buckets, or permissions), I'll report the error and propose corrections.
+
+Proceeding to run the SQL to create the 24 policies you provided.
+
+felixxvargas
+sounds good! please let me know once its complete.
+
+
+
+
+Reasoned
+Create Forge RLS policies
+Write
+
+
+
+Success. No rows returned

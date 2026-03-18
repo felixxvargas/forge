@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge - Seed Topic Accounts</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+        }
+        .container {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #7C3AED;
+            margin-top: 0;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #0a0a0a;
+            color: #fff;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #7C3AED;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            width: 100%;
+        }
+        button:hover {
+            background: #6D28D9;
+        }
+        button:disabled {
+            background: #4C1D95;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            background: #065F46;
+            border: 1px solid #059669;
+        }
+        .error {
+            background: #7F1D1D;
+            border: 1px solid #DC2626;
+        }
+        .info {
+            background: #1E3A8A;
+            border: 1px solid #3B82F6;
+            margin-bottom: 20px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #7C3AED;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Forge - Seed Topic Accounts</h1>
+        
+        <div class="info">
+            <strong>Instructions:</strong><br>
+            1. Enter your Supabase Project ID (found in Supabase Dashboard → Settings → General)<br>
+            2. Click "Seed Topic Accounts"<br>
+            3. Wait for confirmation<br><br>
+            This will create profiles for all gaming media topic accounts (@ign, @gamespot, @pcgamer, etc.)
+        </div>
+
+        <div class="input-group">
+            <label for="projectId">Supabase Project ID:</label>
+            <input type="text" id="projectId" placeholder="abcdefghijklmnop" />
+        </div>
+
+        <button id="seedButton" onclick="seedAccounts()">
+            Seed Topic Accounts
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function seedAccounts() {
+            const projectId = document.getElementById('projectId').value.trim();
+            const resultDiv = document.getElementById('result');
+            const button = document.getElementById('seedButton');
+            
+            if (!projectId) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Please enter your Supabase Project ID';
+                return;
+            }
+
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = '<span class="loading"></span>Seeding...';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Creating topic accounts...';
+
+            try {
+                const url = `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7/seed/topic-accounts`;
+                console.log('Calling:', url);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // Success
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ Success!\n\n${data.message}\n\nCreated accounts:\n${data.created.map(h => `  • ${h}`).join('\n')}`;
+
+                if (data.errors && data.errors.length > 0) {
+                    resultDiv.textContent += `\n\nErrors:\n${data.errors.map(e => `  • ${e.handle}: ${e.error}`).join('\n')}`;
+                }
+
+            } catch (error) {
+                console.error('Seed error:', error);
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}\n\nPlease check:\n1. Project ID is correct\n2. Backend server is deployed\n3. Browser console for details`;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Seed Topic Accounts';
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('projectId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                seedAccounts();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forge - Debug Token Validation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: #B8D84E;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .status {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status.success { background: #10b981; color: white; }
+    .status.error { background: #ef4444; color: white; }
+    .status.info { background: #3b82f6; color: white; }
+    
+    button {
+      background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-top: 12px;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .label {
+      color: #B8D84E;
+      font-weight: 600;
+    }
+    .value {
+      font-family: 'Courier New', monospace;
+      color: #A78BFA;
+    }
+    
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .alert.warning {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+    .alert.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚡ Token Validation Debug</h1>
+    <p class="subtitle">Test JWT token validation for file uploads</p>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 16px;">Current Session</h2>
+      <div class="info-row">
+        <span class="label">Logged In:</span>
+        <span class="value" id="logged-in-status">-</span>
+      </div>
+      <div class="info-row">
+        <span class="label">User ID:</span>
+        <span class="value" id="user-id">-</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Access Token:</span>
+        <span class="value" id="token-status">-</span>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 16px;">Test Token Validation</h2>
+      <button id="test-button" onclick="testTokenValidation()">
+        🔍 Test Token Validation
+      </button>
+      <div id="test-results" style="margin-top: 20px;"></div>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 16px;">Test File Upload</h2>
+      <input type="file" id="file-input" accept="image/*" style="margin-bottom: 12px; color: white;">
+      <br>
+      <button id="upload-button" onclick="testFileUpload()">
+        📤 Test Upload
+      </button>
+      <div id="upload-results" style="margin-top: 20px;"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { projectId, publicAnonKey } from '/utils/supabase/info';
+    
+    // Display current session info
+    const isLoggedIn = localStorage.getItem('forge-logged-in') === 'true';
+    const userId = localStorage.getItem('forge-user-id');
+    const token = localStorage.getItem('forge-access-token');
+    
+    document.getElementById('logged-in-status').textContent = isLoggedIn ? '✓ Yes' : '✗ No';
+    document.getElementById('user-id').textContent = userId || 'Not found';
+    document.getElementById('token-status').textContent = token ? `✓ Present (${token.length} chars)` : '✗ Not found';
+    
+    // Make functions global
+    window.testTokenValidation = async function() {
+      const button = document.getElementById('test-button');
+      const resultsDiv = document.getElementById('test-results');
+      
+      button.disabled = true;
+      resultsDiv.innerHTML = '<div class="alert warning">⏳ Testing token validation...</div>';
+      
+      const token = localStorage.getItem('forge-access-token');
+      if (!token) {
+        resultsDiv.innerHTML = '<div class="alert warning">⚠️ No access token found. Please sign in first.</div>';
+        button.disabled = false;
+        return;
+      }
+      
+      try {
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7/debug/validate-token`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+        
+        const data = await response.json();
+        
+        let html = '<div class="alert success">✅ Test completed</div>';
+        html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        
+        if (data.anonClient?.success && data.serviceRoleClient?.success) {
+          html += '<div class="alert success">🎉 Both validation methods work!</div>';
+        } else if (data.anonClient?.success) {
+          html += '<div class="alert warning">⚠️ Anon client works, but service role fails</div>';
+        } else if (data.serviceRoleClient?.success) {
+          html += '<div class="alert warning">⚠️ Service role works, but anon client fails</div>';
+        } else {
+          html += '<div class="alert warning">❌ Both validation methods failed</div>';
+        }
+        
+        resultsDiv.innerHTML = html;
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="alert warning">❌ Error: ${error.message}</div>
+          <pre>${error.stack}</pre>
+        `;
+      }
+      
+      button.disabled = false;
+    };
+    
+    window.testFileUpload = async function() {
+      const button = document.getElementById('upload-button');
+      const resultsDiv = document.getElementById('upload-results');
+      const fileInput = document.getElementById('file-input');
+      
+      if (!fileInput.files || !fileInput.files[0]) {
+        resultsDiv.innerHTML = '<div class="alert warning">⚠️ Please select a file first</div>';
+        return;
+      }
+      
+      button.disabled = true;
+      resultsDiv.innerHTML = '<div class="alert warning">⏳ Uploading file...</div>';
+      
+      const token = localStorage.getItem('forge-access-token');
+      if (!token) {
+        resultsDiv.innerHTML = '<div class="alert warning">⚠️ No access token found. Please sign in first.</div>';
+        button.disabled = false;
+        return;
+      }
+      
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        console.log('[Debug] Uploading file:', file.name);
+        console.log('[Debug] Token:', token.substring(0, 50) + '...');
+        
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7/upload`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          }
+        );
+        
+        console.log('[Debug] Response status:', response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(JSON.stringify(errorData, null, 2));
+        }
+        
+        const data = await response.json();
+        
+        let html = '<div class="alert success">✅ Upload successful!</div>';
+        html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        
+        if (data.url) {
+          html += `<img src="${data.url}" alt="Uploaded image" style="max-width: 100%; border-radius: 8px; margin-top: 16px;">`;
+        }
+        
+        resultsDiv.innerHTML = html;
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="alert warning">❌ Upload failed</div>
+          <pre>${error.message}</pre>
+        `;
+      }
+      
+      button.disabled = false;
+    };
+  </script>
+</body>
+</html>
