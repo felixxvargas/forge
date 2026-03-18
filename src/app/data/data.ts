@@ -319,7 +319,7 @@ export const topicAccounts: User[] = [
     displayName: 'Forge',
     bio: 'The gaming social network for everyone. Share your gaming adventures across all platforms. 🎮⚡',
     email: 'admin@forge.com',
-    profilePicture: 'figma:asset/e238dbf9ba9bb003ef3770359177ed3b80dbdbce.png',
+    profilePicture: '/forge-avatar.png',
     platforms: [],
     socialPlatforms: ['x', 'bluesky', 'threads'],
     gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },

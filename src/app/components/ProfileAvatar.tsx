@@ -1,6 +1,8 @@
 import { ForgeLogo, getForgeLogoDataURL } from './ForgeLogo';
 import { useState } from 'react';
-import forgeProfilePic from 'figma:asset/1d239ba5f9ebbcb6ac38f153d69efc37921b3cd9.png';
+
+// Forge account avatar — served from /public
+const forgeProfilePic = '/forge-avatar.png';
 
 interface ProfileAvatarProps {
   username: string;
