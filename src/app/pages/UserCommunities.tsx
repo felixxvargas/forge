@@ -9,9 +9,9 @@ export function UserCommunities() {
   const navigate = useNavigate();
   const { currentUser } = useAppData();
 
-  const userCommunities = (currentUser.communities || [])
+  const userCommunities = (currentUser?.communities || [])
     .map(membership => {
-      const community = communities.find(c => c.id === membership.communityId);
+      const community = communities.find(c => c.id === (membership.community_id ?? membership.communityId));
       return community ? { ...membership, ...community } : null;
     })
     .filter(Boolean);

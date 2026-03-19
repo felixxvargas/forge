@@ -12,8 +12,13 @@ export function Layout() {
     return <Navigate to="/login" replace />;
   }
 
+  // If authenticated but profile not loaded yet (auto-create in progress), wait
+  if (isAuthenticated && !currentUser) {
+    return null;
+  }
+
   // If authenticated but no handle set, redirect to onboarding
-  if (isAuthenticated && currentUser && !currentUser.handle && location.pathname !== '/onboarding' && location.pathname !== '/splash') {
+  if (!currentUser.handle && location.pathname !== '/onboarding' && location.pathname !== '/splash') {
     return <Navigate to="/onboarding" replace />;
   }
 

@@ -17,7 +17,7 @@ export function FollowersList() {
   const [targetUser, setTargetUser] = useState<User | null>(null);
 
   // Determine which user's followers to show
-  const viewingUserId = userId || currentUser.id;
+  const viewingUserId = userId || currentUser?.id || '';
 
   useEffect(() => {
     async function loadFollowers() {

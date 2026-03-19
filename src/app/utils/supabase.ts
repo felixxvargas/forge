@@ -60,9 +60,9 @@ export const profiles = {
       .from('profiles')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return data;
+    return data; // null when no row exists
   },
 
   async getByHandle(handle: string) {

@@ -74,6 +74,18 @@ export function Profile() {
   const profilePicture = blueskyData.avatar || profileUser?.profile_picture || currentUser?.profile_picture;
   const bannerImage = blueskyData.banner || profileUser?.bannerImage;
 
+  // If own profile but currentUser hasn't loaded, wait
+  if (!profileUser) {
+    return (
+      <div className="min-h-screen pb-20">
+        <Header />
+        <div className="w-full max-w-2xl mx-auto px-4 py-12 text-center">
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
   // If viewing another user's profile and user not found, show error
   if (!isOwnProfile && !profileUser) {
     return (

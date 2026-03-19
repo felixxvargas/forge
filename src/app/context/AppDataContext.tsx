@@ -55,8 +55,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const loadUserData = useCallback(async (userId: string) => {
     try {
-      const [profile, likedIds, repostedIds, blockedIds, mutedIds] = await Promise.all([
-        profiles.getById(userId),
+      let profile = await profiles.getById(userId);
+
+      // No profile row yet (e.g. first Google OAuth login, trigger didn't fire).
+      // Auto-create a minimal profile so the app doesn't crash.
+      if (!profile) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const meta = authUser?.user_metadata ?? {};
+        const { data: created, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            handle: null,
+            display_name: meta.full_name || meta.name || authUser?.email?.split('@')[0] || null,
+            profile_picture: meta.avatar_url || meta.picture || null,
+          })
+          .select()
+          .single();
+        if (createError) {
+          console.error('Error auto-creating profile:', createError.message);
+        } else {
+          profile = created;
+        }
+      }
+
+      const [likedIds, repostedIds, blockedIds, mutedIds] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),

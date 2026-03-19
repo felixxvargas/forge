@@ -12,7 +12,7 @@ export function CommunityDetail() {
   
   const community = communities.find(c => c.id === communityId);
   const [isMember, setIsMember] = useState(
-    currentUser.communities?.some(c => c.communityId === communityId) || false
+    currentUser?.communities?.some(c => c.community_id === communityId) || false
   );
   const [showMembersModal, setShowMembersModal] = useState(false);
   
@@ -26,9 +26,9 @@ export function CommunityDetail() {
     );
   }
 
-  const userMembership = currentUser.communities?.find(c => c.communityId === communityId);
-  const isCreator = community.creatorId === currentUser.id;
-  const isModerator = community.moderatorIds.includes(currentUser.id);
+  const userMembership = currentUser?.communities?.find(c => c.community_id === communityId);
+  const isCreator = (community.creator_id ?? community.creatorId) === currentUser?.id;
+  const isModerator = (community.moderatorIds ?? []).includes(currentUser?.id);
 
   // Get all members
   const allMembers = community.memberIds

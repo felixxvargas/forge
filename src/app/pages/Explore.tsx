@@ -260,6 +260,7 @@ export function Explore() {
             ) : (
               gamingMediaPosts.map(post => {
                 const user = post.author;
+                if (!user) return null;
                 const isMuted = mutedUsers.has(post.user_id);
                 const isShown = showMutedPosts.has(post.id);
                 

@@ -9,7 +9,7 @@ import type { Platform } from '../data/data';
 export function GamingPlatforms() {
   const navigate = useNavigate();
   const { currentUser, updateCurrentUser } = useAppData();
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(currentUser.platforms);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(currentUser?.platforms || []);
 
   const togglePlatform = (platform: Platform) => {
     if (selectedPlatforms.includes(platform)) {
