@@ -48,7 +48,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
     likedPosts = new Set()
   } = context || {};
 
-  const isMutedUser = mutedUsers.has(post.userId);
+  const isMutedUser = mutedUsers.has(post.user_id);
   const isMutedPost = mutedPosts.has(post.id);
   
   // Use prop value if provided, otherwise use context
@@ -149,16 +149,16 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
       {reposter && (
         <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
           <Repeat2 className="w-4 h-4" />
-          <span>Reposted by {reposter.displayName}</span>
+          <span>Reposted by {reposter.display_name}</span>
         </div>
       )}
 
       {/* User header */}
       <div className="flex items-start gap-3 mb-3">
         <div onClick={handleUserClick} className="cursor-pointer hover:opacity-80 transition-opacity">
-          <ProfileAvatar 
-            username={user.displayName}
-            profilePicture={user.profilePicture}
+          <ProfileAvatar
+            username={user.display_name || user.handle || '?'}
+            profilePicture={user.profile_picture}
             size="md"
             userId={user.id}
           />
@@ -169,7 +169,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
               onClick={handleUserClick}
               className="font-medium hover:underline truncate max-w-[200px]"
             >
-              {user.displayName}
+              {user.display_name || user.handle}
             </button>
             <button
               onClick={handleUserClick}
@@ -179,7 +179,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
             </button>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatTimeAgo(post.timestamp)}</span>
+            <span>{formatTimeAgo(post.created_at || post.timestamp)}</span>
             {post.platform && post.platform !== 'forge' && (
               <span className="text-xs text-muted-foreground capitalize">
                 via {post.platform === 'x' ? 'X' : post.platform}
@@ -243,11 +243,11 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
         <div className="mb-3 rounded-lg overflow-hidden relative">
           <img 
             src={post.images[0]} 
-            alt={post.imageAlts?.[0] || "Post content"}
+            alt={post.image_alts?.[0] || "Post content"}
             className="w-full object-cover max-h-80"
           />
           {/* ALT badge if alt text exists */}
-          {post.imageAlts?.[0] && (
+          {post.image_alts?.[0] && (
             <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium">
               ALT
             </div>
@@ -283,7 +283,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
           }`}
         >
           <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-          <span>{post.likes || 0}</span>
+          <span>{post.like_count ?? post.likes ?? 0}</span>
         </button>
 
         {onRepost && (
@@ -294,7 +294,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
             }`}
           >
             <Repeat2 className="w-5 h-5" />
-            <span>{post.reposts || 0}</span>
+            <span>{post.repost_count ?? post.reposts ?? 0}</span>
           </button>
         )}
 
@@ -306,7 +306,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <MessageCircle className="w-5 h-5" />
-          <span>{post.comments || 0}</span>
+          <span>{post.comment_count ?? post.comments ?? 0}</span>
         </button>
         
         <button 

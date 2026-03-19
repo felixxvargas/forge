@@ -47,7 +47,7 @@ export function PostDetail() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   const post = posts.find(p => p.id === postId);
-  const postUser = post ? getUserById(post.userId) : null;
+  const postUser = post?.author ?? null;
 
   const handleLikeToggle = (id: string) => {
     if (likedPosts.has(id)) {
@@ -145,8 +145,8 @@ export function PostDetail() {
             )}
             <div className="flex gap-3">
               <img
-                src={currentUser.profilePicture}
-                alt={currentUser.displayName}
+                src={currentUser?.profile_picture}
+                alt={currentUser?.display_name || currentUser?.handle}
                 className="w-10 h-10 rounded-full object-cover flex-shrink-0"
               />
               <div className="flex-1 flex gap-2">
@@ -180,15 +180,15 @@ export function PostDetail() {
                   className={`flex gap-3 ${comment.replyTo ? 'ml-12' : ''}`}
                 >
                   <img
-                    src={commentUser.profilePicture}
-                    alt={commentUser.displayName}
+                    src={commentUser.profile_picture}
+                    alt={commentUser.display_name || commentUser.handle}
                     className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                   />
                   <div className="flex-1">
                     <div className="bg-card rounded-xl px-4 py-3">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-sm">
-                          {commentUser.displayName}
+                          {commentUser.display_name || commentUser.handle}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {commentUser.handle}

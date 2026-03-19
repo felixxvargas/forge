@@ -42,15 +42,15 @@ export function Feed() {
   };
 
   // Get user's communities
-  const userCommunities = currentUser.communities?.map(membership => {
-    const community = communities.find(c => c.id === membership.communityId);
+  const userCommunities = currentUser?.communities?.map(membership => {
+    const community = communities.find(c => c.id === membership.community_id);
     return community;
   }).filter(Boolean) || [];
 
   // Filter posts based on selected community, filtered social platforms, and blocked/muted users
   const filteredPosts = posts.filter(post => {
     // Filter out blocked users completely
-    if (blockedUsers.has(post.userId)) {
+    if (blockedUsers.has(post.user_id)) {
       return false;
     }
 
@@ -61,16 +61,16 @@ export function Feed() {
 
     // Filter by community
     if (selectedCommunity) {
-      return post.communityId === selectedCommunity;
+      return post.community_id === selectedCommunity;
     }
-    
-    // Show all posts when "Following" is selected (no communityId filter)
+
+    // Show all posts when "Following" is selected (no community_id filter)
     return true;
   });
 
   // Separate muted posts for special display
-  const visiblePosts = filteredPosts.filter(post => !mutedUsers.has(post.userId));
-  const mutedPosts = filteredPosts.filter(post => mutedUsers.has(post.userId) && !showMutedPosts.has(post.id));
+  const visiblePosts = filteredPosts.filter(post => !mutedUsers.has(post.user_id));
+  const mutedPosts = filteredPosts.filter(post => mutedUsers.has(post.user_id) && !showMutedPosts.has(post.id));
 
   const getSelectedName = () => {
     if (!selectedCommunity) return 'Following';
@@ -173,20 +173,20 @@ export function Feed() {
         {!isLoading && (
           <div>
             {visiblePosts.map(post => {
-              const user = getUserById(post.userId);
-              
+              const user = post.author;
+
               if (!user) return null;
 
               return (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
+                <PostCard
+                  key={post.id}
+                  post={post}
                   user={user}
                   onLike={handleLikeToggle}
                   onRepost={handleRepost}
                   onComment={handleComment}
-                  onDelete={post.userId === currentUser.id ? deletePost : undefined}
-                  showDelete={post.userId === currentUser.id}
+                  onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
+                  showDelete={post.user_id === currentUser?.id}
                 />
               );
             })}
@@ -198,20 +198,20 @@ export function Feed() {
           <div className="mt-4">
             <div className="text-sm text-muted-foreground mb-2">Muted Posts</div>
             {mutedPosts.map(post => {
-              const user = getUserById(post.userId);
-              
+              const user = post.author;
+
               if (!user) return null;
 
               return (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
+                <PostCard
+                  key={post.id}
+                  post={post}
                   user={user}
                   onLike={handleLikeToggle}
                   onRepost={handleRepost}
                   onComment={handleComment}
-                  onDelete={post.userId === currentUser.id ? deletePost : undefined}
-                  showDelete={post.userId === currentUser.id}
+                  onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
+                  showDelete={post.user_id === currentUser?.id}
                   onShowMutedPost={handleShowMutedPost}
                 />
               );

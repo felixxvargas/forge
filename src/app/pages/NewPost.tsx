@@ -35,7 +35,7 @@ export function NewPost() {
       const filtered = users
         .filter(user => 
           user.handle.toLowerCase().includes(query) || 
-          user.displayName.toLowerCase().includes(query)
+          (user.display_name || user.displayName || '').toLowerCase().includes(query)
         )
         .slice(0, 5);
       
@@ -137,13 +137,13 @@ export function NewPost() {
 
       {/* User info */}
       <div className="flex items-center gap-3 p-4 border-b border-border">
-        <img 
-          src={currentUser.profilePicture} 
-          alt={currentUser.displayName}
+        <img
+          src={currentUser?.profile_picture}
+          alt={currentUser?.display_name || currentUser?.handle}
           className="w-10 h-10 rounded-full object-cover"
         />
         <div>
-          <p className="font-medium">{currentUser.displayName}</p>
+          <p className="font-medium">{currentUser?.display_name || currentUser?.handle}</p>
           <p className="text-sm text-muted-foreground">{currentUser.handle}</p>
         </div>
       </div>
@@ -193,13 +193,13 @@ export function NewPost() {
                 onClick={() => handleMentionSelect(user)}
               >
                 <ProfileAvatar
-                  username={user.displayName}
-                  profilePicture={user.profilePicture}
+                  username={user.display_name || user.displayName || user.handle || '?'}
+                  profilePicture={user.profile_picture || user.profilePicture}
                   userId={user.id}
                   size="sm"
                 />
                 <div>
-                  <p className="font-medium text-sm">{user.displayName}</p>
+                  <p className="font-medium text-sm">{user.display_name || user.displayName || user.handle}</p>
                   <p className="text-xs text-muted-foreground">{user.handle}</p>
                 </div>
               </button>

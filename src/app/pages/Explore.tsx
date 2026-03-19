@@ -110,29 +110,28 @@ export function Explore() {
   const gamingMediaPosts = [
     ...blueskyPosts,
     ...posts.filter(post => {
-      const user = getUserById(post.userId);
-      return user?.accountType === 'topic';
+      return post.author?.account_type === 'topic';
     })
   ].filter(post => {
     // Filter out blocked users
-    if (blockedUsers.has(post.userId)) return false;
-    
+    if (blockedUsers.has(post.user_id)) return false;
+
     // Filter out muted users unless specifically shown
-    if (mutedUsers.has(post.userId) && !showMutedPosts.has(post.id)) return false;
-    
+    if (mutedUsers.has(post.user_id) && !showMutedPosts.has(post.id)) return false;
+
     return true;
-  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }).sort((a, b) => new Date(b.created_at || b.timestamp).getTime() - new Date(a.created_at || a.timestamp).getTime());
 
   // Filter users - exclude current user, blocked users, and apply search
   const filteredUsers = users
     .filter(user => {
-      if (user.id === currentUser.id) return false;
+      if (user.id === currentUser?.id) return false;
       if (blockedUsers.has(user.id)) return false;
       if (!searchQuery) return true;
       
       const query = searchQuery.toLowerCase();
       return (
-        user.displayName.toLowerCase().includes(query) ||
+        (user.display_name || user.displayName || '').toLowerCase().includes(query) ||
         user.handle.toLowerCase().includes(query) ||
         user.bio.toLowerCase().includes(query)
       );
@@ -260,8 +259,8 @@ export function Explore() {
               </div>
             ) : (
               gamingMediaPosts.map(post => {
-                const user = getUserById(post.userId);
-                const isMuted = mutedUsers.has(post.userId);
+                const user = post.author;
+                const isMuted = mutedUsers.has(post.user_id);
                 const isShown = showMutedPosts.has(post.id);
                 
                 if (isMuted && !isShown) {
@@ -368,8 +367,8 @@ function CommunityCard({ community }: CommunityCardProps) {
   const { currentUser } = useAppData();
   const navigate = useNavigate();
   
-  const isMember = currentUser.communities?.some(
-    membership => membership.communityId === community.id
+  const isMember = currentUser?.communities?.some(
+    membership => membership.community_id === community.id
   );
 
   const handleJoinClick = (e: React.MouseEvent) => {
@@ -400,7 +399,7 @@ function CommunityCard({ community }: CommunityCardProps) {
           </div>
           <p className="text-sm text-gray-400 line-clamp-2 mb-2">{community.description}</p>
           <p className="text-xs text-gray-500">
-            {community.memberCount.toLocaleString()} members
+            {(community.member_count ?? community.memberCount ?? 0).toLocaleString()} members
           </p>
         </div>
         {!isMember && (

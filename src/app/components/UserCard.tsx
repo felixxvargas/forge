@@ -32,15 +32,15 @@ export function UserCard({ user, onFollowToggle }: UserCardProps) {
       onClick={handleCardClick}
     >
       <div className="flex items-start gap-3 mb-3">
-        <ProfileAvatar 
-          username={user.displayName}
-          profilePicture={user.profilePicture}
+        <ProfileAvatar
+          username={user.display_name || user.displayName || user.handle || '?'}
+          profilePicture={user.profile_picture || user.profilePicture}
           size="md"
           userId={user.id}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="font-medium">{user.displayName}</h3>
+            <h3 className="font-medium">{user.display_name || user.displayName || user.handle}</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-1">{user.handle}</p>
           {user.pronouns && (
@@ -63,7 +63,7 @@ export function UserCard({ user, onFollowToggle }: UserCardProps) {
       {/* Stats & Follow */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {formatNumber(user.followerCount)} followers
+          {formatNumber(user.follower_count ?? user.followerCount ?? 0)} followers
         </span>
         <button
           className={`btn btn-sm ${user.isFollowing ? 'btn-secondary' : 'btn-outline'}`}

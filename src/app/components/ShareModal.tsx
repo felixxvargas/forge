@@ -29,7 +29,7 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
     if (post) {
       return 'Check out this post on Forge';
     } else if (user) {
-      return `${user.displayName} on Forge`;
+      return `${user.display_name || user.displayName || user.handle} on Forge`;
     }
     return 'Forge - Gaming Social Platform';
   };

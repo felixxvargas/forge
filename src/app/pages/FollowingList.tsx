@@ -78,7 +78,7 @@ export function FollowingList() {
           <div>
             <h1 className="font-semibold">Following</h1>
             <p className="text-sm text-muted-foreground">
-              {targetUser?.displayName || 'Loading...'}
+              {targetUser?.display_name || targetUser?.displayName || 'Loading...'}
             </p>
           </div>
         </div>
@@ -116,8 +116,8 @@ export function FollowingList() {
                   className="cursor-pointer"
                 >
                   <ProfileAvatar
-                    username={user.displayName}
-                    profilePicture={user.profilePicture}
+                    username={user.display_name || user.displayName || user.handle || '?'}
+                    profilePicture={user.profile_picture || user.profilePicture}
                     size="lg"
                   />
                 </div>
@@ -126,7 +126,7 @@ export function FollowingList() {
                     onClick={() => navigate(`/profile/${user.id}`)}
                     className="font-medium hover:underline block truncate"
                   >
-                    {user.displayName}
+                    {user.display_name || user.displayName || user.handle}
                   </button>
                   <button
                     onClick={() => navigate(`/profile/${user.id}`)}

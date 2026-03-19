@@ -41,7 +41,7 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
       const filtered = users
         .filter(user => 
           user.handle.toLowerCase().includes(query) || 
-          user.displayName.toLowerCase().includes(query)
+          (user.display_name || user.displayName || '').toLowerCase().includes(query)
         )
         .slice(0, 5);
       
@@ -112,12 +112,12 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
         {/* User info */}
         <div className="flex items-center gap-3 p-4 border-b border-border">
           <ProfileAvatar
-            username={currentUser.displayName}
-            profilePicture={currentUser.profilePicture}
+            username={currentUser?.display_name || currentUser?.handle || '?'}
+            profilePicture={currentUser?.profile_picture}
             size="md"
           />
           <div>
-            <p className="font-medium">{currentUser.displayName}</p>
+            <p className="font-medium">{currentUser?.display_name || currentUser?.handle}</p>
             <p className="text-sm text-muted-foreground">{currentUser.handle}</p>
           </div>
         </div>
@@ -142,13 +142,13 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
                   onClick={() => handleMentionSelect(user)}
                 >
                   <ProfileAvatar
-                    username={user.displayName}
-                    profilePicture={user.profilePicture}
+                    username={user.display_name || user.displayName || user.handle || '?'}
+                    profilePicture={user.profile_picture || user.profilePicture}
                     userId={user.id}
                     size="sm"
                   />
                   <div>
-                    <p className="font-medium text-sm">{user.displayName}</p>
+                    <p className="font-medium text-sm">{user.display_name || user.displayName || user.handle}</p>
                     <p className="text-xs text-muted-foreground">{user.handle}</p>
                   </div>
                 </button>

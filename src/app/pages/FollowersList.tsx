@@ -80,7 +80,7 @@ export function FollowersList() {
           <div>
             <h1 className="font-semibold">Followers</h1>
             <p className="text-sm text-muted-foreground">
-              {targetUser?.displayName || 'Loading...'}
+              {targetUser?.display_name || targetUser?.displayName || 'Loading...'}
             </p>
           </div>
         </div>
@@ -118,8 +118,8 @@ export function FollowersList() {
                   className="cursor-pointer"
                 >
                   <ProfileAvatar
-                    username={user.displayName}
-                    profilePicture={user.profilePicture}
+                    username={user.display_name || user.displayName || user.handle || '?'}
+                    profilePicture={user.profile_picture || user.profilePicture}
                     size="lg"
                   />
                 </div>
@@ -128,7 +128,7 @@ export function FollowersList() {
                     onClick={() => navigate(`/profile/${user.id}`)}
                     className="font-medium hover:underline block truncate"
                   >
-                    {user.displayName}
+                    {user.display_name || user.displayName || user.handle}
                   </button>
                   <button
                     onClick={() => navigate(`/profile/${user.id}`)}

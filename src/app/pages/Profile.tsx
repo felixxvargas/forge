@@ -64,14 +64,14 @@ export function Profile() {
   }, [userId]);
 
   // Determine which user profile to show
-  const isOwnProfile = !userId || userId === currentUser.id;
+  const isOwnProfile = !userId || userId === currentUser?.id;
   const profileUser = isOwnProfile ? currentUser : getUserById(userId || '');
 
   // Fetch Bluesky data for Topic accounts (if applicable)
   const blueskyData = useBlueskyData(profileUser || currentUser);
   
   // Use Bluesky avatar if available for Topic accounts
-  const profilePicture = blueskyData.avatar || profileUser?.profilePicture || currentUser.profilePicture;
+  const profilePicture = blueskyData.avatar || profileUser?.profile_picture || currentUser?.profile_picture;
   const bannerImage = blueskyData.banner || profileUser?.bannerImage;
 
   // If viewing another user's profile and user not found, show error
@@ -106,7 +106,7 @@ export function Profile() {
   };
 
   // Get user's posts
-  const userPosts = posts.filter(post => post.userId === profileUser.id);
+  const userPosts = posts.filter(post => post.user_id === profileUser?.id);
   
   // Get liked posts
   const likedPostsList = posts.filter(post => likedPosts.has(post.id));
@@ -181,15 +181,15 @@ export function Profile() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <button onClick={() => setIsLightboxOpen(true)} className="cursor-pointer">
-                <ProfileAvatar 
-                  username={profileUser.displayName}
+                <ProfileAvatar
+                  username={profileUser.display_name || profileUser.handle || '?'}
                   profilePicture={profilePicture}
                   size="xl"
                   userId={profileUser.id}
                 />
               </button>
               <div>
-                <h1 className="text-xl font-semibold">{profileUser.displayName}</h1>
+                <h1 className="text-xl font-semibold">{profileUser.display_name || profileUser.handle}</h1>
                 <p className="text-muted-foreground">{profileUser.handle}</p>
                 {profileUser.pronouns && (
                   <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-accent/20 text-accent">
@@ -220,14 +220,14 @@ export function Profile() {
                 onClick={() => navigate(isOwnProfile ? '/followers' : `/followers/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{formatNumber(profileUser.followerCount)}</p>
+                <p className="text-xl font-semibold">{formatNumber(profileUser.follower_count ?? profileUser.followerCount ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Followers</p>
               </button>
               <button
                 onClick={() => navigate(isOwnProfile ? '/following' : `/following/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{formatNumber(profileUser.followingCount || 0)}</p>
+                <p className="text-xl font-semibold">{formatNumber(profileUser.following_count ?? profileUser.followingCount ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Following</p>
               </button>
             </div>
@@ -286,18 +286,18 @@ export function Profile() {
                   // Use displayedCommunities if set, otherwise show first 3
                   const displayIds = profileUser.displayedCommunities && profileUser.displayedCommunities.length > 0
                     ? profileUser.displayedCommunities
-                    : profileUser.communities.slice(0, 3).map(m => m.communityId);
-                  
+                    : profileUser.communities.slice(0, 3).map(m => m.community_id);
+
                   return profileUser.communities
-                    .filter(membership => displayIds.includes(membership.communityId))
+                    .filter(membership => displayIds.includes(membership.community_id))
                     .slice(0, 3)
                     .map(membership => {
-                      const community = communities.find(c => c.id === membership.communityId);
+                      const community = communities.find(c => c.id === membership.community_id);
                       if (!community) return null;
-                      
+
                       return (
                         <button
-                          key={membership.communityId}
+                          key={membership.community_id}
                           onClick={() => navigate(`/community/${community.id}`)}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full hover:bg-secondary/80 transition-colors text-sm"
                         >
@@ -364,34 +364,34 @@ export function Profile() {
         {/* Tab Content */}
         {activeTab === 'lists' && (
           <div className="px-4 space-y-6">
-            <GameList 
-              title="Recently Played" 
-              games={profileUser.gameLists.recentlyPlayed}
+            <GameList
+              title="Recently Played"
+              games={profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []}
               showHours={false}
               onEdit={isOwnProfile ? () => handleOpenGameListEdit('recently-played') : undefined}
               listType="recently-played"
               showFirstOnly={true}
             />
 
-            <GameList 
-              title="Favorite Games" 
-              games={profileUser.gameLists.favorites}
+            <GameList
+              title="Favorite Games"
+              games={profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []}
               onEdit={isOwnProfile ? () => handleOpenGameListEdit('favorite') : undefined}
               listType="favorite"
               showFirstOnly={true}
             />
 
-            <GameList 
-              title="Wishlist" 
-              games={profileUser.gameLists.wishlist}
+            <GameList
+              title="Wishlist"
+              games={profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []}
               onEdit={isOwnProfile ? () => handleOpenGameListEdit('wishlist') : undefined}
               listType="wishlist"
               showFirstOnly={true}
             />
 
-            <GameList 
-              title="Library" 
-              games={profileUser.gameLists.library}
+            <GameList
+              title="Library"
+              games={profileUser.game_lists?.library ?? profileUser.gameLists?.library ?? []}
               sortable={true}
               onEdit={isOwnProfile ? () => handleOpenGameListEdit('library') : undefined}
               listType="library"
@@ -445,7 +445,7 @@ export function Profile() {
           <div className="px-4">
             {likedPostsList.length > 0 ? (
               likedPostsList.map(post => {
-                const postUser = getUserById(post.userId);
+                const postUser = post.author;
                 if (!postUser) return null;
                 
                 return (
@@ -545,10 +545,10 @@ export function Profile() {
         onClose={() => setEditGameListModal({ isOpen: false, listType: null })}
         onSave={handleSaveGameList}
         currentGames={editGameListModal.listType ? (
-          editGameListModal.listType === 'recently-played' ? profileUser.gameLists.recentlyPlayed :
-          editGameListModal.listType === 'favorite' ? profileUser.gameLists.favorites :
-          editGameListModal.listType === 'wishlist' ? profileUser.gameLists.wishlist :
-          profileUser.gameLists.library
+          editGameListModal.listType === 'recently-played' ? (profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []) :
+          editGameListModal.listType === 'favorite' ? (profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []) :
+          editGameListModal.listType === 'wishlist' ? (profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []) :
+          (profileUser.game_lists?.library ?? profileUser.gameLists?.library ?? [])
         ) : []}
         listType={editGameListModal.listType || 'library'}
       />
@@ -558,7 +558,7 @@ export function Profile() {
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
         profilePicture={profilePicture}
-        username={profileUser.displayName}
+        username={profileUser.display_name || profileUser.handle || '?'}
       />
 
       {/* Share Modal */}
