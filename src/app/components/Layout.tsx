@@ -1,38 +1,26 @@
 import { Outlet, Navigate, useLocation } from 'react-router';
 import { BottomNav } from './BottomNav';
-import { useEffect } from 'react';
+import { useAppData } from '../context/AppDataContext';
 
-// Layout v1.0.7 - Added authentication check for protected routes
 export function Layout() {
+  const { isAuthenticated, isLoading, currentUser } = useAppData();
   const location = useLocation();
-  const isLoggedIn = localStorage.getItem('forge-logged-in') === 'true';
-  const hasToken = !!localStorage.getItem('forge-access-token');
-  
-  // Log authentication status for debugging
-  useEffect(() => {
-    console.log('[Layout] Authentication check:', {
-      isLoggedIn,
-      hasToken,
-      path: location.pathname
-    });
-  }, [isLoggedIn, hasToken, location.pathname]);
-  
-  // If not logged in, redirect to login page
-  if (!isLoggedIn) {
-    console.warn('[Layout] User not logged in, redirecting to login');
+
+  if (isLoading) return null;
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
+  // If authenticated but no handle set, redirect to onboarding
+  if (isAuthenticated && currentUser && !currentUser.handle && location.pathname !== '/onboarding' && location.pathname !== '/splash') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Outlet />
       <BottomNav />
     </div>
   );
-}
-
-// HMR: Accept updates to this module
-if (import.meta.hot) {
-  import.meta.hot.accept();
-  console.log('[HMR] Layout module updated');
 }

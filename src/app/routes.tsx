@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter } from 'react-router';
 import { Feed } from './pages/Feed';
 import { Explore } from './pages/Explore';
 import { Profile } from './pages/Profile';
@@ -28,51 +28,43 @@ import { NotFound } from './pages/NotFound';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Admin from './pages/Admin';
 
-function RootCheck() {
-  const isLoggedIn = localStorage.getItem('forge-logged-in');
-  const hasCompletedOnboarding = localStorage.getItem('forge-onboarding-complete');
-  if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (!hasCompletedOnboarding) return <Navigate to="/onboarding" replace />;
-  return <Navigate to="/feed" replace />;
-}
-
 export const router = createBrowserRouter([
-  { path: '/login',         element: <Login />,        errorElement: <ErrorBoundary /> },
-  { path: '/signup',        element: <SignUp />,        errorElement: <ErrorBoundary /> },
-  { path: '/auth/callback', element: <AuthCallback />,  errorElement: <ErrorBoundary /> },
-  { path: '/splash',        element: <Onboarding />,    errorElement: <ErrorBoundary /> },
-  { path: '/onboarding',    element: <Onboarding />,    errorElement: <ErrorBoundary /> },
-  { path: '/admin',         element: <Admin />,         errorElement: <ErrorBoundary /> },
+  { path: '/login',         element: <Login />,       errorElement: <ErrorBoundary /> },
+  { path: '/signup',        element: <SignUp />,       errorElement: <ErrorBoundary /> },
+  { path: '/auth/callback', element: <AuthCallback />, errorElement: <ErrorBoundary /> },
+  { path: '/splash',        element: <Onboarding />,   errorElement: <ErrorBoundary /> },
+  { path: '/onboarding',    element: <Onboarding />,   errorElement: <ErrorBoundary /> },
+  { path: '/admin',         element: <Admin />,        errorElement: <ErrorBoundary /> },
   {
     path: '/',
     element: <Layout />,
     errorElement: <ErrorBoundary />,
     children: [
-      { index: true,                     element: <RootCheck />,               errorElement: <ErrorBoundary /> },
-      { path: 'list',                    element: <ListView />,                errorElement: <ErrorBoundary /> },
-      { path: 'feed',                    element: <Feed />,                    errorElement: <ErrorBoundary /> },
-      { path: 'explore',                 element: <Explore />,                 errorElement: <ErrorBoundary /> },
-      { path: 'profile',                 element: <Profile />,                 errorElement: <ErrorBoundary /> },
-      { path: 'profile/:userId',         element: <Profile />,                 errorElement: <ErrorBoundary /> },
-      { path: 'edit-profile',            element: <EditProfile />,             errorElement: <ErrorBoundary /> },
-      { path: 'new-post',                element: <NewPost />,                 errorElement: <ErrorBoundary /> },
-      { path: 'settings',                element: <Settings />,                errorElement: <ErrorBoundary /> },
-      { path: 'notifications',           element: <Notifications />,           errorElement: <ErrorBoundary /> },
-      { path: 'post/:postId',            element: <PostDetail />,              errorElement: <ErrorBoundary /> },
-      { path: 'gaming-platforms',        element: <GamingPlatforms />,         errorElement: <ErrorBoundary /> },
-      { path: 'social-integrations',     element: <SocialMediaIntegrations />, errorElement: <ErrorBoundary /> },
-      { path: 'social-filtering',        element: <SocialMediaFiltering />,    errorElement: <ErrorBoundary /> },
-      { path: 'messages',                element: <Messages />,                errorElement: <ErrorBoundary /> },
-      { path: 'community/:communityId',  element: <CommunityDetail />,         errorElement: <ErrorBoundary /> },
-      { path: 'user-communities',        element: <UserCommunities />,         errorElement: <ErrorBoundary /> },
-      { path: 'followers',               element: <FollowersList />,           errorElement: <ErrorBoundary /> },
-      { path: 'followers/:userId',       element: <FollowersList />,           errorElement: <ErrorBoundary /> },
-      { path: 'following',               element: <FollowingList />,           errorElement: <ErrorBoundary /> },
-      { path: 'following/:userId',       element: <FollowingList />,           errorElement: <ErrorBoundary /> },
-      { path: 'game/:gameId',            element: <GameDetail />,              errorElement: <ErrorBoundary /> },
-      { path: 'submit-indie-game',       element: <SubmitIndieGame />,         errorElement: <ErrorBoundary /> },
-      { path: 'review-submissions',      element: <ReviewSubmissions />,       errorElement: <ErrorBoundary /> },
-      { path: '*',                       element: <NotFound /> },
+      { index: true,                    element: <Feed />,                    errorElement: <ErrorBoundary /> },
+      { path: 'list',                   element: <ListView />,                errorElement: <ErrorBoundary /> },
+      { path: 'feed',                   element: <Feed />,                    errorElement: <ErrorBoundary /> },
+      { path: 'explore',                element: <Explore />,                 errorElement: <ErrorBoundary /> },
+      { path: 'profile',                element: <Profile />,                 errorElement: <ErrorBoundary /> },
+      { path: 'profile/:userId',        element: <Profile />,                 errorElement: <ErrorBoundary /> },
+      { path: 'edit-profile',           element: <EditProfile />,             errorElement: <ErrorBoundary /> },
+      { path: 'new-post',               element: <NewPost />,                 errorElement: <ErrorBoundary /> },
+      { path: 'settings',               element: <Settings />,                errorElement: <ErrorBoundary /> },
+      { path: 'notifications',          element: <Notifications />,           errorElement: <ErrorBoundary /> },
+      { path: 'post/:postId',           element: <PostDetail />,              errorElement: <ErrorBoundary /> },
+      { path: 'gaming-platforms',       element: <GamingPlatforms />,         errorElement: <ErrorBoundary /> },
+      { path: 'social-integrations',    element: <SocialMediaIntegrations />, errorElement: <ErrorBoundary /> },
+      { path: 'social-filtering',       element: <SocialMediaFiltering />,    errorElement: <ErrorBoundary /> },
+      { path: 'messages',               element: <Messages />,                errorElement: <ErrorBoundary /> },
+      { path: 'community/:communityId', element: <CommunityDetail />,         errorElement: <ErrorBoundary /> },
+      { path: 'user-communities',       element: <UserCommunities />,         errorElement: <ErrorBoundary /> },
+      { path: 'followers',              element: <FollowersList />,           errorElement: <ErrorBoundary /> },
+      { path: 'followers/:userId',      element: <FollowersList />,           errorElement: <ErrorBoundary /> },
+      { path: 'following',              element: <FollowingList />,           errorElement: <ErrorBoundary /> },
+      { path: 'following/:userId',      element: <FollowingList />,           errorElement: <ErrorBoundary /> },
+      { path: 'game/:gameId',           element: <GameDetail />,              errorElement: <ErrorBoundary /> },
+      { path: 'submit-indie-game',      element: <SubmitIndieGame />,         errorElement: <ErrorBoundary /> },
+      { path: 'review-submissions',     element: <ReviewSubmissions />,       errorElement: <ErrorBoundary /> },
+      { path: '*',                      element: <NotFound /> },
     ],
   },
 ]);
