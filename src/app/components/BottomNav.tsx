@@ -53,12 +53,16 @@ export function BottomNav() {
             isActive('/profile') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <ProfileAvatar 
-            username={currentUser.displayName}
-            profilePicture={currentUser.profilePicture}
-            size="sm"
-            userId={currentUser.id}
-          />
+          {currentUser ? (
+            <ProfileAvatar
+              username={currentUser.display_name || currentUser.handle || '?'}
+              profilePicture={currentUser.profile_picture}
+              size="sm"
+              userId={currentUser.id}
+            />
+          ) : (
+            <User className="w-6 h-6" />
+          )}
         </Link>
       </div>
     </nav>
