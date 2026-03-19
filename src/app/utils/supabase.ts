@@ -484,20 +484,20 @@ export const storage = {
     const ext = file.name.split('.').pop();
     const path = `avatars/${userId}.${ext}`;
     const { error } = await supabase.storage
-      .from('avatars')
+      .from('forge-avatars')
       .upload(path, file, { upsert: true });
     if (error) throw new Error(error.message);
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const { data } = supabase.storage.from('forge-avatars').getPublicUrl(path);
     return data.publicUrl;
   },
 
   async uploadPostImage(userId: string, file: File) {
     const path = `posts/${userId}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage
-      .from('post-images')
+      .from('forge-post-media')
       .upload(path, file);
     if (error) throw new Error(error.message);
-    const { data } = supabase.storage.from('post-images').getPublicUrl(path);
+    const { data } = supabase.storage.from('forge-post-media').getPublicUrl(path);
     return data.publicUrl;
   }
 };

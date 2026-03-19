@@ -16,18 +16,18 @@ export function EditProfile() {
   const { currentUser, updateCurrentUser } = useAppData();
   
   const [formData, setFormData] = useState({
-    displayName: currentUser.displayName,
+    displayName: currentUser.display_name || currentUser.displayName || '',
     pronouns: currentUser.pronouns || '',
-    bio: currentUser.bio,
-    about: currentUser.about || currentUser.bio,
-    profilePicture: currentUser.profilePicture,
-    platforms: currentUser.platforms,
-    platformHandles: currentUser.platformHandles || {},
-    showPlatformHandles: currentUser.showPlatformHandles || {},
-    socialPlatforms: currentUser.socialPlatforms,
-    socialHandles: currentUser.socialHandles || {},
-    showSocialHandles: currentUser.showSocialHandles || {},
-    displayedCommunities: currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 3).map(m => m.communityId)
+    bio: currentUser.bio || '',
+    about: currentUser.about || currentUser.bio || '',
+    profilePicture: currentUser.profile_picture || currentUser.profilePicture || null,
+    platforms: currentUser.platforms || [],
+    platformHandles: currentUser.platform_handles || currentUser.platformHandles || {},
+    showPlatformHandles: currentUser.show_platform_handles || currentUser.showPlatformHandles || {},
+    socialPlatforms: currentUser.social_platforms || currentUser.socialPlatforms || [],
+    socialHandles: currentUser.social_handles || currentUser.socialHandles || {},
+    showSocialHandles: currentUser.show_social_handles || currentUser.showSocialHandles || {},
+    displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 3).map((m: any) => m.community_id || m.communityId)
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -64,21 +64,27 @@ export function EditProfile() {
   };
 
   const togglePlatform = (platform: Platform) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: prev.platforms.includes(platform)
-        ? prev.platforms.filter(p => p !== platform)
-        : [...prev.platforms, platform]
-    }));
+    setFormData(prev => {
+      const platforms = prev.platforms || [];
+      return {
+        ...prev,
+        platforms: platforms.includes(platform)
+          ? platforms.filter(p => p !== platform)
+          : [...platforms, platform]
+      };
+    });
   };
 
   const toggleSocial = (social: SocialPlatform) => {
-    setFormData(prev => ({
-      ...prev,
-      socialPlatforms: prev.socialPlatforms.includes(social)
-        ? prev.socialPlatforms.filter(s => s !== social)
-        : [...prev.socialPlatforms, social]
-    }));
+    setFormData(prev => {
+      const socialPlatforms = prev.socialPlatforms || [];
+      return {
+        ...prev,
+        socialPlatforms: socialPlatforms.includes(social)
+          ? socialPlatforms.filter(s => s !== social)
+          : [...socialPlatforms, social]
+      };
+    });
   };
 
   const toggleCommunity = (communityId: string) => {
@@ -266,9 +272,9 @@ export function EditProfile() {
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm">Bio</label>
             <span className={`text-xs ${
-              formData.bio.length > BIO_MAX_LENGTH ? 'text-red-500' : 'text-muted-foreground'
+              (formData.bio || '').length > BIO_MAX_LENGTH ? 'text-red-500' : 'text-muted-foreground'
             }`}>
-              {formData.bio.length}/{BIO_MAX_LENGTH}
+              {(formData.bio || '').length}/{BIO_MAX_LENGTH}
             </span>
           </div>
           <textarea
@@ -285,9 +291,9 @@ export function EditProfile() {
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm">About</label>
             <span className={`text-xs ${
-              formData.about.length > ABOUT_MAX_LENGTH ? 'text-red-500' : 'text-muted-foreground'
+              (formData.about || '').length > ABOUT_MAX_LENGTH ? 'text-red-500' : 'text-muted-foreground'
             }`}>
-              {formData.about.length}/{ABOUT_MAX_LENGTH}
+              {(formData.about || '').length}/{ABOUT_MAX_LENGTH}
             </span>
           </div>
           <textarea
@@ -313,7 +319,7 @@ export function EditProfile() {
             </button>
           </div>
           <div className="space-y-3">
-            {formData.platforms.map(platform => (
+            {(formData.platforms || []).map(platform => (
               <div key={platform} className="bg-secondary rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium">{getPlatformLabel(platform)}</span>
@@ -355,7 +361,7 @@ export function EditProfile() {
             Add your social media handles and choose which ones to display on your profile
           </p>
           <div className="space-y-3">
-            {formData.socialPlatforms.map(social => (
+            {(formData.socialPlatforms || []).map(social => (
               <div key={social} className="bg-secondary rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium">{getSocialLabel(social)}</span>
