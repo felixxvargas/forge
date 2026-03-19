@@ -2351,4 +2351,163 @@ app.post("/make-server-17285bd7/seed/topic-accounts", async (c) => {
   }
 });
 
+// ============================================================
+// COMMENTS API
+// ============================================================
+
+// GET /posts/:postId/comments - get all comments for a post
+app.get("/make-server-17285bd7/posts/:postId/comments", async (c) => {
+  try {
+    const { postId } = c.req.param();
+    const comments = await kv.getByPrefix(`comment:${postId}:`);
+    // Sort by timestamp ascending (oldest first)
+    comments.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return c.json(comments);
+  } catch (error) {
+    console.error('Get comments error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// POST /posts/:postId/comments - create a comment
+app.post("/make-server-17285bd7/posts/:postId/comments", async (c) => {
+  try {
+    const { postId } = c.req.param();
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const body = await c.req.json();
+    const { content, replyTo } = body;
+    if (!content?.trim()) return c.json({ error: 'Content is required' }, 400);
+
+    const post = await kv.get(`post:${postId}`);
+    if (!post) return c.json({ error: 'Post not found' }, 404);
+
+    const commentId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const comment = {
+      id: commentId,
+      postId,
+      userId: user.id,
+      content: content.trim(),
+      timestamp: new Date().toISOString(),
+      likes: 0,
+      replyTo: replyTo || null,
+    };
+
+    await kv.set(`comment:${postId}:${commentId}`, comment);
+
+    // Increment comment count on the post
+    post.comments = (post.comments || 0) + 1;
+    await kv.set(`post:${postId}`, post);
+
+    return c.json(comment, 201);
+  } catch (error) {
+    console.error('Create comment error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// DELETE /posts/:postId/comments/:commentId - delete a comment
+app.delete("/make-server-17285bd7/posts/:postId/comments/:commentId", async (c) => {
+  try {
+    const { postId, commentId } = c.req.param();
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const comment = await kv.get(`comment:${postId}:${commentId}`);
+    if (!comment) return c.json({ error: 'Comment not found' }, 404);
+    if (comment.userId !== user.id) return c.json({ error: 'Forbidden' }, 403);
+
+    await kv.del(`comment:${postId}:${commentId}`);
+
+    // Decrement comment count on post
+    const post = await kv.get(`post:${postId}`);
+    if (post) {
+      post.comments = Math.max(0, (post.comments || 1) - 1);
+      await kv.set(`post:${postId}`, post);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// POST /posts/:postId/comments/:commentId/like - like a comment
+app.post("/make-server-17285bd7/posts/:postId/comments/:commentId/like", async (c) => {
+  try {
+    const { postId, commentId } = c.req.param();
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const likeKey = `comment-like:${commentId}:${user.id}`;
+    const existing = await kv.get(likeKey);
+    if (existing) return c.json({ error: 'Already liked' }, 409);
+
+    await kv.set(likeKey, { userId: user.id, commentId, timestamp: new Date().toISOString() });
+
+    const comment = await kv.get(`comment:${postId}:${commentId}`);
+    if (comment) {
+      comment.likes = (comment.likes || 0) + 1;
+      await kv.set(`comment:${postId}:${commentId}`, comment);
+    }
+
+    return c.json({ success: true, likes: comment?.likes || 1 });
+  } catch (error) {
+    console.error('Like comment error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// DELETE /posts/:postId/comments/:commentId/like - unlike a comment
+app.delete("/make-server-17285bd7/posts/:postId/comments/:commentId/like", async (c) => {
+  try {
+    const { postId, commentId } = c.req.param();
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const likeKey = `comment-like:${commentId}:${user.id}`;
+    await kv.del(likeKey);
+
+    const comment = await kv.get(`comment:${postId}:${commentId}`);
+    if (comment) {
+      comment.likes = Math.max(0, (comment.likes || 1) - 1);
+      await kv.set(`comment:${postId}:${commentId}`, comment);
+    }
+
+    return c.json({ success: true, likes: comment?.likes || 0 });
+  } catch (error) {
+    console.error('Unlike comment error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// GET /users/:userId/comment-likes - get comment IDs liked by user
+app.get("/make-server-17285bd7/users/:userId/comment-likes", async (c) => {
+  try {
+    const { userId } = c.req.param();
+    const likes = await kv.getByPrefix(`comment-like:`);
+    const userLikes = likes.filter((l: any) => l.userId === userId).map((l: any) => l.commentId);
+    return c.json(userLikes);
+  } catch (error) {
+    console.error('Get comment likes error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
 Deno.serve(app.fetch);

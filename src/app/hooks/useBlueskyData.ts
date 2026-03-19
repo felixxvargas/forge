@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchBlueskyProfile, fetchBlueskyPosts, getBlueskyHandleForUser } from '../utils/bluesky';
-import type { User } from '../data/mockData';
+import type { User } from '../data/data';
 
 interface BlueskyData {
   avatar?: string;

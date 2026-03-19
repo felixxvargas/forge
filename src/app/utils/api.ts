@@ -526,3 +526,43 @@ export const adminAPI = {
     });
   }
 };
+
+// Comments API
+export const commentAPI = {
+  async getComments(postId: string) {
+    return apiRequest(`/posts/${postId}/comments`);
+  },
+
+  async createComment(postId: string, content: string, replyTo?: string) {
+    return apiRequest(`/posts/${postId}/comments`, {
+      method: 'POST',
+      body: { content, replyTo },
+      requiresAuth: true,
+    });
+  },
+
+  async deleteComment(postId: string, commentId: string) {
+    return apiRequest(`/posts/${postId}/comments/${commentId}`, {
+      method: 'DELETE',
+      requiresAuth: true,
+    });
+  },
+
+  async likeComment(postId: string, commentId: string) {
+    return apiRequest(`/posts/${postId}/comments/${commentId}/like`, {
+      method: 'POST',
+      requiresAuth: true,
+    });
+  },
+
+  async unlikeComment(postId: string, commentId: string) {
+    return apiRequest(`/posts/${postId}/comments/${commentId}/like`, {
+      method: 'DELETE',
+      requiresAuth: true,
+    });
+  },
+
+  async getUserCommentLikes(userId: string) {
+    return apiRequest(`/users/${userId}/comment-likes`);
+  },
+};

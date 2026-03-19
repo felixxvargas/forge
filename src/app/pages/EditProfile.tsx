@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { X, Upload, Settings, Crown, Shield, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import type { User, Platform, SocialPlatform } from '../data/mockData';
-import { mockCommunities } from '../data/mockData';
+import type { User, Platform, SocialPlatform } from '../data/data';
+import { communities as mockCommunities } from '../data/data';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';

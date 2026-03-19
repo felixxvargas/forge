@@ -5,7 +5,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { useState, useEffect } from 'react';
 import { followAPI, userAPI } from '../utils/api';
-import type { User } from '../data/mockData';
+import type { User } from '../data/data';
 
 export function FollowingList() {
   const navigate = useNavigate();
