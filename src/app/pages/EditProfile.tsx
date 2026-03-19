@@ -39,7 +39,20 @@ export function EditProfile() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateCurrentUser(formData);
+      await updateCurrentUser({
+        display_name: formData.displayName,
+        pronouns: formData.pronouns,
+        bio: formData.bio,
+        about: formData.about,
+        profile_picture: formData.profilePicture,
+        platforms: formData.platforms,
+        platform_handles: formData.platformHandles,
+        show_platform_handles: formData.showPlatformHandles,
+        social_platforms: formData.socialPlatforms,
+        social_handles: formData.socialHandles,
+        show_social_handles: formData.showSocialHandles,
+        displayed_communities: formData.displayedCommunities,
+      });
       navigate('/profile');
     } catch (error) {
       console.error('Error saving profile:', error);

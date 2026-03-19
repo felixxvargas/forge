@@ -261,6 +261,15 @@ export const postAPI = {
   }
 };
 
+// Maps short bucket identifiers to actual Supabase bucket names
+const BUCKET_NAMES: Record<string, string> = {
+  'avatar': 'forge-avatars',
+  'banner': 'forge-banners',
+  'post': 'forge-post-media',
+  'community-icon': 'forge-community-icons',
+  'community-banner': 'forge-community-banners',
+};
+
 // Upload API
 export const uploadAPI = {
   async uploadFile(file: File, bucketType: 'avatar' | 'banner' | 'post' | 'community-icon' | 'community-banner' = 'avatar') {
@@ -301,7 +310,7 @@ export const uploadAPI = {
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('bucket', bucketType);
+    formData.append('bucket', BUCKET_NAMES[bucketType] ?? bucketType);
     
     try {
       const response = await fetch(`${API_BASE_URL}/upload`, {

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { uploadAPI } from '../utils/api';
 
@@ -25,10 +25,16 @@ export function ImageUpload({
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(existingUrl || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadingRef = useRef(false);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (uploadingRef.current) return;
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Reset input immediately so re-selecting the same file works
+    // and stale change events can't re-fire
+    if (fileInputRef.current) fileInputRef.current.value = '';
 
     // Validate file type based on accept prop
     const isImageOnly = accept === 'image/*';
@@ -48,6 +54,7 @@ export function ImageUpload({
     }
 
     setError('');
+    uploadingRef.current = true;
     setIsUploading(true);
 
     try {
@@ -58,9 +65,9 @@ export function ImageUpload({
       // Upload to backend
       console.log('[ImageUpload] Starting upload to bucket:', bucketType);
       const result = await uploadAPI.uploadFile(file, bucketType);
-      
+
       console.log('[ImageUpload] Upload result:', result);
-      
+
       if (result.url) {
         onUpload(result.url);
         setPreviewUrl(result.url);
@@ -69,20 +76,21 @@ export function ImageUpload({
       }
     } catch (err: any) {
       console.error('[ImageUpload] Upload error:', err);
-      
+
       // Display user-friendly error message
       let errorMessage = 'Failed to upload file. Please try again.';
-      
+
       if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       setPreviewUrl('');
     } finally {
+      uploadingRef.current = false;
       setIsUploading(false);
     }
-  };
+  }, [bucketType, maxSizeMB, accept, onUpload]);
 
   const handleRemove = () => {
     setPreviewUrl('');
