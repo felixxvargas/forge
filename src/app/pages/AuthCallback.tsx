@@ -7,17 +7,25 @@ export function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        // Upsert profile so new OAuth users always have a row
+        const meta = session.user.user_metadata ?? {};
+        await supabase.from('profiles').upsert({
+          id: session.user.id,
+          display_name: meta.full_name || meta.name || session.user.email?.split('@')[0] || null,
+          profile_picture: meta.avatar_url || meta.picture || null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+
         // Check if profile has a handle (onboarding complete)
-        supabase.from('profiles').select('handle').eq('id', session.user.id).single()
-          .then(({ data }) => {
-            if (data?.handle) {
-              navigate('/feed');
-            } else {
-              navigate('/onboarding');
-            }
-          });
+        const { data } = await supabase
+          .from('profiles')
+          .select('handle')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        navigate(data?.handle ? '/feed' : '/onboarding');
       } else {
         navigate('/login');
       }

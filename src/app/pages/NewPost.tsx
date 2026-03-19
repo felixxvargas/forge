@@ -137,14 +137,14 @@ export function NewPost() {
 
       {/* User info */}
       <div className="flex items-center gap-3 p-4 border-b border-border">
-        <img
-          src={currentUser?.profile_picture}
-          alt={currentUser?.display_name || currentUser?.handle}
-          className="w-10 h-10 rounded-full object-cover"
+        <ProfileAvatar
+          username={currentUser?.display_name || currentUser?.handle || '?'}
+          profilePicture={currentUser?.profile_picture}
+          size="md"
         />
         <div>
           <p className="font-medium">{currentUser?.display_name || currentUser?.handle}</p>
-          <p className="text-sm text-muted-foreground">{currentUser.handle}</p>
+          <p className="text-sm text-muted-foreground">{currentUser?.handle}</p>
         </div>
       </div>
 

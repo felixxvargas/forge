@@ -39,6 +39,17 @@ interface AppDataContextType {
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 AppDataContext.displayName = 'AppDataContext';
 
+/** Ensure profile objects never carry null/undefined on fields the UI depends on. */
+function normalizeProfile(profile: any): any {
+  if (!profile) return profile;
+  return {
+    ...profile,
+    display_name: profile.display_name || profile.handle || 'Gamer',
+    handle: profile.handle || 'user',
+    profile_picture: profile.profile_picture ?? null,
+  };
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -85,7 +96,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profiles.getBlockedIds(userId),
         profiles.getMutedIds(userId),
       ]);
-      setCurrentUser(profile);
+      setCurrentUser(normalizeProfile(profile));
       setLikedPosts(new Set(likedIds));
       setRepostedPosts(new Set(repostedIds));
       setBlockedUsers(new Set(blockedIds));

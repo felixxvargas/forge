@@ -118,7 +118,7 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
           />
           <div>
             <p className="font-medium">{currentUser?.display_name || currentUser?.handle}</p>
-            <p className="text-sm text-muted-foreground">{currentUser.handle}</p>
+            <p className="text-sm text-muted-foreground">{currentUser?.handle}</p>
           </div>
         </div>
 

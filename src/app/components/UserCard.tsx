@@ -55,7 +55,7 @@ export function UserCard({ user, onFollowToggle }: UserCardProps) {
 
       {/* Platforms */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {user.platforms.slice(0, 6).map((platform) => (
+        {(user.platforms || []).slice(0, 6).map((platform) => (
           <PlatformIcon key={platform} platform={platform} />
         ))}
       </div>

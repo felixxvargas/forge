@@ -98,12 +98,15 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
   // Get reposter info if this post was reposted
   const reposter = post.repostedBy ? getUserById(post.repostedBy) : null;
 
+  // Guard against undefined user
+  if (!user) return null;
+
   // If user is muted and has onShowMutedPost callback, show collapsed version
   if (isMutedUser && onShowMutedPost) {
     return (
       <div className="mb-4 p-4 bg-secondary/30 rounded-lg border border-border">
         <p className="text-sm text-muted-foreground mb-2">
-          Post from muted user @{user.handle.replace('@', '')}
+          Post from muted user @{(user.handle || '').replace('@', '')}
         </p>
         <button
           onClick={() => onShowMutedPost(post.id)}

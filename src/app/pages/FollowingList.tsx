@@ -140,7 +140,7 @@ export function FollowingList() {
                     </p>
                   )}
                 </div>
-                {user.id !== currentUser.id && (
+                {user.id !== currentUser?.id && (
                   <FollowButton userId={user.id} />
                 )}
               </div>
