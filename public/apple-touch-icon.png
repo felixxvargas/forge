@@ -1,7 +1,0 @@
-<!-- This would normally be a PNG file, but we'll use SVG as fallback -->
-<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
-  <!-- Purple circle background -->
-  <circle cx="90" cy="90" r="90" fill="#7C3AED"/>
-  <!-- Lime green lightning bolt -->
-  <path d="M97 35L58 95h40l-12 50 54-72h-40l12-38z" fill="#84CC16"/>
-</svg>
