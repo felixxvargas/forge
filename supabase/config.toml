@@ -1,13 +1,13 @@
-# Supabase Edge Functions Configuration
+project_id = "xmxeafjpscgqprrreulh"
 
-# Global settings
-[edge_runtime]
-policy = "per_worker"
-
-# Function-specific settings
-[[edge_functions]]
-name = "make-server-17285bd7"
-verify_jwt = true
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
 [auth]
 enabled = true
+site_url = "https://forge-app-roan.vercel.app"
+additional_redirect_urls = ["https://forge-app-roan.vercel.app/auth/callback"]
