@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform } from '../data/data';
 import { auth, profiles, posts as postsAPI, communities as communitiesAPI, notifications as notificationsAPI, supabase } from '../utils/supabase';
 
@@ -64,6 +64,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!session;
 
+  // Keep a ref to session so refreshFeed can always read the latest value
+  // without needing session in its dependency array (avoids double-fetch loops)
+  const sessionRef = useRef(session);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
   const loadUserData = useCallback(async (userId: string) => {
     try {
       let profile = await profiles.getById(userId);
@@ -108,7 +113,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const refreshFeed = useCallback(async () => {
     try {
-      const feed = await postsAPI.getFeed(50);
+      const userId = sessionRef.current?.user?.id;
+      const feed = userId
+        ? await postsAPI.getFollowingFeed(userId, 50)
+        : await postsAPI.getFeed(50);
       setPostList(feed);
     } catch (e) {
       console.error('Error loading feed:', e);

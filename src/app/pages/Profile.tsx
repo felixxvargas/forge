@@ -71,7 +71,7 @@ export function Profile() {
   const blueskyData = useBlueskyData(profileUser || currentUser);
   
   // Use Bluesky avatar if available for Topic accounts
-  const profilePicture = blueskyData.avatar || profileUser?.profile_picture || currentUser?.profile_picture;
+  const profilePicture = blueskyData.avatar || profileUser?.profile_picture || undefined;
   const bannerImage = blueskyData.banner || profileUser?.bannerImage;
 
   // If own profile but currentUser hasn't loaded, wait

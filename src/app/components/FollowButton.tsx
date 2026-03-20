@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Check, UserPlus, Loader2 } from 'lucide-react';
-import { followAPI } from '../utils/api';
+import { useAppData } from '../context/AppDataContext';
 
 interface FollowButtonProps {
   userId: string;
@@ -10,13 +10,14 @@ interface FollowButtonProps {
   variant?: 'default' | 'outline';
 }
 
-export function FollowButton({ 
-  userId, 
+export function FollowButton({
+  userId,
   initialFollowingState = false,
   onFollowChange,
   size = 'md',
   variant = 'default'
 }: FollowButtonProps) {
+  const { followUser, unfollowUser } = useAppData();
   const [isFollowing, setIsFollowing] = useState(initialFollowingState);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,26 +30,25 @@ export function FollowButton({
   const handleFollowToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (isLoading) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       if (isFollowing) {
-        await followAPI.unfollowUser(userId);
+        await unfollowUser(userId);
         setIsFollowing(false);
         onFollowChange?.(false);
       } else {
-        await followAPI.followUser(userId);
+        await followUser(userId);
         setIsFollowing(true);
         onFollowChange?.(true);
       }
     } catch (err) {
       console.error('Error toggling follow:', err);
       setError('Failed to update follow status');
-      // Revert state on error
       setTimeout(() => setError(null), 3000);
     } finally {
       setIsLoading(false);
