@@ -133,7 +133,7 @@ export function Explore() {
       return (
         (user.display_name || user.displayName || '').toLowerCase().includes(query) ||
         user.handle.toLowerCase().includes(query) ||
-        user.bio.toLowerCase().includes(query)
+        (user.bio || '').toLowerCase().includes(query)
       );
     });
 

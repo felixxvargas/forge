@@ -1,13 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { adminAPI } from '../utils/api';
+import { supabase } from '../utils/supabase';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card } from '../components/ui/card';
 import { Shield, CheckCircle, XCircle, AlertCircle, FileCheck, Database } from 'lucide-react';
 
+const ADMIN_EMAILS = ['felixvgiles@gmail.com'];
+
 export default function Admin() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const email = session?.user?.email ?? '';
+      setIsAuthorized(ADMIN_EMAILS.includes(email));
+      setAuthChecked(true);
+    });
+  }, []);
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -125,6 +138,24 @@ export default function Admin() {
       setIsSeeding(false);
     }
   };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <p className="text-zinc-400">Checking access...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
+        <Shield className="w-12 h-12 text-red-500" />
+        <h1 className="text-2xl font-bold text-white">Access Denied</h1>
+        <p className="text-zinc-400">You don't have permission to view this page.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white pb-24">
