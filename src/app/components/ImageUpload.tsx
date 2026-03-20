@@ -5,6 +5,7 @@ import { uploadAPI } from '../utils/api';
 interface ImageUploadProps {
   onUpload: (url: string) => void;
   onRemove?: () => void;
+  onUploadingChange?: (uploading: boolean) => void;
   existingUrl?: string;
   className?: string;
   accept?: string; // Allow customization of accepted file types
@@ -12,10 +13,11 @@ interface ImageUploadProps {
   bucketType?: 'avatar' | 'banner' | 'post' | 'community-icon' | 'community-banner'; // Specify which bucket to upload to
 }
 
-export function ImageUpload({ 
-  onUpload, 
-  onRemove, 
-  existingUrl, 
+export function ImageUpload({
+  onUpload,
+  onRemove,
+  onUploadingChange,
+  existingUrl,
   className = '',
   accept = 'image/*,video/*',
   maxSizeMB = 50,
@@ -56,6 +58,7 @@ export function ImageUpload({
     setError('');
     uploadingRef.current = true;
     setIsUploading(true);
+    onUploadingChange?.(true);
 
     try {
       // Create local preview
@@ -89,8 +92,9 @@ export function ImageUpload({
     } finally {
       uploadingRef.current = false;
       setIsUploading(false);
+      onUploadingChange?.(false);
     }
-  }, [bucketType, maxSizeMB, accept, onUpload]);
+  }, [bucketType, maxSizeMB, accept, onUpload, onUploadingChange]);
 
   const handleRemove = () => {
     setPreviewUrl('');

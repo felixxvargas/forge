@@ -37,6 +37,7 @@ export function EditProfile() {
   );
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'battlenet', 'riot'];
@@ -224,9 +225,10 @@ export function EditProfile() {
         </div>
         <button
           onClick={handleSave}
-          className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
+          disabled={isSaving || isImageUploading}
+          className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSaving ? 'Saving...' : 'Save'}
+          {isSaving ? 'Saving...' : isImageUploading ? 'Uploading...' : 'Save'}
         </button>
       </div>
 
@@ -244,6 +246,7 @@ export function EditProfile() {
             <div className="flex-1 space-y-2">
               <ImageUpload
                 onUpload={handleProfilePictureUpload}
+                onUploadingChange={setIsImageUploading}
                 accept="image/*"
                 maxSizeMB={10}
                 bucketType="avatar"
