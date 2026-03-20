@@ -1,4 +1,5 @@
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { supabase } from './supabase';
 
 const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7`;
 
@@ -50,16 +51,32 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
 // Returns a valid (non-expired) access token, refreshing silently if needed
 async function getValidToken(): Promise<string | null> {
   let token = localStorage.getItem('forge-access-token');
-  if (!token) return null;
-  if (isTokenExpired(token)) {
+
+  if (token && !isTokenExpired(token)) return token;
+
+  // Token expired — try refresh token first
+  if (token && isTokenExpired(token)) {
     const refreshToken = localStorage.getItem('forge-refresh-token');
     if (refreshToken) {
-      token = await refreshAccessToken(refreshToken);
-    } else {
-      return null;
+      const newToken = await refreshAccessToken(refreshToken);
+      if (newToken) return newToken;
     }
   }
-  return token;
+
+  // No localStorage token (e.g. Google OAuth) — try Supabase client session
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      localStorage.setItem('forge-access-token', session.access_token);
+      localStorage.setItem('forge-user-id', session.user.id);
+      if (session.refresh_token) {
+        localStorage.setItem('forge-refresh-token', session.refresh_token);
+      }
+      return session.access_token;
+    }
+  } catch {}
+
+  return null;
 }
 
 // User-friendly error messages

@@ -9,6 +9,14 @@ export function AuthCallback() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        // Persist tokens so uploadAPI / apiRequest can use them
+        localStorage.setItem('forge-access-token', session.access_token);
+        if (session.refresh_token) {
+          localStorage.setItem('forge-refresh-token', session.refresh_token);
+        }
+        localStorage.setItem('forge-user-id', session.user.id);
+        localStorage.setItem('forge-logged-in', 'true');
+
         // Upsert profile so new OAuth users always have a row
         const meta = session.user.user_metadata ?? {};
         await supabase.from('profiles').upsert({

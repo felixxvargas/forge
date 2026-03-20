@@ -57,12 +57,15 @@ Forge bridges the gap between different gaming ecosystems and social media platf
 ## Architecture
 
 ### Tech Stack
-- **Framework**: React 18+
+- **Framework**: React 18 + TypeScript 5
+- **Build Tool**: Vite 6
 - **Router**: React Router v7 (Data mode pattern)
-- **Styling**: Tailwind CSS v4
+- **Styling**: Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
 - **Animation**: Motion (motion/react)
 - **State Management**: React Context API
-- **Language**: TypeScript
+- **Backend**: Supabase (Postgres + Auth + Storage)
+- **Edge Functions**: Deno + Hono at `supabase/functions/server/index.tsx`
+- **Deployment**: Vercel (frontend) + Supabase (backend)
 
 ### File Structure
 ```
@@ -70,11 +73,17 @@ Forge bridges the gap between different gaming ecosystems and social media platf
   /app
     /components       # Reusable UI components
       /onboarding    # Onboarding-specific components
-    /context         # React Context providers
-    /data            # Mock data and type definitions
+    /context         # React Context providers (AppDataContext, ThemeContext)
+    /data            # Type definitions (mockData.ts for types only)
     /pages           # Route pages/screens
     /styles          # Global styles and theme
-  /guidelines        # Documentation
+    /utils
+      api.ts         # HTTP client for edge function + Supabase Storage uploads
+      supabase.ts    # Supabase JS client singleton + typed helpers
+/supabase
+  /functions
+    /server          # Hono edge function (auth, users, posts, upload, games)
+/guidelines          # This documentation
 ```
 
 ### Routing Pattern
@@ -82,6 +91,59 @@ The app uses React Router's Data mode with a Layout component that wraps all aut
 - **Login/Onboarding**: Standalone routes without layout
 - **Main App**: Wrapped in Layout with BottomNav and AppDataProvider
 - **Protected Routes**: Check for authentication and onboarding completion
+- **Auth Callback** (`/auth/callback`): Handles Google OAuth redirect, stores tokens, upserts profile
+
+### Backend Architecture
+
+#### Supabase Database (Postgres)
+All data is stored in Supabase. Key tables:
+- `profiles` — user profiles (snake_case columns)
+- `posts` — user posts with optional image arrays
+- `follows` — follower/following relationships
+- `likes` — post likes
+- `reposts` — post reposts
+- `communities` / `community_members` — community data
+- `notifications` — user notifications
+- `blocked_users` / `muted_users` — safety features
+
+#### Supabase Storage
+File uploads go directly to Supabase Storage via the REST API (bypassing the edge function):
+- `forge-avatars` — profile pictures (`avatars/<userId>.<ext>`)
+- `forge-banners` — profile banners (`banners/<userId>.<ext>`)
+- `forge-post-media` — post images/videos
+- `forge-community-icons` — community icons
+- `forge-community-banners` — community banners
+
+#### Edge Function
+A single Hono app at `supabase/functions/server/index.tsx` handles:
+- `/auth/signup`, `/auth/signin`, `/auth/me`
+- `/users/*` — user CRUD, follow/unfollow, block/mute, handle check
+- `/posts/*` — post CRUD, likes
+- `/games/*` — game search and batch fetch (MobyGames integration)
+- `/admin/*` — admin utilities
+
+---
+
+## Authentication
+
+### Flows
+1. **Email/Password**: `authAPI.signin` / `authAPI.signup` → calls edge function → stores tokens in localStorage
+2. **Google OAuth**: `supabase.auth.signInWithOAuth` → redirect to `/auth/callback` → `AuthCallback.tsx` stores tokens in localStorage
+
+### Token Storage (localStorage)
+| Key | Value |
+|-----|-------|
+| `forge-access-token` | Supabase JWT (expires ~1 hour) |
+| `forge-refresh-token` | Supabase refresh token (long-lived) |
+| `forge-user-id` | Authenticated user's UUID |
+| `forge-logged-in` | `'true'` when authenticated |
+| `forge-onboarding-complete` | `'true'` when onboarding done |
+
+### Token Refresh
+`getValidToken()` in `api.ts` automatically:
+1. Returns the stored token if not expired
+2. Calls the Supabase Auth REST API with the refresh token if expired
+3. Falls back to `supabase.auth.getSession()` for Google OAuth sessions
 
 ---
 
@@ -89,33 +151,32 @@ The app uses React Router's Data mode with a Layout component that wraps all aut
 
 ### 1. Authentication & Onboarding
 **Flow**:
-1. **Login Screen**: Email/password or Google OAuth (prototype uses mock authentication)
-2. **Splash Screen**: Animated logo and app name (3-second animation)
+1. **Login Screen**: Email/password or Google OAuth
+2. **Splash Screen**: Animated logo and app name
 3. **Interest Selection**: Choose gaming interests and preferences
 4. **Follow Suggestions**: Recommended users to follow based on interests
-5. **Username Creation**: Real-time validation and uniqueness check
+5. **Username Creation**: Real-time handle validation and uniqueness check
 
 **Implementation**:
-- Uses localStorage for persistence (`forge-logged-in`, `forge-onboarding-complete`)
+- Tokens and user ID persisted in localStorage
 - Sequential screens with AnimatePresence for smooth transitions
-- Skip functionality available on optional steps
+- `AuthCallback.tsx` handles Google OAuth, upserts profile row, stores tokens
 
 ### 2. User Profiles
 **Features**:
 - Profile picture and banner
-- Display name, username (handle), pronouns (optional)
-- Bio text
-- Gaming platforms badges
+- Display name, handle (@username), pronouns (optional)
+- Bio and About sections
+- Gaming platform badges
 - Social media integrations
 - Game library (Recently Played, Library, Favorites, Wishlist)
 - Community memberships (max 3 displayed, customizable)
 - Follower/following counts
 
 **Edit Profile**:
-- All profile fields editable
-- Platform/social toggles
-- Community selection (max 3 for profile display)
-- Role badges (Crown for creator, Shield for moderator)
+- `profilePictureRef` (useRef) tracks uploaded URL synchronously — prevents stale closure reads in `handleSave`
+- Save button disabled while image is uploading (`isImageUploading` state)
+- All fields saved as snake_case to Supabase `profiles` table
 
 ### 3. Social Feed
 **Two main feeds**:
@@ -125,34 +186,15 @@ The app uses React Router's Data mode with a Layout component that wraps all aut
 **Post Features**:
 - Text content (with platform attribution)
 - Image support (single or multiple)
-- Gif and video support
+- GIF and video support
 - Link previews
 - Community tags
 - Timestamp (relative formatting: "2h ago", "3d ago")
 - Like, Repost, Comment interactions
-- Repost attribution ("Reposted by...")
-
-**Post Types**:
-- Native Forge posts
-- Cross-posted from integrated social platforms
-- Community posts (tagged with community info)
 
 **Account Types**:
-- Standard (User created account or claimed account)
-- Topic (Unclaimed account): popular gaming websites and studios (IGN, Gamespot, Nintendo Life, Game Informer, PC Gamer, Xbox, PlayStation, Nintendo, Blizzard, Riot, GoG, etc.)
-
-**Topic Account Cross-Posting**:
-- Topic accounts automatically generate posts on Forge whenever content is published to their accounts on other social media platforms
-- These posts and attachments are recreated in full (not just previews) on Forge
-- Cross-posted content is clearly marked with the originating social media platform
-- Full media content (images, videos, gifs) is displayed directly in the Forge feed
-- Platform attribution appears on each cross-posted item
-
-**Repost Mechanics**:
-- Example posts have varied repost counts (36, 52, 147, etc.)
-- User-created posts start at 0 reposts
-- Reposted posts show attribution banner
-- Visual indicator for posts you've reposted (accent color)
+- **Standard**: User-created or claimed account
+- **Topic (Unclaimed)**: Gaming websites and studios (IGN, PlayStation, Nintendo, Blizzard, etc.) — auto-cross-post from other platforms
 
 ### 4. Communities
 **Community Types**:
@@ -160,103 +202,75 @@ The app uses React Router's Data mode with a Layout component that wraps all aut
 - **Request**: Requires approval from moderators/creator
 - **Invite Only**: Requires invitation from members
 
-**Community Features**:
+**Features**:
 - Custom icon and banner
 - Description and member count
-- Friends who play (shows mutual friends in community)
 - Community-specific posts
 - Role system (Creator, Moderator, Member)
-- Join/leave functionality
-
-**Community Display**:
-- Users can select up to 3 communities to display on profile
-- Communities shown as chips with icons
-- Click to view full community page
+- Users can display up to 3 communities on their profile
 
 ### 5. Explore Page
 **Tabs**:
-- **Posts**: Trending/featured posts from gaming media
+- **Posts**: Trending/featured posts
 - **Users**: User discovery and suggestions
-- **Games**: Game discovery (placeholder for future implementation)
+- **Games**: Game discovery (MobyGames integration)
 - **Communities**: Browse and join communities
 
-**Search**:
-- Floating search bar at bottom
-- Real-time search across users, communities, and games
-- Focus mode expands search results
+**Search**: Real-time search across users, communities, and games
 
 ### 6. Notifications
-**Types**:
-- New followers
-- Likes on your posts
-- Comments on your posts
-- Reposts of your content
-- Community invites/approvals
-- Friend requests
+**Types**: New followers, likes, comments, reposts, community invites/approvals
 
 ### 7. Messages
-**Features**:
-- Direct messaging between users
-- Conversation list
-- Unread indicators
-- Real-time updates (simulated in prototype)
+**Features**: Direct messaging, conversation list, unread indicators
 
 ### 8. Settings
-**Sections**:
-- Account settings
-- Privacy controls
-- Notification preferences
-- Theme toggle (light/dark mode)
-- Gaming platform management
-- Social media integrations
-- Social media filtering (hide specific platforms from feed)
+**Sections**: Account, privacy, notifications, theme, platforms, social integrations, feed filtering
 
 ---
 
 ## Data Models
 
-### User
+### User (Supabase `profiles` table — snake_case)
 ```typescript
-interface User {
-  id: string;
-  handle: string;              // @username
-  displayName: string;
-  pronouns?: string;           // Optional
-  bio: string;
-  profilePicture: string;
-  bannerImage?: string;
-  platforms: Platform[];       // Gaming platforms
-  socialPlatforms: SocialPlatform[];
-  gameLists: {
-    recentlyPlayed: Game[];
-    library: Game[];
-    favorites: Game[];
-    wishlist: Game[];
-  };
-  followerCount?: number;
-  isFollowing?: boolean;
-  communities?: CommunityMembership[];
-  displayedCommunities?: string[];  // Community IDs to show on profile (max 3)
+interface Profile {
+  id: string;                         // UUID (matches auth.users.id)
+  handle: string;                     // @username
+  display_name: string;
+  pronouns?: string;
+  bio?: string;
+  about?: string;
+  profile_picture?: string | null;    // Public URL from Supabase Storage
+  banner_image?: string | null;
+  platforms?: Platform[];
+  platform_handles?: Record<string, string>;
+  show_platform_handles?: Record<string, boolean>;
+  social_platforms?: SocialPlatform[];
+  social_handles?: Record<string, string>;
+  show_social_handles?: Record<string, boolean>;
+  displayed_communities?: string[];   // Community IDs (max 3)
+  updated_at?: string;
 }
 ```
+
+> **Note**: React state and components may also see camelCase aliases (`displayName`, `profilePicture`) from older code paths. `normalizeProfile()` in AppDataContext ensures `display_name`, `handle`, and `profile_picture` are always set.
 
 ### Post
 ```typescript
 interface Post {
   id: string;
-  userId: string;
+  user_id: string;
   content: string;
   platform: SocialPlatform | 'forge';
-  timestamp: Date;
+  created_at: string;
   likes: number;
   reposts: number;
   comments: number;
-  isLiked?: boolean;
-  isReposted?: boolean;
-  repostedBy?: string;         // User ID who reposted
   images?: string[];
+  image_alts?: string[];
   url?: string;
-  communityId?: string;        // If posted in a community
+  community_id?: string;
+  author?: Pick<Profile, 'id' | 'handle' | 'display_name' | 'profile_picture'>;
 }
 ```
 
@@ -267,24 +281,10 @@ interface Community {
   name: string;
   description: string;
   type: 'open' | 'request' | 'invite';
-  icon: string;                // Emoji
+  icon: string;               // Emoji
   banner?: string;
-  creatorId: string;
-  moderatorIds: string[];
-  memberIds: string[];
-  memberCount: number;
-}
-```
-
-### Game
-```typescript
-interface Game {
-  id: string;
-  title: string;
-  coverArt: string;
-  year: number;
-  platforms: string[];
-  genres: string[];
+  creator_id: string;
+  member_count: number;
 }
 ```
 
@@ -306,23 +306,10 @@ interface Game {
 - **Props**: Destructure in function signature
 - **State**: Use Context for global state, useState for local
 
-### Component Creation
-```typescript
-// Standard component template
-import { useState } from 'react';
-import { ComponentProps } from '../types';
-
-interface MyComponentProps {
-  // Define props with TypeScript
-}
-
-export function MyComponent({ prop1, prop2 }: MyComponentProps) {
-  // Component logic
-  return (
-    // JSX
-  );
-}
-```
+### Database Field Names
+- Supabase returns **snake_case** (`display_name`, `profile_picture`, `platform_handles`)
+- Always write to Supabase with snake_case keys
+- Use snake_case in `profiles.update()` calls; `normalizeProfile()` handles reads
 
 ### Styling Guidelines
 - Use Tailwind utility classes
@@ -332,12 +319,6 @@ export function MyComponent({ prop1, prop2 }: MyComponentProps) {
 - Use consistent spacing (gap-2, gap-3, gap-4, etc.)
 - Hover states for all interactive elements
 - Transition classes for smooth animations
-
-### Images
-- Use Unsplash for placeholder images
-- Always provide alt text
-- Use object-cover for consistent aspect ratios
-- Lazy load images below the fold
 
 ---
 
@@ -353,18 +334,20 @@ export function MyComponent({ prop1, prop2 }: MyComponentProps) {
 - **UserCard**: User profile preview with follow button
 - **CommunityCard**: Community preview with join button
 - **GameCard**: Game preview with cover art
+- **ImageUpload**: File picker + upload to Supabase Storage; exposes `onUploadingChange` so parents can disable Save while uploading
+- **ProfileAvatar**: Avatar with fallback initials
+- **FollowButton**: Follow/unfollow with optimistic state
+- **ConfirmationModal**: Generic confirmation dialog
 
 ### Modal Patterns
 - Use fixed positioning with backdrop
 - Close on backdrop click or X button
-- Trap focus within modal
 - Escape key to close
 
 ### List Patterns
 - Use unique keys (IDs, not indices)
 - Empty states for no data
 - Loading states for async data
-- Infinite scroll for long lists (future enhancement)
 
 ---
 
@@ -372,98 +355,56 @@ export function MyComponent({ prop1, prop2 }: MyComponentProps) {
 
 ### AppDataContext
 Provides global state for:
-- Current user data
+- `currentUser` — normalized profile (never has null display_name/handle)
+- `session` — Supabase auth session
 - Posts (feed, user posts, community posts)
-- Liked posts (Set)
-- Reposted posts (Set)
+- Liked/reposted post IDs (Sets)
 - Hidden social platforms (Set)
-- User lookup functions
 
 **Key Functions**:
-- `updateCurrentUser(updates)`: Update user profile
-- `updateGameList(type, games)`: Update game library
-- `createPost(content, images, url)`: Create new post
-- `deletePost(postId)`: Delete user's post
-- `likePost(postId)` / `unlikePost(postId)`: Toggle like
-- `repostPost(postId)` / `unrepostPost(postId)`: Toggle repost
-- `toggleSocialPlatformFilter(platform)`: Hide/show platform posts
+- `updateCurrentUser(updates)` — calls `profiles.update()` with snake_case payload
+- `updateGameList(type, games)` — update game library
+- `createPost(content, images, url)` — create new post
+- `deletePost(postId)` — delete user's post
+- `likePost(postId)` / `unlikePost(postId)` — toggle like
+- `repostPost(postId)` / `unrepostPost(postId)` — toggle repost
+- `toggleSocialPlatformFilter(platform)` — hide/show platform posts
+
+**`normalizeProfile(profile)`**: Ensures `display_name`, `handle`, and `profile_picture` are always present on the current user object, even if the DB row has nulls.
 
 ### ThemeContext
-Provides theme state:
-- Current theme ('light' | 'dark')
+- Current theme (`'light' | 'dark'`)
 - Toggle function
-
-### Best Practices
-- Don't duplicate state across contexts
-- Use local state when data isn't needed globally
-- Memoize expensive computations
-- Batch state updates when possible
-
----
-
-## Testing Guidelines (Future)
-
-### Unit Tests
-- Test pure functions and utilities
-- Test custom hooks
-- Snapshot tests for components
-
-### Integration Tests
-- Test user flows (onboarding, posting, etc.)
-- Test routing navigation
-- Test form submissions
-
-### E2E Tests
-- Critical user journeys
-- Cross-browser testing
-- Mobile device testing
 
 ---
 
 ## Deployment
 
-### Build Process
-1. Run `npm run build`
-2. Output to `/dist` directory
-3. Serve static files
+### Frontend (Vercel)
+- Auto-deploys on push to `main`
+- Live at: `forge-app-roan.vercel.app`
+- Build: `npm run build` → `/dist`
 
-### Environment Variables
-- API endpoints (when backend is added)
-- OAuth credentials
-- Analytics keys
+### Backend (Supabase)
+- Project: `xmxeafjpscgqprrreulh`
+- Edge function: `make-server-17285bd7`
+- Storage buckets: `forge-avatars`, `forge-banners`, `forge-post-media`, `forge-community-icons`, `forge-community-banners`
 
-### Performance Checklist
-- [ ] Images optimized
-- [ ] Code splitting enabled
-- [ ] Bundle size analyzed
-- [ ] Lighthouse score > 90
-- [ ] Accessibility audit passed
+### Environment
+- Supabase project ID and anon key are stored in `/utils/supabase/info` (Vite alias)
 
 ---
 
 ## Future Enhancements
 
 ### Planned Features
-- Real-time messaging with WebSocket
+- Real-time messaging with WebSocket / Supabase Realtime
 - Push notifications
 - Game library sync with Steam/PlayStation/Xbox APIs
-- Social media OAuth integrations
 - Advanced search and filtering
-- User blocking and reporting
 - Community moderation tools
 - Events and tournaments
-- Voice/video calls
 - Desktop application
-
-### Technical Debt
-- Replace mock data with real API
-- Implement proper authentication
-- Add database persistence
-- Add error boundaries
-- Add loading skeletons
-- Implement proper image upload
-- Add rate limiting
-- Add caching layer
 
 ---
 
@@ -472,35 +413,18 @@ Provides theme state:
 ### Pull Request Process
 1. Create feature branch from `main`
 2. Follow code style guidelines
-3. Write tests for new features
-4. Update documentation
-5. Submit PR with clear description
+3. Update documentation if architecture changes
+4. Submit PR with clear description
 
 ### Code Review Checklist
 - [ ] Code follows style guide
 - [ ] TypeScript types are correct
 - [ ] Components are responsive
-- [ ] Accessibility standards met
 - [ ] No console errors/warnings
-- [ ] Documentation updated
+- [ ] snake_case used for all Supabase writes
 
 ---
 
-## Support & Resources
-
-### Internal Links
-- Design mockups: [Link to Figma]
-- API documentation: [Link when available]
-- Project board: [Link to task tracker]
-
-### External Resources
-- [React Documentation](https://react.dev)
-- [React Router Documentation](https://reactrouter.com)
-- [Tailwind CSS Documentation](https://tailwindcss.com)
-- [Motion Documentation](https://motion.dev)
-
----
-
-**Last Updated**: March 12, 2026  
-**Version**: 1.0.0  
+**Last Updated**: March 19, 2026
+**Version**: 1.1.0
 **Maintainer**: Forge Development Team
