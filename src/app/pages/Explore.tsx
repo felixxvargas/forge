@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X } from 'lucide-react';
+import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
@@ -346,6 +346,13 @@ export function Explore() {
 
         {activeTab === 'groups' && (
           <div className="space-y-3">
+            <button
+              onClick={() => navigate('/create-group')}
+              className="w-full flex items-center gap-3 p-4 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
+            >
+              <Plus className="w-5 h-5 shrink-0" />
+              <span className="font-medium">Create a new group</span>
+            </button>
             {filteredCommunities.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />

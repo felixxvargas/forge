@@ -67,9 +67,18 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
   };
 
   const handlePostClick = () => {
-    if (!isDetailView) {
-      navigate(`/post/${post.id}`);
+    if (isDetailView) return;
+    // External posts (Bluesky/Mastodon) open in a new tab
+    if (post.externalUrl) {
+      window.open(post.externalUrl, '_blank', 'noopener,noreferrer');
+      return;
     }
+    navigate(`/post/${post.id}`);
+  };
+
+  const handleReposterClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.repostedBy) navigate(`/profile/${post.repostedBy}`);
   };
 
   const handleRepost = (e: React.MouseEvent) => {
@@ -152,10 +161,13 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
     >
       {/* Repost header */}
       {reposter && (
-        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-          <Repeat2 className="w-4 h-4" />
-          <span>Reposted by {reposter.display_name}</span>
-        </div>
+        <button
+          onClick={handleReposterClick}
+          className="flex items-center gap-2 mb-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+        >
+          <Repeat2 className="w-4 h-4 shrink-0" />
+          <span>{reposter.display_name || reposter.handle} reposted</span>
+        </button>
       )}
 
       {/* User header */}
@@ -278,12 +290,27 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
       {post.game_title && (
         <div className="mb-3">
           <button
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
           >
             <Gamepad2 className="w-3.5 h-3.5" />
             {post.game_title}
           </button>
+        </div>
+      )}
+
+      {/* View on Bluesky/Mastodon link */}
+      {post.externalUrl && (
+        <div className="mb-3">
+          <a
+            href={post.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs text-muted-foreground hover:text-accent transition-colors underline"
+          >
+            View on {post.platform === 'mastodon' ? 'Mastodon' : 'Bluesky'} ↗
+          </a>
         </div>
       )}
 

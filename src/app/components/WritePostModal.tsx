@@ -26,6 +26,7 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
   const [showMentions, setShowMentions] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!isOpen) return null;
@@ -56,12 +57,13 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
   };
 
   const handleMentionSelect = (user: User) => {
-    const cursorPosition = content.length;
+    const cursorPosition = textareaRef.current?.selectionStart ?? content.length;
     const textBeforeCursor = content.slice(0, cursorPosition);
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     if (mentionMatch) {
       const startIndex = textBeforeCursor.lastIndexOf('@');
-      const newContent = content.slice(0, startIndex) + user.handle + ' ' + content.slice(cursorPosition);
+      const handle = user.handle.startsWith('@') ? user.handle : `@${user.handle}`;
+      const newContent = content.slice(0, startIndex) + handle + ' ' + content.slice(cursorPosition);
       setContent(newContent);
     }
     setShowMentions(false);
@@ -135,6 +137,7 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
         {/* Content */}
         <div className="p-4 relative">
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={handleContentChange}
             placeholder="What's on your mind? Use @username to mention other gamers"

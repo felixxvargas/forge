@@ -114,6 +114,7 @@ export interface Post {
   imageAlts?: string[]; // Alt text for images (same order as images array)
   video?: string; // Video URL for video posts
   url?: string; // URL for link previews
+  externalUrl?: string; // Link back to original post on Bluesky/Mastodon
   game_id?: string;
   game_title?: string;
   // Supabase snake_case aliases
@@ -228,12 +229,12 @@ export const topicAccounts: User[] = [
     id: 'user-ign',
     handle: '@ign',
     displayName: 'IGN',
-    bio: 'The ultimate gaming and entertainment resource',
-    profilePicture: '', // Will be loaded from Bluesky
+    bio: "We're all about movies, TV, and video games!",
+    profilePicture: 'https://cdn.bsky.app/img/avatar/plain/did:plc:xwqgusybtrpm67tcwqdfmzvy/bafkreifjtza52etlgjuek5iuqwi7j7izlxuanffvizj2ry5s5g4dbh47ju@jpeg',
     platforms: [],
     socialPlatforms: ['x', 'instagram', 'tiktok', 'bluesky'],
     gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
-    followerCount: 0,
+    followerCount: 181484,
   },
   {
     id: 'user-gamespot',
@@ -316,12 +317,12 @@ export const topicAccounts: User[] = [
     id: 'user-massivelyop',
     handle: '@massivelyop',
     displayName: 'MassivelyOP',
-    bio: 'MMORPG news and culture',
-    profilePicture: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=200&h=200&fit=crop',
+    bio: 'Every gamer wants to be Massively Overpowered! MMORPG news and opinions from the indie team at MOP.',
+    profilePicture: 'https://files.mastodon.social/accounts/avatars/109/515/680/214/374/940/original/f14946fe2da19d10.png',
     platforms: [],
     socialPlatforms: ['mastodon'],
     gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
-    followerCount: 0,
+    followerCount: 1210,
   },
   {
     id: 'user-forge',

@@ -35,6 +35,7 @@ interface AppDataContextType {
   getUserById: (userId: string) => any | undefined;
   getUserByHandle: (handle: string) => any | undefined;
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
+  createCommunity: (name: string, description: string, icon: string, type: string) => Promise<any>;
   refreshFeed: () => Promise<void>;
   markNotificationsAsRead: () => void;
 }
@@ -318,6 +319,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCurrentUser(normalizeProfile(updated));
   };
 
+  const createCommunity = async (name: string, description: string, icon: string, type: string) => {
+    if (!session?.user) throw new Error('Not authenticated');
+    return await communitiesAPI.create(session.user.id, name, description, icon, type);
+  };
+
   const markNotificationsAsRead = async () => {
     if (!session?.user) return;
     await notificationsAPI.markAllRead(session.user.id);
@@ -358,6 +364,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       getUserById,
       getUserByHandle,
       updateGameList,
+      createCommunity,
       refreshFeed,
       markNotificationsAsRead,
     }}>
