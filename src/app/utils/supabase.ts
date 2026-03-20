@@ -227,17 +227,37 @@ export const posts = {
     const followingIds = (followingData ?? []).map((r: any) => r.following_id);
     followingIds.push(userId);
 
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`
-        *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
-      `)
-      .in('user_id', followingIds)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const [{ data: postsData, error }, { data: repostsData }] = await Promise.all([
+      supabase
+        .from('posts')
+        .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+        .in('user_id', followingIds)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1),
+      supabase
+        .from('reposts')
+        .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+        .in('user_id', followingIds)
+        .order('created_at', { ascending: false })
+        .limit(limit),
+    ]);
     if (error) throw new Error(error.message);
-    return data ?? [];
+
+    const repostItems = (repostsData ?? [])
+      .filter((r: any) => r.post)
+      .map((r: any) => ({ ...r.post, repostedBy: r.user_id, repostedAt: r.created_at }));
+
+    const seen = new Set<string>();
+    const merged = [...(postsData ?? []), ...repostItems].filter((p: any) => {
+      const key = p.id + (p.repostedBy || '');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    merged.sort((a: any, b: any) =>
+      new Date(b.repostedAt || b.created_at).getTime() - new Date(a.repostedAt || a.created_at).getTime()
+    );
+    return merged.slice(0, limit);
   },
 
   async getById(postId: string) {
@@ -362,6 +382,18 @@ export const posts = {
       .select('post_id')
       .eq('user_id', userId);
     return (data ?? []).map((r: any) => r.post_id);
+  },
+
+  async getRepostsByUser(userId: string) {
+    const { data, error } = await supabase
+      .from('reposts')
+      .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? [])
+      .filter((r: any) => r.post)
+      .map((r: any) => ({ ...r.post, repostedBy: r.user_id, repostedAt: r.created_at }));
   },
 
   async search(query: string) {

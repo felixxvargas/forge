@@ -89,10 +89,19 @@ export function Profile() {
     profilesAPI.isFollowing(currentUser.id, profileUser.id).then(setIsFollowing);
   }, [isOwnProfile, currentUser?.id, profileUser?.id]);
 
-  // Load the profile user's posts directly from Supabase
+  // Load the profile user's posts + reposts directly from Supabase
   useEffect(() => {
     if (!profileUser?.id) return;
-    postsAPI.getByUser(profileUser.id).then(setProfileUserPosts).catch(() => setProfileUserPosts([]));
+    Promise.all([
+      postsAPI.getByUser(profileUser.id),
+      postsAPI.getRepostsByUser(profileUser.id),
+    ]).then(([userPosts, userReposts]) => {
+      const all = [...userPosts, ...userReposts];
+      all.sort((a, b) =>
+        new Date(b.repostedAt || b.created_at).getTime() - new Date(a.repostedAt || a.created_at).getTime()
+      );
+      setProfileUserPosts(all);
+    }).catch(() => setProfileUserPosts([]));
   }, [profileUser?.id]);
 
   // If own profile but currentUser hasn't loaded, wait
@@ -498,12 +507,12 @@ export function Profile() {
             {profileUserPosts.length > 0 ? (
               profileUserPosts.map(post => (
                 <PostCard
-                  key={post.id}
+                  key={post.id + (post.repostedBy || '')}
                   post={post}
                   user={post.author || profileUser}
                   onLike={handleLikeToggle}
-                  onDelete={isOwnProfile ? deletePost : undefined}
-                  showDelete={isOwnProfile}
+                  onRepost={handleRepostToggle}
+                  onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
                   isLiked={likedPosts.has(post.id)}
                   isReposted={repostedPosts.has(post.id)}
                 />

@@ -82,7 +82,7 @@ export function FollowingList() {
                   </button>
                   {user.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>}
                 </div>
-                {user.id !== currentUser?.id && <FollowButton userId={user.id} />}
+                {user.id !== currentUser?.id && <FollowButton userId={user.id} initialFollowingState={true} />}
               </div>
             ))}
           </div>

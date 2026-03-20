@@ -14,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 
@@ -191,45 +192,43 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
             )}
           </div>
         </div>
-        {showDelete && onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(post.id);
-            }}
-            className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
-            title="Delete post"
-          >
-            <Trash2 className="w-4 h-4 text-destructive" />
-          </button>
-        )}
         {/* Post menu */}
-        {!showDelete && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-                title="More options"
-              >
-                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {isMutedPost ? (
-                <DropdownMenuItem onClick={handleUnmutePost}>
-                  <Bell className="w-4 h-4 mr-2" />
-                  Unmute this post
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
+              title="More options"
+            >
+              <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {isMutedPost ? (
+              <DropdownMenuItem onClick={handleUnmutePost}>
+                <Bell className="w-4 h-4 mr-2" />
+                Unmute this post
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={handleMutePost}>
+                <BellOff className="w-4 h-4 mr-2" />
+                Mute this post
+              </DropdownMenuItem>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onDelete(post.id); }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete post
                 </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={handleMutePost}>
-                  <BellOff className="w-4 h-4 mr-2" />
-                  Mute this post
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Content */}

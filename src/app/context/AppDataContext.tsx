@@ -32,6 +32,7 @@ interface AppDataContextType {
   muteUser: (userId: string) => Promise<void>;
   unmuteUser: (userId: string) => Promise<void>;
   getUserById: (userId: string) => any | undefined;
+  updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
   refreshFeed: () => Promise<void>;
   markNotificationsAsRead: () => void;
 }
@@ -215,14 +216,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!session?.user) return;
     await postsAPI.repost(session.user.id, postId);
     setRepostedPosts(prev => new Set([...prev, postId]));
-    setPostList(prev => prev.map(p => p.id === postId ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p));
+    setPostList(prev => {
+      const original = prev.find(p => p.id === postId && !p.repostedBy);
+      const updated = prev.map(p => p.id === postId ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p);
+      if (original) {
+        return [{ ...original, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
+      }
+      return updated;
+    });
   };
 
   const unrepostPost = async (postId: string) => {
     if (!session?.user) return;
-    await postsAPI.unrepost(session.user.id, postId);
+    const uid = session.user.id;
+    await postsAPI.unrepost(uid, postId);
     setRepostedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
-    setPostList(prev => prev.map(p => p.id === postId ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p));
+    setPostList(prev =>
+      prev
+        .filter(p => !(p.id === postId && p.repostedBy === uid))
+        .map(p => p.id === postId ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p)
+    );
   };
 
   const followUser = async (userId: string) => {
@@ -271,6 +284,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const getUserById = (userId: string) => users.find(u => u.id === userId);
 
+  const updateGameList = async (listType: GameListType, games: any[]) => {
+    if (!session?.user || !currentUser) return;
+    const keyMap: Record<string, string> = {
+      'recently-played': 'recentlyPlayed',
+      'favorite': 'favorites',
+      'wishlist': 'wishlist',
+      'library': 'library',
+    };
+    const key = keyMap[listType];
+    const updatedLists = { ...(currentUser.game_lists ?? {}), [key]: games };
+    const updated = await profiles.update(session.user.id, { game_lists: updatedLists });
+    setCurrentUser(normalizeProfile(updated));
+  };
+
   const markNotificationsAsRead = async () => {
     if (!session?.user) return;
     await notificationsAPI.markAllRead(session.user.id);
@@ -308,6 +335,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       muteUser,
       unmuteUser,
       getUserById,
+      updateGameList,
       refreshFeed,
       markNotificationsAsRead,
     }}>
