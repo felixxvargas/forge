@@ -125,7 +125,7 @@ console.log('✅ All routes registered');
 // Health check endpoint
 app.get("/make-server-17285bd7/health", (c) => {
   console.log('[Health] Health check requested');
-  return c.json({ status: "ok" });
+  return c.json({ status: "ok", version: "v2-auth-seed" });
 });
 
 // Diagnostic endpoint - check database access
@@ -2217,7 +2217,7 @@ app.post("/make-server-17285bd7/seed/topic-accounts", async (c) => {
       },
       {
         id: 'user-massivelyop',
-        handle: '@massivelyop@massivelyop.com',
+        handle: '@massivelyop',
         displayName: 'MassivelyOP',
         bio: 'MMORPG news and culture',
         profilePicture: '', // Mastodon avatar may have CORS issues, using fallback
@@ -2239,53 +2239,86 @@ app.post("/make-server-17285bd7/seed/topic-accounts", async (c) => {
     const created = [];
     const errors = [];
 
+    // Fetch existing auth users once to avoid repeated listUsers() calls
+    const { data: { users: existingAuthUsers } } = await supabase.auth.admin.listUsers();
+    const authUsersByEmail = new Map((existingAuthUsers ?? []).map((u: any) => [u.email, u]));
+
     for (const account of topicAccounts) {
       try {
-        // Check if account already exists
-        const existing = await kv.get(`user:${account.id}`);
-        if (existing) {
-          console.log(`Topic account ${account.handle} already exists, skipping...`);
-          continue;
+        // Derive a stable email for the topic account
+        const handleSlug = account.handle.replace(/^@/, '').replace(/[^a-z0-9]/g, '-');
+        const email = account.email || `${handleSlug}@topic.forge.gg`;
+
+        // Check if a Supabase auth user with this email already exists
+        const existingAuthUser = authUsersByEmail.get(email);
+
+        let authUserId: string;
+
+        if (existingAuthUser) {
+          authUserId = existingAuthUser.id;
+          console.log(`Auth user already exists for ${account.handle}: ${authUserId}`);
+        } else {
+          // Create auth user with service role (no email confirmation needed)
+          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email,
+            password: crypto.randomUUID(), // random password — account is managed, not user-facing
+            email_confirm: true,
+            user_metadata: {
+              handle: account.handle.replace(/^@/, ''),
+              display_name: account.displayName,
+              account_type: 'topic',
+            },
+          });
+
+          if (authError) {
+            throw new Error(`Auth user creation failed: ${authError.message}`);
+          }
+          authUserId = authData.user.id;
+          console.log(`Created auth user for ${account.handle}: ${authUserId}`);
         }
 
-        // Create profile
+        // Upsert profile row in Supabase profiles table
+        const cleanHandle = account.handle.replace(/^@/, '');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authUserId,
+            handle: cleanHandle,
+            display_name: account.displayName,
+            bio: account.bio,
+            profile_picture: account.profilePicture || null,
+            interests: [],
+          }, { onConflict: 'id' });
+
+        if (profileError) {
+          throw new Error(`Profile upsert failed: ${profileError.message}`);
+        }
+
+        // Also keep KV store in sync (maps old string IDs to new UUID)
         const userProfile = {
-          id: account.id,
+          id: authUserId,
+          legacyId: account.id,
           handle: account.handle,
           displayName: account.displayName,
           pronouns: '',
           bio: account.bio,
           about: '',
           profilePicture: account.profilePicture,
-          email: account.email || '',
+          email,
           platforms: account.platforms,
-          platformHandles: {},
-          showPlatformHandles: {},
           socialPlatforms: account.socialPlatforms,
-          socialHandles: {},
-          showSocialHandles: {},
-          gameLists: {
-            recentlyPlayed: [],
-            library: [],
-            favorites: [],
-            wishlist: []
-          },
-          followerCount: 0,
-          followingCount: 0,
-          communities: [],
-          displayedCommunities: [],
           interests: [],
-          accountType: 'topic', // Mark as topic account
+          accountType: 'topic',
           createdAt: new Date().toISOString()
         };
 
         await kv.set(`user:${account.id}`, userProfile);
-        await kv.set(`user:handle:${account.handle}`, account.id);
+        await kv.set(`user:handle:${account.handle}`, authUserId);
 
-        created.push(account.handle);
-        console.log(`Created topic account: ${account.handle}`);
+        created.push({ handle: account.handle, id: authUserId });
+        console.log(`Seeded topic account: ${account.handle} (${authUserId})`);
       } catch (error) {
-        console.error(`Error creating topic account ${account.handle}:`, error);
+        console.error(`Error seeding topic account ${account.handle}:`, error);
         errors.push({ handle: account.handle, error: error.message });
       }
     }
@@ -2319,31 +2352,48 @@ app.post("/make-server-17285bd7/seed/topic-accounts", async (c) => {
       console.error('Error making @forge follow @felix:', error);
     }
 
-    // Create welcome post from @forge
+    // Create welcome post from @forge in Supabase posts table
     try {
-      const welcomePost = {
-        id: 'post-forge-welcome',
-        userId: 'user-forge',
-        content: 'Welcome to Forge! 🎮⚡\n\nWe\'re excited to have you here. Forge is where gamers from all platforms come together to share their gaming adventures, discover new games, and connect with fellow players.\n\nShare your favorite gaming moments, join communities, and let\'s build something amazing together!',
-        platform: 'forge',
-        timestamp: new Date().toISOString(),
-        likes: 0,
-        reposts: 0,
-        comments: 0,
-        createdAt: new Date().toISOString()
-      };
-      
-      await kv.set(`post:${welcomePost.id}`, welcomePost);
-      console.log('✅ Created @forge welcome post');
+      const forgeKv = await kv.get('user:user-forge');
+      const forgeAuthId = forgeKv?.id;
+
+      if (forgeAuthId) {
+        // Check if welcome post already exists
+        const { data: existingPosts } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', forgeAuthId)
+          .limit(1);
+
+        if (!existingPosts || existingPosts.length === 0) {
+          const { error: postError } = await supabase
+            .from('posts')
+            .insert({
+              user_id: forgeAuthId,
+              content: "Welcome to Forge! 🎮⚡\n\nWe're excited to have you here. Forge is where gamers from all platforms come together to share their gaming adventures, discover new games, and connect with fellow players.\n\nShare your favorite gaming moments, join communities, and let's build something amazing together!",
+            });
+
+          if (postError) {
+            console.error('Error creating welcome post in Supabase:', postError.message);
+          } else {
+            console.log('✅ Created @forge welcome post in Supabase');
+          }
+        } else {
+          console.log('@forge already has posts, skipping welcome post');
+        }
+      } else {
+        console.log('Could not find @forge auth ID for welcome post');
+      }
     } catch (error) {
       console.error('Error creating welcome post:', error);
     }
 
-    return c.json({ 
+    return c.json({
       success: true,
       created,
       errors,
-      message: `Created ${created.length} topic accounts, added @forge -> @felix follow, and created welcome post`
+      version: 'v2-supabase-auth',
+      message: `Seeded ${created.length} topic accounts in Supabase auth + profiles table`
     });
   } catch (error) {
     console.error('Seed topic accounts error:', error);

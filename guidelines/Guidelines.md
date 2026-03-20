@@ -64,7 +64,7 @@ Forge bridges the gap between different gaming ecosystems and social media platf
 - **Animation**: Motion (motion/react)
 - **State Management**: React Context API
 - **Backend**: Supabase (Postgres + Auth + Storage)
-- **Edge Functions**: Deno + Hono at `supabase/functions/server/index.tsx`
+- **Edge Functions**: Deno + Hono at `supabase/functions/make-server-17285bd7/index.ts`
 - **Deployment**: Vercel (frontend) + Supabase (backend)
 
 ### File Structure
@@ -82,7 +82,7 @@ Forge bridges the gap between different gaming ecosystems and social media platf
       supabase.ts    # Supabase JS client singleton + typed helpers
 /supabase
   /functions
-    /server          # Hono edge function (auth, users, posts, upload, games)
+    /make-server-17285bd7  # Hono edge function — canonical source AND deploy slug
 /guidelines          # This documentation
 ```
 
@@ -115,12 +115,22 @@ File uploads go directly to Supabase Storage via the REST API (bypassing the edg
 - `forge-community-banners` — community banners
 
 #### Edge Function
-A single Hono app at `supabase/functions/server/index.tsx` handles:
+A single Hono app at `supabase/functions/make-server-17285bd7/index.ts` handles:
 - `/auth/signup`, `/auth/signin`, `/auth/me`
 - `/users/*` — user CRUD, follow/unfollow, block/mute, handle check
 - `/posts/*` — post CRUD, likes
 - `/games/*` — game search and batch fetch (MobyGames integration)
 - `/admin/*` — admin utilities
+
+**Deploy command:**
+```bash
+npx supabase functions deploy make-server-17285bd7 \
+  --project-ref xmxeafjpscgqprrreulh \
+  --use-api \
+  --no-verify-jwt
+```
+
+> The directory name (`make-server-17285bd7`) matches the function slug exactly — no copying required.
 
 ---
 
@@ -425,6 +435,6 @@ Provides global state for:
 
 ---
 
-**Last Updated**: March 19, 2026
+**Last Updated**: March 20, 2026
 **Version**: 1.1.0
 **Maintainer**: Forge Development Team
