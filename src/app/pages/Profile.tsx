@@ -14,7 +14,6 @@ import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
 import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
-import { communities } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
 import { profiles as profilesAPI, posts as postsAPI } from '../utils/supabase';
@@ -56,7 +55,7 @@ const BIO_MAX_LENGTH = 150;
 export function Profile() {
   const navigate = useNavigate();
   const { userId } = useParams();
-  const { currentUser, updateGameList, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers } = useAppData();
+  const { currentUser, communities, updateGameList, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers } = useAppData();
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
@@ -475,53 +474,76 @@ export function Profile() {
         {/* Tab Content */}
         {activeTab === 'lists' && (
           <div className="px-4 space-y-6">
-            <GameList
-              title="Recently Played"
-              games={profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []}
-              showHours={false}
-              onEdit={isOwnProfile ? () => handleOpenGameListEdit('recently-played') : undefined}
-              listType="recently-played"
-              showFirstOnly={true}
-            />
+            {(() => {
+              const lists: { key: 'recentlyPlayed' | 'favorites' | 'wishlist' | 'library'; listType: GameListType; label: string; icon: string }[] = [
+                { key: 'recentlyPlayed', listType: 'recently-played', label: 'Recently Played', icon: '🕐' },
+                { key: 'favorites', listType: 'favorite', label: 'Favorite Games', icon: '⭐' },
+                { key: 'wishlist', listType: 'wishlist', label: 'Wishlist', icon: '🎯' },
+                { key: 'library', listType: 'library', label: 'Library', icon: '📚' },
+              ];
+              const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
+              const hasAnyList = lists.some(l => (gameLists[l.key] ?? []).length > 0);
 
-            <GameList
-              title="Favorite Games"
-              games={profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []}
-              onEdit={isOwnProfile ? () => handleOpenGameListEdit('favorite') : undefined}
-              listType="favorite"
-              showFirstOnly={true}
-            />
+              return (
+                <>
+                  {lists.map(({ key, listType, label, icon }) => {
+                    const games = gameLists[key] ?? [];
+                    if (games.length > 0) {
+                      return (
+                        <GameList
+                          key={listType}
+                          title={label}
+                          games={games}
+                          sortable={listType === 'library'}
+                          onEdit={isOwnProfile ? () => handleOpenGameListEdit(listType) : undefined}
+                          onDelete={isOwnProfile ? () => updateGameList(listType, []) : undefined}
+                          listType={listType}
+                          showFirstOnly={true}
+                        />
+                      );
+                    }
+                    if (isOwnProfile) {
+                      return (
+                        <button
+                          key={listType}
+                          onClick={() => handleOpenGameListEdit(listType)}
+                          className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
+                        >
+                          <span className="text-2xl">{icon}</span>
+                          <div>
+                            <p className="font-medium text-sm">{label}</p>
+                            <p className="text-xs text-muted-foreground">+ Create list</p>
+                          </div>
+                        </button>
+                      );
+                    }
+                    return null;
+                  })}
 
-            <GameList
-              title="Wishlist"
-              games={profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []}
-              onEdit={isOwnProfile ? () => handleOpenGameListEdit('wishlist') : undefined}
-              listType="wishlist"
-              showFirstOnly={true}
-            />
+                  {!hasAnyList && !isOwnProfile && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>No game lists yet</p>
+                    </div>
+                  )}
 
-            <GameList
-              title="Library"
-              games={profileUser.game_lists?.library ?? profileUser.gameLists?.library ?? []}
-              sortable={true}
-              onEdit={isOwnProfile ? () => handleOpenGameListEdit('library') : undefined}
-              listType="library"
-              showFirstOnly={true}
-            />
-
-            {/* Custom List - Locked */}
-            <div className="bg-card/50 rounded-xl p-6 text-center border-2 border-dashed border-muted">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-accent/20 flex items-center justify-center">
-                <span className="text-2xl">🔒</span>
-              </div>
-              <h3 className="font-medium mb-2">Custom Lists</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Create your own custom game lists with a premium subscription
-              </p>
-              <button className="px-6 py-2 bg-secondary text-foreground border border-border rounded-lg hover:bg-secondary/80 transition-colors font-medium">
-                Upgrade to Premium
-              </button>
-            </div>
+                  {/* Custom List - Premium */}
+                  {isOwnProfile && (
+                    <div className="bg-card/50 rounded-xl p-6 text-center border-2 border-dashed border-muted">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-accent/20 flex items-center justify-center">
+                        <span className="text-2xl">🔒</span>
+                      </div>
+                      <h3 className="font-medium mb-2">Custom Lists</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Create your own custom game lists with a premium subscription
+                      </p>
+                      <button className="px-6 py-2 bg-secondary text-foreground border border-border rounded-lg hover:bg-secondary/80 transition-colors font-medium">
+                        Upgrade to Premium
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

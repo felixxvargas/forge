@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, Crown, Shield } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useAppData } from '../context/AppDataContext';
-import { communities } from '../data/data';
 
 export function UserCommunities() {
   const navigate = useNavigate();
-  const { currentUser } = useAppData();
+  const { currentUser, communities } = useAppData();
 
   const userCommunities = (currentUser?.communities || [])
-    .map(membership => {
-      const community = communities.find(c => c.id === (membership.community_id ?? membership.communityId));
+    .map((membership: any) => {
+      const community = communities.find((c: any) => c.id === (membership.community_id ?? membership.communityId));
       return community ? { ...membership, ...community } : null;
     })
     .filter(Boolean);

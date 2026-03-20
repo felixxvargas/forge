@@ -1,54 +1,122 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, Edit2, Users } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
+import { ProfileAvatar } from '../components/ProfileAvatar';
 import { EditGameListsModal } from '../components/EditGameListsModal';
 import type { Game, GameListType } from '../data/data';
+
+const LIST_LABELS: Record<GameListType, string> = {
+  'recently-played': 'Recently Played',
+  'favorite': 'Favorite Games',
+  'wishlist': 'Wishlist',
+  'library': 'Library',
+  'custom': 'Custom List',
+};
+
+const LIST_KEY_MAP: Record<GameListType, string> = {
+  'recently-played': 'recentlyPlayed',
+  'favorite': 'favorites',
+  'wishlist': 'wishlist',
+  'library': 'library',
+  'custom': 'custom',
+};
 
 export function ListView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const listType = (searchParams.get('type') || 'library') as GameListType;
-  const { currentUser, updateGameList } = useAppData();
-  
+  const isBrowseMode = searchParams.get('browse') === 'true';
+  const { currentUser, users, updateGameList } = useAppData();
+
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Get the games for this list
-  const getGamesForList = (): Game[] => {
-    switch (listType) {
-      case 'recently-played': return currentUser.gameLists.recentlyPlayed;
-      case 'favorite': return currentUser.gameLists.favorites;
-      case 'wishlist': return currentUser.gameLists.wishlist;
-      case 'library': return currentUser.gameLists.library;
-      default: return [];
-    }
-  };
+  const listKey = LIST_KEY_MAP[listType];
+  const gameLists = currentUser?.game_lists ?? currentUser?.gameLists ?? {};
+  const games: Game[] = gameLists[listKey] ?? [];
 
-  const games = getGamesForList();
-
-  // Get the title for this list
-  const getTitle = () => {
-    switch (listType) {
-      case 'recently-played': return 'Recently Played';
-      case 'favorite': return 'Favorite Games';
-      case 'wishlist': return 'Wishlist';
-      case 'library': return 'Library';
-      default: return 'Games';
-    }
-  };
-
-  // Sort games
-  const sortedGames = [...games].sort((a, b) => 
-    sortOrder === 'a-z' 
-      ? a.title.localeCompare(b.title) 
+  const sortedGames = [...games].sort((a, b) =>
+    sortOrder === 'a-z'
+      ? a.title.localeCompare(b.title)
       : b.title.localeCompare(a.title)
   );
 
   const handleSaveGameList = (updatedGames: Game[]) => {
     updateGameList(listType, updatedGames);
   };
+
+  // Other users who have games in this list type
+  const usersWithList = users.filter(u => {
+    if (u.id === currentUser?.id) return false;
+    const ul = u.game_lists ?? u.gameLists ?? {};
+    return (ul[listKey] ?? []).length > 0;
+  });
+
+  const title = LIST_LABELS[listType] ?? 'Games';
+
+  if (isBrowseMode) {
+    return (
+      <div className="min-h-screen pb-20 bg-background">
+        <div className="bg-card sticky top-0 z-10 border-b border-border">
+          <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-semibold">Who's playing {title}</h1>
+              <p className="text-sm text-muted-foreground">{usersWithList.length} gamers</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-2xl mx-auto px-4 py-4 space-y-4">
+          {usersWithList.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p>No other gamers have a {title} list yet</p>
+            </div>
+          ) : (
+            usersWithList.map(u => {
+              const ul = u.game_lists ?? u.gameLists ?? {};
+              const uGames: Game[] = ul[listKey] ?? [];
+              return (
+                <div
+                  key={u.id}
+                  className="bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors"
+                  onClick={() => navigate(`/profile/${u.id}`)}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <ProfileAvatar
+                      username={u.display_name || u.displayName || u.handle || '?'}
+                      profilePicture={u.profile_picture || u.profilePicture}
+                      size="md"
+                      userId={u.id}
+                    />
+                    <div>
+                      <p className="font-semibold text-sm">{u.display_name || u.displayName || u.handle}</p>
+                      <p className="text-xs text-muted-foreground">{uGames.length} games</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {uGames.slice(0, 6).map(game => (
+                      <img
+                        key={game.id}
+                        src={game.coverArt}
+                        alt={game.title}
+                        className="w-12 h-16 object-cover rounded shrink-0"
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20 bg-background">
@@ -64,7 +132,7 @@ export function ListView() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-xl font-semibold">{getTitle()}</h1>
+                <h1 className="text-xl font-semibold">{title}</h1>
                 <p className="text-sm text-muted-foreground">{games.length} games</p>
               </div>
             </div>
@@ -91,24 +159,76 @@ export function ListView() {
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {sortedGames.map((game) => (
-            <GameCard 
-              key={game.id} 
-              game={game} 
+            <GameCard
+              key={game.id}
+              game={game}
               showHours={listType === 'recently-played'}
             />
           ))}
         </div>
 
-        {/* Empty state */}
         {games.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No games in this list</p>
+            <p className="text-muted-foreground mb-4">No games in this list yet</p>
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
             >
               Add Games
             </button>
+          </div>
+        )}
+
+        {/* Other users with this list */}
+        {usersWithList.length > 0 && (
+          <div className="mt-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Other gamers' {title}</h2>
+              {usersWithList.length > 3 && (
+                <button
+                  onClick={() => navigate(`/list?type=${listType}&browse=true`)}
+                  className="text-sm text-accent hover:underline"
+                >
+                  See all ({usersWithList.length})
+                </button>
+              )}
+            </div>
+            <div className="space-y-3">
+              {usersWithList.slice(0, 3).map(u => {
+                const ul = u.game_lists ?? u.gameLists ?? {};
+                const uGames: Game[] = ul[listKey] ?? [];
+                return (
+                  <div
+                    key={u.id}
+                    className="bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors"
+                    onClick={() => navigate(`/profile/${u.id}`)}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <ProfileAvatar
+                        username={u.display_name || u.displayName || u.handle || '?'}
+                        profilePicture={u.profile_picture || u.profilePicture}
+                        size="sm"
+                        userId={u.id}
+                      />
+                      <div>
+                        <p className="font-semibold text-sm">{u.display_name || u.displayName || u.handle}</p>
+                        <p className="text-xs text-muted-foreground">{uGames.length} games</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {uGames.slice(0, 6).map(game => (
+                        <img
+                          key={game.id}
+                          src={game.coverArt}
+                          alt={game.title}
+                          className="w-10 h-14 object-cover rounded shrink-0"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

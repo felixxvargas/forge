@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Users, Lock, UserPlus, Settings, X } from 'lucide-react';
-import { communities } from '../data/data';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 
 export function CommunityDetail() {
   const { communityId } = useParams();
   const navigate = useNavigate();
-  const { currentUser, posts, getUserById, likePost, unlikePost, users } = useAppData();
-  
-  const community = communities.find(c => c.id === communityId);
+  const { currentUser, posts, getUserById, likePost, unlikePost, users, communities } = useAppData();
+
+  const community = communities.find((c: any) => c.id === communityId);
   const [isMember, setIsMember] = useState(
     currentUser?.communities?.some(c => c.community_id === communityId) || false
   );

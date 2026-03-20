@@ -32,6 +32,7 @@ interface AppDataContextType {
   muteUser: (userId: string) => Promise<void>;
   unmuteUser: (userId: string) => Promise<void>;
   followingIds: Set<string>;
+  communities: any[];
   getUserById: (userId: string) => any | undefined;
   getUserByHandle: (handle: string) => any | undefined;
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
@@ -64,6 +65,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
   const [mutedUsers, setMutedUsers] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [communitiesList, setCommunitiesList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
@@ -133,6 +135,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setUsers(allUsers.map(normalizeProfile));
     } catch (e) {
       console.error('Error loading users:', e);
+    }
+    try {
+      const allCommunities = await communitiesAPI.getAll();
+      setCommunitiesList(allCommunities);
+    } catch (e) {
+      console.error('Error loading communities:', e);
     }
   }, []);
 
@@ -321,7 +329,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const createCommunity = async (name: string, description: string, icon: string, type: string) => {
     if (!session?.user) throw new Error('Not authenticated');
-    return await communitiesAPI.create(session.user.id, name, description, icon, type);
+    const community = await communitiesAPI.create(session.user.id, name, description, icon, type);
+    setCommunitiesList(prev => [...prev, community]);
+    return community;
   };
 
   const markNotificationsAsRead = async () => {
@@ -361,6 +371,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       muteUser,
       unmuteUser,
       followingIds,
+      communities: communitiesList,
       getUserById,
       getUserByHandle,
       updateGameList,

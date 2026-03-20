@@ -5,13 +5,13 @@ import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
-import { sampleGames, communities, type User, type Post, type Community } from '../data/data';
+import { sampleGames, type User, type Post, type Community } from '../data/data';
 import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
 
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 
 export function Explore() {
-  const { posts, users, getUserById, followingIds, currentUser, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading } = useAppData();
+  const { posts, users, getUserById, followingIds, currentUser, communities, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading } = useAppData();
   
   // Retrieve saved tab from localStorage, default to 'posts'
   const [activeTab, setActiveTab] = useState<ExploreTab>(() => {

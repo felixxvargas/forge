@@ -7,11 +7,10 @@ import { WritePostModal } from '../components/WritePostModal';
 import { WritePostButton } from '../components/WritePostButton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAppData } from '../context/AppDataContext';
-import { communities } from '../data/data';
 
 // Feed v1.0.1 - Context should now be available through Layout
 export function Feed() {
-  const { posts, currentUser, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, filteredSocialPlatforms, blockedUsers, mutedUsers, isLoading } = useAppData();
+  const { posts, currentUser, communities, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading } = useAppData();
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
