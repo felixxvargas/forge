@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
 import { PlatformIcon } from './PlatformIcon';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
+import { formatNumber } from '../utils/formatNumber';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
 import { ShareModal } from './ShareModal';
@@ -274,6 +275,19 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
         </div>
       )}
 
+      {/* Game tag */}
+      {post.game_title && (
+        <div className="mb-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            {post.game_title}
+          </button>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-6 pt-2">
         <button
@@ -286,7 +300,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
           }`}
         >
           <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-          <span>{post.like_count ?? post.likes ?? 0}</span>
+          <span>{formatNumber(post.like_count ?? post.likes ?? 0)}</span>
         </button>
 
         {onRepost && (
@@ -297,7 +311,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
             }`}
           >
             <Repeat2 className="w-5 h-5" />
-            <span>{post.repost_count ?? post.reposts ?? 0}</span>
+            <span>{formatNumber(post.repost_count ?? post.reposts ?? 0)}</span>
           </button>
         )}
 
@@ -309,7 +323,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <MessageCircle className="w-5 h-5" />
-          <span>{post.comment_count ?? post.comments ?? 0}</span>
+          <span>{formatNumber(post.comment_count ?? post.comments ?? 0)}</span>
         </button>
         
         <button 

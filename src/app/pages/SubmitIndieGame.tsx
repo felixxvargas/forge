@@ -62,8 +62,11 @@ export function SubmitIndieGame() {
     }
   };
 
+  const hasGameLink = formData.website.trim() || formData.steamUrl.trim();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasGameLink) return;
     setSubmitting(true);
 
     try {
@@ -287,7 +290,10 @@ export function SubmitIndieGame() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Website</label>
+              <label className="block text-sm font-medium mb-2">
+                Website <span className="text-accent">*</span>
+                <span className="text-muted-foreground font-normal ml-1">(or Steam URL required)</span>
+              </label>
               <div className="relative">
                 <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
@@ -295,13 +301,18 @@ export function SubmitIndieGame() {
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   placeholder="https://yourgame.com"
-                  className="w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent"
+                  className={`w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
+                    !hasGameLink ? 'border-red-500/50' : 'border-border'
+                  }`}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Steam URL</label>
+              <label className="block text-sm font-medium mb-2">
+                Steam URL <span className="text-accent">*</span>
+                <span className="text-muted-foreground font-normal ml-1">(or Website required)</span>
+              </label>
               <div className="relative">
                 <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
@@ -309,9 +320,14 @@ export function SubmitIndieGame() {
                   value={formData.steamUrl}
                   onChange={(e) => setFormData({ ...formData, steamUrl: e.target.value })}
                   placeholder="https://store.steampowered.com/app/..."
-                  className="w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent"
+                  className={`w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
+                    !hasGameLink ? 'border-red-500/50' : 'border-border'
+                  }`}
                 />
               </div>
+              {!hasGameLink && (
+                <p className="text-xs text-red-400 mt-1">A website or Steam URL is required</p>
+              )}
             </div>
 
             <div>
@@ -353,7 +369,7 @@ export function SubmitIndieGame() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={submitting || formData.genres.length === 0 || formData.platforms.length === 0}
+            disabled={submitting || formData.genres.length === 0 || formData.platforms.length === 0 || !hasGameLink}
             className="w-full py-4 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50"
           >
             {submitting ? 'Submitting...' : 'Submit for Review'}

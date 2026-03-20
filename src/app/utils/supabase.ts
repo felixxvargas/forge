@@ -284,6 +284,8 @@ export const posts = {
     imageAlts?: string[];
     url?: string;
     communityId?: string;
+    gameId?: string;
+    gameTitle?: string;
   } = {}) {
     const { data, error } = await supabase
       .from('posts')
@@ -293,7 +295,9 @@ export const posts = {
         images: options.images ?? [],
         image_alts: options.imageAlts ?? [],
         url: options.url ?? null,
-        community_id: options.communityId ?? null
+        community_id: options.communityId ?? null,
+        game_id: options.gameId ?? null,
+        game_title: options.gameTitle ?? null,
       })
       .select(`
         *,
@@ -368,6 +372,20 @@ export const posts = {
         author:profiles!user_id(id, handle, display_name, profile_picture)
       `)
       .ilike('content', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
+  async getByGame(gameId: string) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        author:profiles!user_id(id, handle, display_name, profile_picture)
+      `)
+      .eq('game_id', gameId)
       .order('created_at', { ascending: false })
       .limit(30);
     if (error) throw new Error(error.message);

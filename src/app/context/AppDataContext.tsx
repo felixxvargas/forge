@@ -19,7 +19,7 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string) => Promise<void>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
   unlikePost: (postId: string) => Promise<void>;
@@ -186,9 +186,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCurrentUser(updated);
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string) => {
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string) => {
     if (!session?.user) return;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId });
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle });
     setPostList(prev => [post, ...prev]);
   };
 
@@ -228,11 +228,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const followUser = async (userId: string) => {
     if (!session?.user) return;
     await profiles.follow(session.user.id, userId);
+    // Optimistic count updates
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u
+    ));
+    setCurrentUser((prev: any) => prev ? { ...prev, following_count: (prev.following_count ?? 0) + 1 } : prev);
   };
 
   const unfollowUser = async (userId: string) => {
     if (!session?.user) return;
     await profiles.unfollow(session.user.id, userId);
+    // Optimistic count updates
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u
+    ));
+    setCurrentUser((prev: any) => prev ? { ...prev, following_count: Math.max(0, (prev.following_count ?? 0) - 1) } : prev);
   };
 
   const blockUser = async (userId: string) => {

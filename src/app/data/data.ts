@@ -113,6 +113,15 @@ export interface Post {
   imageAlts?: string[]; // Alt text for images (same order as images array)
   video?: string; // Video URL for video posts
   url?: string; // URL for link previews
+  game_id?: string;
+  game_title?: string;
+  // Supabase snake_case aliases
+  user_id?: string;
+  created_at?: string;
+  like_count?: number;
+  repost_count?: number;
+  comment_count?: number;
+  image_alts?: string[];
 }
 
 // Sample game data

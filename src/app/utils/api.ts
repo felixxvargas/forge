@@ -551,40 +551,39 @@ export const gamesAPI = {
 // Admin API
 export const adminAPI = {
   async checkUser(email: string) {
-    return apiRequest(`/admin/check-user/${encodeURIComponent(email)}`);
+    return apiRequest(`/admin/check-user/${encodeURIComponent(email)}`, {
+      requiresAuth: true,
+    });
   },
-  
+
   async updatePassword(email: string, newPassword: string) {
     return apiRequest('/admin/update-password', {
       method: 'POST',
-      body: { email, newPassword }
+      body: { email, newPassword },
+      requiresAuth: true,
     });
   },
-  
-  async updateProfile(email: string, displayName?: string, handle?: string) {
+
+  async upsertProfile(email: string, displayName?: string, handle?: string) {
     return apiRequest('/admin/update-profile', {
       method: 'POST',
-      body: { email, displayName, handle }
+      body: { email, displayName, handle },
+      requiresAuth: true,
     });
   },
-  
-  async createProfile(email: string, displayName?: string, handle?: string) {
-    return apiRequest('/admin/create-profile', {
-      method: 'POST',
-      body: { email, displayName, handle }
-    });
-  },
-  
+
   async completeOnboarding(email: string) {
     return apiRequest('/admin/complete-onboarding', {
       method: 'POST',
-      body: { email }
+      body: { email },
+      requiresAuth: true,
     });
   },
-  
+
   async seedTopicAccounts() {
     return apiRequest('/seed/topic-accounts', {
-      method: 'POST'
+      method: 'POST',
+      requiresAuth: true,
     });
   }
 };
