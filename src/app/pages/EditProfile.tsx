@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { X, Upload, Settings, Crown, Shield, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { User, Platform, SocialPlatform } from '../data/mockData';
@@ -30,6 +30,12 @@ export function EditProfile() {
     displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 3).map((m: any) => m.community_id || m.communityId)
   });
 
+  // Ref so handleSave always reads the latest uploaded URL regardless of
+  // whether React has flushed the setFormData state update yet.
+  const profilePictureRef = useRef<string | null | undefined>(
+    currentUser.profile_picture || currentUser.profilePicture || null
+  );
+
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -44,7 +50,9 @@ export function EditProfile() {
         pronouns: formData.pronouns,
         bio: formData.bio,
         about: formData.about,
-        profile_picture: formData.profilePicture,
+        // Use ref as authoritative source — it's updated synchronously on
+        // upload/delete, whereas formData state update may not have flushed yet.
+        profile_picture: profilePictureRef.current ?? formData.profilePicture,
         platforms: formData.platforms,
         platform_handles: formData.platformHandles,
         show_platform_handles: formData.showPlatformHandles,
@@ -63,17 +71,13 @@ export function EditProfile() {
   };
 
   const handleProfilePictureUpload = (url: string) => {
-    setFormData(prev => ({
-      ...prev,
-      profilePicture: url
-    }));
+    profilePictureRef.current = url;        // synchronous — available immediately
+    setFormData(prev => ({ ...prev, profilePicture: url }));
   };
 
   const handleDeleteProfilePicture = () => {
-    setFormData(prev => ({
-      ...prev,
-      profilePicture: undefined
-    }));
+    profilePictureRef.current = null;
+    setFormData(prev => ({ ...prev, profilePicture: undefined }));
   };
 
   const togglePlatform = (platform: Platform) => {
