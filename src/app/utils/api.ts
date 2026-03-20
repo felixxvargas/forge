@@ -306,11 +306,12 @@ export const uploadAPI = {
       throw new Error('You need to sign in to upload files.');
     }
     
-    console.log('[Upload] Starting upload for file:', file.name, file.size, 'bytes', 'to bucket:', bucketType);
-    
+    const resolvedBucket = BUCKET_NAMES[bucketType] ?? bucketType;
+    console.log('[Upload] Starting upload for file:', file.name, file.size, 'bytes', 'to bucket:', resolvedBucket);
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('bucket', BUCKET_NAMES[bucketType] ?? bucketType);
+    formData.append('bucket', resolvedBucket);
     
     try {
       const response = await fetch(`${API_BASE_URL}/upload`, {

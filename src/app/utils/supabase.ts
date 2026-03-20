@@ -76,20 +76,10 @@ export const profiles = {
   },
 
   async update(id: string, updates: Record<string, any>) {
-    // Only include columns that exist in the Supabase profiles table.
-    // Extended fields (platforms, social handles, etc.) live in the KV
-    // store via the edge function and must NOT be sent here or Supabase
-    // returns 400 "column does not exist".
-    const PROFILE_COLUMNS = new Set([
-      'handle', 'display_name', 'profile_picture', 'bio', 'about', 'pronouns',
-    ]);
-    const filtered = Object.fromEntries(
-      Object.entries(updates).filter(([key]) => PROFILE_COLUMNS.has(key))
-    );
-    console.log('[profiles.update] payload →', JSON.stringify(filtered));
+    console.log('[profiles.update] payload →', JSON.stringify(updates));
     const { data, error } = await supabase
       .from('profiles')
-      .update({ ...filtered, updated_at: new Date().toISOString() })
+      .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();

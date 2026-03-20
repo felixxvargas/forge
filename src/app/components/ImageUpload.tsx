@@ -62,8 +62,8 @@ export function ImageUpload({
       const localPreview = URL.createObjectURL(file);
       setPreviewUrl(localPreview);
 
-      // Upload to backend
-      console.log('[ImageUpload] Starting upload to bucket:', bucketType);
+      // Upload to backend (bucketType is the short key; api.ts maps it to the real bucket name)
+      console.log('[ImageUpload] Starting upload, bucketType:', bucketType);
       const result = await uploadAPI.uploadFile(file, bucketType);
 
       console.log('[ImageUpload] Upload result:', result);
