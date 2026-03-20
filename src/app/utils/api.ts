@@ -350,10 +350,14 @@ export const uploadAPI = {
       }
       
       const result = await response.json();
-      console.log('[Upload] Upload successful:', result);
+      console.log('[Upload] Response body:', JSON.stringify(result));
+      console.log('[Upload] Upload successful — url field:', result.url);
       return result;
     } catch (error: any) {
-      console.error('[Upload] Upload error:', error);
+      console.error('[Upload] Upload error (type:', typeof error, '):', error?.message ?? error);
+      if (error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+        console.error('[Upload] Likely CORS or network error — check edge function CORS config');
+      }
       throw error;
     }
   }
