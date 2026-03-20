@@ -21,8 +21,9 @@ export function SocialMediaIntegrations() {
   const navigate = useNavigate();
   const { currentUser, updateCurrentUser } = useAppData();
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>(
-    currentUser.social_platforms || currentUser.socialPlatforms || []
+    currentUser?.social_platforms || currentUser?.socialPlatforms || []
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   const togglePlatform = (platform: SocialPlatform) => {
     if (selectedPlatforms.includes(platform)) {
@@ -32,9 +33,16 @@ export function SocialMediaIntegrations() {
     }
   };
 
-  const handleSave = () => {
-    updateCurrentUser({ social_platforms: selectedPlatforms });
-    navigate('/edit-profile');
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateCurrentUser({ social_platforms: selectedPlatforms });
+      navigate('/edit-profile');
+    } catch (err) {
+      console.error('Failed to save social platforms:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -53,9 +61,10 @@ export function SocialMediaIntegrations() {
           </div>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
+            disabled={isSaving}
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-60"
           >
-            Save
+            {isSaving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

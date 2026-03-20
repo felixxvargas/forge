@@ -76,13 +76,15 @@ export const profiles = {
   },
 
   async getByHandle(handle: string) {
-    const { data, error } = await supabase
+    const stripped = handle.replace(/^@/, '');
+    // Try both with and without @ prefix, case-insensitive
+    const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('handle', handle)
+      .or(`handle.ilike.${stripped},handle.ilike.@${stripped}`)
+      .limit(1)
       .single();
-    if (error) throw new Error(error.message);
-    return data;
+    return data ?? null;
   },
 
   async update(id: string, updates: Record<string, any>) {
@@ -557,6 +559,55 @@ export const notifications = {
       .eq('read', false);
     return count ?? 0;
   }
+};
+
+// ============================================================
+// COMMENTS
+// ============================================================
+export const commentsAPI = {
+  async getByPostId(postId: string) {
+    const { data, error } = await supabase
+      .from('comments')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
+  async create(userId: string, postId: string, content: string) {
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({ post_id: postId, user_id: userId, content })
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async like(userId: string, commentId: string) {
+    const { error } = await supabase
+      .from('comment_likes')
+      .insert({ user_id: userId, comment_id: commentId });
+    if (error && error.code !== '23505') throw new Error(error.message);
+  },
+
+  async unlike(userId: string, commentId: string) {
+    const { error } = await supabase
+      .from('comment_likes')
+      .delete()
+      .eq('user_id', userId)
+      .eq('comment_id', commentId);
+    if (error) throw new Error(error.message);
+  },
+
+  async getLikedCommentIds(userId: string, postId: string) {
+    const { data } = await supabase
+      .from('comment_likes')
+      .select('comment_id, comments!comment_id(post_id)')
+      .eq('user_id', userId);
+    return new Set<string>((data ?? []).map((r: any) => r.comment_id));
+  },
 };
 
 // ============================================================

@@ -344,7 +344,13 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onComment?.(post.id);
+            if (isDetailView) {
+              onComment?.(post.id);
+            } else if (post.externalUrl) {
+              window.open(post.externalUrl, '_blank', 'noopener,noreferrer');
+            } else {
+              navigate(`/post/${post.id}#comments`);
+            }
           }}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
