@@ -202,7 +202,7 @@ export function Profile() {
               </button>
               <div>
                 <h1 className="text-xl font-semibold">{profileUser.display_name || profileUser.handle}</h1>
-                <p className="text-muted-foreground">{profileUser.handle}</p>
+                <p className="text-muted-foreground">@{(profileUser.handle || '').replace(/^@/, '')}</p>
                 {profileUser.pronouns && (
                   <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-accent/20 text-accent">
                     {profileUser.pronouns}
