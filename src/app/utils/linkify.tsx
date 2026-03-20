@@ -41,7 +41,7 @@ export function LinkifyMentions({ text, onMentionClick }: LinkifyMentionsProps) 
             }
           }
         }}
-        className="text-accent hover:underline font-medium"
+        className="text-accent hover:underline font-bold"
       >
         {handle}
       </button>

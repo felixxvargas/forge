@@ -6,20 +6,22 @@ import type { SocialPlatform } from '../data/data';
 
 const availableSocialPlatforms: { id: SocialPlatform; name: string; description: string; icon: string }[] = [
   { id: 'bluesky', name: 'Bluesky', description: 'Decentralized social network', icon: '🦋' },
-  { id: 'tumblr', name: 'Tumblr', description: 'Microblogging platform', icon: 't' },
+  { id: 'mastodon', name: 'Mastodon', description: 'Federated social network', icon: '🐘' },
   { id: 'x', name: 'X (Twitter)', description: 'Social media platform', icon: '𝕏' },
-  { id: 'tiktok', name: 'TikTok', description: 'Short-form video', icon: '🎵' },
   { id: 'instagram', name: 'Instagram', description: 'Photo and video sharing', icon: '📷' },
+  { id: 'tiktok', name: 'TikTok', description: 'Short-form video', icon: '🎵' },
   { id: 'threads', name: 'Threads', description: 'Text-based conversations', icon: '@' },
+  { id: 'discord', name: 'Discord', description: 'Gaming chat & communities', icon: '🎮' },
+  { id: 'tumblr', name: 'Tumblr', description: 'Microblogging platform', icon: 't' },
   { id: 'rednote', name: 'Red Note', description: 'Social and e-commerce', icon: '📕' },
-  { id: 'upscrolled', name: 'Upscrolled', description: 'Community platform', icon: '↑' }
+  { id: 'upscrolled', name: 'Upscrolled', description: 'Community platform', icon: '↑' },
 ];
 
 export function SocialMediaIntegrations() {
   const navigate = useNavigate();
   const { currentUser, updateCurrentUser } = useAppData();
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>(
-    currentUser.socialPlatforms || []
+    currentUser.social_platforms || currentUser.socialPlatforms || []
   );
 
   const togglePlatform = (platform: SocialPlatform) => {
@@ -31,8 +33,8 @@ export function SocialMediaIntegrations() {
   };
 
   const handleSave = () => {
-    updateCurrentUser({ socialPlatforms: selectedPlatforms });
-    navigate('/settings');
+    updateCurrentUser({ social_platforms: selectedPlatforms });
+    navigate('/edit-profile');
   };
 
   return (
@@ -42,7 +44,7 @@ export function SocialMediaIntegrations() {
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate('/edit-profile')}
               className="p-2 hover:bg-secondary rounded-full transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -66,7 +68,7 @@ export function SocialMediaIntegrations() {
         <div className="space-y-2">
           {availableSocialPlatforms.map((platform) => {
             const isSelected = selectedPlatforms.includes(platform.id);
-            
+
             return (
               <button
                 key={platform.id}

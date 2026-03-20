@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
@@ -66,6 +66,9 @@ export function Profile() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [profileUserPosts, setProfileUserPosts] = useState<any[]>([]);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSent, setReportSent] = useState(false);
 
   // Scroll to top when viewing a new profile
   useEffect(() => {
@@ -169,10 +172,22 @@ export function Profile() {
     }
   };
 
+  const handleReport = async () => {
+    if (!currentUser?.id || !profileUser?.id || !reportReason.trim()) return;
+    try {
+      await profilesAPI.report(currentUser.id, profileUser.id, reportReason.trim());
+      setReportSent(true);
+      setTimeout(() => { setShowReportModal(false); setReportReason(''); setReportSent(false); }, 2000);
+    } catch (e) {
+      console.error('Failed to submit report:', e);
+    }
+  };
+
   // Helper function to get social platform label
   const getSocialPlatformLabel = (platform: SocialPlatform): string => {
     const labels: Record<SocialPlatform, string> = {
       'bluesky': 'Bluesky',
+      'mastodon': 'Mastodon',
       'tumblr': 'Tumblr',
       'x': 'X',
       'tiktok': 'TikTok',
@@ -180,7 +195,7 @@ export function Profile() {
       'threads': 'Threads',
       'rednote': 'Red Note',
       'upscrolled': 'Upscrolled',
-      'discord': 'Discord'
+      'discord': 'Discord',
     };
     return labels[platform] || platform;
   };
@@ -243,6 +258,14 @@ export function Profile() {
                         Block @{(profileUser.handle || '').replace(/^@/, '')}
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setShowReportModal(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Flag className="w-4 h-4 mr-2" />
+                      Report @{(profileUser.handle || '').replace(/^@/, '')}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -659,6 +682,44 @@ export function Profile() {
         onClose={() => setShareModalOpen(false)}
         user={profileUser}
       />
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Report @{(profileUser?.handle || '').replace(/^@/, '')}</h2>
+            {reportSent ? (
+              <p className="text-sm text-accent">Thank you. Your report has been submitted for review.</p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Tell us what's going on with this account.</p>
+                <textarea
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  placeholder="Describe the issue..."
+                  rows={4}
+                  className="w-full px-3 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none text-sm"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowReportModal(false); setReportReason(''); }}
+                    className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReport}
+                    disabled={!reportReason.trim()}
+                    className="flex-1 px-4 py-2 bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors text-sm disabled:opacity-50"
+                  >
+                    Submit Report
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

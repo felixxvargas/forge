@@ -1,33 +1,28 @@
-import { useState, useEffect } from 'react';
-import { UserPlus, UserMinus } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { ProfileAvatar } from './ProfileAvatar';
 import { PlatformIcon } from './PlatformIcon';
+import { FollowButton } from './FollowButton';
 import { formatNumber } from '../utils/formatNumber';
+import { useAppData } from '../context/AppDataContext';
 import type { User } from '../data/data';
 
 interface UserCardProps {
   user: User;
-  onFollowToggle?: (userId: string, isFollowing: boolean) => void;
 }
 
-export function UserCard({ user, onFollowToggle }: UserCardProps) {
+export function UserCard({ user }: UserCardProps) {
   const navigate = useNavigate();
-  
-  const handleFollowChange = (isFollowing: boolean) => {
-    onFollowToggle?.(user.id, isFollowing);
-  };
+  const { currentUser, followingIds } = useAppData();
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on the follow button
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
+    if ((e.target as HTMLElement).closest('button')) return;
     navigate(`/profile/${user.id}`);
   };
 
+  if (user.id === currentUser?.id) return null;
+
   return (
-    <div 
+    <div
       className="bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors"
       onClick={handleCardClick}
     >
@@ -65,12 +60,11 @@ export function UserCard({ user, onFollowToggle }: UserCardProps) {
         <span className="text-sm text-muted-foreground">
           {formatNumber(user.follower_count ?? user.followerCount ?? 0)} followers
         </span>
-        <button
-          className={`btn btn-sm ${user.isFollowing ? 'btn-secondary' : 'btn-outline'}`}
-          onClick={() => handleFollowChange(!user.isFollowing)}
-        >
-          {user.isFollowing ? <UserMinus /> : <UserPlus />}
-        </button>
+        <FollowButton
+          userId={user.id}
+          initialFollowingState={followingIds?.has(user.id) ?? false}
+          size="sm"
+        />
       </div>
     </div>
   );

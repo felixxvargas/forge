@@ -11,7 +11,7 @@ import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/b
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 
 export function Explore() {
-  const { posts, users, getUserById, currentUser, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading } = useAppData();
+  const { posts, users, getUserById, followingIds, currentUser, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading } = useAppData();
   
   // Retrieve saved tab from localStorage, default to 'posts'
   const [activeTab, setActiveTab] = useState<ExploreTab>(() => {
@@ -106,19 +106,21 @@ export function Explore() {
     }
   };
 
-  // Get gaming media posts (from Bluesky + any existing Forge posts from gaming media accounts)
+  // Normalize topic account posts to have a consistent user_id field and author
+  const normalizedBlueskyPosts = blueskyPosts.map((post: any) => {
+    const uid = post.user_id || post.userId || '';
+    const author = post.author || getUserById(uid);
+    return { ...post, user_id: uid, author };
+  });
+
+  // Get gaming media posts (from Bluesky + any existing Forge posts from topic accounts)
   const gamingMediaPosts = [
-    ...blueskyPosts,
-    ...posts.filter(post => {
-      return post.author?.account_type === 'topic';
-    })
+    ...normalizedBlueskyPosts,
+    ...posts.filter(post => post.author?.account_type === 'topic'),
   ].filter(post => {
-    // Filter out blocked users
-    if (blockedUsers.has(post.user_id)) return false;
-
-    // Filter out muted users unless specifically shown
-    if (mutedUsers.has(post.user_id) && !showMutedPosts.has(post.id)) return false;
-
+    const uid = post.user_id || post.userId || '';
+    if (blockedUsers.has(uid)) return false;
+    if (mutedUsers.has(uid) && !showMutedPosts.has(post.id)) return false;
     return true;
   }).sort((a, b) => new Date(b.created_at || b.timestamp).getTime() - new Date(a.created_at || a.timestamp).getTime());
 
@@ -261,7 +263,8 @@ export function Explore() {
               gamingMediaPosts.map(post => {
                 const user = post.author;
                 if (!user) return null;
-                const isMuted = mutedUsers.has(post.user_id);
+                const uid = post.user_id || post.userId || '';
+                const isMuted = mutedUsers.has(uid);
                 const isShown = showMutedPosts.has(post.id);
                 
                 if (isMuted && !isShown) {

@@ -197,7 +197,22 @@ export const profiles = {
       .select('muted_id')
       .eq('muter_id', userId);
     return (data ?? []).map((r: any) => r.muted_id);
-  }
+  },
+
+  async getFollowingIds(userId: string) {
+    const { data } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', userId);
+    return (data ?? []).map((r: any) => r.following_id);
+  },
+
+  async report(reporterId: string, reportedId: string, reason: string) {
+    const { error } = await supabase
+      .from('reports')
+      .insert({ reporter_id: reporterId, reported_id: reportedId, reason });
+    if (error) throw new Error(error.message);
+  },
 };
 
 // ============================================================
@@ -525,6 +540,13 @@ export const notifications = {
       .update({ read: true })
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
+  },
+
+  async createMention(userId: string, actorId: string, postId: string) {
+    const { error } = await supabase
+      .from('notifications')
+      .insert({ user_id: userId, actor_id: actorId, type: 'mention', post_id: postId, read: false });
+    if (error) console.error('Failed to create mention notification:', error.message);
   },
 
   async getUnreadCount(userId: string) {

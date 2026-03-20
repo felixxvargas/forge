@@ -25,8 +25,8 @@ export function EditProfile() {
     platformHandles: currentUser.platform_handles || currentUser.platformHandles || {},
     showPlatformHandles: currentUser.show_platform_handles || currentUser.showPlatformHandles || {},
     socialPlatforms: currentUser.social_platforms || currentUser.socialPlatforms || [],
-    socialHandles: currentUser.social_handles || currentUser.socialHandles || {},
-    showSocialHandles: currentUser.show_social_handles || currentUser.showSocialHandles || {},
+    socialHandles: currentUser.social_handles || currentUser.socialHandles || {} as Record<string, string>,
+    showSocialHandles: currentUser.show_social_handles || currentUser.showSocialHandles || {} as Record<string, boolean>,
     displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 3).map((m: any) => m.community_id || m.communityId)
   });
 
@@ -41,7 +41,7 @@ export function EditProfile() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'battlenet', 'riot'];
-  const allSocial: SocialPlatform[] = ['x', 'instagram', 'tiktok', 'bluesky', 'tumblr', 'threads', 'rednote', 'upscrolled', 'discord'];
+  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -188,6 +188,7 @@ export function EditProfile() {
   const getSocialLabel = (social: SocialPlatform): string => {
     const labels: Record<SocialPlatform, string> = {
       'bluesky': 'Bluesky',
+      'mastodon': 'Mastodon',
       'tumblr': 'Tumblr',
       'x': 'X',
       'tiktok': 'TikTok',
@@ -195,7 +196,7 @@ export function EditProfile() {
       'threads': 'Threads',
       'rednote': 'Red Note',
       'upscrolled': 'Upscrolled',
-      'discord': 'Discord'
+      'discord': 'Discord',
     };
     return labels[social] || social;
   };
@@ -353,13 +354,15 @@ export function EditProfile() {
                     />
                   </label>
                 </div>
-                <input
-                  type="text"
-                  value={formData.platformHandles[platform] || ''}
-                  onChange={(e) => updatePlatformHandle(platform, e.target.value)}
-                  placeholder={`Your ${getPlatformLabel(platform)} username`}
-                  className="w-full px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                />
+                {formData.showPlatformHandles[platform] && (
+                  <input
+                    type="text"
+                    value={formData.platformHandles[platform] || ''}
+                    onChange={(e) => updatePlatformHandle(platform, e.target.value)}
+                    placeholder={`Your ${getPlatformLabel(platform)} username`}
+                    className="w-full px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -395,16 +398,18 @@ export function EditProfile() {
                     />
                   </label>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">@</span>
-                  <input
-                    type="text"
-                    value={formData.socialHandles[social] || ''}
-                    onChange={(e) => updateSocialHandle(social, e.target.value)}
-                    placeholder={`Your ${getSocialLabel(social)} handle`}
-                    className="flex-1 px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                  />
-                </div>
+                {formData.showSocialHandles[social] && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">@</span>
+                    <input
+                      type="text"
+                      value={formData.socialHandles[social] || ''}
+                      onChange={(e) => updateSocialHandle(social, e.target.value)}
+                      placeholder={`Your ${getSocialLabel(social)} handle`}
+                      className="flex-1 px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

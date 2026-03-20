@@ -31,7 +31,9 @@ interface AppDataContextType {
   unblockUser: (userId: string) => Promise<void>;
   muteUser: (userId: string) => Promise<void>;
   unmuteUser: (userId: string) => Promise<void>;
+  followingIds: Set<string>;
   getUserById: (userId: string) => any | undefined;
+  getUserByHandle: (handle: string) => any | undefined;
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
   refreshFeed: () => Promise<void>;
   markNotificationsAsRead: () => void;
@@ -60,6 +62,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
   const [mutedUsers, setMutedUsers] = useState<Set<string>>(new Set());
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
@@ -96,17 +99,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const [likedIds, repostedIds, blockedIds, mutedIds] = await Promise.all([
+      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),
         profiles.getMutedIds(userId),
+        profiles.getFollowingIds(userId),
       ]);
       setCurrentUser(normalizeProfile(profile));
       setLikedPosts(new Set(likedIds));
       setRepostedPosts(new Set(repostedIds));
       setBlockedUsers(new Set(blockedIds));
       setMutedUsers(new Set(mutedIds));
+      setFollowingIds(new Set(followingIdList));
     } catch (e) {
       console.error('Error loading user data:', e);
     }
@@ -191,6 +196,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!session?.user) return;
     const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle });
     setPostList(prev => [post, ...prev]);
+    // Send notifications for @mentions
+    const mentionMatches = content.match(/@(\w+)/g) ?? [];
+    for (const mention of mentionMatches) {
+      const handle = mention.slice(1);
+      try {
+        const mentioned = await profiles.getByHandle(handle);
+        if (mentioned && mentioned.id !== session.user.id) {
+          await notificationsAPI.createMention(mentioned.id, session.user.id, post.id);
+        }
+      } catch { /* silently ignore */ }
+    }
   };
 
   const deletePost = async (postId: string) => {
@@ -241,7 +257,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const followUser = async (userId: string) => {
     if (!session?.user) return;
     await profiles.follow(session.user.id, userId);
-    // Optimistic count updates
+    setFollowingIds(prev => new Set([...prev, userId]));
     setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u
     ));
@@ -251,7 +267,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const unfollowUser = async (userId: string) => {
     if (!session?.user) return;
     await profiles.unfollow(session.user.id, userId);
-    // Optimistic count updates
+    setFollowingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
     setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u
     ));
@@ -283,6 +299,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const getUserById = (userId: string) => users.find(u => u.id === userId);
+  const getUserByHandle = (handle: string) => {
+    const normalized = handle.replace(/^@/, '').toLowerCase();
+    return users.find(u => (u.handle || '').replace(/^@/, '').toLowerCase() === normalized);
+  };
 
   const updateGameList = async (listType: GameListType, games: any[]) => {
     if (!session?.user || !currentUser) return;
@@ -334,7 +354,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       unblockUser,
       muteUser,
       unmuteUser,
+      followingIds,
       getUserById,
+      getUserByHandle,
       updateGameList,
       refreshFeed,
       markNotificationsAsRead,

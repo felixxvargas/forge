@@ -14,16 +14,17 @@ export type Platform =
   | 'ubisoft'
   | 'rockstar';
 
-export type SocialPlatform = 
-  | 'bluesky' 
-  | 'tumblr' 
-  | 'x' 
-  | 'tiktok' 
-  | 'instagram' 
-  | 'threads' 
-  | 'rednote' 
+export type SocialPlatform =
+  | 'bluesky'
+  | 'tumblr'
+  | 'x'
+  | 'tiktok'
+  | 'instagram'
+  | 'threads'
+  | 'rednote'
   | 'upscrolled'
-  | 'discord';
+  | 'discord'
+  | 'mastodon';
 
 export type GameListType = 
   | 'recently-played' 

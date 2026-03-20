@@ -49,21 +49,29 @@ export function EditGameListsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-xl font-semibold">Edit {listTitles[listType]}</h2>
-          <button 
+    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0">
+        <div className="flex items-center gap-3">
+          <button
             onClick={onClose}
             className="p-2 hover:bg-secondary rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
+          <h2 className="text-xl font-semibold">Edit {listTitles[listType]}</h2>
         </div>
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
+        >
+          Save
+        </button>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto">
+      {/* Content */}
+      <div className="p-4 space-y-4 max-w-2xl mx-auto w-full">
           {/* Current Games */}
           {selectedGames.length > 0 && (
             <div>
@@ -149,21 +157,7 @@ export function EditGameListsModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 p-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
-          >
-            Save Changes
-          </button>
-        </div>
+      </div>
       </div>
     </div>
   );

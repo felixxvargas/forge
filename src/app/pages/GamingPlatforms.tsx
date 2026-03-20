@@ -21,7 +21,7 @@ export function GamingPlatforms() {
 
   const handleSave = () => {
     updateCurrentUser({ platforms: selectedPlatforms });
-    navigate('/settings');
+    navigate('/edit-profile');
   };
 
   return (
@@ -31,7 +31,7 @@ export function GamingPlatforms() {
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate('/edit-profile')}
               className="p-2 hover:bg-secondary rounded-full transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
