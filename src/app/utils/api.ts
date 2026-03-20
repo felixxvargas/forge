@@ -307,57 +307,53 @@ export const uploadAPI = {
     }
     
     const resolvedBucket = BUCKET_NAMES[bucketType] ?? bucketType;
-    console.log('[Upload] Starting upload for file:', file.name, file.size, 'bytes', 'to bucket:', resolvedBucket);
+    const userId = localStorage.getItem('forge-user-id') || 'unknown';
+    const ext = file.name.split('.').pop() || 'bin';
+    const timestamp = Date.now();
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('bucket', resolvedBucket);
-    
+    // Build a per-bucket path
+    let storagePath: string;
+    if (bucketType === 'avatar') {
+      storagePath = `avatars/${userId}.${ext}`;
+    } else if (bucketType === 'banner') {
+      storagePath = `banners/${userId}.${ext}`;
+    } else {
+      storagePath = `${bucketType}/${userId}/${timestamp}-${file.name}`;
+    }
+
+    console.log('[Upload] Uploading directly to Supabase Storage:', resolvedBucket, storagePath);
+
+    // Upload directly to the Supabase Storage REST API — bypasses the edge
+    // function (which was hanging) while still authenticating with the user JWT.
+    const storageUrl = `https://${projectId}.supabase.co/storage/v1/object/${resolvedBucket}/${storagePath}`;
+
     try {
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(storageUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true',
         },
-        body: formData
+        body: file,
       });
-      
+
       console.log('[Upload] Response status:', response.status);
-      
+
       if (!response.ok) {
-        let errorMessage = 'Upload failed';
-        
-        try {
-          const error = await response.json();
-          console.error('[Upload] Server error response:', error);
-          errorMessage = error.error || error.message || errorMessage;
-        } catch (parseError) {
-          console.error('[Upload] Could not parse error response');
-        }
-        
-        // Provide more specific error messages based on status
-        if (response.status === 401) {
-          errorMessage = 'Your session expired. Please sign out and sign in again.';
-        } else if (response.status === 403) {
-          errorMessage = 'You do not have permission to upload files.';
-        } else if (response.status === 413) {
-          errorMessage = 'File is too large. Please choose a smaller file.';
-        } else if (response.status >= 500) {
-          errorMessage = 'Server error. Please try again in a moment.';
-        }
-        
-        throw new Error(errorMessage);
+        const error = await response.json().catch(() => ({}));
+        console.error('[Upload] Storage error:', error);
+        if (response.status === 401) throw new Error('Your session expired. Please sign out and sign in again.');
+        if (response.status === 403) throw new Error('You do not have permission to upload files.');
+        if (response.status === 413) throw new Error('File is too large. Please choose a smaller file.');
+        throw new Error(error.message || error.error || 'Upload failed');
       }
-      
-      const result = await response.json();
-      console.log('[Upload] Response body:', JSON.stringify(result));
-      console.log('[Upload] Upload successful — url field:', result.url);
-      return result;
+
+      const publicUrl = `https://${projectId}.supabase.co/storage/v1/object/public/${resolvedBucket}/${storagePath}`;
+      console.log('[Upload] Upload successful, url:', publicUrl);
+      return { url: publicUrl };
     } catch (error: any) {
-      console.error('[Upload] Upload error (type:', typeof error, '):', error?.message ?? error);
-      if (error?.name === 'TypeError' && error?.message?.includes('fetch')) {
-        console.error('[Upload] Likely CORS or network error — check edge function CORS config');
-      }
+      console.error('[Upload] Upload error:', error?.message ?? error);
       throw error;
     }
   }
