@@ -158,7 +158,6 @@ export function EditGameListsModal({
         </div>
 
       </div>
-      </div>
     </div>
   );
 }
