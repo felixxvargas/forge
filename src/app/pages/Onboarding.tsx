@@ -8,7 +8,9 @@ import { FollowScreen } from '../components/onboarding/FollowScreen';
 import { UsernameScreen } from '../components/onboarding/UsernameScreen';
 import { topicAccounts } from '../data/data';
 import { authAPI, userAPI, postAPI } from '../utils/api';
+import { profiles } from '../utils/supabase';
 import type { User } from '../data/data';
+import type { Interest } from '../components/onboarding/InterestsScreen';
 
 type OnboardingStep = 'splash' | 'interests' | 'follow' | 'username';
 
@@ -17,7 +19,7 @@ export function Onboarding() {
   const [searchParams] = useSearchParams();
   const startStep = searchParams.get('step') as OnboardingStep | null;
   const [step, setStep] = useState<OnboardingStep>(startStep || 'splash');
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedInterests, setSelectedInterests] = useState<Interest[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
 
@@ -73,7 +75,7 @@ export function Onboarding() {
     setStep('interests');
   };
 
-  const handleInterestsComplete = async (interests: string[]) => {
+  const handleInterestsComplete = async (interests: Interest[]) => {
     setSelectedInterests(interests);
     
     // If coming from settings (step param), save interests and go back
@@ -81,9 +83,7 @@ export function Onboarding() {
       try {
         const userId = localStorage.getItem('forge-user-id');
         if (userId) {
-          await userAPI.updateUser(userId, {
-            interests: interests
-          });
+          await profiles.update(userId, { interests });
         }
         navigate('/settings');
       } catch (error) {
@@ -119,10 +119,7 @@ export function Onboarding() {
 
         // Update user profile with interests
         if (result.user?.id) {
-          await userAPI.updateUser(result.user.id, {
-            interests: selectedInterests,
-            following
-          });
+          await profiles.update(result.user.id, { interests: selectedInterests });
 
           // Clean up signup credentials
           localStorage.removeItem('forge-signup-email');
@@ -157,12 +154,11 @@ export function Onboarding() {
         }
 
         // Update profile with onboarding data
-        await userAPI.updateUser(userId, {
+        await profiles.update(userId, {
           handle: username,
-          displayName,
+          display_name: displayName,
           pronouns,
           interests: selectedInterests,
-          following
         });
         
         console.log('[Onboarding] Profile updated successfully');

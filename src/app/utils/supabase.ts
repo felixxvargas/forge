@@ -55,6 +55,16 @@ export const auth = {
 // PROFILES
 // ============================================================
 export const profiles = {
+  async getAll(limit = 100) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .not('handle', 'is', null)
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
   async getById(id: string) {
     const { data, error } = await supabase
       .from('profiles')

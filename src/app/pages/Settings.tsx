@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const { currentUser } = useAppData();
+  const { currentUser, session } = useAppData();
   const navigate = useNavigate();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [toastNotificationsEnabled, setToastNotificationsEnabled] = useState(() => {
@@ -51,8 +51,7 @@ export function Settings() {
     setShowChangePassword(false);
   };
 
-  // Get email from currentUser or localStorage
-  const userEmail = currentUser.email || localStorage.getItem('forge-user-email') || 'Not available';
+  const userEmail = session?.user?.email || currentUser?.email || 'Not available';
 
   return (
     <div className="min-h-screen pb-20">

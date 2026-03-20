@@ -254,7 +254,7 @@ export function EditProfile() {
               {formData.profilePicture && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="text-sm text-red-500 hover:text-red-400 transition-colors flex items-center gap-1"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                 >
                   <Trash2 className="w-4 h-4" />
                   Remove Profile Picture

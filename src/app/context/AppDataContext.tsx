@@ -108,8 +108,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const refreshFeed = useCallback(async () => {
     try {
-      const feed = await postsAPI.getFeed(50);
+      const [feed, allUsers] = await Promise.all([
+        postsAPI.getFeed(50),
+        profiles.getAll(),
+      ]);
       setPostList(feed);
+      setUsers(allUsers.map(normalizeProfile));
     } catch (e) {
       console.error('Error loading feed:', e);
     }
