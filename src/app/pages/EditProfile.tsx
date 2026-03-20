@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import type { User, Platform, SocialPlatform } from '../data/mockData';
 import { mockCommunities } from '../data/mockData';
 import { useAppData } from '../context/AppDataContext';
+import { userAPI } from '../utils/api';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { ConfirmationModal } from '../components/ConfirmationModal';
@@ -39,20 +40,33 @@ export function EditProfile() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Update the Supabase profiles table (only columns that exist there)
       await updateCurrentUser({
         display_name: formData.displayName,
         pronouns: formData.pronouns,
         bio: formData.bio,
         about: formData.about,
         profile_picture: formData.profilePicture,
-        platforms: formData.platforms,
-        platform_handles: formData.platformHandles,
-        show_platform_handles: formData.showPlatformHandles,
-        social_platforms: formData.socialPlatforms,
-        social_handles: formData.socialHandles,
-        show_social_handles: formData.showSocialHandles,
-        displayed_communities: formData.displayedCommunities,
       });
+
+      // Update extended fields in the KV store via edge function (camelCase)
+      if (currentUser?.id) {
+        await userAPI.updateUser(currentUser.id, {
+          displayName: formData.displayName,
+          pronouns: formData.pronouns,
+          bio: formData.bio,
+          about: formData.about,
+          profilePicture: formData.profilePicture,
+          platforms: formData.platforms,
+          platformHandles: formData.platformHandles,
+          showPlatformHandles: formData.showPlatformHandles,
+          socialPlatforms: formData.socialPlatforms,
+          socialHandles: formData.socialHandles,
+          showSocialHandles: formData.showSocialHandles,
+          displayedCommunities: formData.displayedCommunities,
+        });
+      }
+
       navigate('/profile');
     } catch (error) {
       console.error('Error saving profile:', error);
