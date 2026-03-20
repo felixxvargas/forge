@@ -201,28 +201,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!session?.user) return;
     await postsAPI.like(session.user.id, postId);
     setLikedPosts(prev => new Set([...prev, postId]));
-    setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: p.like_count + 1 } : p));
+    setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: (p.like_count ?? 0) + 1 } : p));
   };
 
   const unlikePost = async (postId: string) => {
     if (!session?.user) return;
     await postsAPI.unlike(session.user.id, postId);
     setLikedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
-    setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: Math.max(0, p.like_count - 1) } : p));
+    setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: Math.max(0, (p.like_count ?? 0) - 1) } : p));
   };
 
   const repostPost = async (postId: string) => {
     if (!session?.user) return;
     await postsAPI.repost(session.user.id, postId);
     setRepostedPosts(prev => new Set([...prev, postId]));
-    setPostList(prev => prev.map(p => p.id === postId ? { ...p, repost_count: p.repost_count + 1 } : p));
+    setPostList(prev => prev.map(p => p.id === postId ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p));
   };
 
   const unrepostPost = async (postId: string) => {
     if (!session?.user) return;
     await postsAPI.unrepost(session.user.id, postId);
     setRepostedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
-    setPostList(prev => prev.map(p => p.id === postId ? { ...p, repost_count: Math.max(0, p.repost_count - 1) } : p));
+    setPostList(prev => prev.map(p => p.id === postId ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p));
   };
 
   const followUser = async (userId: string) => {

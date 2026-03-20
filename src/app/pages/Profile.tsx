@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
@@ -17,7 +17,14 @@ import type { User, SocialPlatform, GameListType } from '../data/data';
 import { communities } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { userAPI, followAPI } from '../utils/api';
+import { profiles as profilesAPI, posts as postsAPI } from '../utils/supabase';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 // Helper component to linkify mentions
 function LinkifyMentions({ text }: { text: string }) {
@@ -49,7 +56,7 @@ const BIO_MAX_LENGTH = 150;
 export function Profile() {
   const navigate = useNavigate();
   const { userId } = useParams();
-  const { currentUser, updateGameList, posts, deletePost, likePost, unlikePost, likedPosts, getUserById } = useAppData();
+  const { currentUser, updateGameList, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers } = useAppData();
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
@@ -57,6 +64,8 @@ export function Profile() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [profileUserPosts, setProfileUserPosts] = useState<any[]>([]);
 
   // Scroll to top when viewing a new profile
   useEffect(() => {
@@ -69,10 +78,22 @@ export function Profile() {
 
   // Fetch Bluesky data for Topic accounts (if applicable)
   const blueskyData = useBlueskyData(profileUser || currentUser);
-  
+
   // Use Bluesky avatar if available for Topic accounts
   const profilePicture = blueskyData.avatar || profileUser?.profile_picture || undefined;
   const bannerImage = blueskyData.banner || profileUser?.bannerImage;
+
+  // Check persistent follow state from DB when viewing another user
+  useEffect(() => {
+    if (isOwnProfile || !currentUser?.id || !profileUser?.id) return;
+    profilesAPI.isFollowing(currentUser.id, profileUser.id).then(setIsFollowing);
+  }, [isOwnProfile, currentUser?.id, profileUser?.id]);
+
+  // Load the profile user's posts directly from Supabase
+  useEffect(() => {
+    if (!profileUser?.id) return;
+    postsAPI.getByUser(profileUser.id).then(setProfileUserPosts).catch(() => setProfileUserPosts([]));
+  }, [profileUser?.id]);
 
   // If own profile but currentUser hasn't loaded, wait
   if (!profileUser) {
@@ -117,17 +138,25 @@ export function Profile() {
     updateGameList(editGameListModal.listType, games);
   };
 
-  // Get user's posts
-  const userPosts = posts.filter(post => post.user_id === profileUser?.id);
-  
-  // Get liked posts
+  // Get liked posts from the feed (what we have in context)
   const likedPostsList = posts.filter(post => likedPosts.has(post.id));
+
+  const isBlocked = blockedUsers.has(profileUser?.id || '');
+  const isMuted = mutedUsers.has(profileUser?.id || '');
 
   const handleLikeToggle = (postId: string) => {
     if (likedPosts.has(postId)) {
       unlikePost(postId);
     } else {
       likePost(postId);
+    }
+  };
+
+  const handleRepostToggle = (postId: string) => {
+    if (repostedPosts.has(postId)) {
+      unrepostPost(postId);
+    } else {
+      repostPost(postId);
     }
   };
 
@@ -164,12 +193,50 @@ export function Profile() {
                 <ArrowLeft className="w-5 h-5" />
                 <span>Back</span>
               </button>
-              <FollowButton
-                userId={profileUser.id}
-                initialFollowingState={profileUser.isFollowing || false}
-                size="md"
-                variant="default"
-              />
+              <div className="flex items-center gap-2">
+                <FollowButton
+                  userId={profileUser.id}
+                  initialFollowingState={isFollowing}
+                  onFollowChange={setIsFollowing}
+                  size="md"
+                  variant="default"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
+                      <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {isMuted ? (
+                      <DropdownMenuItem onClick={() => unmuteUser(profileUser.id)}>
+                        <Bell className="w-4 h-4 mr-2" />
+                        Unmute @{(profileUser.handle || '').replace(/^@/, '')}
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={() => muteUser(profileUser.id)}>
+                        <BellOff className="w-4 h-4 mr-2" />
+                        Mute @{(profileUser.handle || '').replace(/^@/, '')}
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    {isBlocked ? (
+                      <DropdownMenuItem onClick={() => unblockUser(profileUser.id)}>
+                        <UserCheck className="w-4 h-4 mr-2" />
+                        Unblock @{(profileUser.handle || '').replace(/^@/, '')}
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => blockUser(profileUser.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Block @{(profileUser.handle || '').replace(/^@/, '')}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           )}
           
@@ -428,26 +495,30 @@ export function Profile() {
 
         {activeTab === 'posts' && (
           <div className="px-4">
-            {userPosts.length > 0 ? (
-              userPosts.map(post => (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
-                  user={profileUser}
+            {profileUserPosts.length > 0 ? (
+              profileUserPosts.map(post => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  user={post.author || profileUser}
                   onLike={handleLikeToggle}
-                  onDelete={deletePost}
-                  showDelete={true}
+                  onDelete={isOwnProfile ? deletePost : undefined}
+                  showDelete={isOwnProfile}
+                  isLiked={likedPosts.has(post.id)}
+                  isReposted={repostedPosts.has(post.id)}
                 />
               ))
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No posts yet</p>
-                <button
-                  onClick={() => navigate('/new-post')}
-                  className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
-                >
-                  Create Your First Post
-                </button>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => navigate('/new-post')}
+                    className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
+                  >
+                    Create Your First Post
+                  </button>
+                )}
               </div>
             )}
           </div>

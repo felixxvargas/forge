@@ -152,7 +152,7 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
                     <LinkIcon className="w-5 h-5 text-accent" />
                   )}
                 </div>
-                <div className="flex-1 text-left">
+                <div className="flex-1 text-left min-w-0 overflow-hidden">
                   <p className="font-medium">{copied ? 'Link copied!' : 'Copy link'}</p>
                   <p className="text-xs text-muted-foreground truncate">{url}</p>
                 </div>
