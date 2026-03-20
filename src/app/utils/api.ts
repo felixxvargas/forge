@@ -8,6 +8,60 @@ interface RequestOptions {
   requiresAuth?: boolean;
 }
 
+// Decode a JWT and return true if its exp is in the past
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now();
+  } catch {
+    return false;
+  }
+}
+
+// Exchange a refresh token for a fresh access token via the Supabase Auth REST API
+async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://${projectId}.supabase.co/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': publicAnonKey,
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.access_token) {
+      localStorage.setItem('forge-access-token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('forge-refresh-token', data.refresh_token);
+      }
+      return data.access_token;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Returns a valid (non-expired) access token, refreshing silently if needed
+async function getValidToken(): Promise<string | null> {
+  let token = localStorage.getItem('forge-access-token');
+  if (!token) return null;
+  if (isTokenExpired(token)) {
+    const refreshToken = localStorage.getItem('forge-refresh-token');
+    if (refreshToken) {
+      token = await refreshAccessToken(refreshToken);
+    } else {
+      return null;
+    }
+  }
+  return token;
+}
+
 // User-friendly error messages
 function getUserFriendlyError(error: any, status?: number): string {
   // Check for network errors
@@ -125,6 +179,9 @@ export const authAPI = {
     if (data.session?.access_token) {
       console.log('[authAPI.signup] Storing access token in localStorage');
       localStorage.setItem('forge-access-token', data.session.access_token);
+      if (data.session.refresh_token) {
+        localStorage.setItem('forge-refresh-token', data.session.refresh_token);
+      }
       localStorage.setItem('forge-user-id', data.user.id);
       localStorage.setItem('forge-logged-in', 'true');
       
@@ -158,9 +215,12 @@ export const authAPI = {
     if (data.session?.access_token) {
       console.log('[authAPI.signin] Storing access token in localStorage');
       localStorage.setItem('forge-access-token', data.session.access_token);
+      if (data.session.refresh_token) {
+        localStorage.setItem('forge-refresh-token', data.session.refresh_token);
+      }
       localStorage.setItem('forge-user-id', data.user.id);
       localStorage.setItem('forge-logged-in', 'true');
-      
+
       // Verify it was stored
       const storedToken = localStorage.getItem('forge-access-token');
       console.log('[authAPI.signin] Token storage verified:', !!storedToken);
@@ -177,6 +237,7 @@ export const authAPI = {
   
   signout() {
     localStorage.removeItem('forge-access-token');
+    localStorage.removeItem('forge-refresh-token');
     localStorage.removeItem('forge-user-id');
     localStorage.removeItem('forge-logged-in');
     localStorage.removeItem('forge-onboarding-complete');
@@ -273,36 +334,10 @@ const BUCKET_NAMES: Record<string, string> = {
 // Upload API
 export const uploadAPI = {
   async uploadFile(file: File, bucketType: 'avatar' | 'banner' | 'post' | 'community-icon' | 'community-banner' = 'avatar') {
-    let token = localStorage.getItem('forge-access-token');
-    
-    // If no token in localStorage, try to get from Supabase session
+    // getValidToken() refreshes silently if the stored token has expired
+    const token = await getValidToken();
+
     if (!token) {
-      console.log('[Upload] No token in localStorage, checking for active Supabase session...');
-      try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const { projectId, publicAnonKey } = await import('/utils/supabase/info');
-        const supabase = createClient(
-          `https://${projectId}.supabase.co`,
-          publicAnonKey
-        );
-        
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          console.log('[Upload] Found active Supabase session, using access token');
-          token = session.access_token;
-          // Store it for future use
-          localStorage.setItem('forge-access-token', token);
-          localStorage.setItem('forge-user-id', session.user.id);
-        } else {
-          console.error('[Upload] No active Supabase session found', error);
-        }
-      } catch (err) {
-        console.error('[Upload] Error checking Supabase session:', err);
-      }
-    }
-    
-    if (!token) {
-      console.error('[Upload] No access token found after all checks');
       throw new Error('You need to sign in to upload files.');
     }
     
