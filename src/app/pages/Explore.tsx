@@ -103,6 +103,7 @@ export function Explore() {
     ...topicPosts,
     ...posts.filter(p => p.author?.account_type === 'topic' || p.platform === 'bluesky' || p.platform === 'mastodon'),
   ].filter(post => {
+    if (!post.content?.trim()) return false;
     if (seenPostIds.has(post.id)) return false;
     seenPostIds.add(post.id);
     const uid = post.user_id || post.userId || '';

@@ -48,6 +48,9 @@ export function Feed() {
 
   // Filter posts based on selected community, filtered social platforms, and blocked/muted users
   const filteredPosts = posts.filter(post => {
+    // Filter out posts with no content
+    if (!post.content?.trim()) return false;
+
     // Filter out blocked users completely
     if (blockedUsers.has(post.user_id)) {
       return false;

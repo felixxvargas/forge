@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2 } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -66,13 +66,10 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
     }
   };
 
+  const sourceUrl = post.external_url || post.externalUrl;
+
   const handlePostClick = () => {
     if (isDetailView) return;
-    // External posts (Bluesky/Mastodon) open in a new tab
-    if (post.externalUrl) {
-      window.open(post.externalUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
     navigate(`/post/${post.id}`);
   };
 
@@ -195,11 +192,16 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
               {user.handle}
             </button>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
             <span>{formatTimeAgo(post.created_at || post.timestamp)}</span>
             {post.platform && post.platform !== 'forge' && (
-              <span className="text-xs text-muted-foreground capitalize">
-                via {post.platform === 'x' ? 'X' : post.platform}
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+                post.platform === 'bluesky' ? 'bg-sky-500/15 text-sky-400' :
+                post.platform === 'mastodon' ? 'bg-purple-500/15 text-purple-400' :
+                'bg-secondary text-muted-foreground'
+              }`}>
+                {post.platform === 'bluesky' ? '🦋' : post.platform === 'mastodon' ? '🐘' : ''}
+                {' '}via {post.platform === 'bluesky' ? 'Bluesky' : post.platform === 'mastodon' ? 'Mastodon' : post.platform}
               </span>
             )}
           </div>
@@ -299,19 +301,27 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
         </div>
       )}
 
-      {/* View on Bluesky/Mastodon link */}
-      {post.externalUrl && (
-        <div className="mb-3">
-          <a
-            href={post.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-xs text-muted-foreground hover:text-accent transition-colors underline"
-          >
-            View on {post.platform === 'mastodon' ? 'Mastodon' : 'Bluesky'} ↗
-          </a>
-        </div>
+      {/* Source link card for third-party posts */}
+      {sourceUrl && (
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className={`mb-3 flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors text-sm ${
+            post.platform === 'bluesky'
+              ? 'border-sky-500/30 bg-sky-500/5 hover:bg-sky-500/10 text-sky-400'
+              : post.platform === 'mastodon'
+              ? 'border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-purple-400'
+              : 'border-border bg-secondary/50 hover:bg-secondary text-muted-foreground'
+          }`}
+        >
+          <span className="text-base">{post.platform === 'bluesky' ? '🦋' : post.platform === 'mastodon' ? '🐘' : '🔗'}</span>
+          <span className="flex-1 font-medium">
+            View original on {post.platform === 'bluesky' ? 'Bluesky' : post.platform === 'mastodon' ? 'Mastodon' : 'source'}
+          </span>
+          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+        </a>
       )}
 
       {/* Actions */}
@@ -346,8 +356,6 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
             e.stopPropagation();
             if (isDetailView) {
               onComment?.(post.id);
-            } else if (post.externalUrl) {
-              window.open(post.externalUrl, '_blank', 'noopener,noreferrer');
             } else {
               navigate(`/post/${post.id}#comments`);
             }

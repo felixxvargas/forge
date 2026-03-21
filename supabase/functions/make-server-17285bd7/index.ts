@@ -2449,6 +2449,16 @@ app.post('/make-server-17285bd7/seed/bluesky-posts', async (c) => {
           continue;
         }
 
+        // Fetch Bluesky profile to get avatar and update profile_picture
+        const profileApiUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(bskyHandle)}`;
+        const profileApiRes = await fetch(profileApiUrl);
+        if (profileApiRes.ok) {
+          const profileApiData = await profileApiRes.json();
+          if (profileApiData.avatar) {
+            await supabase.from('profiles').update({ profile_picture: profileApiData.avatar }).eq('id', profileId);
+          }
+        }
+
         // Fetch posts from Bluesky public API
         const feedUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(bskyHandle)}&limit=20`;
         const feedRes = await fetch(feedUrl);
@@ -2473,7 +2483,15 @@ app.post('/make-server-17285bd7/seed/bluesky-posts', async (c) => {
           if (!record) { skipped++; continue; }
 
           const text: string = record.text ?? '';
+          // Skip posts with no text content
+          if (!text.trim()) { skipped++; continue; }
+
           const createdAt: string = record.createdAt ?? new Date().toISOString();
+
+          // Build external URL: https://bsky.app/profile/{handle}/post/{rkey}
+          const postUri: string = item.post?.uri ?? '';
+          const rkey = postUri.split('/').pop();
+          const externalUrl = rkey ? `https://bsky.app/profile/${bskyHandle}/post/${rkey}` : null;
 
           // Extract images from both embed shapes
           const embed = item.post?.embed;
@@ -2498,6 +2516,7 @@ app.post('/make-server-17285bd7/seed/bluesky-posts', async (c) => {
               created_at: createdAt,
               platform: 'bluesky',
               images: images.length > 0 ? images : null,
+              external_url: externalUrl,
             });
 
           if (!insertError) {

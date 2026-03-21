@@ -114,7 +114,8 @@ export interface Post {
   imageAlts?: string[]; // Alt text for images (same order as images array)
   video?: string; // Video URL for video posts
   url?: string; // URL for link previews
-  externalUrl?: string; // Link back to original post on Bluesky/Mastodon
+  externalUrl?: string; // Link back to original post on Bluesky/Mastodon (camelCase, legacy)
+  external_url?: string; // Link back to original post on Bluesky/Mastodon (snake_case, from DB)
   game_id?: string;
   game_title?: string;
   // Supabase snake_case aliases

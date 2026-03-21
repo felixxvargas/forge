@@ -175,23 +175,26 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
 }
 
 // Topic accounts and their Bluesky handles
+// Keyed by both old user-xxx IDs and Supabase profile handle slugs
 export const topicAccountBlueskyHandles: Record<string, string> = {
-  'user-ign': 'ign.com',
-  'user-gamespot': 'gamespot.bsky.social',
+  // Old ID-based keys (legacy)
+  'user-ign': 'ign.bsky.social',
+  'user-gamespot': 'gamespot.com',
   'user-polygon': 'polygon.bsky.social',
-  'user-kotaku': 'kotaku.bsky.social',
+  'user-kotaku': 'kotaku.com',
   'user-eurogamer': 'eurogamer.bsky.social',
   'user-nintendolife': 'nintendolife.com',
   'user-pcgamer': 'pcgamer.bsky.social',
   'user-destructoid': 'destructoid.bsky.social',
   'user-rockpapershotgun': 'rockpapershotgun.bsky.social',
   'user-massivelyop': 'massivelyop.bsky.social',
-  'user-theverge': 'theverge.com',
-  'user-xbox': 'xbox.com',
-  'user-playstation': 'playstation.com',
-  'user-nintendo': 'nintendo.com',
-  'user-steam': 'steampowered.com',
-  'user-epicgames': 'epicgames.com'
+  // Handle-slug keys (matches Supabase profile handles)
+  'ign': 'ign.bsky.social',
+  'gamespot': 'gamespot.com',
+  'kotaku': 'kotaku.com',
+  'eurogamer': 'eurogamer.bsky.social',
+  'rockpapershotgun': 'rockpapershotgun.bsky.social',
+  'massivelyop': 'massivelyop.bsky.social',
 };
 
 export function getBlueskyHandleForUser(userId: string): string | undefined {
