@@ -46,6 +46,27 @@ export async function getGame(gameId: string) {
 }
 
 /**
+ * List games (popular first, ordered by ID which reflects IGDB rating order)
+ */
+export async function listGames(limit = 50, offset = 0) {
+  const { data, error } = await supabase
+    .from('forge_games_17285bd7')
+    .select(`
+      *,
+      artwork:forge_game_artwork_17285bd7(*)
+    `)
+    .order('id')
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error listing games:', error);
+    throw new Error(`Failed to list games: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
  * Search games by title
  */
 export async function searchGames(query: string, limit = 20) {

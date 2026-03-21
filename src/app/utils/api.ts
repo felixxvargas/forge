@@ -518,12 +518,16 @@ export const blueskyAPI = {
 
 // Games API
 export const gamesAPI = {
+  async listGames(limit = 50, offset = 0) {
+    return apiRequest(`/games?limit=${limit}&offset=${offset}`);
+  },
+
   async getGame(gameId: string) {
     return apiRequest(`/games/${gameId}`);
   },
-  
+
   async searchGames(query: string, limit = 20) {
-    return apiRequest(`/games/search/${query}?limit=${limit}`);
+    return apiRequest(`/games/search/${encodeURIComponent(query)}?limit=${limit}`);
   },
   
   async getGames(gameIds: string[]) {

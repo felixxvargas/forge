@@ -1647,6 +1647,19 @@ app.get("/make-server-17285bd7/games/:gameId", async (c) => {
   }
 });
 
+// List games (popular)
+app.get("/make-server-17285bd7/games", async (c) => {
+  try {
+    const limit = parseInt(c.req.query('limit') || '50');
+    const offset = parseInt(c.req.query('offset') || '0');
+    const games = await gamesAPI.listGames(limit, offset);
+    return c.json({ games });
+  } catch (error) {
+    console.error('Error listing games:', error);
+    return c.json({ error: 'Failed to list games' }, 500);
+  }
+});
+
 // Search games
 app.get("/make-server-17285bd7/games/search/:query", async (c) => {
   try {

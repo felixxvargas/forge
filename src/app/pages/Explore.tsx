@@ -5,8 +5,9 @@ import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
-import { sampleGames, type User, type Community } from '../data/data';
+import { type User, type Community } from '../data/data';
 import { posts as postsAPI } from '../utils/supabase';
+import { gamesAPI } from '../utils/api';
 
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 
@@ -25,6 +26,8 @@ export function Explore() {
   const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [hideSearchBar, setHideSearchBar] = useState(false);
+  const [dbGames, setDbGames] = useState<any[]>([]);
+  const [loadingGames, setLoadingGames] = useState(false);
   const navigate = useNavigate();
 
   // Save active tab to localStorage whenever it changes
@@ -55,6 +58,23 @@ export function Explore() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeTab]);
+
+  // Fetch games from DB
+  useEffect(() => {
+    if (activeTab !== 'games') return;
+    if (dbGames.length > 0 && !searchQuery) return; // already loaded
+    setLoadingGames(true);
+    const load = searchQuery
+      ? gamesAPI.searchGames(searchQuery, 100)
+      : gamesAPI.listGames(100, 0);
+    load
+      .then((res: any) => {
+        const list = Array.isArray(res) ? res : res?.games ?? [];
+        setDbGames(list);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingGames(false));
+  }, [activeTab, searchQuery]);
 
   // Fetch topic account posts from Supabase
   useEffect(() => {
@@ -138,14 +158,13 @@ export function Explore() {
     );
   });
 
-  // Filter games based on search
-  const filteredGames = sampleGames.filter(game => {
+  // Filter games from DB (search is handled server-side; client-side filter as fallback)
+  const filteredGames = dbGames.filter(game => {
     if (!searchQuery) return true;
-    
     const query = searchQuery.toLowerCase();
     return (
-      game.title.toLowerCase().includes(query) ||
-      (game.genres && game.genres.some(genre => genre.toLowerCase().includes(query)))
+      (game.title || '').toLowerCase().includes(query) ||
+      (game.genres && game.genres.some((g: string) => g.toLowerCase().includes(query)))
     );
   });
 
@@ -303,31 +322,45 @@ export function Explore() {
 
         {activeTab === 'games' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filteredGames.length === 0 ? (
+            {loadingGames ? (
+              <div className="col-span-full text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                <p className="mt-4 text-gray-400">Loading games...</p>
+              </div>
+            ) : filteredGames.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-500">
                 <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No games found</p>
               </div>
             ) : (
-              filteredGames.map(game => (
-                <div
-                  key={game.id}
-                  className="group cursor-pointer"
-                  onClick={() => navigate(`/game/${game.id}`)}
-                >
-                  <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-gray-900">
-                    <img
-                      src={game.coverArt}
-                      alt={game.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+              filteredGames.map(game => {
+                const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url;
+                return (
+                  <div
+                    key={game.id}
+                    className="group cursor-pointer"
+                    onClick={() => navigate(`/game/${game.id}`)}
+                  >
+                    <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-gray-900">
+                      {coverArt ? (
+                        <img
+                          src={coverArt}
+                          alt={game.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Gamepad2 className="w-8 h-8 text-gray-700" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
+                      {game.title}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">{game.year}</p>
                   </div>
-                  <h3 className="text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
-                    {game.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">{game.year}</p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
