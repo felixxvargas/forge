@@ -1,23 +1,38 @@
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound } from 'lucide-react';
+import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect } from 'react';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const { currentUser, session } = useAppData();
+  const { currentUser, session, updateCurrentUser } = useAppData();
   const navigate = useNavigate();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [toastNotificationsEnabled, setToastNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('forge-toast-notifications');
     return saved !== 'false'; // Default to true
   });
+  const [allowDMs, setAllowDMs] = useState<boolean>(currentUser?.allow_dms !== false);
+
+  useEffect(() => {
+    setAllowDMs(currentUser?.allow_dms !== false);
+  }, [currentUser?.allow_dms]);
 
   useEffect(() => {
     localStorage.setItem('forge-toast-notifications', String(toastNotificationsEnabled));
   }, [toastNotificationsEnabled]);
+
+  const handleToggleAllowDMs = async () => {
+    const next = !allowDMs;
+    setAllowDMs(next);
+    try {
+      await updateCurrentUser({ allow_dms: next });
+    } catch {
+      setAllowDMs(!next); // revert on failure
+    }
+  };
 
   const handleSetInterests = () => {
     navigate('/onboarding?step=interests');
@@ -141,6 +156,21 @@ export function Settings() {
                 <p className="text-sm text-muted-foreground">
                   Control which social media posts you see
                 </p>
+              </div>
+            </button>
+            <button
+              onClick={handleToggleAllowDMs}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <MessageCircle className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Direct Messages</p>
+                <p className="text-sm text-muted-foreground">
+                  {allowDMs ? 'Anyone can message you' : 'Only you can start DMs'}
+                </p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${allowDMs ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${allowDMs ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
             </button>
             <button

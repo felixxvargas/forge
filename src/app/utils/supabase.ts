@@ -536,6 +536,14 @@ export const communities = {
       .eq('user_id', userId)
       .maybeSingle();
     return !!data;
+  },
+
+  async updateGameIds(communityId: string, gameIds: string[]) {
+    const { error } = await supabase
+      .from('communities')
+      .update({ game_ids: gameIds })
+      .eq('id', communityId);
+    if (error) throw new Error(error.message);
   }
 };
 
@@ -644,6 +652,56 @@ export const commentsAPI = {
       .eq('id', commentId)
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
+  },
+};
+
+// ============================================================
+// DIRECT MESSAGES
+// ============================================================
+export const directMessages = {
+  /** Returns all conversation threads for a user (one row per unique partner). */
+  async getConversations(userId: string) {
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .select(`
+        *,
+        sender:profiles!sender_id(id, handle, display_name, profile_picture),
+        recipient:profiles!recipient_id(id, handle, display_name, profile_picture)
+      `)
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+
+    // Group by conversation partner, keeping only the latest message per pair
+    const seen = new Map<string, any>();
+    for (const msg of data ?? []) {
+      const partnerId = msg.sender_id === userId ? msg.recipient_id : msg.sender_id;
+      if (!seen.has(partnerId)) seen.set(partnerId, msg);
+    }
+    return Array.from(seen.values());
+  },
+
+  /** Returns all messages between two users, oldest first. */
+  async getMessages(userId: string, partnerId: string) {
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .select(`*, sender:profiles!sender_id(id, handle, display_name, profile_picture)`)
+      .or(
+        `and(sender_id.eq.${userId},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${userId})`
+      )
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
+  async send(senderId: string, recipientId: string, content: string) {
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .insert({ sender_id: senderId, recipient_id: recipientId, content })
+      .select(`*, sender:profiles!sender_id(id, handle, display_name, profile_picture)`)
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
   },
 };
 

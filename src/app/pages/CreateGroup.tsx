@@ -3,12 +3,7 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, Globe, Users, Lock } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import type { CommunityType } from '../data/data';
-
-const ICON_OPTIONS = [
-  '🎮', '🕹️', '👾', '🏆', '⚔️', '🛡️', '🧙', '🚀', '🌟', '🔥',
-  '🎯', '🎲', '🃏', '🧩', '🦸', '🤖', '🐉', '💎', '⚡', '🌈',
-  '🎪', '🏰', '🗺️', '🧭', '🔮', '🪄', '🎵', '🌌', '🌊', '🌿',
-];
+import { GAMING_ICONS, DEFAULT_ICON_KEY, GroupIcon } from '../components/GroupIcon';
 
 interface TypeOption {
   value: CommunityType;
@@ -18,24 +13,9 @@ interface TypeOption {
 }
 
 const TYPE_OPTIONS: TypeOption[] = [
-  {
-    value: 'open',
-    label: 'Open',
-    description: 'Anyone can join',
-    icon: <Globe className="w-5 h-5" />,
-  },
-  {
-    value: 'request',
-    label: 'Request to Join',
-    description: 'Members need approval',
-    icon: <Users className="w-5 h-5" />,
-  },
-  {
-    value: 'invite',
-    label: 'Invite Only',
-    description: 'Members need an invitation',
-    icon: <Lock className="w-5 h-5" />,
-  },
+  { value: 'open', label: 'Open', description: 'Anyone can join', icon: <Globe className="w-5 h-5" /> },
+  { value: 'request', label: 'Request to Join', description: 'Members need approval', icon: <Users className="w-5 h-5" /> },
+  { value: 'invite', label: 'Invite Only', description: 'Members need an invitation', icon: <Lock className="w-5 h-5" /> },
 ];
 
 export function CreateGroup() {
@@ -44,20 +24,14 @@ export function CreateGroup() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState('🎮');
+  const [icon, setIcon] = useState(DEFAULT_ICON_KEY);
   const [type, setType] = useState<CommunityType>('open');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      setError('Group name is required.');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Description is required.');
-      return;
-    }
+    if (!name.trim()) { setError('Group name is required.'); return; }
+    if (!description.trim()) { setError('Description is required.'); return; }
 
     setIsSubmitting(true);
     setError('');
@@ -73,13 +47,9 @@ export function CreateGroup() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <div className="sticky top-0 z-10 bg-background border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors"
-          >
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-xl font-semibold flex-1">Create Group</h1>
@@ -103,24 +73,29 @@ export function CreateGroup() {
         {/* Icon picker */}
         <div>
           <label className="block text-sm font-medium mb-3">Group Icon</label>
-          <div className="grid grid-cols-10 gap-2">
-            {ICON_OPTIONS.map((emoji) => (
+          <div className="grid grid-cols-9 gap-2">
+            {GAMING_ICONS.map(({ key, label, Icon }) => (
               <button
-                key={emoji}
-                onClick={() => setIcon(emoji)}
-                className={`text-2xl p-2 rounded-lg transition-colors ${
-                  icon === emoji
-                    ? 'bg-accent/20 ring-2 ring-accent'
-                    : 'hover:bg-secondary'
+                key={key}
+                onClick={() => setIcon(key)}
+                title={label}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  icon === key
+                    ? 'bg-accent/20 ring-2 ring-accent text-accent'
+                    : 'hover:bg-secondary text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {emoji}
+                <Icon className="w-5 h-5" />
               </button>
             ))}
           </div>
           <div className="mt-3 flex items-center gap-2">
-            <span className="text-4xl">{icon}</span>
-            <span className="text-sm text-muted-foreground">Selected icon</span>
+            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-accent">
+              <GroupIcon iconKey={icon} className="w-6 h-6" />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {GAMING_ICONS.find(g => g.key === icon)?.label ?? 'Selected icon'}
+            </span>
           </div>
         </div>
 

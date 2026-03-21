@@ -190,7 +190,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
               onClick={handleUserClick}
               className="text-sm text-muted-foreground hover:underline shrink-0"
             >
-              {user.handle}
+              {user.handle ? (user.handle.startsWith('@') ? user.handle : `@${user.handle}`) : ''}
             </button>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">

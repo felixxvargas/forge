@@ -3,10 +3,11 @@ import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Loc
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
+import { GroupIcon } from '../components/GroupIcon';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { type User, type Community } from '../data/data';
-import { posts as postsAPI } from '../utils/supabase';
+import { posts as postsAPI, supabase } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
@@ -28,6 +29,7 @@ export function Explore() {
   const [hideSearchBar, setHideSearchBar] = useState(false);
   const [dbGames, setDbGames] = useState<any[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
+  const [trendingCounts, setTrendingCounts] = useState<Record<string, number>>({});
   const navigate = useNavigate();
 
   // Save active tab to localStorage whenever it changes
@@ -57,6 +59,24 @@ export function Explore() {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeTab]);
+
+  // Fetch trending game counts (post tag counts per game_id)
+  useEffect(() => {
+    if (activeTab !== 'games') return;
+    supabase
+      .from('posts')
+      .select('game_id')
+      .not('game_id', 'is', null)
+      .then(({ data }) => {
+        if (!data) return;
+        const counts: Record<string, number> = {};
+        for (const row of data) {
+          if (row.game_id) counts[row.game_id] = (counts[row.game_id] ?? 0) + 1;
+        }
+        setTrendingCounts(counts);
+      })
+      .catch(() => {});
   }, [activeTab]);
 
   // Fetch games from DB
@@ -159,14 +179,22 @@ export function Explore() {
   });
 
   // Filter games from DB (search is handled server-side; client-side filter as fallback)
-  const filteredGames = dbGames.filter(game => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      (game.title || '').toLowerCase().includes(query) ||
-      (game.genres && game.genres.some((g: string) => g.toLowerCase().includes(query)))
-    );
-  });
+  // Sort by: (1) trending (post tag count desc), (2) release year desc
+  const filteredGames = dbGames
+    .filter(game => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        (game.title || '').toLowerCase().includes(query) ||
+        (game.genres && game.genres.some((g: string) => g.toLowerCase().includes(query)))
+      );
+    })
+    .sort((a, b) => {
+      const trendA = trendingCounts[a.id] ?? 0;
+      const trendB = trendingCounts[b.id] ?? 0;
+      if (trendB !== trendA) return trendB - trendA;
+      return (b.year ?? 0) - (a.year ?? 0);
+    });
 
   const handleClearSearch = () => {
     setSearchQuery('');
@@ -423,7 +451,9 @@ function CommunityCard({ community }: CommunityCardProps) {
       className="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-purple-600 transition-colors cursor-pointer"
     >
       <div className="flex items-start gap-3">
-        <div className="text-3xl flex-shrink-0">{community.icon}</div>
+        <div className="w-10 h-10 flex items-center justify-center bg-secondary rounded-full text-accent flex-shrink-0">
+          <GroupIcon iconKey={community.icon} className="w-5 h-5" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-white truncate">{community.name}</h3>
