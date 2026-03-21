@@ -53,11 +53,6 @@ export function Feed() {
       return false;
     }
 
-    // Filter by social platform preferences
-    if (post.platform && post.platform !== 'forge' && filteredSocialPlatforms.has(post.platform as any)) {
-      return false;
-    }
-
     // Filter by community
     if (selectedCommunity) {
       return post.community_id === selectedCommunity;
