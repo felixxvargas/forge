@@ -65,6 +65,8 @@ export function Profile() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [profileUserPosts, setProfileUserPosts] = useState<any[]>([]);
+  const [profileLikedPosts, setProfileLikedPosts] = useState<any[]>([]);
+  const [likesLoading, setLikesLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
@@ -105,6 +107,16 @@ export function Profile() {
       setProfileUserPosts(all);
     }).catch(() => setProfileUserPosts([]));
   }, [profileUser?.id]);
+
+  // Load profile user's liked posts when likes tab is active
+  useEffect(() => {
+    if (activeTab !== 'likes' || !profileUser?.id) return;
+    setLikesLoading(true);
+    postsAPI.getLikedPosts(profileUser.id)
+      .then(setProfileLikedPosts)
+      .catch(() => setProfileLikedPosts([]))
+      .finally(() => setLikesLoading(false));
+  }, [activeTab, profileUser?.id]);
 
   // If own profile but currentUser hasn't loaded, wait
   if (!profileUser) {
@@ -149,7 +161,7 @@ export function Profile() {
   };
 
   // Get liked posts from the feed (what we have in context)
-  const likedPostsList = posts.filter(post => likedPosts.has(post.id));
+  // likedPostsList unused — likes tab now fetches per-profile from DB
 
   const isBlocked = blockedUsers.has(profileUser?.id || '');
   const isMuted = mutedUsers.has(profileUser?.id || '');
@@ -635,17 +647,21 @@ export function Profile() {
 
         {activeTab === 'likes' && (
           <div className="px-4">
-            {likedPostsList.length > 0 ? (
-              likedPostsList.map(post => {
+            {likesLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent" />
+              </div>
+            ) : profileLikedPosts.length > 0 ? (
+              profileLikedPosts.map(post => {
                 const postUser = post.author;
                 if (!postUser) return null;
-                
                 return (
-                  <PostCard 
-                    key={post.id} 
-                    post={post} 
+                  <PostCard
+                    key={post.id}
+                    post={post}
                     user={postUser}
                     onLike={handleLikeToggle}
+                    isLiked={likedPosts.has(post.id)}
                   />
                 );
               })
@@ -658,7 +674,7 @@ export function Profile() {
         )}
 
         {activeTab === 'about' && (
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-24">
             {/* Interests Section */}
             {profileUser.interests && profileUser.interests.length > 0 && (
               <div className="mb-6">
@@ -700,18 +716,18 @@ export function Profile() {
                   <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
                     Social Accounts
                   </h3>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {selectedPlatforms.map(platform => {
                       const handle = profileUser.socialHandles?.[platform];
                       const showHandle = profileUser.showSocialHandles?.[platform];
                       return (
                         <div
                           key={platform}
-                          className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm"
                         >
-                          <span className="text-sm font-medium">{getSocialPlatformLabel(platform)}</span>
+                          <span className="font-medium">{getSocialPlatformLabel(platform)}</span>
                           {showHandle && handle && (
-                            <span className="text-sm text-muted-foreground">@{handle}</span>
+                            <span className="text-muted-foreground">· @{handle}</span>
                           )}
                         </div>
                       );

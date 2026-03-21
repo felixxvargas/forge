@@ -53,7 +53,7 @@ export async function searchGames(query: string, limit = 20) {
     .from('forge_games_17285bd7')
     .select(`
       *,
-      artwork:forge_game_artwork_17285bd7!inner(*)
+      artwork:forge_game_artwork_17285bd7(*)
     `)
     .ilike('title', `%${query}%`)
     .order('title')
@@ -307,4 +307,76 @@ export async function getOrCreateGame(gameTitle: string) {
     console.error('Error fetching from IGDB:', error);
     return null;
   }
+}
+
+/**
+ * Bulk seed games from IGDB — fetches top-rated games in batches
+ */
+export async function seedFromIGDB(offset = 0, limit = 500): Promise<{ inserted: number; skipped: number; errors: string[] }> {
+  const clientId = Deno.env.get('IGDB_CLIENT_ID');
+  if (!clientId) throw new Error('IGDB_CLIENT_ID not configured');
+
+  const accessToken = await getIGDBAccessToken();
+  const errors: string[] = [];
+  let inserted = 0;
+  let skipped = 0;
+
+  const body = `
+    fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, aggregated_rating, aggregated_rating_count;
+    where cover != null & aggregated_rating_count > 3;
+    sort aggregated_rating desc;
+    limit ${Math.min(limit, 500)};
+    offset ${offset};
+  `;
+
+  const res = await fetch('https://api.igdb.com/v4/games', {
+    method: 'POST',
+    headers: {
+      'Client-ID': clientId,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'text/plain',
+    },
+    body,
+  });
+
+  if (!res.ok) throw new Error(`IGDB error: ${res.status} ${await res.text()}`);
+  const games = await res.json() as any[];
+
+  for (const g of games) {
+    try {
+      const gameId = `igdb-${g.id}`;
+      const coverUrl = g.cover?.image_id
+        ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
+        : null;
+      const year = g.first_release_date
+        ? new Date(g.first_release_date * 1000).getFullYear()
+        : null;
+
+      const { error: upsertErr } = await supabase
+        .from('forge_games_17285bd7')
+        .upsert({
+          id: gameId,
+          title: g.name,
+          igdb_id: g.id,
+          year,
+          description: g.summary ?? null,
+          genres: g.genres?.map((x: any) => x.name) ?? [],
+          platforms: g.platforms?.map((x: any) => x.name) ?? [],
+        }, { onConflict: 'id', ignoreDuplicates: true });
+
+      if (upsertErr) { errors.push(`${g.name}: ${upsertErr.message}`); continue; }
+
+      if (coverUrl) {
+        await supabase
+          .from('forge_game_artwork_17285bd7')
+          .upsert({ game_id: gameId, artwork_type: 'cover', url: coverUrl }, { onConflict: 'game_id,artwork_type', ignoreDuplicates: true });
+      }
+      inserted++;
+    } catch (e: any) {
+      errors.push(`${g.name}: ${e.message}`);
+      skipped++;
+    }
+  }
+
+  return { inserted, skipped, errors };
 }

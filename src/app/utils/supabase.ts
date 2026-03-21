@@ -377,6 +377,16 @@ export const posts = {
     return (data ?? []).map((r: any) => r.post_id);
   },
 
+  async getLikedPosts(userId: string) {
+    const { data, error } = await supabase
+      .from('likes')
+      .select(`post_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r: any) => r.post).filter(Boolean);
+  },
+
   async repost(userId: string, postId: string) {
     const { error } = await supabase
       .from('reposts')

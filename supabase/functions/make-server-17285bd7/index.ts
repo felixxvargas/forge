@@ -1707,16 +1707,30 @@ app.post("/make-server-17285bd7/games/:gameId/artwork", async (c) => {
   try {
     const gameId = c.req.param('gameId');
     const artworkData = await c.req.json();
-    
+
     const artwork = await gamesAPI.addGameArtwork({
       game_id: gameId,
       ...artworkData
     });
-    
+
     return c.json({ artwork });
   } catch (error) {
     console.error('Error adding game artwork:', error);
     return c.json({ error: 'Failed to add artwork' }, 500);
+  }
+});
+
+// Seed games from IGDB in bulk
+app.post("/make-server-17285bd7/seed/igdb-games", async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const offset = parseInt(body.offset ?? 0);
+    const limit = parseInt(body.limit ?? 500);
+    const result = await gamesAPI.seedFromIGDB(offset, limit);
+    return c.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('IGDB seed error:', error);
+    return c.json({ success: false, error: error.message }, 500);
   }
 });
 
