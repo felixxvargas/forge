@@ -549,6 +549,10 @@ export const gamesAPI = {
       method: 'POST',
       body: artworkData
     });
+  },
+
+  async getGamePlayers(gameId: string) {
+    return apiRequest(`/games/${gameId}/players`);
   }
 };
 

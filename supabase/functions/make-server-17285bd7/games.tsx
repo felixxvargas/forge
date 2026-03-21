@@ -67,15 +67,13 @@ export async function listGames(limit = 50, offset = 0) {
 }
 
 /**
- * Search games by title
+ * Search games by title — searches local DB first, then falls through to IGDB
+ * for any titles not yet in the database (covers retro/handheld games etc.).
  */
 export async function searchGames(query: string, limit = 20) {
-  const { data, error } = await supabase
+  const { data: localData, error } = await supabase
     .from('forge_games_17285bd7')
-    .select(`
-      *,
-      artwork:forge_game_artwork_17285bd7(*)
-    `)
+    .select(`*, artwork:forge_game_artwork_17285bd7(*)`)
     .ilike('title', `%${query}%`)
     .order('title')
     .limit(limit);
@@ -85,7 +83,87 @@ export async function searchGames(query: string, limit = 20) {
     throw new Error(`Failed to search games: ${error.message}`);
   }
 
-  return data;
+  const local = localData ?? [];
+
+  // If we have enough local results, return early
+  if (local.length >= limit) return local;
+
+  // Fall through to IGDB to fill the gap
+  try {
+    const clientId = Deno.env.get('IGDB_CLIENT_ID');
+    const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET');
+    if (!clientId || !clientSecret) return local;
+
+    const accessToken = await getIGDBAccessToken();
+
+    // Fetch more results than needed so we can deduplicate
+    const igdbLimit = Math.min(limit * 2, 50);
+    const body = `
+      search "${query}";
+      fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id;
+      limit ${igdbLimit};
+    `;
+
+    const res = await fetch('https://api.igdb.com/v4/games', {
+      method: 'POST',
+      headers: {
+        'Client-ID': clientId,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'text/plain',
+      },
+      body,
+    });
+
+    if (!res.ok) return local;
+    const igdbGames = await res.json() as any[];
+
+    const localIds = new Set(local.map(g => `igdb-${(g as any).igdb_id}`));
+    const toInsert = igdbGames.filter(g => !localIds.has(`igdb-${g.id}`));
+
+    const newGames: any[] = [];
+    for (const g of toInsert) {
+      try {
+        const gameId = `igdb-${g.id}`;
+        const coverUrl = g.cover?.image_id
+          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
+          : null;
+        const year = g.first_release_date
+          ? new Date(g.first_release_date * 1000).getFullYear()
+          : null;
+
+        const { data: upserted } = await supabase
+          .from('forge_games_17285bd7')
+          .upsert({
+            id: gameId,
+            title: g.name,
+            igdb_id: g.id,
+            year,
+            description: g.summary ?? null,
+            genres: g.genres?.map((x: any) => x.name) ?? [],
+            platforms: g.platforms?.map((x: any) => x.name) ?? [],
+          }, { onConflict: 'id', ignoreDuplicates: true })
+          .select()
+          .single();
+
+        if (coverUrl && upserted) {
+          await supabase
+            .from('forge_game_artwork_17285bd7')
+            .upsert({ game_id: gameId, artwork_type: 'cover', url: coverUrl }, { onConflict: 'game_id,artwork_type', ignoreDuplicates: true });
+          newGames.push({ ...upserted, artwork: [{ artwork_type: 'cover', url: coverUrl }] });
+        } else if (upserted) {
+          newGames.push({ ...upserted, artwork: [] });
+        }
+      } catch (_e) {
+        // skip individual failures
+      }
+    }
+
+    // Merge and return up to limit
+    return [...local, ...newGames].slice(0, limit);
+  } catch (_e) {
+    // IGDB fallthrough failure — return local only
+    return local;
+  }
 }
 
 /**

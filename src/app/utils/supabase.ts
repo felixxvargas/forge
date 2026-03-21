@@ -656,6 +656,68 @@ export const commentsAPI = {
 };
 
 // ============================================================
+// USER GAMES (played / owned declarations)
+// ============================================================
+export const userGamesAPI = {
+  async getStatus(userId: string, gameId: string): Promise<{ played: boolean; owned: boolean }> {
+    const { data } = await supabase
+      .from('user_games')
+      .select('status')
+      .eq('user_id', userId)
+      .eq('game_id', gameId);
+    const played = (data ?? []).some((r: any) => r.status === 'played');
+    const owned  = (data ?? []).some((r: any) => r.status === 'owned');
+    return { played, owned };
+  },
+
+  async add(userId: string, gameId: string, status: 'played' | 'owned') {
+    const { error } = await supabase
+      .from('user_games')
+      .upsert({ user_id: userId, game_id: gameId, status }, { onConflict: 'user_id,game_id,status', ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+  },
+
+  async remove(userId: string, gameId: string, status: 'played' | 'owned') {
+    const { error } = await supabase
+      .from('user_games')
+      .delete()
+      .eq('user_id', userId)
+      .eq('game_id', gameId)
+      .eq('status', status);
+    if (error) throw new Error(error.message);
+  },
+
+  /** Returns all unique players for a game, with played/owned flags. */
+  async getPlayersForGame(gameId: string) {
+    const { data, error } = await supabase
+      .from('user_games')
+      .select('status, profile:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('game_id', gameId);
+    if (error) throw new Error(error.message);
+
+    const byUser: Record<string, any> = {};
+    for (const row of data ?? []) {
+      const p = (row as any).profile as any;
+      if (!p) continue;
+      if (!byUser[p.id]) byUser[p.id] = { ...p, played: false, owned: false };
+      if ((row as any).status === 'played') byUser[p.id].played = true;
+      if ((row as any).status === 'owned') byUser[p.id].owned = true;
+    }
+    return Object.values(byUser);
+  },
+
+  /** Count how many distinct users have this game. */
+  async getPlayerCount(gameId: string): Promise<number> {
+    const { data } = await supabase
+      .from('user_games')
+      .select('user_id')
+      .eq('game_id', gameId);
+    const unique = new Set((data ?? []).map((r: any) => r.user_id));
+    return unique.size;
+  },
+};
+
+// ============================================================
 // DIRECT MESSAGES
 // ============================================================
 export const directMessages = {

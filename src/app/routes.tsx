@@ -17,6 +17,7 @@ import { Messages } from './pages/Messages';
 import { CommunityDetail } from './pages/CommunityDetail';
 import { UserCommunities } from './pages/UserCommunities';
 import { GameDetail } from './pages/GameDetail';
+import { GamePlayers } from './pages/GamePlayers';
 import { EditProfile } from './pages/EditProfile';
 import { NewPost } from './pages/NewPost';
 import { SubmitIndieGame } from './pages/SubmitIndieGame';
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       { path: 'following',              element: <FollowingList />,           errorElement: <ErrorBoundary /> },
       { path: 'following/:userId',      element: <FollowingList />,           errorElement: <ErrorBoundary /> },
       { path: 'game/:gameId',           element: <GameDetail />,              errorElement: <ErrorBoundary /> },
+      { path: 'game/:gameId/players',   element: <GamePlayers />,             errorElement: <ErrorBoundary /> },
       { path: 'submit-indie-game',      element: <SubmitIndieGame />,         errorElement: <ErrorBoundary /> },
       { path: 'review-submissions',     element: <ReviewSubmissions />,       errorElement: <ErrorBoundary /> },
       { path: 'create-group',           element: <CreateGroup />,             errorElement: <ErrorBoundary /> },

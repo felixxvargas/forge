@@ -1814,6 +1814,31 @@ app.post("/make-server-17285bd7/games/moby", async (c) => {
   }
 });
 
+// Get players for a game (users who self-declared played/owned)
+app.get("/make-server-17285bd7/games/:gameId/players", async (c) => {
+  try {
+    const gameId = c.req.param('gameId');
+    const { data, error } = await supabase
+      .from('user_games')
+      .select('status, profile:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('game_id', gameId);
+    if (error) return c.json({ error: error.message }, 500);
+
+    // Deduplicate by user, combine statuses
+    const byUser: Record<string, any> = {};
+    for (const row of data ?? []) {
+      const p = (row as any).profile as any;
+      if (!p) continue;
+      if (!byUser[p.id]) byUser[p.id] = { ...p, played: false, owned: false };
+      if ((row as any).status === 'played') byUser[p.id].played = true;
+      if ((row as any).status === 'owned') byUser[p.id].owned = true;
+    }
+    return c.json({ players: Object.values(byUser) });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch players' }, 500);
+  }
+});
+
 // Add game artwork
 app.post("/make-server-17285bd7/games/:gameId/artwork", async (c) => {
   try {

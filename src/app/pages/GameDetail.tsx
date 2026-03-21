@@ -1,22 +1,32 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
-import { PlatformIcon } from '../components/PlatformIcon';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
-import { posts as postsAPI } from '../utils/supabase';
+import { posts as postsAPI, userGamesAPI } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
 export function GameDetail() {
   const navigate = useNavigate();
   const { gameId } = useParams();
-  const { users, currentUser, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost } = useAppData();
+  const { currentUser, session, followingIds, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost } = useAppData();
+
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [game, setGame] = useState<any>(null);
   const [loadingGame, setLoadingGame] = useState(true);
+
+  // Played/owned status for current user
+  const [isPlayed, setIsPlayed] = useState(false);
+  const [isOwned, setIsOwned] = useState(false);
+  const [togglingPlayed, setTogglingPlayed] = useState(false);
+  const [togglingOwned, setTogglingOwned] = useState(false);
+
+  // All players for this game
+  const [players, setPlayers] = useState<any[]>([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
 
   useEffect(() => {
     if (!gameId) return;
@@ -35,6 +45,80 @@ export function GameDetail() {
       .catch(() => setTaggedPosts([]))
       .finally(() => setLoadingPosts(false));
   }, [gameId]);
+
+  useEffect(() => {
+    if (!gameId || !session?.user) return;
+    userGamesAPI.getStatus(session.user.id, gameId)
+      .then(({ played, owned }) => { setIsPlayed(played); setIsOwned(owned); })
+      .catch(() => {});
+  }, [gameId, session?.user?.id]);
+
+  useEffect(() => {
+    if (!gameId) return;
+    setLoadingPlayers(true);
+    userGamesAPI.getPlayersForGame(gameId)
+      .then(setPlayers)
+      .catch(() => {})
+      .finally(() => setLoadingPlayers(false));
+  }, [gameId]);
+
+  const handleTogglePlayed = async () => {
+    if (!session?.user || !gameId || togglingPlayed) return;
+    setTogglingPlayed(true);
+    try {
+      if (isPlayed) {
+        await userGamesAPI.remove(session.user.id, gameId, 'played');
+        setIsPlayed(false);
+        setPlayers(prev => {
+          const updated = prev.map(p =>
+            p.id === session.user.id ? { ...p, played: false } : p
+          );
+          // Remove user from list if they have no status left
+          return updated.filter(p => p.id !== session.user.id || p.played || p.owned);
+        });
+      } else {
+        await userGamesAPI.add(session.user.id, gameId, 'played');
+        setIsPlayed(true);
+        // Add current user to players if not already there
+        if (currentUser) {
+          setPlayers(prev => {
+            const existing = prev.find(p => p.id === currentUser.id);
+            if (existing) return prev.map(p => p.id === currentUser.id ? { ...p, played: true } : p);
+            return [...prev, { ...currentUser, played: true, owned: isOwned }];
+          });
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setTogglingPlayed(false); }
+  };
+
+  const handleToggleOwned = async () => {
+    if (!session?.user || !gameId || togglingOwned) return;
+    setTogglingOwned(true);
+    try {
+      if (isOwned) {
+        await userGamesAPI.remove(session.user.id, gameId, 'owned');
+        setIsOwned(false);
+        setPlayers(prev => {
+          const updated = prev.map(p =>
+            p.id === session.user.id ? { ...p, owned: false } : p
+          );
+          return updated.filter(p => p.id !== session.user.id || p.played || p.owned);
+        });
+      } else {
+        await userGamesAPI.add(session.user.id, gameId, 'owned');
+        setIsOwned(true);
+        if (currentUser) {
+          setPlayers(prev => {
+            const existing = prev.find(p => p.id === currentUser.id);
+            if (existing) return prev.map(p => p.id === currentUser.id ? { ...p, owned: true } : p);
+            return [...prev, { ...currentUser, played: isPlayed, owned: true }];
+          });
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setTogglingOwned(false); }
+  };
 
   if (loadingGame) {
     return (
@@ -59,121 +143,215 @@ export function GameDetail() {
     );
   }
 
-  // Find all users who have this game in their library
-  const allUsers = [currentUser, ...users].filter(Boolean);
-  const usersWithGame = allUsers.filter(user =>
-    user.gameLists?.library?.some((g: any) => g.id === game.id) ||
-    user.gameLists?.recentlyPlayed?.some((g: any) => g.id === game.id) ||
-    user.gameLists?.favorites?.some((g: any) => g.id === game.id)
-  );
+  const coverUrl = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+    ?? game.artwork?.[0]?.url
+    ?? game.coverArt;
 
-  const friends = usersWithGame.filter(user => user.isFollowing);
-  const totalPlayers = usersWithGame.length;
+  const screenshotUrl = game.artwork?.find((a: any) => a.artwork_type === 'screenshot')?.url;
+  const bgUrl = screenshotUrl ?? coverUrl;
+
+  const friends = players.filter(p => followingIds.has(p.id) && p.id !== currentUser?.id);
+  const totalCount = players.length;
+  const friendCount = friends.length;
+
+  const platforms: string[] = game.platforms ?? (game.platform ? [game.platform] : []);
 
   const handleLikeToggle = (postId: string) => {
-    if (likedPosts.has(postId)) {
-      unlikePost(postId);
-    } else {
-      likePost(postId);
-    }
+    likedPosts.has(postId) ? unlikePost(postId) : likePost(postId);
   };
-
   const handleRepostToggle = (postId: string) => {
-    if (repostedPosts.has(postId)) {
-      unrepostPost(postId);
-    } else {
-      repostPost(postId);
-    }
+    repostedPosts.has(postId) ? unrepostPost(postId) : repostPost(postId);
   };
 
   return (
-    <div className="min-h-screen pb-20 md:pb-6 bg-background">
+    <div className="min-h-screen pb-20 bg-background">
       <Header />
 
       <div className="w-full max-w-2xl mx-auto px-4 pt-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Back</span>
         </button>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto px-4 py-6">
-        {/* Game Header */}
-        <div className="bg-card rounded-2xl overflow-hidden mb-6">
-          {(() => {
-            const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
-              ?? game.artwork?.[0]?.url
-              ?? game.coverArt;
-            return coverArt ? (
-              <div className="relative aspect-video">
-                <img src={coverArt} alt={game.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-              </div>
-            ) : (
-              <div className="relative aspect-video bg-secondary flex items-center justify-center">
-                <Gamepad2 className="w-16 h-16 text-muted-foreground/40" />
-              </div>
-            );
-          })()}
+      {/* Hero: blurred background + portrait cover */}
+      <div className="relative w-full max-w-2xl mx-auto mb-6 rounded-2xl overflow-hidden">
+        {/* Blurred background */}
+        {bgUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-110"
+            style={{ backgroundImage: `url(${bgUrl})`, filter: 'blur(20px) brightness(0.4)' }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-secondary" />
+        )}
 
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold mb-2">{game.title}</h1>
-                <div className="flex items-center gap-4 text-muted-foreground">
-                  {(game.year || game.release_year) && (
-                    <span className="text-lg">{game.year ?? game.release_year}</span>
-                  )}
-                  {game.platform && (
-                    <div className="flex items-center gap-2">
-                      <PlatformIcon platform={game.platform} className="w-8 h-8" />
-                      <span className="text-lg capitalize">{game.platform}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+        {/* Portrait cover art, full height */}
+        <div className="relative flex justify-center items-end px-4 pt-10 pb-0 min-h-[320px]">
+          {coverUrl ? (
+            <img
+              src={coverUrl}
+              alt={game.title}
+              className="relative z-10 w-48 rounded-xl shadow-2xl object-cover"
+              style={{ aspectRatio: '3/4' }}
+            />
+          ) : (
+            <div className="relative z-10 w-48 rounded-xl bg-card flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
+              <Gamepad2 className="w-16 h-16 text-muted-foreground/40" />
             </div>
+          )}
+        </div>
+      </div>
 
-            <div className="flex items-center gap-6 pt-4 border-t border-border">
-              <div>
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Users className="w-4 h-4" />
-                  <span className="text-sm">Total Players</span>
+      <div className="w-full max-w-2xl mx-auto px-4">
+        {/* Title + Year + Platforms */}
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold mb-1">{game.title}</h1>
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground mb-3">
+            {(game.year || game.release_year) && (
+              <span className="text-base">{game.year ?? game.release_year}</span>
+            )}
+            {platforms.length > 0 && (
+              <>
+                {(game.year || game.release_year) && <span>·</span>}
+                <div className="flex flex-wrap gap-1.5">
+                  {platforms.map((p: string) => (
+                    <span
+                      key={p}
+                      className="px-2 py-0.5 text-xs bg-secondary text-foreground rounded-full"
+                    >
+                      {p}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-2xl font-semibold">{totalPlayers}</p>
-              </div>
-              {friends.length > 0 && (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Friends Playing</p>
-                  <p className="text-2xl font-semibold">{friends.length}</p>
-                </div>
-              )}
-              {taggedPosts.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <MessageSquare className="w-4 h-4" />
-                    <span className="text-sm">Tagged Posts</span>
-                  </div>
-                  <p className="text-2xl font-semibold">{taggedPosts.length}</p>
-                </div>
-              )}
+              </>
+            )}
+          </div>
+
+          {/* Genres */}
+          {game.genres && game.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {game.genres.map((g: string) => (
+                <span key={g} className="px-2 py-0.5 text-xs bg-accent/15 text-accent rounded-full">{g}</span>
+              ))}
+            </div>
+          )}
+
+          {game.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed">{game.description}</p>
+          )}
+        </div>
+
+        {/* Played / Owned action buttons */}
+        {session?.user && (
+          <div className="flex gap-3 mb-6">
+            <button
+              onClick={handleTogglePlayed}
+              disabled={togglingPlayed}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
+                isPlayed
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-secondary text-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {isPlayed ? <CheckCircle2 className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
+              {isPlayed ? 'Played' : "I've Played This"}
+            </button>
+            <button
+              onClick={handleToggleOwned}
+              disabled={togglingOwned}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
+                isOwned
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-secondary text-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {isOwned ? <CheckCircle2 className="w-4 h-4" /> : <Library className="w-4 h-4" />}
+              {isOwned ? 'In Library' : 'I Own This'}
+            </button>
+          </div>
+        )}
+
+        {/* Stats row */}
+        <div className="bg-card rounded-2xl p-4 mb-6 flex items-center divide-x divide-border">
+          {/* Total Players — always shown */}
+          <button
+            onClick={() => navigate(`/game/${gameId}/players`)}
+            className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
+          >
+            <p className="text-2xl font-bold">{loadingPlayers ? '…' : totalCount}</p>
+            <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+              <Users className="w-3.5 h-3.5" />
+              <span className="text-xs">Total Players</span>
+            </div>
+          </button>
+
+          {/* Friends that Play — always shown */}
+          <button
+            onClick={() => navigate(`/game/${gameId}/players`)}
+            className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
+          >
+            <p className="text-2xl font-bold">{loadingPlayers ? '…' : friendCount}</p>
+            <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+              <Users className="w-3.5 h-3.5" />
+              <span className="text-xs">Friends Play</span>
+            </div>
+          </button>
+
+          {/* Tagged Posts */}
+          <div className="flex-1 flex flex-col items-center py-2">
+            <p className="text-2xl font-bold">{taggedPosts.length}</p>
+            <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="text-xs">Posts</span>
             </div>
           </div>
         </div>
+
+        {/* Friends who play — mini preview */}
+        {!loadingPlayers && friends.length > 0 && (
+          <button
+            onClick={() => navigate(`/game/${gameId}/players`)}
+            className="w-full bg-card rounded-2xl p-4 mb-6 flex items-center gap-3 hover:bg-card/80 transition-colors text-left"
+          >
+            <div className="flex -space-x-2 shrink-0">
+              {friends.slice(0, 5).map((user: any) => (
+                <ProfileAvatar
+                  key={user.id}
+                  username={user.display_name || user.handle || '?'}
+                  profilePicture={user.profile_picture ?? null}
+                  size="sm"
+                  userId={user.id}
+                  className="border-2 border-card"
+                />
+              ))}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">
+                {friends.slice(0, 2).map((u: any) => u.display_name || u.handle).join(', ')}
+                {friends.length > 2 && ` and ${friends.length - 2} more`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {friends.length} friend{friends.length !== 1 ? 's' : ''} play this game
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
+        )}
 
         {/* Tagged Posts */}
         {(loadingPosts || taggedPosts.length > 0) && (
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-4">Posts about {game.title}</h2>
             {loadingPosts ? (
-              <p className="text-muted-foreground text-sm">Loading posts...</p>
+              <p className="text-muted-foreground text-sm">Loading posts…</p>
             ) : (
-              <div>
+              <div className="space-y-0">
                 {taggedPosts.map(post => {
-                  const author = post.author || users.find((u: any) => u.id === post.user_id);
+                  const author = post.author;
                   if (!author) return null;
                   return (
                     <PostCard
@@ -189,118 +367,6 @@ export function GameDetail() {
                 })}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Friends Who Play */}
-        {friends.length > 0 && (
-          <div className="bg-card rounded-2xl p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Friends Who Play</h2>
-              <div className="flex -space-x-2">
-                {friends.slice(0, 5).map((user: any) => (
-                  <ProfileAvatar
-                    key={user.id}
-                    username={user.display_name || user.displayName || user.handle || '?'}
-                    profilePicture={user.profile_picture || user.profilePicture}
-                    size="sm"
-                    className="border-2 border-card"
-                  />
-                ))}
-                {friends.length > 5 && (
-                  <div className="w-8 h-8 rounded-full border-2 border-card bg-secondary flex items-center justify-center text-xs font-medium">
-                    +{friends.length - 5}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="space-y-3">
-              {friends.slice(0, 5).map((user: any) => {
-                const userGame =
-                  user.gameLists?.library?.find((g: any) => g.id === game.id) ||
-                  user.gameLists?.recentlyPlayed?.find((g: any) => g.id === game.id) ||
-                  user.gameLists?.favorites?.find((g: any) => g.id === game.id);
-                return (
-                  <button
-                    key={user.id}
-                    onClick={() => navigate(`/profile/${user.id}`)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors"
-                  >
-                    <ProfileAvatar
-                      username={user.display_name || user.displayName || user.handle || '?'}
-                      profilePicture={user.profile_picture || user.profilePicture}
-                      size="md"
-                    />
-                    <div className="flex-1 text-left">
-                      <p className="font-semibold">{user.display_name || user.displayName}</p>
-                      <p className="text-sm text-muted-foreground">{user.handle}</p>
-                    </div>
-                    {userGame?.hoursPlayed && (
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{userGame.hoursPlayed}h</p>
-                        <p className="text-xs text-muted-foreground">played</p>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* All Players */}
-        {usersWithGame.length > 0 && (
-          <div className="bg-card rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">All Players</h2>
-              <div className="flex -space-x-2">
-                {usersWithGame.slice(0, 5).map((user: any) => (
-                  <ProfileAvatar
-                    key={user.id}
-                    username={user.display_name || user.displayName || user.handle || '?'}
-                    profilePicture={user.profile_picture || user.profilePicture}
-                    size="sm"
-                    className="border-2 border-card"
-                  />
-                ))}
-                {usersWithGame.length > 5 && (
-                  <div className="w-8 h-8 rounded-full border-2 border-card bg-secondary flex items-center justify-center text-xs font-medium">
-                    +{usersWithGame.length - 5}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="space-y-3">
-              {usersWithGame.map((user: any) => {
-                const userGame =
-                  user.gameLists?.library?.find((g: any) => g.id === game.id) ||
-                  user.gameLists?.recentlyPlayed?.find((g: any) => g.id === game.id) ||
-                  user.gameLists?.favorites?.find((g: any) => g.id === game.id);
-                return (
-                  <button
-                    key={user.id}
-                    onClick={() => navigate(user.id === currentUser?.id ? '/profile' : `/profile/${user.id}`)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors"
-                  >
-                    <ProfileAvatar
-                      username={user.display_name || user.displayName || user.handle || '?'}
-                      profilePicture={user.profile_picture || user.profilePicture}
-                      size="md"
-                    />
-                    <div className="flex-1 text-left">
-                      <p className="font-semibold">{user.display_name || user.displayName}</p>
-                      <p className="text-sm text-muted-foreground">{user.handle}</p>
-                    </div>
-                    {userGame?.hoursPlayed && (
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{userGame.hoursPlayed}h</p>
-                        <p className="text-xs text-muted-foreground">played</p>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
           </div>
         )}
       </div>
