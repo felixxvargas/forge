@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Send, Heart } from 'lucide-react';
+import { ArrowLeft, Send, Heart, AtSign } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
@@ -10,14 +10,18 @@ import { formatTimeAgo } from '../utils/formatTimeAgo';
 export function PostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { posts, getUserById, currentUser, likePost, unlikePost, likedPosts, session } = useAppData();
+  const { posts, getUserById, users, currentUser, likePost, unlikePost, likedPosts, session } = useAppData();
   const commentsRef = useRef<HTMLDivElement>(null);
+  const commentInputRef = useRef<HTMLInputElement>(null);
 
   const [comments, setComments] = useState<any[]>([]);
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const mentionTriggerIndex = useRef<number>(-1);
 
   // Find original post (prefer one without repostedBy for detail view)
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
@@ -54,6 +58,42 @@ export function PostDetail() {
     } else {
       likePost(id);
     }
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewComment(val);
+    const cursorPos = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, cursorPos);
+    const mentionMatch = before.match(/@(\w*)$/);
+    if (mentionMatch) {
+      mentionTriggerIndex.current = before.lastIndexOf('@');
+      const query = mentionMatch[1].toLowerCase();
+      const filtered = users
+        .filter(u =>
+          (u.handle || '').toLowerCase().replace(/^@/, '').includes(query) ||
+          (u.display_name || '').toLowerCase().includes(query)
+        )
+        .slice(0, 5);
+      setMentionSuggestions(filtered);
+      setShowMentions(filtered.length > 0);
+    } else {
+      setShowMentions(false);
+      setMentionSuggestions([]);
+    }
+  };
+
+  const handleMentionSelect = (user: any) => {
+    const startIdx = mentionTriggerIndex.current;
+    if (startIdx < 0) { setShowMentions(false); return; }
+    const handle = (user.handle || '').startsWith('@') ? user.handle : `@${user.handle}`;
+    const afterAt = newComment.slice(startIdx + 1);
+    const wordEnd = afterAt.search(/[^\w]/);
+    const tokenEnd = wordEnd === -1 ? newComment.length : startIdx + 1 + wordEnd;
+    setNewComment(newComment.slice(0, startIdx) + handle + ' ' + newComment.slice(tokenEnd));
+    mentionTriggerIndex.current = -1;
+    setShowMentions(false);
+    setMentionSuggestions([]);
   };
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -169,12 +209,13 @@ export function PostDetail() {
                   profilePicture={currentUser.profile_picture}
                   size="md"
                 />
-                <div className="flex-1 flex gap-2">
+                <div className="flex-1 flex gap-2 relative">
                   <input
+                    ref={commentInputRef}
                     type="text"
                     value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment…"
+                    onChange={handleCommentChange}
+                    placeholder="Write a comment… Use @ to mention"
                     className="flex-1 px-4 py-2 bg-secondary rounded-full border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                   />
                   <button
@@ -184,6 +225,30 @@ export function PostDetail() {
                   >
                     <Send className="w-4 h-4" />
                   </button>
+                  {/* Mention dropdown */}
+                  {showMentions && mentionSuggestions.length > 0 && (
+                    <div className="absolute bottom-full mb-2 left-0 right-10 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                      {mentionSuggestions.map(u => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
+                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-secondary transition-colors text-left"
+                        >
+                          <ProfileAvatar
+                            username={u.display_name || u.handle || '?'}
+                            profilePicture={u.profile_picture}
+                            userId={u.id}
+                            size="sm"
+                          />
+                          <div>
+                            <p className="text-sm font-medium">{u.display_name || u.handle}</p>
+                            <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </form>

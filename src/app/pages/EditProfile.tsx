@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Upload, Settings, Crown, Shield, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import type { User, Platform, SocialPlatform } from '../data/mockData';
-import { mockCommunities } from '../data/mockData';
+import type { Platform, SocialPlatform } from '../data/data';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -13,13 +12,13 @@ const ABOUT_MAX_LENGTH = 500;
 
 export function EditProfile() {
   const navigate = useNavigate();
-  const { currentUser, updateCurrentUser } = useAppData();
+  const { currentUser, updateCurrentUser, communities } = useAppData();
   
   const [formData, setFormData] = useState({
     displayName: currentUser.display_name || currentUser.displayName || '',
     pronouns: currentUser.pronouns || '',
     bio: currentUser.bio || '',
-    about: currentUser.about || currentUser.bio || '',
+    about: currentUser.about || '',
     profilePicture: currentUser.profile_picture || currentUser.profilePicture || null,
     platforms: currentUser.platforms || [],
     platformHandles: currentUser.platform_handles || currentUser.platformHandles || {},
@@ -423,17 +422,18 @@ export function EditProfile() {
               Select up to 3 communities to show on your profile
             </p>
             <div className="space-y-2">
-              {currentUser.communities.map(membership => {
-                const community = mockCommunities.find(c => c.id === membership.communityId);
+              {currentUser.communities.map((membership: any) => {
+                const communityId = membership.community_id || membership.communityId;
+                const community = communities.find((c: any) => c.id === communityId);
                 if (!community) return null;
 
-                const isSelected = (formData.displayedCommunities || []).includes(membership.communityId);
+                const isSelected = (formData.displayedCommunities || []).includes(communityId);
                 const canSelect = !isSelected && (formData.displayedCommunities || []).length < 3;
 
                 return (
                   <button
                     key={membership.communityId}
-                    onClick={() => toggleCommunity(membership.communityId)}
+                    onClick={() => toggleCommunity(communityId)}
                     disabled={!isSelected && !canSelect}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
                       isSelected

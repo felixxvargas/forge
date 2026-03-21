@@ -5,8 +5,8 @@ import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
-import { sampleGames, type User, type Post, type Community } from '../data/data';
-import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
+import { sampleGames, type User, type Community } from '../data/data';
+import { posts as postsAPI } from '../utils/supabase';
 
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 
@@ -21,8 +21,8 @@ export function Explore() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [blueskyPosts, setBlueskyPosts] = useState<Post[]>([]);
-  const [loadingBluesky, setLoadingBluesky] = useState(false);
+  const [topicPosts, setTopicPosts] = useState<any[]>([]);
+  const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [hideSearchBar, setHideSearchBar] = useState(false);
   const navigate = useNavigate();
@@ -56,23 +56,14 @@ export function Explore() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeTab]);
 
-  // Fetch Bluesky posts for gaming media accounts
+  // Fetch topic account posts from Supabase
   useEffect(() => {
-    const loadBlueskyPosts = async () => {
-      setLoadingBluesky(true);
-      try {
-        const posts = await fetchAllGamingMediaPosts();
-        setBlueskyPosts(posts);
-      } catch (error) {
-        console.error('Failed to load Bluesky posts:', error);
-      } finally {
-        setLoadingBluesky(false);
-      }
-    };
-
-    if (activeTab === 'posts') {
-      loadBlueskyPosts();
-    }
+    if (activeTab !== 'posts') return;
+    setLoadingTopicPosts(true);
+    postsAPI.getTopicPosts(100)
+      .then(setTopicPosts)
+      .catch(() => {})
+      .finally(() => setLoadingTopicPosts(false));
   }, [activeTab]);
 
   const handleLikeToggle = (postId: string) => {
@@ -106,18 +97,14 @@ export function Explore() {
     }
   };
 
-  // Normalize topic account posts to have a consistent user_id field and author
-  const normalizedBlueskyPosts = blueskyPosts.map((post: any) => {
-    const uid = post.user_id || post.userId || '';
-    const author = post.author || getUserById(uid);
-    return { ...post, user_id: uid, author };
-  });
-
-  // Get gaming media posts (from Bluesky + any existing Forge posts from topic accounts)
+  // Combine Supabase topic posts with any topic account posts already in the feed
+  const seenPostIds = new Set<string>();
   const gamingMediaPosts = [
-    ...normalizedBlueskyPosts,
-    ...posts.filter(post => post.author?.account_type === 'topic'),
+    ...topicPosts,
+    ...posts.filter(p => p.author?.account_type === 'topic' || p.platform === 'bluesky' || p.platform === 'mastodon'),
   ].filter(post => {
+    if (seenPostIds.has(post.id)) return false;
+    seenPostIds.add(post.id);
     const uid = post.user_id || post.userId || '';
     if (blockedUsers.has(uid)) return false;
     if (mutedUsers.has(uid) && !showMutedPosts.has(post.id)) return false;
@@ -249,7 +236,7 @@ export function Explore() {
       <div className="max-w-2xl mx-auto px-4 py-4">
         {activeTab === 'posts' && (
           <div className="space-y-4">
-            {loadingBluesky ? (
+            {loadingTopicPosts ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
                 <p className="mt-4 text-gray-400">Loading gaming news...</p>

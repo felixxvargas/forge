@@ -9,7 +9,7 @@ import { profiles } from '../utils/supabase';
 export function FollowersList() {
   const navigate = useNavigate();
   const { userId } = useParams();
-  const { currentUser } = useAppData();
+  const { currentUser, followingIds } = useAppData();
   const [followers, setFollowers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,12 @@ export function FollowersList() {
                   </button>
                   {user.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>}
                 </div>
-                {user.id !== currentUser?.id && <FollowButton userId={user.id} />}
+                {user.id !== currentUser?.id && (
+                  <FollowButton
+                    userId={user.id}
+                    initialFollowingState={followingIds.has(user.id)}
+                  />
+                )}
               </div>
             ))}
           </div>

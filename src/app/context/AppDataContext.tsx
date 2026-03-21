@@ -102,12 +102,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList] = await Promise.all([
+      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),
         profiles.getMutedIds(userId),
         profiles.getFollowingIds(userId),
+        notificationsAPI.getUnreadCount(userId),
       ]);
       setCurrentUser(normalizeProfile(profile));
       setLikedPosts(new Set(likedIds));
@@ -115,6 +116,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setBlockedUsers(new Set(blockedIds));
       setMutedUsers(new Set(mutedIds));
       setFollowingIds(new Set(followingIdList));
+      setHasUnreadNotifications(unreadCount > 0);
     } catch (e) {
       console.error('Error loading user data:', e);
     }
@@ -266,6 +268,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const followUser = async (userId: string) => {
     if (!session?.user) return;
     await profiles.follow(session.user.id, userId);
+    // Create follow notification (DB trigger also does this, code is a fallback)
+    notificationsAPI.create('follow', userId, session.user.id).catch(() => {});
     setFollowingIds(prev => new Set([...prev, userId]));
     setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u

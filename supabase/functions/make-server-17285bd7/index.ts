@@ -2401,4 +2401,118 @@ app.post("/make-server-17285bd7/seed/topic-accounts", async (c) => {
   }
 });
 
+// POST /seed/bluesky-posts
+app.post('/make-server-17285bd7/seed/bluesky-posts', async (c) => {
+  try {
+    const BLUESKY_HANDLES: Record<string, string> = {
+      ign: 'ign.bsky.social',
+      gamespot: 'gamespot.com',
+      kotaku: 'kotaku.com',
+      eurogamer: 'eurogamer.bsky.social',
+      rockpapershotgun: 'rockpapershotgun.bsky.social',
+      massivelyop: 'massivelyop.bsky.social',
+    };
+
+    let totalInserted = 0;
+    let totalSkipped = 0;
+    const errors: string[] = [];
+
+    for (const [slug, bskyHandle] of Object.entries(BLUESKY_HANDLES)) {
+      try {
+        // Look up the forge profile by handle (try with and without @)
+        let profileId: string | null = null;
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id')
+          .or(`handle.ilike.${slug},handle.ilike.@${slug}`)
+          .limit(1);
+        if (profileRows && profileRows.length > 0) {
+          profileId = profileRows[0].id;
+        }
+
+        if (!profileId) {
+          errors.push(`No profile found for handle: ${slug}`);
+          continue;
+        }
+
+        // Fetch posts from Bluesky public API
+        const feedUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(bskyHandle)}&limit=20`;
+        const feedRes = await fetch(feedUrl);
+        if (!feedRes.ok) {
+          errors.push(`Bluesky API error for ${bskyHandle}: ${feedRes.status}`);
+          continue;
+        }
+        const feedData = await feedRes.json();
+        const feedItems: any[] = feedData.feed ?? [];
+
+        let inserted = 0;
+        let skipped = 0;
+
+        for (const item of feedItems) {
+          // Skip reposts
+          if (item.reason && item.reason.$type === 'app.bsky.feed.defs#reasonRepost') {
+            skipped++;
+            continue;
+          }
+
+          const record = item.post?.record;
+          if (!record) { skipped++; continue; }
+
+          const text: string = record.text ?? '';
+          const createdAt: string = record.createdAt ?? new Date().toISOString();
+
+          // Extract images from both embed shapes
+          const embed = item.post?.embed;
+          const images: string[] = [];
+          if (embed?.images) {
+            for (const img of embed.images) {
+              if (img.fullsize) images.push(img.fullsize);
+            }
+          } else if (embed?.media?.images) {
+            for (const img of embed.media.images) {
+              if (img.fullsize) images.push(img.fullsize);
+            }
+          }
+
+          const content = text.slice(0, 500);
+
+          const { error: insertError } = await supabase
+            .from('posts')
+            .insert({
+              user_id: profileId,
+              content,
+              created_at: createdAt,
+              platform: 'bluesky',
+              images: images.length > 0 ? images : null,
+            });
+
+          if (!insertError) {
+            inserted++;
+          } else if (insertError.code === '23505') {
+            // Duplicate — unique constraint violation, expected
+            skipped++;
+          } else {
+            errors.push(`Insert error for ${bskyHandle}: ${insertError.message}`);
+          }
+        }
+
+        totalInserted += inserted;
+        totalSkipped += skipped;
+      } catch (err: any) {
+        errors.push(`Error processing ${slug}: ${err.message}`);
+      }
+    }
+
+    return c.json({
+      success: true,
+      inserted: totalInserted,
+      skipped: totalSkipped,
+      errors,
+    });
+  } catch (error: any) {
+    console.error('seed/bluesky-posts error:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
 Deno.serve(app.fetch);

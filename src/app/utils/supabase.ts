@@ -427,6 +427,17 @@ export const posts = {
     return data ?? [];
   },
 
+  async getTopicPosts(limit = 50) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, account_type)`)
+      .in('platform', ['bluesky', 'mastodon'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
   async getByGame(gameId: string) {
     const { data, error } = await supabase
       .from('posts')
@@ -549,6 +560,13 @@ export const notifications = {
       .from('notifications')
       .insert({ user_id: userId, actor_id: actorId, type: 'mention', post_id: postId, read: false });
     if (error) console.error('Failed to create mention notification:', error.message);
+  },
+
+  async create(type: string, userId: string, actorId: string, postId?: string) {
+    const { error } = await supabase
+      .from('notifications')
+      .insert({ user_id: userId, actor_id: actorId, type, post_id: postId ?? null, read: false });
+    if (error) console.error('Failed to create notification:', error.message);
   },
 
   async getUnreadCount(userId: string) {

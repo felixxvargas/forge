@@ -24,6 +24,8 @@ import { ReviewSubmissions } from './pages/ReviewSubmissions';
 import { FollowersList } from './pages/FollowersList';
 import { FollowingList } from './pages/FollowingList';
 import { CreateGroup } from './pages/CreateGroup';
+import { Premium } from './pages/Premium';
+import { CreateCustomList } from './pages/CreateCustomList';
 import { Layout } from './components/Layout';
 import { NotFound } from './pages/NotFound';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -66,6 +68,8 @@ export const router = createBrowserRouter([
       { path: 'submit-indie-game',      element: <SubmitIndieGame />,         errorElement: <ErrorBoundary /> },
       { path: 'review-submissions',     element: <ReviewSubmissions />,       errorElement: <ErrorBoundary /> },
       { path: 'create-group',           element: <CreateGroup />,             errorElement: <ErrorBoundary /> },
+      { path: 'premium',               element: <Premium />,                 errorElement: <ErrorBoundary /> },
+      { path: 'create-custom-list',    element: <CreateCustomList />,        errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },
     ],
   },
