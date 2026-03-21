@@ -392,7 +392,7 @@ Provides global state for:
 
 ### Frontend (Vercel)
 - Auto-deploys on push to `main`
-- Live at: `forge-app-roan.vercel.app`
+- Live at: `forge-social.app`
 - Build: `npm run build` → `/dist`
 
 ### Backend (Supabase)

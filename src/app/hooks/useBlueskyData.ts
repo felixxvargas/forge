@@ -18,8 +18,11 @@ export function useBlueskyData(user: User): BlueskyData {
   });
 
   useEffect(() => {
-    const blueskyHandle = getBlueskyHandleForUser(user.id);
-    
+    // Try: explicit bluesky_handle field, then old ID mapping, then handle for topic accounts
+    const blueskyHandle = (user as any).bluesky_handle
+      || getBlueskyHandleForUser(user.id)
+      || ((user as any).account_type === 'topic' ? ((user.handle || '').replace(/^@/, '') || undefined) : undefined);
+
     if (!blueskyHandle) {
       return;
     }

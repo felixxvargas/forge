@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { GAMING_PLATFORMS } from '../../constants/platforms';
@@ -30,6 +30,7 @@ export interface Interest {
 
 interface InterestsScreenProps {
   onComplete: (interests: Interest[]) => void;
+  initialInterests?: Interest[];
 }
 
 const interestOptions: { category: string; icon: any; interests: Interest[] }[] = [
@@ -84,18 +85,9 @@ const iconMap: { [key: string]: any } = {
   Monitor, Gamepad2, Globe, Trophy
 };
 
-export function InterestsScreen({ onComplete }: InterestsScreenProps) {
+export function InterestsScreen({ onComplete, initialInterests }: InterestsScreenProps) {
   const navigate = useNavigate();
-  const [selectedInterests, setSelectedInterests] = useState<Interest[]>([]);
-
-  // Load existing interests if coming from settings
-  useEffect(() => {
-    const userId = localStorage.getItem('forge-user-id');
-    if (userId) {
-      // Try to load existing interests from API or localStorage
-      // For now, we'll handle this in the parent component
-    }
-  }, []);
+  const [selectedInterests, setSelectedInterests] = useState<Interest[]>(initialInterests ?? []);
 
   const toggleInterest = (interest: Interest) => {
     setSelectedInterests(prev => {

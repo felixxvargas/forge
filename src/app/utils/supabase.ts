@@ -626,6 +626,15 @@ export const commentsAPI = {
       .eq('user_id', userId);
     return new Set<string>((data ?? []).map((r: any) => r.comment_id));
   },
+
+  async delete(userId: string, commentId: string) {
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+  },
 };
 
 // ============================================================

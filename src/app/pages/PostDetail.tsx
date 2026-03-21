@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Send, Heart, AtSign } from 'lucide-react';
+import { ArrowLeft, Send, Heart, Repeat2, Trash2 } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
@@ -10,7 +10,7 @@ import { formatTimeAgo } from '../utils/formatTimeAgo';
 export function PostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { posts, getUserById, users, currentUser, likePost, unlikePost, likedPosts, session } = useAppData();
+  const { posts, getUserById, users, currentUser, likePost, unlikePost, likedPosts, createPost, session } = useAppData();
   const commentsRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +108,28 @@ export function PostDetail() {
       console.error('Failed to post comment:', err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!session?.user) return;
+    try {
+      await commentsAPI.delete(session.user.id, commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  };
+
+  const handleRepostComment = async (comment: any) => {
+    if (!session?.user) return;
+    const commentUser = comment.author ?? getUserById(comment.user_id);
+    const handle = commentUser ? `@${(commentUser.handle || '').replace(/^@/, '')}` : '';
+    const content = `${handle}: "${comment.content}"`;
+    try {
+      await createPost(content);
+    } catch (err) {
+      console.error('Failed to repost comment:', err);
     }
   };
 
@@ -311,6 +333,22 @@ export function PostDetail() {
                           <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
                           <span>{comment.like_count ?? 0}</span>
                         </button>
+                        <button
+                          onClick={() => handleRepostComment(comment)}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-500 transition-colors"
+                          title="Repost as post"
+                        >
+                          <Repeat2 className="w-3.5 h-3.5" />
+                        </button>
+                        {currentUser && comment.user_id === currentUser.id && (
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                            title="Delete comment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

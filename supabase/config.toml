@@ -9,5 +9,5 @@ max_rows = 1000
 
 [auth]
 enabled = true
-site_url = "https://forge-app-roan.vercel.app"
-additional_redirect_urls = ["https://forge-app-roan.vercel.app/auth/callback"]
+site_url = "https://forge-social.app"
+additional_redirect_urls = ["https://forge-social.app/auth/callback"]

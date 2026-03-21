@@ -19,8 +19,23 @@ export function Onboarding() {
   const startStep = searchParams.get('step') as OnboardingStep | null;
   const [step, setStep] = useState<OnboardingStep>(startStep || 'splash');
   const [selectedInterests, setSelectedInterests] = useState<Interest[]>([]);
+  const [initialInterests, setInitialInterests] = useState<Interest[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+
+  // Load current user's existing interests when starting interests step from settings
+  useEffect(() => {
+    if (startStep !== 'interests') return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      profiles.getById(session.user.id).then((profile: any) => {
+        if (profile?.interests?.length) {
+          setInitialInterests(profile.interests);
+          setSelectedInterests(profile.interests);
+        }
+      }).catch(() => {});
+    });
+  }, [startStep]);
 
   // Load suggested users from Supabase topic accounts
   useEffect(() => {
@@ -59,11 +74,11 @@ export function Onboarding() {
     // If coming from settings (step param), save interests and go back
     if (startStep === 'interests') {
       try {
-        const userId = localStorage.getItem('forge-user-id');
-        if (userId) {
-          await profiles.update(userId, { interests });
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await profiles.update(session.user.id, { interests });
         }
-        navigate('/settings');
+        navigate('/edit-profile');
       } catch (error) {
         console.error('Error updating interests:', error);
       }
@@ -130,7 +145,7 @@ export function Onboarding() {
   return (
     <AnimatePresence mode="wait">
       {step === 'splash' && <SplashScreen key="splash" onComplete={handleSplashComplete} />}
-      {step === 'interests' && <InterestsScreen key="interests" onComplete={handleInterestsComplete} />}
+      {step === 'interests' && <InterestsScreen key="interests" onComplete={handleInterestsComplete} initialInterests={initialInterests} />}
       {step === 'follow' && <FollowScreen key="follow" users={suggestedUsers} onComplete={handleFollowComplete} />}
       {step === 'username' && <UsernameScreen key="username" onComplete={handleUsernameComplete} />}
     </AnimatePresence>

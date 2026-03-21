@@ -136,9 +136,8 @@ export function Profile() {
     );
   }
 
-  // Check if this is an unclaimed gaming media account
-  const gamingMediaAccounts = ['user-ign', 'user-gamespot', 'user-pcgamer', 'user-polygon'];
-  const isUnclaimedAccount = gamingMediaAccounts.includes(profileUser?.id || '');
+  // Check if this is an unclaimed topic account
+  const isUnclaimedAccount = (profileUser as any)?.account_type === 'topic';
 
   const handleOpenGameListEdit = (listType: GameListType) => {
     setEditGameListModal({ isOpen: true, listType });
@@ -281,7 +280,7 @@ export function Profile() {
                     This is a Topic account. It has not yet been claimed by the official organization.
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Contact <a href="mailto:support@forge.com" className="text-accent hover:underline">support@forge.com</a> to claim this account.
+                    Contact <a href="mailto:support@forge-social.com" className="text-accent hover:underline">support@forge-social.com</a> to claim this account.
                   </p>
                 </div>
               </div>
@@ -486,7 +485,7 @@ export function Profile() {
 
               return (
                 <>
-                  {lists.map(({ key, listType, label, icon }) => {
+                  {lists.map(({ key, listType, label }) => {
                     const games = gameLists[key] ?? [];
                     if (games.length > 0) {
                       return (
@@ -509,7 +508,6 @@ export function Profile() {
                           onClick={() => handleOpenGameListEdit(listType)}
                           className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
                         >
-                          <span className="text-2xl">{icon}</span>
                           <div>
                             <p className="font-medium text-sm">{label}</p>
                             <p className="text-xs text-muted-foreground">+ Create list</p>
@@ -526,21 +524,78 @@ export function Profile() {
                     </div>
                   )}
 
-                  {/* Custom List - Premium */}
-                  {isOwnProfile && (
-                    <div className="bg-card/50 rounded-xl p-6 text-center border-2 border-dashed border-muted">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-accent/20 flex items-center justify-center">
-                        <span className="text-2xl">🔒</span>
-                      </div>
-                      <h3 className="font-medium mb-2">Custom Lists</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Create your own custom game lists with a premium subscription
-                      </p>
-                      <button className="px-6 py-2 bg-secondary text-foreground border border-border rounded-lg hover:bg-secondary/80 transition-colors font-medium">
-                        Upgrade to Premium
-                      </button>
+                  {/* Posts below lists */}
+                  {profileUserPosts.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Posts</h3>
+                      {profileUserPosts.slice(0, 5).map(post => (
+                        <PostCard
+                          key={post.id + (post.repostedBy || '')}
+                          post={post}
+                          user={post.author || profileUser}
+                          onLike={handleLikeToggle}
+                          onRepost={handleRepostToggle}
+                          onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
+                          isLiked={likedPosts.has(post.id)}
+                          isReposted={repostedPosts.has(post.id)}
+                        />
+                      ))}
+                      {profileUserPosts.length > 5 && (
+                        <button
+                          onClick={() => setActiveTab('posts')}
+                          className="w-full py-3 text-sm text-accent hover:underline"
+                        >
+                          View all {profileUserPosts.length} posts
+                        </button>
+                      )}
                     </div>
                   )}
+
+                  {/* Custom Lists */}
+                  {(() => {
+                    const customLists = (gameLists as any).customLists ?? [];
+                    const isPremium = (profileUser as any).is_premium;
+                    if (customLists.length > 0) {
+                      return customLists.map((list: any) => (
+                        <GameList
+                          key={list.id}
+                          title={list.name}
+                          games={list.games ?? []}
+                          showFirstOnly={true}
+                        />
+                      ));
+                    }
+                    if (isOwnProfile && !isPremium) {
+                      return (
+                        <div className="bg-card/50 rounded-xl p-6 text-center border-2 border-dashed border-muted">
+                          <h3 className="font-medium mb-2">Custom Lists</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Create your own custom game lists with a premium subscription
+                          </p>
+                          <button
+                            onClick={() => navigate('/premium')}
+                            className="px-6 py-2 bg-secondary text-foreground border border-border rounded-lg hover:bg-secondary/80 transition-colors font-medium"
+                          >
+                            Upgrade to Premium
+                          </button>
+                        </div>
+                      );
+                    }
+                    if (isOwnProfile && isPremium) {
+                      return (
+                        <button
+                          onClick={() => navigate('/create-custom-list')}
+                          className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
+                        >
+                          <div>
+                            <p className="font-medium text-sm">Custom List</p>
+                            <p className="text-xs text-muted-foreground">+ Create list</p>
+                          </div>
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </>
               );
             })()}
@@ -637,28 +692,68 @@ export function Profile() {
             )}
 
             {/* Social Accounts */}
-            {profileUser.socialHandles && Object.keys(profileUser.socialHandles).some(key => 
-              profileUser.showSocialHandles?.[key as SocialPlatform]
-            ) && (
-              <div className="mb-6">
-                <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
-                  Social Accounts
-                </h3>
-                <div className="space-y-2">
-                  {(Object.keys(profileUser.socialHandles) as SocialPlatform[])
-                    .filter(platform => profileUser.showSocialHandles?.[platform] && profileUser.socialHandles?.[platform])
-                    .map(platform => (
-                      <div 
-                        key={platform}
-                        className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg"
-                      >
-                        <span className="text-sm font-medium">{getSocialPlatformLabel(platform)}</span>
-                        <span className="text-sm text-muted-foreground">@{profileUser.socialHandles?.[platform]}</span>
-                      </div>
-                    ))}
+            {(() => {
+              const selectedPlatforms: SocialPlatform[] = (profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? [];
+              if (selectedPlatforms.length === 0) return null;
+              return (
+                <div className="mb-6">
+                  <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
+                    Social Accounts
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedPlatforms.map(platform => {
+                      const handle = profileUser.socialHandles?.[platform];
+                      const showHandle = profileUser.showSocialHandles?.[platform];
+                      return (
+                        <div
+                          key={platform}
+                          className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg"
+                        >
+                          <span className="text-sm font-medium">{getSocialPlatformLabel(platform)}</span>
+                          {showHandle && handle && (
+                            <span className="text-sm text-muted-foreground">@{handle}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
+
+            {/* Bluesky / Mastodon links for topic accounts */}
+            {isUnclaimedAccount && (() => {
+              const handle = (profileUser.handle || '').replace(/^@/, '');
+              if (!handle) return null;
+              const links: { label: string; url: string }[] = [];
+              const isMastodon = (profileUser as any).platform === 'mastodon';
+              if (isMastodon) {
+                links.push({ label: 'Mastodon', url: `https://mastodon.social/@${handle}` });
+              } else {
+                links.push({ label: 'Bluesky', url: `https://bsky.app/profile/${handle}` });
+              }
+              return (
+                <div className="mb-6">
+                  <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
+                    External Links
+                  </h3>
+                  <div className="space-y-2">
+                    {links.map(link => (
+                      <a
+                        key={link.label}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg hover:bg-secondary/70 transition-colors"
+                      >
+                        <span className="text-sm font-medium">{link.label}</span>
+                        <span className="text-sm text-accent text-xs">View profile →</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* About Description */}
             <div>
