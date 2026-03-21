@@ -1,13 +1,13 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
-import { sampleGames } from '../data/data';
 import { PlatformIcon } from '../components/PlatformIcon';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
 import { posts as postsAPI } from '../utils/supabase';
+import { gamesAPI } from '../utils/api';
 
 export function GameDetail() {
   const navigate = useNavigate();
@@ -15,8 +15,17 @@ export function GameDetail() {
   const { users, currentUser, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost } = useAppData();
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [game, setGame] = useState<any>(null);
+  const [loadingGame, setLoadingGame] = useState(true);
 
-  const game = sampleGames.find(g => g.id === gameId);
+  useEffect(() => {
+    if (!gameId) return;
+    setLoadingGame(true);
+    gamesAPI.getGame(gameId)
+      .then((data: any) => setGame(data?.game ?? data ?? null))
+      .catch(() => setGame(null))
+      .finally(() => setLoadingGame(false));
+  }, [gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -26,6 +35,17 @@ export function GameDetail() {
       .catch(() => setTaggedPosts([]))
       .finally(() => setLoadingPosts(false));
   }, [gameId]);
+
+  if (loadingGame) {
+    return (
+      <div className="min-h-screen pb-20">
+        <Header />
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
+        </div>
+      </div>
+    );
+  }
 
   if (!game) {
     return (
@@ -83,21 +103,36 @@ export function GameDetail() {
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
         {/* Game Header */}
         <div className="bg-card rounded-2xl overflow-hidden mb-6">
-          <div className="relative aspect-video">
-            <img src={game.coverArt} alt={game.title} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-          </div>
+          {(() => {
+            const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+              ?? game.artwork?.[0]?.url
+              ?? game.coverArt;
+            return coverArt ? (
+              <div className="relative aspect-video">
+                <img src={coverArt} alt={game.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+              </div>
+            ) : (
+              <div className="relative aspect-video bg-secondary flex items-center justify-center">
+                <Gamepad2 className="w-16 h-16 text-muted-foreground/40" />
+              </div>
+            );
+          })()}
 
           <div className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-2">{game.title}</h1>
                 <div className="flex items-center gap-4 text-muted-foreground">
-                  <span className="text-lg">{game.year}</span>
-                  <div className="flex items-center gap-2">
-                    <PlatformIcon platform={game.platform} className="w-8 h-8" />
-                    <span className="text-lg capitalize">{game.platform}</span>
-                  </div>
+                  {(game.year || game.release_year) && (
+                    <span className="text-lg">{game.year ?? game.release_year}</span>
+                  )}
+                  {game.platform && (
+                    <div className="flex items-center gap-2">
+                      <PlatformIcon platform={game.platform} className="w-8 h-8" />
+                      <span className="text-lg capitalize">{game.platform}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Shield, Mail, KeyRound } from 'lucide-react';
+import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect } from 'react';
@@ -181,6 +181,30 @@ export function Settings() {
                   Update your gaming preferences
                 </p>
               </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Subscription Section */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            Subscription
+          </h2>
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <button
+              onClick={() => navigate('/premium')}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Crown className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Plan</p>
+                <p className="text-sm text-muted-foreground">
+                  {currentUser?.is_premium ? 'Forge Premium' : 'Free'}
+                </p>
+              </div>
+              {currentUser?.is_premium && (
+                <span className="px-2 py-0.5 text-xs bg-accent/20 text-accent rounded-full font-medium">Pro</span>
+              )}
             </button>
           </div>
         </div>

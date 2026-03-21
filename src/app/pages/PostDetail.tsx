@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Send, Heart, Repeat2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, Heart, Repeat2, Trash2, AlertTriangle } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
@@ -16,11 +16,13 @@ export function PostDetail() {
 
   const [comments, setComments] = useState<any[]>([]);
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [repostedComments, setRepostedComments] = useState<Set<string>>(new Set());
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const mentionTriggerIndex = useRef<number>(-1);
 
   // Find original post (prefer one without repostedBy for detail view)
@@ -116,6 +118,7 @@ export function PostDetail() {
     try {
       await commentsAPI.delete(session.user.id, commentId);
       setComments(prev => prev.filter(c => c.id !== commentId));
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error('Failed to delete comment:', err);
     }
@@ -123,11 +126,13 @@ export function PostDetail() {
 
   const handleRepostComment = async (comment: any) => {
     if (!session?.user) return;
+    if (repostedComments.has(comment.id)) return; // already reposted
     const commentUser = comment.author ?? getUserById(comment.user_id);
     const handle = commentUser ? `@${(commentUser.handle || '').replace(/^@/, '')}` : '';
     const content = `${handle}: "${comment.content}"`;
     try {
       await createPost(content);
+      setRepostedComments(prev => new Set([...prev, comment.id]));
     } catch (err) {
       console.error('Failed to repost comment:', err);
     }
@@ -218,38 +223,29 @@ export function PostDetail() {
 
         {/* Comments Section */}
         <div className="px-4 py-6" ref={commentsRef} id="comments">
-          <h2 className="text-lg font-semibold mb-4">
-            Comments ({isLoadingComments ? '…' : comments.length})
-          </h2>
+          <h2 className="text-lg font-semibold mb-4">Comments</h2>
 
           {/* Comment Input */}
           {currentUser && (
             <form onSubmit={handleSubmitComment} className="mb-6">
-              <div className="flex gap-3 items-center">
+              <div className="flex gap-3 items-start">
                 <ProfileAvatar
                   username={currentUser.display_name || currentUser.handle || '?'}
                   profilePicture={currentUser.profile_picture}
                   size="md"
                 />
-                <div className="flex-1 flex gap-2 relative">
+                <div className="flex-1 relative">
                   <input
                     ref={commentInputRef}
                     type="text"
                     value={newComment}
                     onChange={handleCommentChange}
                     placeholder="Write a comment… Use @ to mention"
-                    className="flex-1 px-4 py-2 bg-secondary rounded-full border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                    className="w-full px-4 py-2 bg-secondary rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                   />
-                  <button
-                    type="submit"
-                    disabled={!newComment.trim() || isSubmitting}
-                    className="p-2 bg-accent text-accent-foreground rounded-full hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
                   {/* Mention dropdown */}
                   {showMentions && mentionSuggestions.length > 0 && (
-                    <div className="absolute bottom-full mb-2 left-0 right-10 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                    <div className="absolute bottom-full mb-2 left-0 right-0 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                       {mentionSuggestions.map(u => (
                         <button
                           key={u.id}
@@ -271,6 +267,15 @@ export function PostDetail() {
                       ))}
                     </div>
                   )}
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim() || isSubmitting}
+                      className="px-4 py-1.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? 'Posting…' : 'Post'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </form>
@@ -335,14 +340,17 @@ export function PostDetail() {
                         </button>
                         <button
                           onClick={() => handleRepostComment(comment)}
-                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-500 transition-colors"
-                          title="Repost as post"
+                          disabled={repostedComments.has(comment.id)}
+                          className={`flex items-center gap-1.5 text-xs transition-colors ${
+                            repostedComments.has(comment.id) ? 'text-green-500' : 'text-muted-foreground hover:text-green-500'
+                          }`}
+                          title={repostedComments.has(comment.id) ? 'Reposted' : 'Repost as post'}
                         >
                           <Repeat2 className="w-3.5 h-3.5" />
                         </button>
                         {currentUser && comment.user_id === currentUser.id && (
                           <button
-                            onClick={() => handleDeleteComment(comment.id)}
+                            onClick={() => setDeleteConfirmId(comment.id)}
                             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors"
                             title="Delete comment"
                           >
@@ -358,6 +366,33 @@ export function PostDetail() {
           )}
         </div>
       </div>
+
+      {/* Delete Comment Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+              <h2 className="text-lg font-semibold">Delete comment?</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteComment(deleteConfirmId)}
+                className="flex-1 px-4 py-2 bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors text-sm font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

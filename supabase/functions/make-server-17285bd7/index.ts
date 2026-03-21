@@ -963,6 +963,79 @@ app.get("/make-server-17285bd7/users/:userId/likes", async (c) => {
   }
 });
 
+// ===== IMAGE MODERATION =====
+
+interface ModerationResult {
+  safe: boolean;
+  blur: boolean;
+  remove: boolean;
+  reason: string;
+}
+
+async function moderateImage(imageUrl: string): Promise<ModerationResult> {
+  const apiUser = Deno.env.get('SIGHTENGINE_API_USER');
+  const apiSecret = Deno.env.get('SIGHTENGINE_API_SECRET');
+
+  // Skip moderation if credentials aren't configured
+  if (!apiUser || !apiSecret || apiUser === 'placeholder' || apiSecret === 'placeholder') {
+    return { safe: true, blur: false, remove: false, reason: '' };
+  }
+
+  try {
+    const params = new URLSearchParams({
+      url: imageUrl,
+      models: 'nudity-2.0,gore,weapon,hate-symbols',
+      api_user: apiUser,
+      api_secret: apiSecret,
+    });
+
+    const response = await fetch(`https://api.sightengine.com/1.0/check.json?${params}`);
+    if (!response.ok) {
+      console.error('[Moderation] Sightengine API error:', response.status);
+      return { safe: true, blur: false, remove: false, reason: '' };
+    }
+
+    const data = await response.json();
+    console.log('[Moderation] Sightengine result:', JSON.stringify(data));
+
+    const nudity = data.nudity ?? {};
+    const gore = data.gore ?? {};
+    const hate = data['hate-symbols'] ?? {};
+
+    // Remove: unambiguously harmful, high-confidence content only
+    const shouldRemove =
+      (nudity.sexual_activity ?? 0) > 0.85 ||
+      (gore.prob ?? 0) > 0.90 ||
+      (hate.prob ?? 0) > 0.85;
+
+    if (shouldRemove) {
+      const reasons: string[] = [];
+      if ((nudity.sexual_activity ?? 0) > 0.85) reasons.push('explicit sexual content');
+      if ((gore.prob ?? 0) > 0.90) reasons.push('graphic gore');
+      if ((hate.prob ?? 0) > 0.85) reasons.push('hate symbols');
+      return { safe: false, blur: false, remove: true, reason: reasons.join(', ') };
+    }
+
+    // Blur: suggestive content — courtesy warning, not punishment
+    const shouldBlur =
+      (nudity.suggestive ?? 0) > 0.70 ||
+      (nudity.partial ?? 0) > 0.75;
+
+    if (shouldBlur) {
+      const reasons: string[] = [];
+      if ((nudity.suggestive ?? 0) > 0.70) reasons.push('suggestive content');
+      if ((nudity.partial ?? 0) > 0.75) reasons.push('partial nudity');
+      return { safe: false, blur: true, remove: false, reason: reasons.join(', ') };
+    }
+
+    return { safe: true, blur: false, remove: false, reason: '' };
+  } catch (err) {
+    console.error('[Moderation] Error calling Sightengine:', err);
+    // Fail open — don't block uploads if moderation is down
+    return { safe: true, blur: false, remove: false, reason: '' };
+  }
+}
+
 // ===== CONTENT UPLOAD ENDPOINTS =====
 
 // Upload content (images, videos, gifs)
@@ -1057,11 +1130,37 @@ app.post("/make-server-17285bd7/upload", async (c) => {
       .from(bucketName)
       .getPublicUrl(fileName);
     
-    console.log('[Upload] Public URL generated:', publicUrlData.publicUrl);
-    
-    return c.json({ 
+    const publicUrl = publicUrlData.publicUrl;
+    console.log('[Upload] Public URL generated:', publicUrl);
+
+    // Run image moderation (only for image uploads, skip videos)
+    if (file.type.startsWith('image/')) {
+      const modResult = await moderateImage(publicUrl);
+      console.log('[Upload] Moderation result:', modResult);
+
+      if (modResult.remove) {
+        // Delete the uploaded file
+        await supabase.storage.from(bucketName).remove([fileName]);
+        return c.json(
+          { error: 'This image was removed for violating community guidelines', reason: modResult.reason },
+          400
+        );
+      }
+
+      if (modResult.blur) {
+        return c.json({
+          path: data.path,
+          url: publicUrl,
+          blurred: true,
+          reason: modResult.reason,
+        });
+      }
+    }
+
+    return c.json({
       path: data.path,
-      url: publicUrlData.publicUrl
+      url: publicUrl,
+      blurred: false,
     });
   } catch (error) {
     console.error('[Upload] Upload error:', error);

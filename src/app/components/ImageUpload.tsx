@@ -2,8 +2,13 @@ import { useState, useRef, useCallback } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { uploadAPI } from '../utils/api';
 
+interface UploadMeta {
+  blurred?: boolean;
+  reason?: string;
+}
+
 interface ImageUploadProps {
-  onUpload: (url: string) => void;
+  onUpload: (url: string, meta?: UploadMeta) => void;
   onRemove?: () => void;
   onUploadingChange?: (uploading: boolean) => void;
   existingUrl?: string;
@@ -72,7 +77,7 @@ export function ImageUpload({
       console.log('[ImageUpload] Upload result:', result);
 
       if (result.url) {
-        onUpload(result.url);
+        onUpload(result.url, { blurred: result.blurred ?? false, reason: result.reason });
         setPreviewUrl(result.url);
       } else {
         throw new Error('Upload failed - no URL returned');

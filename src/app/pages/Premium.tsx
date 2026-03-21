@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Check, Crown, Sparkles, List, Lock } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Sparkles, List } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 
 const FEATURES = [
@@ -10,15 +11,12 @@ const FEATURES = [
 
 export function Premium() {
   const navigate = useNavigate();
-  const { currentUser, updateCurrentUser } = useAppData();
+  const { currentUser } = useAppData();
   const isPremium = currentUser?.is_premium;
 
-  const handleUpgrade = async () => {
-    // Placeholder — integrate real payment here
-    alert('Payment integration coming soon! For now, we\'ll activate Premium for you.');
-    await updateCurrentUser({ is_premium: true });
-    navigate('/profile');
-  };
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -71,12 +69,42 @@ export function Premium() {
             You're already Premium!
           </div>
         ) : (
-          <button
-            onClick={handleUpgrade}
-            className="w-full py-4 bg-accent text-accent-foreground rounded-xl font-semibold hover:bg-accent/90 transition-colors text-lg"
-          >
-            Upgrade Now
-          </button>
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <p className="font-medium text-sm">Payment details</p>
+              <input
+                type="text"
+                placeholder="Card number"
+                maxLength={19}
+                className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="MM / YY"
+                  maxLength={7}
+                  className="flex-1 px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+                <input
+                  type="text"
+                  placeholder="CVC"
+                  maxLength={4}
+                  className="flex-1 px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Name on card"
+                className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+            <button
+              disabled
+              className="w-full py-4 bg-accent/50 text-accent-foreground rounded-xl font-semibold text-lg cursor-not-allowed opacity-60"
+            >
+              Coming Soon
+            </button>
+          </div>
         )}
 
         <p className="text-center text-xs text-muted-foreground mt-4">

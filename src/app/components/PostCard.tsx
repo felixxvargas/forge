@@ -10,6 +10,7 @@ import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
 import { ShareModal } from './ShareModal';
 import { LinkPreview } from './LinkPreview';
+import { BlurredImage } from './BlurredImage';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -257,15 +258,15 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
 
       {/* Images */}
       {post.images && post.images.length > 0 && (
-        <div className="mb-3 rounded-lg overflow-hidden relative">
-          <img 
-            src={post.images[0]} 
-            alt={post.image_alts?.[0] || "Post content"}
-            className="w-full object-cover max-h-80"
+        <div className="mb-3 relative">
+          <BlurredImage
+            src={post.images[0]}
+            alt={post.image_alts?.[0] || 'Post image'}
+            isBlurred={post.is_blurred ?? false}
           />
           {/* ALT badge if alt text exists */}
           {post.image_alts?.[0] && (
-            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium">
+            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
               ALT
             </div>
           )}

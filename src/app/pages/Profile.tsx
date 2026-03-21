@@ -50,6 +50,9 @@ function LinkifyMentions({ text }: { text: string }) {
 
 type ProfileTab = 'lists' | 'posts' | 'likes' | 'about';
 
+// List type selection state type
+type ListTypeOption = 'recently-played' | 'favorite' | 'wishlist' | 'library';
+
 const BIO_MAX_LENGTH = 150;
 
 export function Profile() {
@@ -60,6 +63,7 @@ export function Profile() {
     isOpen: boolean;
     listType: GameListType | null;
   }>({ isOpen: false, listType: null });
+  const [showListTypeSelector, setShowListTypeSelector] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -440,16 +444,23 @@ export function Profile() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4 border-b border-border px-4">
-          <button
-            onClick={() => setActiveTab('lists')}
-            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'lists' 
-                ? 'border-accent text-accent' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Lists
-          </button>
+          {(() => {
+            const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
+            const hasLists = ['recentlyPlayed','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);
+            if (!isOwnProfile && !hasLists) return null;
+            return (
+              <button
+                onClick={() => setActiveTab('lists')}
+                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                  activeTab === 'lists'
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Lists
+              </button>
+            );
+          })()}
           <button
             onClick={() => setActiveTab('posts')}
             className={`px-4 py-3 font-medium transition-colors border-b-2 ${
@@ -513,22 +524,47 @@ export function Profile() {
                         />
                       );
                     }
-                    if (isOwnProfile) {
-                      return (
+                    return null;
+                  })}
+
+                  {/* Single "Create list" button for own profile */}
+                  {isOwnProfile && lists.some(({ key }) => (gameLists[key] ?? []).length === 0) && (
+                    <div>
+                      {showListTypeSelector ? (
+                        <div className="bg-card/50 border border-border rounded-xl p-4">
+                          <p className="text-sm font-medium mb-3">Choose list type</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {lists.filter(({ key }) => (gameLists[key] ?? []).length === 0).map(({ listType, label, icon }) => (
+                              <button
+                                key={listType}
+                                onClick={() => { setShowListTypeSelector(false); handleOpenGameListEdit(listType); }}
+                                className="flex items-center gap-2 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
+                              >
+                                <span>{icon}</span>
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setShowListTypeSelector(false)}
+                            className="mt-3 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          key={listType}
-                          onClick={() => handleOpenGameListEdit(listType)}
+                          onClick={() => setShowListTypeSelector(true)}
                           className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
                         >
                           <div>
-                            <p className="font-medium text-sm">{label}</p>
-                            <p className="text-xs text-muted-foreground">+ Create list</p>
+                            <p className="font-medium text-sm">Create a list</p>
+                            <p className="text-xs text-muted-foreground">+ Add games to a new list</p>
                           </div>
                         </button>
-                      );
-                    }
-                    return null;
-                  })}
+                      )}
+                    </div>
+                  )}
 
                   {!hasAnyList && !isOwnProfile && (
                     <div className="text-center py-12 text-muted-foreground">
@@ -539,7 +575,7 @@ export function Profile() {
                   {/* Posts below lists */}
                   {profileUserPosts.length > 0 && (
                     <div className="mt-4">
-                      <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Posts</h3>
+                      <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Recent Posts</h3>
                       {profileUserPosts.slice(0, 5).map(post => (
                         <PostCard
                           key={post.id + (post.repostedBy || '')}
@@ -772,14 +808,14 @@ export function Profile() {
             })()}
 
             {/* About Description */}
-            <div>
-              <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
-                About
-              </h3>
-              <p className="text-sm leading-relaxed">
-                {profileUser.about || profileUser.bio}
-              </p>
-            </div>
+            {profileUser.about && (
+              <div>
+                <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
+                  About
+                </h3>
+                <p className="text-sm leading-relaxed">{profileUser.about}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
