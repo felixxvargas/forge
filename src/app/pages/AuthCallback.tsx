@@ -17,23 +17,24 @@ export function AuthCallback() {
         localStorage.setItem('forge-user-id', session.user.id);
         localStorage.setItem('forge-logged-in', 'true');
 
-        // Upsert profile so new OAuth users always have a row
         const meta = session.user.user_metadata ?? {};
+
+        // Upsert with ignoreDuplicates: only creates the row when it doesn't exist.
+        // ON CONFLICT (id) DO NOTHING — existing display_name / profile_picture are never overwritten.
         await supabase.from('profiles').upsert({
           id: session.user.id,
           display_name: meta.full_name || meta.name || session.user.email?.split('@')[0] || null,
           profile_picture: meta.avatar_url || meta.picture || null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        }, { onConflict: 'id', ignoreDuplicates: true });
 
-        // Check if profile has a handle (onboarding complete)
-        const { data } = await supabase
+        // Always re-fetch so we route based on the actual DB state
+        const { data: profile } = await supabase
           .from('profiles')
-          .select('handle')
+          .select('id, handle')
           .eq('id', session.user.id)
           .maybeSingle();
 
-        navigate(data?.handle ? '/feed' : '/onboarding');
+        navigate(profile?.handle ? '/feed' : '/onboarding');
       } else {
         navigate('/login');
       }

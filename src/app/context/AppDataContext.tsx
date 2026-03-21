@@ -80,26 +80,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     try {
       let profile = await profiles.getById(userId);
 
-      // No profile row yet (e.g. first Google OAuth login, trigger didn't fire).
-      // Auto-create a minimal profile so the app doesn't crash.
+      // No profile row found — upsert with ignoreDuplicates so we never overwrite
+      // an existing row (handles timing races where getById returned null transiently).
+      // ON CONFLICT (id) DO NOTHING preserves any existing display_name / profile_picture.
       if (!profile) {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         const meta = authUser?.user_metadata ?? {};
-        const { data: created, error: createError } = await supabase
+        await supabase.from('profiles').upsert({
+          id: userId,
+          handle: null,
+          display_name: meta.full_name || meta.name || authUser?.email?.split('@')[0] || null,
+          profile_picture: meta.avatar_url || meta.picture || null,
+        }, { onConflict: 'id', ignoreDuplicates: true });
+
+        // Re-fetch unconditionally — gets the real DB state whether newly created or pre-existing
+        const { data: fetched } = await supabase
           .from('profiles')
-          .insert({
-            id: userId,
-            handle: null,
-            display_name: meta.full_name || meta.name || authUser?.email?.split('@')[0] || null,
-            profile_picture: meta.avatar_url || meta.picture || null,
-          })
-          .select()
-          .single();
-        if (createError) {
-          console.error('Error auto-creating profile:', createError.message);
-        } else {
-          profile = created;
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        if (!fetched) {
+          console.error('Failed to load or create profile for user:', userId);
+          return;
         }
+        profile = fetched;
       }
 
       const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount] = await Promise.all([
