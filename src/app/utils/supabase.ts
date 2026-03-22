@@ -984,6 +984,14 @@ export const directMessages = {
     if (error) throw new Error(error.message);
     return data;
   },
+
+  async deleteConversation(userId: string, partnerId: string) {
+    const { error } = await supabase
+      .from('direct_messages')
+      .delete()
+      .or(`and(sender_id.eq.${userId},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${userId})`);
+    if (error) throw new Error(error.message);
+  },
 };
 
 // ============================================================
@@ -1043,6 +1051,51 @@ export const groupThreads = {
       .select('id, handle, display_name, profile_picture')
       .in('id', participantIds);
     return data ?? [];
+  },
+
+  async addParticipants(threadId: string, userIds: string[]) {
+    const { data: thread } = await supabase
+      .from('group_threads')
+      .select('participant_ids')
+      .eq('id', threadId)
+      .single();
+    if (!thread) throw new Error('Thread not found');
+    const updated = [...new Set([...thread.participant_ids, ...userIds])];
+    const { data, error } = await supabase
+      .from('group_threads')
+      .update({ participant_ids: updated, updated_at: new Date().toISOString() })
+      .eq('id', threadId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async leave(threadId: string, userId: string) {
+    const { data: thread } = await supabase
+      .from('group_threads')
+      .select('participant_ids, created_by')
+      .eq('id', threadId)
+      .single();
+    if (!thread) throw new Error('Thread not found');
+    const updated = (thread.participant_ids as string[]).filter(id => id !== userId);
+    if (updated.length === 0) {
+      await supabase.from('group_threads').delete().eq('id', threadId);
+      return null;
+    }
+    const { data, error } = await supabase
+      .from('group_threads')
+      .update({ participant_ids: updated, updated_at: new Date().toISOString() })
+      .eq('id', threadId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async delete(threadId: string) {
+    const { error } = await supabase.from('group_threads').delete().eq('id', threadId);
+    if (error) throw new Error(error.message);
   },
 };
 
