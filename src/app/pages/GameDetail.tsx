@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Swords } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Swords, Flame, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -310,6 +310,45 @@ export function GameDetail() {
           </div>
         )}
 
+        {/* Store links */}
+        {(() => {
+          const title = encodeURIComponent(game.title);
+          const p = platforms.map((s: string) => s.toLowerCase()).join(' ');
+          const links: { label: string; url: string; color: string }[] = [];
+          if (p.includes('pc') || p.includes('windows') || p.includes('steam')) {
+            links.push({ label: 'Steam', url: `https://store.steampowered.com/search/?term=${title}`, color: 'text-[#1b2838]' });
+          }
+          if (p.includes('playstation')) {
+            links.push({ label: 'PlayStation Store', url: `https://store.playstation.com/search/${title}`, color: 'text-[#003087]' });
+          }
+          if (p.includes('xbox')) {
+            links.push({ label: 'Xbox', url: `https://www.xbox.com/en-US/search?q=${title}`, color: 'text-[#107C10]' });
+          }
+          if (p.includes('nintendo switch') || p.includes('switch')) {
+            links.push({ label: 'Nintendo eShop', url: `https://www.nintendo.com/search/?q=${title}&p=1&cat=gm&sort=score`, color: 'text-[#E60012]' });
+          }
+          if (links.length === 0) return null;
+          return (
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Buy / Find On</h3>
+              <div className="flex flex-wrap gap-2">
+                {links.map(link => (
+                  <a
+                    key={link.label}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-full text-sm font-medium transition-colors"
+                  >
+                    {link.label}
+                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Played / Owned action buttons */}
         {session?.user && (
           <>
@@ -317,31 +356,35 @@ export function GameDetail() {
               <button
                 onClick={handleTogglePlayed}
                 disabled={togglingPlayed}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-                  isPlayed ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
+                  isPlayed
+                    ? 'bg-emerald-500/20 border-2 border-emerald-500/60 text-emerald-400'
+                    : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
                 }`}
               >
                 {isPlayed ? <CheckCircle2 className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
-                {isPlayed ? 'Played' : "I've Played This"}
+                {isPlayed ? 'Played ✓' : "I've Played This"}
               </button>
               <button
                 onClick={handleToggleOwned}
                 disabled={togglingOwned}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-                  isOwned ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
+                  isOwned
+                    ? 'bg-sky-500/20 border-2 border-sky-500/60 text-sky-400'
+                    : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
                 }`}
               >
                 {isOwned ? <CheckCircle2 className="w-4 h-4" /> : <Library className="w-4 h-4" />}
-                {isOwned ? 'In Library' : 'I Own This'}
+                {isOwned ? 'In Library ✓' : 'I Own This'}
               </button>
             </div>
-            {/* LFG / LFM buttons */}
+            {/* LFG / LFM buttons — fire flare branding */}
             <div className="flex gap-3 mb-6">
               {myFlare ? (
-                <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/10 border border-accent/30">
-                  <Swords className="w-4 h-4 text-accent shrink-0" />
+                <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border-2 border-orange-400/50">
+                  <Flame className="w-4 h-4 text-orange-400 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-accent uppercase">{myFlare.flare_type === 'lfg' ? 'LFG Active' : 'LFM Active'}</p>
+                    <p className="text-xs font-bold text-orange-400 uppercase">{myFlare.flare_type === 'lfg' ? 'LFG Active' : 'LFM Active'}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       Need {myFlare.players_needed}{myFlare.group_size ? `/${myFlare.group_size}` : ''}
                       {myFlare.game_mode ? ` · ${myFlare.game_mode}` : ''}
@@ -361,16 +404,16 @@ export function GameDetail() {
                 <>
                   <button
                     onClick={() => { setLfgModalType('lfg'); setShowLFGModal(true); }}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
                   >
-                    <Swords className="w-4 h-4" />
+                    <Flame className="w-4 h-4" />
                     Looking for Group
                   </button>
                   <button
                     onClick={() => { setLfgModalType('lfm'); setShowLFGModal(true); }}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
                   >
-                    <Users className="w-4 h-4" />
+                    <Flame className="w-4 h-4" />
                     Looking for More
                   </button>
                 </>

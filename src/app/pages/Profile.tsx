@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2 } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
@@ -75,6 +75,8 @@ export function Profile() {
   });
   const [listDragIdx, setListDragIdx] = useState<number | null>(null);
   const [listDragOverIdx, setListDragOverIdx] = useState<number | null>(null);
+  const [listDragPos, setListDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [listDragLabel, setListDragLabel] = useState<string | null>(null);
   // Pointer-based drag state (works on mobile touch)
   const listDragPtrRef = useRef<{ fromIdx: number; currentOver: number | null } | null>(null);
   const listItemElsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -138,16 +140,17 @@ export function Profile() {
     profilesAPI.isFollowing(currentUser.id, profileUser.id).then(setIsFollowing);
   }, [isOwnProfile, currentUser?.id, profileUser?.id]);
 
-  // Fetch fresh follower/following counts directly from DB for other users' profiles
+  // Fetch fresh follower/following counts from the follows table (source of truth — avoids stale counters)
   useEffect(() => {
-    if (isOwnProfile || !profileUser?.id) return;
-    profilesAPI.getById(profileUser.id).then(data => {
-      if (data) {
-        setFreshFollowerCount(data.follower_count ?? 0);
-        setFreshFollowingCount(data.following_count ?? 0);
-      }
+    if (!profileUser?.id) return;
+    Promise.all([
+      profiles.getFollowerCount(profileUser.id),
+      profiles.getFollowingCount(profileUser.id),
+    ]).then(([fc, fwc]) => {
+      setFreshFollowerCount(fc);
+      setFreshFollowingCount(fwc);
     }).catch(() => {});
-  }, [isOwnProfile, profileUser?.id]);
+  }, [profileUser?.id]);
 
   // Load mutual followers (people you follow who also follow this profile)
   useEffect(() => {
@@ -582,11 +585,11 @@ export function Profile() {
         {activeFlares.length > 0 && (
           <div className="px-4 mb-3 space-y-2">
             {activeFlares.map(flare => (
-              <div key={flare.id} className="flex items-start gap-3 p-3 bg-accent/10 border border-accent/30 rounded-xl">
-                <Swords className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+              <div key={flare.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 rounded-xl">
+                <Flame className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className="text-xs font-bold uppercase tracking-wide text-accent">
+                    <span className="text-xs font-bold uppercase tracking-wide text-orange-400">
                       {flare.flare_type === 'lfg' ? 'LFG' : 'LFM'}
                     </span>
                     <span className="text-sm font-semibold truncate">{flare.game_title}</span>
@@ -596,7 +599,7 @@ export function Profile() {
                     {flare.game_mode ? ` · ${flare.game_mode}` : ''}
                     {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
                   </p>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">
+                  <p className="text-xs text-orange-400/50 mt-0.5">
                     Expires {new Date(flare.expires_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -619,9 +622,9 @@ export function Profile() {
           <div className="px-4 mb-3">
             <button
               onClick={() => setShowLFGFlareModal(true)}
-              className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
             >
-              <Plus className="w-4 h-4" />
+              <Flame className="w-4 h-4" />
               {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
             </button>
           </div>
@@ -698,11 +701,13 @@ export function Profile() {
               const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
               const hasAnyList = ALL_LISTS.some(l => (gameLists[l.key] ?? []).length > 0);
 
-              const handleGripPointerDown = (i: number) => (e: React.PointerEvent) => {
+              const handleGripPointerDown = (i: number, label: string) => (e: React.PointerEvent) => {
                 e.preventDefault();
                 (e.currentTarget as Element).setPointerCapture(e.pointerId);
                 listDragPtrRef.current = { fromIdx: i, currentOver: i };
                 setListDragIdx(i);
+                setListDragLabel(label);
+                setListDragPos({ x: e.clientX, y: e.clientY });
               };
               const handleGripPointerMove = (i: number) => (e: React.PointerEvent) => {
                 if (!listDragPtrRef.current || listDragPtrRef.current.fromIdx !== i) return;
@@ -716,12 +721,15 @@ export function Profile() {
                 }
                 listDragPtrRef.current.currentOver = overIdx;
                 if (listDragOverIdx !== overIdx) setListDragOverIdx(overIdx);
+                setListDragPos({ x: e.clientX, y: e.clientY });
               };
               const handleGripPointerUp = (i: number) => (_e: React.PointerEvent) => {
                 if (!listDragPtrRef.current || listDragPtrRef.current.fromIdx !== i) return;
                 const from = i;
                 const to = listDragPtrRef.current.currentOver;
                 listDragPtrRef.current = null;
+                setListDragPos(null);
+                setListDragLabel(null);
                 if (to !== null && to !== from) {
                   const newOrder = [...orderedLists.map(l => l.key)];
                   const [moved] = newOrder.splice(from, 1);
@@ -737,6 +745,8 @@ export function Profile() {
               const handleGripPointerCancel = (_e: React.PointerEvent) => {
                 listDragPtrRef.current = null;
                 setListDragIdx(null); setListDragOverIdx(null);
+                setListDragPos(null);
+                setListDragLabel(null);
               };
 
               return (
@@ -750,8 +760,8 @@ export function Profile() {
                       <div
                         key={listType}
                         ref={el => { listItemElsRef.current[i] = el; }}
-                        className={`rounded-xl transition-all ${
-                          isDragging ? 'opacity-40' : isOver ? 'ring-2 ring-accent/50 bg-accent/5' : ''
+                        className={`rounded-xl transition-all duration-150 ${
+                          isDragging ? 'opacity-30 scale-[0.98] pointer-events-none' : isOver ? 'ring-2 ring-accent/50 bg-accent/5 scale-[1.01]' : ''
                         }`}
                       >
                         <GameList
@@ -763,7 +773,7 @@ export function Profile() {
                           listType={listType}
                           showFirstOnly={true}
                           dragHandle={isOwnProfile}
-                          onGripPointerDown={isOwnProfile ? handleGripPointerDown(i) : undefined}
+                          onGripPointerDown={isOwnProfile ? handleGripPointerDown(i, label) : undefined}
                           onGripPointerMove={isOwnProfile ? handleGripPointerMove(i) : undefined}
                           onGripPointerUp={isOwnProfile ? handleGripPointerUp(i) : undefined}
                           onGripPointerCancel={isOwnProfile ? handleGripPointerCancel : undefined}
@@ -773,7 +783,7 @@ export function Profile() {
                   })}
 
                   {/* Single "Create list" button for own profile */}
-                  {isOwnProfile && ALL_LISTS.some(({ key }) => (gameLists[key] ?? []).length === 0) && (
+                  {isOwnProfile && (ALL_LISTS.some(({ key }) => (gameLists[key] ?? []).length === 0) || true) && (
                     <div>
                       {showListTypeSelector ? (
                         <div className="bg-card/50 border border-border rounded-xl p-4">
@@ -788,6 +798,28 @@ export function Profile() {
                                 <span>{label}</span>
                               </button>
                             ))}
+                            {/* Custom list — always shown, gated by premium */}
+                            {(() => {
+                              const isPremium = (currentUser as any)?.is_premium;
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setShowListTypeSelector(false);
+                                    navigate(isPremium ? '/create-custom-list' : '/premium');
+                                  }}
+                                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${
+                                    isPremium
+                                      ? 'bg-secondary hover:bg-secondary/80'
+                                      : 'bg-secondary/40 text-muted-foreground cursor-default'
+                                  }`}
+                                >
+                                  <span>Custom List</span>
+                                  {!isPremium && (
+                                    <Crown className="w-3.5 h-3.5 text-accent/60 shrink-0 ml-auto" />
+                                  )}
+                                </button>
+                              );
+                            })()}
                           </div>
                           <button
                             onClick={() => setShowListTypeSelector(false)}
@@ -797,15 +829,27 @@ export function Profile() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setShowListTypeSelector(true)}
-                          className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
-                        >
-                          <div>
-                            <p className="font-medium text-sm">Create a list</p>
-                            <p className="text-xs text-muted-foreground">+ Add games to a new list</p>
-                          </div>
-                        </button>
+                        ALL_LISTS.some(({ key }) => (gameLists[key] ?? []).length === 0) ? (
+                          <button
+                            onClick={() => setShowListTypeSelector(true)}
+                            className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
+                          >
+                            <div>
+                              <p className="font-medium text-sm">Create a list</p>
+                              <p className="text-xs text-muted-foreground">+ Add games to a new list</p>
+                            </div>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setShowListTypeSelector(true)}
+                            className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
+                          >
+                            <div>
+                              <p className="font-medium text-sm">Create a custom list</p>
+                              <p className="text-xs text-muted-foreground">+ Add a custom named list</p>
+                            </div>
+                          </button>
+                        )
                       )}
                     </div>
                   )}
@@ -1169,6 +1213,19 @@ export function Profile() {
           </div>
         )}
       </div>
+
+      {/* Drag ghost — floats under cursor while reordering lists */}
+      {listDragIdx !== null && listDragPos && listDragLabel && (
+        <div
+          className="fixed z-50 pointer-events-none select-none"
+          style={{ left: listDragPos.x - 12, top: listDragPos.y - 20 }}
+        >
+          <div className="flex items-center gap-2 px-3 py-2 bg-card border border-accent/40 rounded-xl shadow-2xl backdrop-blur-sm">
+            <GripVertical className="w-4 h-4 text-accent/60 shrink-0" />
+            <span className="text-sm font-medium">{listDragLabel}</span>
+          </div>
+        </div>
+      )}
 
       {/* Write Post Button */}
       <WritePostButton />

@@ -120,7 +120,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setRepostedPosts(new Set(repostedIds));
       setBlockedUsers(new Set(blockedIds));
       setMutedUsers(new Set(mutedIds));
-      setFollowingIds(new Set(followingIdList));
+      // Also restore topic account follows stored in game_lists._topicFollows
+      const topicFollows: string[] = (profile?.game_lists?._topicFollows) ?? [];
+      setFollowingIds(new Set([...followingIdList, ...topicFollows]));
       setHasUnreadNotifications(unreadCount > 0);
     } catch (e) {
       console.error('Error loading user data:', e);
@@ -272,11 +274,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // Topic account IDs are local synthetic IDs (e.g. 'user-koop') not in the Supabase profiles table.
+  // They can't use the follows table (FK constraint). We persist them in game_lists._topicFollows instead.
+  const isTopicId = (id: string) => id.startsWith('user-');
+
   const followUser = async (userId: string) => {
     if (!session?.user) return;
-    await profiles.follow(session.user.id, userId);
-    // Create follow notification (DB trigger also does this, code is a fallback)
-    notificationsAPI.create('follow', userId, session.user.id).catch(() => {});
+    if (isTopicId(userId)) {
+      const existing = (currentUser?.game_lists ?? {}) as any;
+      const prev: string[] = existing._topicFollows ?? [];
+      if (!prev.includes(userId)) {
+        const updated = [...prev, userId];
+        await profiles.update(session.user.id, { game_lists: { ...existing, _topicFollows: updated } });
+        setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _topicFollows: updated } } : u);
+      }
+    } else {
+      await profiles.follow(session.user.id, userId);
+      // Create follow notification (DB trigger also does this, code is a fallback)
+      notificationsAPI.create('follow', userId, session.user.id).catch(() => {});
+    }
     setFollowingIds(prev => new Set([...prev, userId]));
     setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u
@@ -286,7 +302,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const unfollowUser = async (userId: string) => {
     if (!session?.user) return;
-    await profiles.unfollow(session.user.id, userId);
+    if (isTopicId(userId)) {
+      const existing = (currentUser?.game_lists ?? {}) as any;
+      const updated = (existing._topicFollows ?? []).filter((id: string) => id !== userId);
+      await profiles.update(session.user.id, { game_lists: { ...existing, _topicFollows: updated } });
+      setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _topicFollows: updated } } : u);
+    } else {
+      await profiles.unfollow(session.user.id, userId);
+    }
     setFollowingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
     setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u

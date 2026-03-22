@@ -585,9 +585,11 @@ export const rawgAPI = {
       const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit * 2}&search_exact=false&exclude_additions=true`;
       const res = await fetch(url);
       if (!res.ok) return [];
+      // Title patterns that indicate passes, bundles, or year subscriptions rather than games
+      const ADDON_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack)\b/i;
       const { results } = await res.json();
       return (results ?? [])
-        .filter((g: any) => !g.parents_count)
+        .filter((g: any) => !g.parents_count && !ADDON_RE.test(g.name))
         .slice(0, limit)
         .map((g: any) => ({
         id: `rawg-${g.id}`,

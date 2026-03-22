@@ -30,13 +30,18 @@ export function ListView() {
   const [searchParams] = useSearchParams();
   const listType = (searchParams.get('type') || 'library') as GameListType;
   const isBrowseMode = searchParams.get('browse') === 'true';
+  const viewUserId = searchParams.get('userId');
   const { currentUser, users, updateGameList } = useAppData();
 
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const listKey = LIST_KEY_MAP[listType];
-  const gameLists = currentUser?.game_lists ?? currentUser?.gameLists ?? {};
+
+  // If viewing another user's list via userId param
+  const viewUser = viewUserId ? users.find(u => u.id === viewUserId) : null;
+  const sourceUser = viewUser ?? currentUser;
+  const gameLists = (sourceUser as any)?.game_lists ?? (sourceUser as any)?.gameLists ?? {};
   const games: Game[] = gameLists[listKey] ?? [];
 
   const sortedGames = [...games].sort((a, b) =>
@@ -90,7 +95,7 @@ export function ListView() {
               <div
                 key={u.id}
                 className={`bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors ${isSelf ? 'border border-accent/30' : ''}`}
-                onClick={() => navigate(isSelf ? '/profile' : `/profile/${u.id}`)}
+                onClick={() => navigate(isSelf ? `/list?type=${listType}` : `/list?type=${listType}&userId=${u.id}`)}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <ProfileAvatar
@@ -108,14 +113,23 @@ export function ListView() {
                   </div>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1">
-                  {uGames.slice(0, 6).map((game: Game) => (
-                    <img
-                      key={game.id}
-                      src={game.coverArt}
-                      alt={game.title}
-                      className="w-12 h-16 object-cover rounded shrink-0"
-                    />
-                  ))}
+                  {uGames.slice(0, 6).map((game: Game) => {
+                    const cover = (game as any).artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+                      ?? (game as any).artwork?.[0]?.url
+                      ?? game.coverArt;
+                    return cover ? (
+                      <img
+                        key={game.id}
+                        src={cover}
+                        alt={game.title}
+                        className="w-12 h-16 object-cover rounded shrink-0"
+                      />
+                    ) : (
+                      <div key={game.id} className="w-12 h-16 rounded shrink-0 bg-secondary flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground text-center px-1 leading-tight">{game.title.slice(0,10)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))
@@ -140,7 +154,9 @@ export function ListView() {
               </button>
               <div>
                 <h1 className="text-xl font-semibold">{title}</h1>
-                <p className="text-sm text-muted-foreground">{games.length} games</p>
+                <p className="text-sm text-muted-foreground">
+                  {viewUser ? `${viewUser.display_name || viewUser.handle}'s list · ` : ''}{games.length} games
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -150,13 +166,15 @@ export function ListView() {
               >
                 {sortOrder === 'a-z' ? 'A-Z' : 'Z-A'}
               </button>
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                title="Edit list"
-              >
-                <Edit2 className="w-5 h-5" />
-              </button>
+              {!viewUser && (
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                  title="Edit list"
+                >
+                  <Edit2 className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -208,7 +226,7 @@ export function ListView() {
                   <div
                     key={u.id}
                     className="bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors"
-                    onClick={() => navigate(`/profile/${u.id}`)}
+                    onClick={() => navigate(`/list?type=${listType}&userId=${u.id}`)}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <ProfileAvatar

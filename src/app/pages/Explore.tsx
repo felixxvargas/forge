@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { type User, type Group } from '../data/data';
 import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, supabase } from '../utils/supabase';
+import { fetchAllGamingMediaPosts } from '../utils/bluesky';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
@@ -24,6 +25,7 @@ export function Explore() {
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem('explore-search-query') ?? '');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [topicPosts, setTopicPosts] = useState<any[]>([]);
+  const [livePosts, setLivePosts] = useState<any[]>([]);
   const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [hideSearchBar, setHideSearchBar] = useState(false);
@@ -142,11 +144,24 @@ export function Explore() {
 
   useEffect(() => {
     if (activeTab !== 'posts') return;
-    setLoadingTopicPosts(true);
-    postsAPI.getTopicPosts(100)
-      .then(setTopicPosts)
-      .catch(() => {})
-      .finally(() => setLoadingTopicPosts(false));
+
+    const load = async () => {
+      setLoadingTopicPosts(true);
+      try {
+        const [supabasePosts, live] = await Promise.allSettled([
+          postsAPI.getTopicPosts(100),
+          fetchAllGamingMediaPosts(8),
+        ]);
+        if (supabasePosts.status === 'fulfilled') setTopicPosts(supabasePosts.value);
+        if (live.status === 'fulfilled') setLivePosts(live.value as any[]);
+      } catch {}
+      finally { setLoadingTopicPosts(false); }
+    };
+
+    load();
+    // Re-fetch live posts every 5 minutes
+    const interval = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [activeTab]);
 
   // Global search: debounce and fetch posts + games in parallel
@@ -217,6 +232,7 @@ export function Explore() {
   const seenPostIds = new Set<string>();
   const gamingMediaPosts = [
     ...topicPosts,
+    ...livePosts,
     ...posts.filter(p => p.author?.account_type === 'topic' || p.platform === 'bluesky' || p.platform === 'mastodon'),
   ].filter(post => {
     if (!post.content?.trim()) return false;

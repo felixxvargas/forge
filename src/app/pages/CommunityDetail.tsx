@@ -569,6 +569,27 @@ export function CommunityDetail() {
               </button>
             </div>
             <div className="p-4 space-y-4">
+              {/* Profile picture */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  {groupImageUrl ? (
+                    <img src={groupImageUrl} alt="" className="w-20 h-20 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center text-3xl">
+                      {community.icon}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors"
+                    title="Change group image"
+                  >
+                    {uploadingImage ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Camera className="w-3.5 h-3.5 text-white" />}
+                  </button>
+                </div>
+                <span className="text-xs text-muted-foreground">Tap to change photo</span>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Group Name</label>
                 <input

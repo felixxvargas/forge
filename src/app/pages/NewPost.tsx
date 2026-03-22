@@ -23,6 +23,7 @@ export function NewPost() {
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState('');
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
+  const [atGameResults, setAtGameResults] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [hashGameResults, setHashGameResults] = useState<any[]>([]);
   const [showHashGames, setShowHashGames] = useState(false);
@@ -32,6 +33,7 @@ export function NewPost() {
   const hashTriggerIndex = useRef<number>(-1);
   const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hashSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const atGameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
@@ -40,29 +42,42 @@ export function NewPost() {
     const cursorPos = e.target.selectionStart ?? newContent.length;
     const before = newContent.slice(0, cursorPos);
 
-    // @mention
-    const mentionMatch = before.match(/@(\w*)$/);
+    // @mention — allow spaces so game titles like "Elden Ring" work
+    const mentionMatch = before.match(/@([\w ]*)$/);
     if (mentionMatch) {
       mentionStartRef.current = before.lastIndexOf('@');
-      const query = mentionMatch[1].toLowerCase();
+      const query = mentionMatch[1].trim().toLowerCase();
       const filtered = users
         .filter(u => {
           const handle = (u.handle || '').replace(/^@/, '').toLowerCase();
           const name = (u.display_name || '').toLowerCase();
           return handle.includes(query) || name.includes(query);
         })
-        .slice(0, 5);
+        .slice(0, 4);
       setMentionSuggestions(filtered);
-      setShowMentions(filtered.length > 0);
+      setShowMentions(true);
       setShowHashGames(false);
+      // Also search games
+      if (atGameSearchTimer.current) clearTimeout(atGameSearchTimer.current);
+      if (query.length >= 1) {
+        atGameSearchTimer.current = setTimeout(async () => {
+          try {
+            const results = await gamesAPI.searchGames(query, 4);
+            const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
+            setAtGameResults(list);
+          } catch { setAtGameResults([]); }
+        }, 300);
+      } else {
+        setAtGameResults([]);
+      }
       return;
     }
 
-    // #game tag
-    const hashMatch = before.match(/#(\w+)$/);
+    // #game tag — allow spaces so "elden ring" etc. work
+    const hashMatch = before.match(/#([\w ]+)$/);
     if (hashMatch) {
       hashTriggerIndex.current = before.lastIndexOf('#');
-      const query = hashMatch[1];
+      const query = hashMatch[1].trim();
       setShowMentions(false);
       if (hashSearchTimer.current) clearTimeout(hashSearchTimer.current);
       if (query.length >= 1) {
@@ -87,6 +102,7 @@ export function NewPost() {
 
     setShowMentions(false);
     setShowHashGames(false);
+    setAtGameResults([]);
     mentionStartRef.current = -1;
   };
 
@@ -94,14 +110,26 @@ export function NewPost() {
     const startIdx = mentionStartRef.current;
     if (startIdx < 0) { setShowMentions(false); return; }
     const handle = (user.handle || '').startsWith('@') ? user.handle : `@${user.handle}`;
-    const afterAt = content.slice(startIdx + 1);
-    const wordEnd = afterAt.search(/[^\w]/);
-    const tokenEnd = wordEnd === -1 ? content.length : startIdx + 1 + wordEnd;
-    const newContent = content.slice(0, startIdx) + handle + ' ' + content.slice(tokenEnd);
+    const curPos = textareaRef.current?.selectionStart ?? content.length;
+    const newContent = content.slice(0, startIdx) + handle + ' ' + content.slice(curPos);
     setContent(newContent);
     mentionStartRef.current = -1;
     setShowMentions(false);
     setMentionSuggestions([]);
+    setAtGameResults([]);
+  };
+
+  const handleAtGameSelect = (game: any) => {
+    const startIdx = mentionStartRef.current;
+    if (startIdx < 0) { setShowMentions(false); setAtGameResults([]); return; }
+    const curPos = textareaRef.current?.selectionStart ?? content.length;
+    const newContent = content.slice(0, startIdx) + '@' + game.title + ' ' + content.slice(curPos);
+    setContent(newContent);
+    setSelectedGame({ id: String(game.id ?? game.game_id ?? ''), title: game.title });
+    mentionStartRef.current = -1;
+    setShowMentions(false);
+    setMentionSuggestions([]);
+    setAtGameResults([]);
   };
 
   const handleHashGameSelect = (game: any) => {
@@ -205,33 +233,59 @@ export function NewPost() {
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
-          placeholder="What's on your mind? Use @username to mention, #game to tag a game"
+          placeholder="What's on your mind? @mention people or games, #game to tag"
           className="w-full min-h-[200px] bg-transparent resize-none outline-none text-base"
           autoFocus
         />
 
-        {/* @Mention suggestions */}
-        {showMentions && mentionSuggestions.length > 0 && (
-          <div className="absolute left-4 right-4 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-            {mentionSuggestions.map(user => (
-              <button
-                key={user.id}
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(user); }}
-                className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
-              >
-                <ProfileAvatar
-                  username={user.display_name || user.handle || '?'}
-                  profilePicture={user.profile_picture}
-                  userId={user.id}
-                  size="sm"
-                />
-                <div>
-                  <p className="font-medium text-sm">{user.display_name || user.handle}</p>
-                  <p className="text-xs text-muted-foreground">@{(user.handle || '').replace(/^@/, '')}</p>
-                </div>
-              </button>
-            ))}
+        {/* @Mention + @Game suggestions */}
+        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0) && (
+          <div className="absolute left-4 right-4 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+            {mentionSuggestions.length > 0 && (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">People</div>
+                {mentionSuggestions.map(user => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(user); }}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
+                  >
+                    <ProfileAvatar
+                      username={user.display_name || user.handle || '?'}
+                      profilePicture={user.profile_picture}
+                      userId={user.id}
+                      size="sm"
+                    />
+                    <div>
+                      <p className="font-medium text-sm">{user.display_name || user.handle}</p>
+                      <p className="text-xs text-muted-foreground">@{(user.handle || '').replace(/^@/, '')}</p>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
+            {atGameResults.length > 0 && (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">Games</div>
+                {atGameResults.map((game: any, i) => (
+                  <button
+                    key={game.id ?? game.game_id ?? i}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleAtGameSelect(game); }}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
+                  >
+                    {(game.cover || game.artwork?.[0]?.url) && (
+                      <img src={game.cover ?? game.artwork[0].url} alt="" className="w-8 h-10 rounded object-cover shrink-0" />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{game.title}</p>
+                      {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         )}
 

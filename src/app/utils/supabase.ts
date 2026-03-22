@@ -167,6 +167,22 @@ export const profiles = {
     return (data ?? []).map((r: any) => r.following);
   },
 
+  async getFollowingCount(userId: string): Promise<number> {
+    const { count } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', userId);
+    return count ?? 0;
+  },
+
+  async getFollowerCount(userId: string): Promise<number> {
+    const { count } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', userId);
+    return count ?? 0;
+  },
+
   async block(blockerId: string, blockedId: string) {
     const { error } = await supabase
       .from('blocked_users')
