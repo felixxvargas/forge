@@ -15,6 +15,7 @@ import { SocialMediaIntegrations } from './pages/SocialMediaIntegrations';
 import { SocialMediaFiltering } from './pages/SocialMediaFiltering';
 import { Messages } from './pages/Messages';
 import { CommunityDetail } from './pages/CommunityDetail';
+import { CommunityMembers } from './pages/CommunityMembers';
 import { UserCommunities } from './pages/UserCommunities';
 import { GameDetail } from './pages/GameDetail';
 import { GamePlayers } from './pages/GamePlayers';
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: 'social-filtering',       element: <SocialMediaFiltering />,    errorElement: <ErrorBoundary /> },
       { path: 'messages',               element: <Messages />,                errorElement: <ErrorBoundary /> },
       { path: 'group/:groupId',         element: <CommunityDetail />,         errorElement: <ErrorBoundary /> },
+      { path: 'group/:groupId/members', element: <CommunityMembers />,        errorElement: <ErrorBoundary /> },
       { path: 'user-groups',            element: <UserCommunities />,         errorElement: <ErrorBoundary /> },
       { path: 'followers',              element: <FollowersList />,           errorElement: <ErrorBoundary /> },
       { path: 'followers/:userId',      element: <FollowersList />,           errorElement: <ErrorBoundary /> },

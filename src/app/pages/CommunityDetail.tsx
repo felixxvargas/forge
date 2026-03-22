@@ -329,7 +329,7 @@ export function CommunityDetail() {
           {/* Friends who play */}
           {friends.length > 0 && (
             <button
-              onClick={() => setShowMembersModal(true)}
+              onClick={() => navigate(`/group/${groupId}/members`)}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
             >
               <div className="flex -space-x-2">
@@ -348,7 +348,7 @@ export function CommunityDetail() {
           )}
 
           <button
-            onClick={() => setShowMembersModal(true)}
+            onClick={() => navigate(`/group/${groupId}/members`)}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
           >
             <Users className="w-4 h-4" />
@@ -491,72 +491,7 @@ export function CommunityDetail() {
         </div>
       </div>
 
-      {/* Members Modal */}
-      {showMembersModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Members</h2>
-              <button onClick={() => setShowMembersModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4 space-y-2">
-              {loadingMembers ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : dbMembers.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-6">No members found</p>
-              ) : (
-                dbMembers.map((member: any) => {
-                  const isCreatorRow = member.id === creatorId;
-                  const isActionLoading = memberActionLoading === member.id;
-                  return (
-                    <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors">
-                      <button
-                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                        onClick={() => { setShowMembersModal(false); navigate(`/profile/${member.id}`); }}
-                      >
-                        <ProfileAvatar
-                          username={member.display_name || member.handle || '?'}
-                          profilePicture={member.profile_picture}
-                          size="md"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-semibold truncate">{member.display_name || member.handle}</p>
-                          <p className="text-sm text-muted-foreground">@{(member.handle || '').replace(/^@/, '')}</p>
-                          {isCreatorRow && <p className="text-xs text-accent font-medium">Admin</p>}
-                        </div>
-                      </button>
-                      {isAdmin && !isCreatorRow && member.id !== currentUser?.id && (
-                        <div className="flex gap-1 shrink-0">
-                          <button
-                            onClick={() => handleRemoveMember(member.id)}
-                            disabled={isActionLoading}
-                            className="p-2 rounded-lg hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-                            title="Remove from group"
-                          >
-                            {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={() => handleBanMember(member.id)}
-                            disabled={isActionLoading}
-                            className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Ban from group"
-                          >
-                            {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldOff className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Members — now a full-screen page at /group/:groupId/members */}
 
       {/* Edit Group Modal */}
       {showEditModal && (

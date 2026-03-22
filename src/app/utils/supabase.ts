@@ -1051,6 +1051,16 @@ export const lfgFlares = {
     return data ?? [];
   },
 
+  /** Extend (renew) a flare's expiry by the given number of minutes from now. */
+  async extend(flareId: string, minutes: number): Promise<void> {
+    const newExpiry = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    const { error } = await supabase
+      .from('lfg_flares')
+      .update({ expires_at: newExpiry })
+      .eq('id', flareId);
+    if (error) throw new Error(error.message);
+  },
+
   /** Check if user has an active flare for a specific game. */
   async getUserFlareForGame(userId: string, gameId: string): Promise<LFGFlare | null> {
     const { data } = await supabase

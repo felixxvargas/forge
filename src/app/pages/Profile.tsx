@@ -722,6 +722,14 @@ export function Profile() {
                 listDragPtrRef.current.currentOver = overIdx;
                 if (listDragOverIdx !== overIdx) setListDragOverIdx(overIdx);
                 setListDragPos({ x: e.clientX, y: e.clientY });
+                // Auto-scroll page when dragging near viewport edges
+                const EDGE = 100;
+                const SPEED = 8;
+                if (e.clientY < EDGE) {
+                  window.scrollBy({ top: -Math.ceil(SPEED * (1 - e.clientY / EDGE) * 3), behavior: 'instant' as ScrollBehavior });
+                } else if (e.clientY > window.innerHeight - EDGE) {
+                  window.scrollBy({ top: Math.ceil(SPEED * (1 - (window.innerHeight - e.clientY) / EDGE) * 3), behavior: 'instant' as ScrollBehavior });
+                }
               };
               const handleGripPointerUp = (i: number) => (_e: React.PointerEvent) => {
                 if (!listDragPtrRef.current || listDragPtrRef.current.fromIdx !== i) return;

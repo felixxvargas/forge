@@ -21,6 +21,8 @@ const EXPIRY_OPTIONS = [
   { label: '24 hours', minutes: 1440 },
   { label: '3 days',   minutes: 4320 },
   { label: '1 week',   minutes: 10080 },
+  { label: '2 weeks',  minutes: 20160 },
+  { label: '1 month',  minutes: 43200 },
 ];
 
 export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, onCreated }: LFGFlareModalProps) {

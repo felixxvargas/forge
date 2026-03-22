@@ -534,7 +534,20 @@ export const gamesAPI = {
   },
 
   async searchGames(query: string, limit = 20) {
-    return apiRequest(`/games/search/${encodeURIComponent(query)}?limit=${limit}`);
+    const raw: any = await apiRequest(`/games/search/${encodeURIComponent(query)}?limit=${limit}`);
+    const list: any[] = Array.isArray(raw) ? raw : raw?.games ?? [];
+    // IGDB categories to exclude: 1=dlc_addon, 3=bundle, 5=mod, 6=episode, 7=season, 13=pack, 14=update
+    const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 13, 14]);
+    // Title patterns that are almost always packs / passes / subscriptions
+    const ADDON_RE = /\b(dlc|season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|upgrade pack|game pack|booster pack|weapon pack|skin pack|cosmetic pack|points pack)\b/i;
+    const filtered = list.filter((g: any) => {
+      const cat = g.category ?? g.game_type ?? g.type;
+      if (cat !== undefined && cat !== null && EXCLUDED_CATEGORIES.has(Number(cat))) return false;
+      if (ADDON_RE.test(g.title ?? g.name ?? '')) return false;
+      return true;
+    });
+    if (Array.isArray(raw)) return filtered;
+    return { ...raw, games: filtered };
   },
   
   async getGames(gameIds: string[]) {
