@@ -168,38 +168,40 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="bg-card w-full max-w-2xl mx-auto rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-card w-full max-w-2xl mx-auto rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card">
+        <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
           <h2 className="text-lg font-semibold">Create Post</h2>
           <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* User info */}
-        <div className="flex items-center gap-3 p-4 border-b border-border">
-          <ProfileAvatar
-            username={currentUser?.display_name || currentUser?.handle || '?'}
-            profilePicture={currentUser?.profile_picture}
-            size="md"
-          />
-          <div>
-            <p className="font-medium">{currentUser?.display_name || currentUser?.handle}</p>
-            <p className="text-sm text-muted-foreground">{currentUser?.handle}</p>
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1">
+          {/* User info */}
+          <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border">
+            <ProfileAvatar
+              username={currentUser?.display_name || currentUser?.handle || '?'}
+              profilePicture={currentUser?.profile_picture}
+              size="md"
+            />
+            <div>
+              <p className="font-medium">{currentUser?.display_name || currentUser?.handle}</p>
+              <p className="text-sm text-muted-foreground">{currentUser?.handle}</p>
+            </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="p-4 relative">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={handleContentChange}
-            placeholder="What's on your mind? Use @username to mention gamers, #game to tag a game"
-            className="w-full min-h-[120px] bg-transparent resize-none outline-none text-base"
-            autoFocus
-          />
+          {/* Content */}
+          <div className="p-4 relative">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleContentChange}
+              placeholder="What's on your mind? Use @username to mention, #game to tag a game"
+              className="w-full min-h-[120px] bg-transparent resize-none outline-none text-base"
+              autoFocus
+            />
 
           {/* @Mention suggestions */}
           {showMentions && mentionSuggestions.length > 0 && (
@@ -245,6 +247,40 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
               ))}
             </div>
           )}
+
+          {/* Toolbar — always visible directly under the textarea */}
+          <div className="flex items-center justify-between pt-3 mt-1 border-t border-border">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowImageInput(!showImageInput)}
+                className={`p-2 rounded-lg transition-colors ${showImageInput ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+                title="Add image"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowLinkInput(!showLinkInput)}
+                className={`p-2 rounded-lg transition-colors ${showLinkInput ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+                title="Add link"
+              >
+                <LinkIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowGamePicker(!showGamePicker)}
+                className={`p-2 rounded-lg transition-colors ${(showGamePicker || selectedGame) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+                title="Tag a game"
+              >
+                <Gamepad2 className="w-5 h-5" />
+              </button>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={!content.trim()}
+              className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              Post
+            </button>
+          </div>
 
           {/* Image input */}
           {showImageInput && (
@@ -340,40 +376,6 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
             </div>
           )}
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between p-4 border-t border-border sticky bottom-0 bg-card">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowImageInput(!showImageInput)}
-              className={`p-2 rounded-lg transition-colors ${showImageInput ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary'}`}
-              title="Add image"
-            >
-              <ImageIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setShowLinkInput(!showLinkInput)}
-              className={`p-2 rounded-lg transition-colors ${showLinkInput ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary'}`}
-              title="Add link"
-            >
-              <LinkIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setShowGamePicker(!showGamePicker)}
-              className={`p-2 rounded-lg transition-colors ${(showGamePicker || selectedGame) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary'}`}
-              title="Tag a game"
-            >
-              <Gamepad2 className="w-5 h-5" />
-            </button>
-            <span className="text-xs text-muted-foreground pl-1">or type # to tag a game</span>
-          </div>
-          <button
-            onClick={handleSubmit}
-            disabled={!content.trim()}
-            className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Post
-          </button>
         </div>
       </div>
     </div>
