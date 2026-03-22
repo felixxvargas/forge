@@ -209,8 +209,8 @@ export function Explore() {
     setSearchQuery('');
   };
 
-  const goToTab = (tab: ExploreTab) => {
-    setSearchQuery('');
+  const goToTab = (tab: ExploreTab, keepSearch = false) => {
+    if (!keepSearch) setSearchQuery('');
     setActiveTab(tab);
   };
 
@@ -307,8 +307,8 @@ export function Explore() {
         </div>
       </div>
 
-      {/* Tabs — always visible, dimmed when search active */}
-      <div className={`sticky z-10 transition-all duration-300 border-b border-gray-800 bg-black ${hideSearchBar ? 'top-14' : 'top-[118px]'} ${isSearchActive ? 'opacity-40 pointer-events-none' : ''}`}>
+      {/* Tabs — always visible, dimmed when search active (except on games tab) */}
+      <div className={`sticky z-10 transition-all duration-300 border-b border-gray-800 bg-black ${hideSearchBar ? 'top-14' : 'top-[118px]'} ${isSearchActive && activeTab !== 'games' ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="max-w-2xl mx-auto w-full flex">
           {(['posts', 'users', 'games', 'groups'] as ExploreTab[]).map(tab => {
             const icons: Record<ExploreTab, React.ReactNode> = {
@@ -338,8 +338,8 @@ export function Explore() {
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-4">
 
-        {/* ── GLOBAL SEARCH OVERLAY ── */}
-        {isSearchActive ? (
+        {/* ── GLOBAL SEARCH OVERLAY ── (not shown on games tab — that tab handles its own search) */}
+        {isSearchActive && activeTab !== 'games' ? (
           <div className="space-y-6">
             {searchLoading && (
               <div className="flex items-center justify-center py-6">
@@ -376,7 +376,7 @@ export function Explore() {
                   <h2 className="font-semibold text-white">Games</h2>
                   {searchGames.length > 4 && (
                     <button
-                      onClick={() => goToTab('games')}
+                      onClick={() => goToTab('games', true)}
                       className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
                     >
                       See all <ChevronRight className="w-4 h-4" />
@@ -555,48 +555,62 @@ export function Explore() {
             )}
 
             {activeTab === 'games' && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {loadingGames ? (
-                  <div className="col-span-full text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-400">Loading games...</p>
-                  </div>
-                ) : filteredGames.length === 0 ? (
-                  <div className="col-span-full text-center py-12 text-gray-500">
-                    <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No games found</p>
-                  </div>
-                ) : (
-                  filteredGames.map(game => {
-                    const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url;
-                    return (
-                      <div
-                        key={game.id}
-                        className="group cursor-pointer"
-                        onClick={() => navigate(`/game/${game.id}`)}
-                      >
-                        <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-gray-900">
-                          {coverArt ? (
-                            <img
-                              src={coverArt}
-                              alt={game.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Gamepad2 className="w-8 h-8 text-gray-700" />
-                            </div>
-                          )}
-                        </div>
-                        <h3 className="text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
-                          {game.title}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-1">{game.year}</p>
-                      </div>
-                    );
-                  })
+              <>
+                {isSearchActive && (
+                  <p className="text-sm text-gray-400 mb-3">
+                    Results for "<span className="text-white">{searchQuery}</span>"
+                  </p>
                 )}
-              </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {(isSearchActive ? searchLoading : loadingGames) ? (
+                    <div className="col-span-full text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                      <p className="mt-4 text-gray-400">Loading games...</p>
+                    </div>
+                  ) : (isSearchActive ? searchGames : filteredGames).length === 0 ? (
+                    <div className="col-span-full text-center py-12 text-gray-500">
+                      <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>{isSearchActive ? `No games found for "${searchQuery}"` : 'No games found'}</p>
+                    </div>
+                  ) : (
+                    (isSearchActive ? searchGames : filteredGames).map(game => {
+                      const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+                        ?? game.coverArt;
+                      const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
+                      return (
+                        <div
+                          key={game.id}
+                          className="group cursor-pointer relative"
+                          onClick={() => navigate(`/game/${game.id}`)}
+                        >
+                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-gray-900">
+                            {coverArt ? (
+                              <img
+                                src={coverArt}
+                                alt={game.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Gamepad2 className="w-8 h-8 text-gray-700" />
+                              </div>
+                            )}
+                            {score > 0 && !isSearchActive && (
+                              <div className="absolute top-1.5 left-1.5 bg-purple-600/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                🔥 {score}
+                              </div>
+                            )}
+                          </div>
+                          <h3 className="text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
+                            {game.title}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">{game.year}</p>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
             )}
 
             {activeTab === 'groups' && (
