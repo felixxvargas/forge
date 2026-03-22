@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Link as LinkIcon, Gamepad2, Search, Hash } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from './ImageUpload';
 import { ProfileAvatar } from './ProfileAvatar';
 import { gamesAPI } from '../utils/api';
+import { gameSearchCache, buildHighlightedHtml } from '../utils/mentionHighlight';
 import type { User } from '../data/data';
 
 interface WritePostModalProps {
@@ -40,6 +41,14 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
   const mentionTriggerIndex = useRef<number>(-1);
   const hashTriggerIndex = useRef<number>(-1);
 
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [content]);
+
   if (!isOpen) return null;
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -66,13 +75,19 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
       // Also search games by name
       if (atGameSearchTimer.current) clearTimeout(atGameSearchTimer.current);
       if (query.length >= 1) {
-        atGameSearchTimer.current = setTimeout(async () => {
-          try {
-            const results = await gamesAPI.searchGames(query, 4);
-            const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
-            setAtGameResults(list);
-          } catch { setAtGameResults([]); }
-        }, 300);
+        const cacheKey = query.toLowerCase();
+        if (gameSearchCache.has(cacheKey)) {
+          setAtGameResults(gameSearchCache.get(cacheKey)!);
+        } else {
+          atGameSearchTimer.current = setTimeout(async () => {
+            try {
+              const results = await gamesAPI.searchGames(query, 5);
+              const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
+              gameSearchCache.set(cacheKey, list);
+              setAtGameResults(list);
+            } catch { setAtGameResults([]); }
+          }, 150);
+        }
       } else {
         setAtGameResults([]);
       }
@@ -87,19 +102,27 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
       setShowMentions(false);
       if (hashSearchTimer.current) clearTimeout(hashSearchTimer.current);
       if (query.length >= 1) {
-        hashSearchTimer.current = setTimeout(async () => {
-          setIsSearchingGames(true);
-          try {
-            const results = await gamesAPI.searchGames(query, 5);
-            const list = Array.isArray(results) ? results : results?.games ?? [];
-            setHashGameResults(list);
-            setShowHashGames(list.length > 0);
-          } catch {
-            setShowHashGames(false);
-          } finally {
-            setIsSearchingGames(false);
-          }
-        }, 300);
+        const cacheKey = query.toLowerCase();
+        if (gameSearchCache.has(cacheKey)) {
+          const cached = gameSearchCache.get(cacheKey)!;
+          setHashGameResults(cached);
+          setShowHashGames(cached.length > 0);
+        } else {
+          hashSearchTimer.current = setTimeout(async () => {
+            setIsSearchingGames(true);
+            try {
+              const results = await gamesAPI.searchGames(query, 5);
+              const list = Array.isArray(results) ? results : results?.games ?? [];
+              gameSearchCache.set(cacheKey, list);
+              setHashGameResults(list);
+              setShowHashGames(list.length > 0);
+            } catch {
+              setShowHashGames(false);
+            } finally {
+              setIsSearchingGames(false);
+            }
+          }, 150);
+        }
       } else {
         setShowHashGames(false);
       }
@@ -221,14 +244,27 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
 
           {/* Content */}
           <div className="p-4 relative">
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleContentChange}
-              placeholder="What's on your mind? @mention people or games, #game to tag"
-              className="w-full min-h-[120px] bg-transparent resize-none outline-none text-base"
-              autoFocus
-            />
+            {/* Mirror + textarea stacked — mirror shows highlights, textarea handles input */}
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 text-base pointer-events-none select-none overflow-hidden text-foreground"
+                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: 0 }}
+                dangerouslySetInnerHTML={{
+                  __html: content
+                    ? buildHighlightedHtml(content, users, selectedGame)
+                    : '<span style="color:var(--muted-foreground)">What\'s on your mind? @mention people or games, #game to tag</span>',
+                }}
+              />
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={handleContentChange}
+                className="relative w-full min-h-[120px] bg-transparent resize-none outline-none text-base p-0"
+                style={{ color: 'transparent', caretColor: 'var(--foreground)' }}
+                autoFocus
+              />
+            </div>
 
           {/* @Mention + @Game suggestions */}
           {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0) && (

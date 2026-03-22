@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { gamesAPI } from '../utils/api';
+import { gameSearchCache, buildHighlightedHtml } from '../utils/mentionHighlight';
 import type { User } from '../data/data';
 
 export function NewPost() {
@@ -35,6 +36,14 @@ export function NewPost() {
   const hashSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const atGameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [content]);
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
@@ -60,13 +69,19 @@ export function NewPost() {
       // Also search games
       if (atGameSearchTimer.current) clearTimeout(atGameSearchTimer.current);
       if (query.length >= 1) {
-        atGameSearchTimer.current = setTimeout(async () => {
-          try {
-            const results = await gamesAPI.searchGames(query, 4);
-            const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
-            setAtGameResults(list);
-          } catch { setAtGameResults([]); }
-        }, 300);
+        const cacheKey = query.toLowerCase();
+        if (gameSearchCache.has(cacheKey)) {
+          setAtGameResults(gameSearchCache.get(cacheKey)!);
+        } else {
+          atGameSearchTimer.current = setTimeout(async () => {
+            try {
+              const results = await gamesAPI.searchGames(query, 5);
+              const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
+              gameSearchCache.set(cacheKey, list);
+              setAtGameResults(list);
+            } catch { setAtGameResults([]); }
+          }, 150);
+        }
       } else {
         setAtGameResults([]);
       }
@@ -81,19 +96,27 @@ export function NewPost() {
       setShowMentions(false);
       if (hashSearchTimer.current) clearTimeout(hashSearchTimer.current);
       if (query.length >= 1) {
-        hashSearchTimer.current = setTimeout(async () => {
-          setIsSearchingGames(true);
-          try {
-            const results = await gamesAPI.searchGames(query, 5);
-            const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
-            setHashGameResults(list);
-            setShowHashGames(list.length > 0);
-          } catch {
-            setShowHashGames(false);
-          } finally {
-            setIsSearchingGames(false);
-          }
-        }, 300);
+        const cacheKey = query.toLowerCase();
+        if (gameSearchCache.has(cacheKey)) {
+          const list = gameSearchCache.get(cacheKey)!;
+          setHashGameResults(list);
+          setShowHashGames(list.length > 0);
+        } else {
+          hashSearchTimer.current = setTimeout(async () => {
+            setIsSearchingGames(true);
+            try {
+              const results = await gamesAPI.searchGames(query, 5);
+              const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
+              gameSearchCache.set(cacheKey, list);
+              setHashGameResults(list);
+              setShowHashGames(list.length > 0);
+            } catch {
+              setShowHashGames(false);
+            } finally {
+              setIsSearchingGames(false);
+            }
+          }, 150);
+        }
       } else {
         setShowHashGames(false);
       }
@@ -229,14 +252,26 @@ export function NewPost() {
 
       {/* Content area */}
       <div className="p-4 relative flex-1">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={handleContentChange}
-          placeholder="What's on your mind? @mention people or games, #game to tag"
-          className="w-full min-h-[200px] bg-transparent resize-none outline-none text-base"
-          autoFocus
-        />
+        <div className="relative">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 text-base pointer-events-none select-none overflow-hidden text-foreground"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: 0 }}
+            dangerouslySetInnerHTML={{
+              __html: content
+                ? buildHighlightedHtml(content, users, selectedGame)
+                : '<span style="color:var(--muted-foreground)">What\'s on your mind? @mention people or games, #game to tag</span>',
+            }}
+          />
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={handleContentChange}
+            className="relative w-full min-h-[200px] bg-transparent resize-none outline-none text-base p-0"
+            style={{ color: 'transparent', caretColor: 'var(--foreground)' }}
+            autoFocus
+          />
+        </div>
 
         {/* @Mention + @Game suggestions */}
         {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0) && (
