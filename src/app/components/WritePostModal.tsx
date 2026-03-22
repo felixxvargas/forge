@@ -312,13 +312,24 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
           {showLinkInput && (
             <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
               <label className="text-sm font-medium mb-2 block">Link URL</label>
-              <input
-                type="url"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="https://example.com"
-                className="w-full bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') setShowLinkInput(false); }}
+                  placeholder="https://example.com"
+                  className="flex-1 bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                  autoFocus
+                />
+                <button
+                  onClick={() => setShowLinkInput(false)}
+                  disabled={!linkUrl.trim()}
+                  className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-40"
+                >
+                  Add
+                </button>
+              </div>
             </div>
           )}
 
