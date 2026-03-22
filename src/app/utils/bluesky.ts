@@ -83,6 +83,12 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
           ?.map((img: any) => img.fullsize ?? img.thumb)
           .filter(Boolean);
 
+        // Extract article URL from external embed (e.g. Kotaku/RPS article links)
+        const articleUrl: string | undefined =
+          post.embed?.external?.uri ??
+          post.embed?.media?.external?.uri ??
+          undefined;
+
         return {
           id: post.uri,
           userId: handle,
@@ -93,6 +99,7 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
           comments: post.replyCount ?? 0,
           images: images?.length ? images : undefined,
           platform: 'bluesky' as const,
+          url: articleUrl,
           externalUrl: `https://bsky.app/profile/${post.author?.handle ?? handle}/post/${post.uri.split('/').pop()}`,
         };
       });
@@ -150,6 +157,7 @@ async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
           comments: s.replies_count ?? 0,
           images: images?.length ? images : undefined,
           platform: 'mastodon' as const,
+          url: s.card?.url ?? undefined,
           externalUrl: s.url,
         };
       });

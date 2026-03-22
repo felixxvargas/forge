@@ -270,22 +270,25 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </DropdownMenu>
       </div>
 
-      {/* Content — strip the attached URL from text so the preview isn't duplicated */}
+      {/* Content — strip the preview URL from text so it isn't duplicated */}
       {(() => {
-        const displayContent = post.url
-          ? post.content.replace(post.url, '').trimEnd()
+        // Use explicit url field first; fall back to first https URL found in content
+        const contentUrl = post.content?.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)?.[0];
+        const previewUrl = post.url || contentUrl;
+        const displayContent = previewUrl
+          ? (post.content || '').replace(previewUrl, '').trimEnd()
           : post.content;
-        return displayContent ? (
-          <p className="mb-3 whitespace-pre-wrap">
-            <LinkifyMentions text={displayContent} />
-          </p>
-        ) : null;
+        return (
+          <>
+            {displayContent ? (
+              <p className="mb-3 whitespace-pre-wrap">
+                <LinkifyMentions text={displayContent} />
+              </p>
+            ) : null}
+            {previewUrl && <LinkPreview url={previewUrl} />}
+          </>
+        );
       })()}
-
-      {/* Link Preview */}
-      {post.url && (
-        <LinkPreview url={post.url} />
-      )}
 
       {/* Images */}
       {post.images && post.images.length > 0 && (
