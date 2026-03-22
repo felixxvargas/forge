@@ -60,7 +60,7 @@ const BIO_MAX_LENGTH = 150;
 export function Profile() {
   const navigate = useNavigate();
   const { userId } = useParams();
-  const { currentUser, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers } = useAppData();
+  const { currentUser, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
@@ -461,7 +461,7 @@ export function Profile() {
                 onClick={() => navigate(isOwnProfile ? '/following' : `/following/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{formatNumber(freshFollowingCount ?? profileUser.following_count ?? profileUser.followingCount ?? 0)}</p>
+                <p className="text-xl font-semibold">{formatNumber(isOwnProfile ? followingIds.size : (freshFollowingCount ?? profileUser.following_count ?? profileUser.followingCount ?? 0))}</p>
                 <p className="text-sm text-muted-foreground">Following</p>
               </button>
             </div>

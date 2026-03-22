@@ -251,9 +251,17 @@ export function GameDetail() {
         {/* Title + Year + Genres */}
         <div className="mb-4">
           <h1 className="text-3xl font-bold mb-1">{game.title}</h1>
-          {(game.year || game.release_year) && (
-            <p className="text-base text-muted-foreground mb-2">{game.year ?? game.release_year}</p>
-          )}
+          <div className="flex items-center gap-3 mb-2">
+            {(game.year || game.release_year) && (
+              <p className="text-base text-muted-foreground">{game.year ?? game.release_year}</p>
+            )}
+            {(listCount !== null || taggedPosts.length > 0) && (
+              <span className="flex items-center gap-1 text-sm font-semibold text-orange-400">
+                <TrendingUp className="w-3.5 h-3.5" />
+                {(listCount ?? 0) + taggedPosts.length} popularity
+              </span>
+            )}
+          </div>
           {game.genres && game.genres.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {game.genres.map((g: string) => (

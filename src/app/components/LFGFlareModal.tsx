@@ -150,7 +150,7 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
                   value={gameQuery}
                   onChange={e => setGameQuery(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 bg-secondary rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                  autoFocus
+                  style={{ fontSize: '16px' }}
                 />
                 {isSearchingGames && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />

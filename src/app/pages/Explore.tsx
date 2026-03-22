@@ -36,6 +36,7 @@ export function Explore() {
   const [lfgPlayers, setLfgPlayers] = useState<LFGFlare[]>([]);
   const [loadingLfg, setLoadingLfg] = useState(false);
   const [groupGameTitles, setGroupGameTitles] = useState<Record<string, string>>({});
+  const [postSort, setPostSort] = useState<'latest' | 'top'>('latest');
 
   // Global search state
   const [searchPosts, setSearchPosts] = useState<any[]>([]);
@@ -230,10 +231,10 @@ export function Explore() {
   };
 
   const seenPostIds = new Set<string>();
-  const gamingMediaPosts = [
+  const allExplorePosts = [
     ...topicPosts,
     ...livePosts,
-    ...posts.filter(p => p.author?.account_type === 'topic' || p.platform === 'bluesky' || p.platform === 'mastodon'),
+    ...posts, // all user posts (own + followed)
   ].filter(post => {
     if (!post.content?.trim()) return false;
     if (seenPostIds.has(post.id)) return false;
@@ -242,7 +243,16 @@ export function Explore() {
     if (blockedUsers.has(uid)) return false;
     if (mutedUsers.has(uid) && !showMutedPosts.has(post.id)) return false;
     return true;
-  }).sort((a, b) => new Date(b.created_at || b.timestamp).getTime() - new Date(a.created_at || a.timestamp).getTime());
+  }).sort((a, b) => {
+    if (postSort === 'top') {
+      const engA = (a.like_count ?? 0) + (a.repost_count ?? 0) + (a.comment_count ?? 0);
+      const engB = (b.like_count ?? 0) + (b.repost_count ?? 0) + (b.comment_count ?? 0);
+      return engB - engA;
+    }
+    return new Date(b.created_at || b.timestamp).getTime() - new Date(a.created_at || a.timestamp).getTime();
+  });
+  // Keep backward compat alias
+  const gamingMediaPosts = allExplorePosts;
 
   const filteredUsers = users.filter(user => {
     if (user.id === currentUser?.id) return false;
@@ -506,6 +516,22 @@ export function Explore() {
             {/* ── NORMAL TABBED CONTENT ── */}
             {activeTab === 'posts' && (
               <div className="space-y-4">
+                {/* Latest / Top sort toggle */}
+                <div className="flex gap-2">
+                  {(['latest', 'top'] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setPostSort(s)}
+                      className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        postSort === s
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-800 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {s === 'latest' ? 'Latest' : 'Top'}
+                    </button>
+                  ))}
+                </div>
                 {loadingTopicPosts ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>

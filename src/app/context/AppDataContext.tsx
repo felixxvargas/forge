@@ -207,9 +207,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const updateCurrentUser = async (data: Partial<any>) => {
     if (!session?.user) return;
     const updated = await profiles.update(session.user.id, data);
-    // Preserve communities (group memberships) — they're fetched separately and
-    // not part of the profiles table, so the update response won't include them.
-    setCurrentUser((prev: any) => ({ ...updated, communities: prev?.communities }));
+    // Preserve communities (group memberships) and topic follows — both live outside
+    // the profiles row returned by the update call, or may not yet be committed.
+    setCurrentUser((prev: any) => ({
+      ...updated,
+      communities: prev?.communities,
+      game_lists: {
+        ...(updated?.game_lists ?? {}),
+        // Keep in-memory _topicFollows if the DB row doesn't have it yet (race condition safety)
+        _topicFollows:
+          updated?.game_lists?._topicFollows ??
+          prev?.game_lists?._topicFollows ??
+          [],
+      },
+    }));
   };
 
   const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string) => {
