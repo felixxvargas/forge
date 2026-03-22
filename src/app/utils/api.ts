@@ -579,13 +579,17 @@ export const rawgAPI = {
     const key = import.meta.env.VITE_RAWG_API_KEY;
     if (!key || !query.trim()) return [];
     try {
-      // exclude_additions=true removes patches, DLC, and minor add-ons; expansions sold
-      // as standalone titles remain. This keeps results to games + standalone expansions.
-      const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit}&search_exact=false&exclude_additions=true`;
+      // exclude_additions=true removes patches and DLC. We also filter client-side on
+      // parents_count: if a game has parent games it is an expansion/edition of another
+      // title (e.g. "WoW TWW: Undermined") and should be excluded from results.
+      const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit * 2}&search_exact=false&exclude_additions=true`;
       const res = await fetch(url);
       if (!res.ok) return [];
       const { results } = await res.json();
-      return (results ?? []).map((g: any) => ({
+      return (results ?? [])
+        .filter((g: any) => !g.parents_count)
+        .slice(0, limit)
+        .map((g: any) => ({
         id: `rawg-${g.id}`,
         title: g.name,
         platform: (g.platforms?.[0]?.platform?.slug ?? 'pc') as any,

@@ -76,9 +76,12 @@ export function EditGameListsModal({
           ? (Array.isArray(serverRes.value) ? serverRes.value : (serverRes.value as any)?.games ?? [])
           : [];
         const rawgGames: AnyGame[] = rawgRes.status === 'fulfilled' ? rawgRes.value : [];
-        // Merge: prefer server results, append RAWG results that aren't duplicates by title
-        const serverTitles = new Set(serverGames.map((g: AnyGame) => g.title.toLowerCase()));
-        const merged = [...serverGames, ...rawgGames.filter((g: AnyGame) => !serverTitles.has(g.title.toLowerCase()))];
+        // Merge: prefer server/IGDB results, append RAWG results not already present.
+        // Normalise titles by lowercasing and stripping everything after " - " or ": "
+        // so e.g. "Elden Ring: Shadow of the Erdtree" deduplicates against "Elden Ring".
+        const normalise = (t: string) => t.toLowerCase().replace(/\s*[:\-–]\s+.*$/, '').trim();
+        const serverTitles = new Set(serverGames.map((g: AnyGame) => normalise(g.title)));
+        const merged = [...serverGames, ...rawgGames.filter((g: AnyGame) => !serverTitles.has(normalise(g.title)))];
         setSearchResults(merged);
       } catch {
         setSearchResults([]);
