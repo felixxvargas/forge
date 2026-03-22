@@ -15,9 +15,13 @@ interface GameListProps {
   listType?: GameListType;
   showFirstOnly?: boolean;
   dragHandle?: boolean;
+  onGripPointerDown?: (e: React.PointerEvent) => void;
+  onGripPointerMove?: (e: React.PointerEvent) => void;
+  onGripPointerUp?: (e: React.PointerEvent) => void;
+  onGripPointerCancel?: (e: React.PointerEvent) => void;
 }
 
-export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onDelete, listType, showFirstOnly = false, dragHandle = false }: GameListProps) {
+export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onDelete, listType, showFirstOnly = false, dragHandle = false, onGripPointerDown, onGripPointerMove, onGripPointerUp, onGripPointerCancel }: GameListProps) {
   const navigate = useNavigate();
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -48,7 +52,13 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {dragHandle && (
-            <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing shrink-0" />
+            <GripVertical
+              className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing shrink-0 touch-none select-none"
+              onPointerDown={onGripPointerDown}
+              onPointerMove={onGripPointerMove}
+              onPointerUp={onGripPointerUp}
+              onPointerCancel={onGripPointerCancel}
+            />
           )}
           <h3 className="font-medium">{title}</h3>
           {badges && badges.map((badge) => (

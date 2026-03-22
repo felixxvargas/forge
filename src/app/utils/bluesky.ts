@@ -45,7 +45,7 @@ export async function fetchBlueskyProfile(handle: string): Promise<BlueskyProfil
     const data: BlueskyProfile = {
       handle: raw.handle,
       displayName: raw.displayName ?? raw.handle,
-      avatar: raw.avatar ?? '',
+      avatar: raw.avatar || undefined,
       banner: raw.banner,
       description: raw.description ?? '',
       followersCount: raw.followersCount ?? 0,

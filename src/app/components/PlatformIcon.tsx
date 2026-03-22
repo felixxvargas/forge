@@ -15,8 +15,6 @@ import PatreonIcon from '../../assets/icons/patreon.svg?react';
 // Gaming platform SVG imports
 import SteamIcon from '../../assets/icons/steam.svg?react';
 import XboxIcon from '../../assets/icons/xbox.svg?react';
-import BattlenetIcon from '../../assets/icons/battlenet.svg?react';
-import RiotIcon from '../../assets/icons/riotgames.svg?react';
 import WindowsIcon from '../../assets/icons/windows.svg?react';
 import AppleIcon from '../../assets/icons/apple.svg?react';
 
@@ -29,9 +27,9 @@ interface PlatformIconProps {
 
 const PLATFORM_LABELS: Record<string, string> = {
   // Gaming
-  steam: 'Steam', xbox: 'Xbox', playstation: 'PlayStation', battlenet: 'Battle.net',
-  riot: 'Riot Games', epic: 'Epic Games', ea: 'EA', nintendo: 'Nintendo',
-  gog: 'GOG', ubisoft: 'Ubisoft', rockstar: 'Rockstar', pc: 'PC',
+  steam: 'Steam', xbox: 'Xbox', playstation: 'PlayStation', epic: 'Epic Games',
+  ea: 'EA', nintendo: 'Nintendo', gog: 'GOG', ubisoft: 'Ubisoft',
+  rockstar: 'Rockstar', pc: 'PC', mac: 'Mac Gaming', linux: 'Linux Gaming',
   // Social
   discord: 'Discord', twitter: 'X (Twitter)', x: 'X (Twitter)',
   instagram: 'Instagram', facebook: 'Facebook', reddit: 'Reddit',
@@ -118,9 +116,14 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
             <path d="M14.942 2.994H9.058C5.26 2.994 2.994 5.26 2.994 9.058v5.884c0 3.798 2.266 6.064 6.064 6.064h5.884c3.798 0 6.064-2.266 6.064-6.064V9.058c0-3.798-2.266-6.064-6.064-6.064zm-5.884 1.5h5.884c2.987 0 4.564 1.577 4.564 4.564v5.884c0 2.987-1.577 4.564-4.564 4.564H9.058c-2.987 0-4.564-1.577-4.564-4.564V9.058c0-2.987 1.577-4.564 4.564-4.564zM9.5 7A1.5 1.5 0 0 0 8 8.5 1.5 1.5 0 0 0 9.5 10 1.5 1.5 0 0 0 11 8.5 1.5 1.5 0 0 0 9.5 7zm5 4a1.5 1.5 0 0 0-1.5 1.5A1.5 1.5 0 0 0 14.5 14 1.5 1.5 0 0 0 16 12.5 1.5 1.5 0 0 0 14.5 11z"/>
           </svg>
         );
-      case 'battlenet': return <BattlenetIcon className={cls} />;
-      case 'riot':      return <RiotIcon className={cls} />;
       case 'pc':        return <WindowsIcon className={cls} />;
+      case 'mac':       return <AppleIcon className={cls} />;
+      case 'linux':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
+            <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.117.779.567 1.563 1.182 2.14.614.578 1.361.7 2.063.682 1.175-.024 2.462-.31 3.432-.324 1.032-.02 2.02.203 3.11.208.918.013 1.889-.234 2.614-.751.724-.518 1.224-1.294 1.378-2.114.154-.82-.012-1.667-.28-2.457-.602-1.738-1.815-3.376-2.65-4.408-.783-1.069-1.006-1.872-1.111-2.94-.201-2.017.67-4.977-3.012-6.337C12.948.04 12.717 0 12.504 0zM9 12c0-.552.448-1 1-1s1 .448 1 1-.448 1-1 1-1-.448-1-1zm4 0c0-.552.448-1 1-1s1 .448 1 1-.448 1-1 1-1-.448-1-1zm-6 6c.286-1.143 1.429-2 2.5-2h1c1.071 0 2.214.857 2.5 2H7zm3.5-8.5c-.829 0-1.5-.671-1.5-1.5S9.671 8 10.5 8s1.5.671 1.5 1.5S11.329 9.5 10.5 9.5zm3 0c-.829 0-1.5-.671-1.5-1.5S12.671 8 13.5 8s1.5.671 1.5 1.5S14.329 9.5 13.5 9.5z"/>
+          </svg>
+        );
       case 'epic':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>

@@ -22,7 +22,7 @@ export function EditProfileModal({ user, isOpen, onClose, onSave }: EditProfileM
     displayedCommunities: user.displayedCommunities || (user.communities || []).slice(0, 3).map(m => m.communityId)
   });
 
-  const allPlatforms: Platform[] = ['steam', 'epic', 'ea', 'playstation', 'nintendo', 'xbox', 'pc', 'gog', 'ubisoft', 'rockstar', 'battlenet', 'riot'];
+  const allPlatforms: Platform[] = ['steam', 'epic', 'ea', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux', 'gog', 'ubisoft', 'rockstar'];
   const allSocial: SocialPlatform[] = ['x', 'instagram', 'tiktok', 'bluesky', 'tumblr', 'threads', 'rednote', 'upscrolled'];
 
   const handleSave = () => {

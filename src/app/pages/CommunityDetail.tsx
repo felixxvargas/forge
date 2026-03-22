@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera } from 'lucide-react';
+import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GroupIcon } from '../components/GroupIcon';
 import { gamesAPI } from '../utils/api';
-import { groups as groupsAPI } from '../utils/supabase';
+import { groups as groupsAPI, profiles as profilesAPI } from '../utils/supabase';
 
 function getCoverUrl(game: any): string | null {
   return game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
@@ -42,6 +42,14 @@ export function CommunityDetail() {
   const [editName, setEditName] = useState(community?.name ?? '');
   const [editDescription, setEditDescription] = useState(community?.description ?? '');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Invite users
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteSearch, setInviteSearch] = useState('');
+  const [inviteResults, setInviteResults] = useState<any[]>([]);
+  const [isSearchingInvite, setIsSearchingInvite] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
+  const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
 
   // Community games
   const [communityGames, setCommunityGames] = useState<any[]>([]);
@@ -103,6 +111,34 @@ export function CommunityDetail() {
       alert(e.message || 'Failed to ban member.');
     } finally {
       setMemberActionLoading(null);
+    }
+  };
+
+  // Debounce invite user search
+  useEffect(() => {
+    if (!inviteSearch.trim()) { setInviteResults([]); return; }
+    const t = setTimeout(async () => {
+      setIsSearchingInvite(true);
+      try {
+        const results = await profilesAPI.search(inviteSearch);
+        // Exclude already-members and current user
+        const memberIds = new Set(dbMembers.map((m: any) => m.id));
+        setInviteResults(results.filter((u: any) => u.id !== currentUser?.id && !memberIds.has(u.id)));
+      } catch { setInviteResults([]); }
+      finally { setIsSearchingInvite(false); }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [inviteSearch, dbMembers, currentUser?.id]);
+
+  const handleInviteUser = async (userId: string) => {
+    setInvitingUserId(userId);
+    try {
+      await groupsAPI.addMember(communityId!, userId);
+      setInvitedUserIds(prev => new Set(prev).add(userId));
+    } catch (e: any) {
+      alert(e.message || 'Failed to add user.');
+    } finally {
+      setInvitingUserId(null);
     }
   };
 
@@ -345,13 +381,23 @@ export function CommunityDetail() {
             )}
 
             {isAdmin && (
-              <button
-                onClick={() => { setEditName(community.name); setEditDescription(community.description ?? ''); setShowEditModal(true); }}
-                className="p-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
-                title="Edit Group"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+              <>
+                <button
+                  onClick={() => { setInviteSearch(''); setInviteResults([]); setInvitedUserIds(new Set()); setShowInviteModal(true); }}
+                  className="px-4 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium flex items-center gap-2"
+                  title="Invite Users"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Invite
+                </button>
+                <button
+                  onClick={() => { setEditName(community.name); setEditDescription(community.description ?? ''); setShowEditModal(true); }}
+                  className="p-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
+                  title="Edit Group"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -548,6 +594,78 @@ export function CommunityDetail() {
                 {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {savingEdit ? 'Saving…' : 'Save Changes'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Users Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80vh] flex flex-col">
+            <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Invite Users</h2>
+              <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search by username or display name…"
+                  value={inviteSearch}
+                  onChange={e => setInviteSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                  autoFocus
+                />
+                {isSearchingInvite && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {inviteSearch.trim() === '' && (
+                <p className="text-center text-sm text-muted-foreground py-6">Type to search users</p>
+              )}
+              {inviteSearch.trim() !== '' && !isSearchingInvite && inviteResults.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-6">No users found</p>
+              )}
+              <div className="space-y-2">
+                {inviteResults.map((user: any) => {
+                  const alreadyInvited = invitedUserIds.has(user.id);
+                  const isLoading = invitingUserId === user.id;
+                  return (
+                    <div key={user.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                      <ProfileAvatar
+                        username={user.display_name || user.handle || '?'}
+                        profilePicture={user.profile_picture}
+                        size="md"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{user.display_name || user.handle}</p>
+                        <p className="text-sm text-muted-foreground">@{(user.handle || '').replace(/^@/, '')}</p>
+                      </div>
+                      <button
+                        onClick={() => handleInviteUser(user.id)}
+                        disabled={alreadyInvited || isLoading}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 shrink-0 ${
+                          alreadyInvited
+                            ? 'bg-accent/20 text-accent cursor-default'
+                            : 'bg-accent text-accent-foreground hover:bg-accent/90'
+                        }`}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : alreadyInvited ? (
+                          <><Check className="w-3.5 h-3.5" /> Added</>
+                        ) : (
+                          <><UserPlus className="w-3.5 h-3.5" /> Add</>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

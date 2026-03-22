@@ -1,11 +1,13 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Swords } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
-import { posts as postsAPI, userGamesAPI } from '../utils/supabase';
+import { LFGFlareModal } from '../components/LFGFlareModal';
+import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
+import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
 type PostSort = 'latest' | 'top';
@@ -32,6 +34,13 @@ export function GameDetail() {
   const [similarGames, setSimilarGames] = useState<any[]>([]);
   const [gameVersions, setGameVersions] = useState<any[]>([]);
   const [listCount, setListCount] = useState<number | null>(null);
+
+  // LFG / LFM state
+  const [myFlare, setMyFlare] = useState<LFGFlare | null>(null);
+  const [gameFlares, setGameFlares] = useState<LFGFlare[]>([]);
+  const [loadingFlares, setLoadingFlares] = useState(false);
+  const [showLFGModal, setShowLFGModal] = useState(false);
+  const [lfgModalType, setLfgModalType] = useState<'lfg' | 'lfm'>('lfg');
 
   useEffect(() => {
     if (!gameId) return;
@@ -82,6 +91,24 @@ export function GameDetail() {
       .then(setListCount)
       .catch(() => setListCount(0));
   }, [gameId]);
+
+  // Load LFG flares for this game
+  useEffect(() => {
+    if (!gameId) return;
+    setLoadingFlares(true);
+    lfgFlaresAPI.getActiveForGame(gameId)
+      .then(setGameFlares)
+      .catch(() => setGameFlares([]))
+      .finally(() => setLoadingFlares(false));
+  }, [gameId]);
+
+  // Check if current user has an active flare for this game
+  useEffect(() => {
+    if (!gameId || !session?.user) return;
+    lfgFlaresAPI.getUserFlareForGame(session.user.id, gameId)
+      .then(setMyFlare)
+      .catch(() => setMyFlare(null));
+  }, [gameId, session?.user?.id]);
 
   const handleTogglePlayed = async () => {
     if (!session?.user || !gameId || togglingPlayed) return;
@@ -285,28 +312,71 @@ export function GameDetail() {
 
         {/* Played / Owned action buttons */}
         {session?.user && (
-          <div className="flex gap-3 mb-6">
-            <button
-              onClick={handleTogglePlayed}
-              disabled={togglingPlayed}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-                isPlayed ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {isPlayed ? <CheckCircle2 className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
-              {isPlayed ? 'Played' : "I've Played This"}
-            </button>
-            <button
-              onClick={handleToggleOwned}
-              disabled={togglingOwned}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-                isOwned ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {isOwned ? <CheckCircle2 className="w-4 h-4" /> : <Library className="w-4 h-4" />}
-              {isOwned ? 'In Library' : 'I Own This'}
-            </button>
-          </div>
+          <>
+            <div className="flex gap-3 mb-3">
+              <button
+                onClick={handleTogglePlayed}
+                disabled={togglingPlayed}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
+                  isPlayed ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {isPlayed ? <CheckCircle2 className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
+                {isPlayed ? 'Played' : "I've Played This"}
+              </button>
+              <button
+                onClick={handleToggleOwned}
+                disabled={togglingOwned}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
+                  isOwned ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {isOwned ? <CheckCircle2 className="w-4 h-4" /> : <Library className="w-4 h-4" />}
+                {isOwned ? 'In Library' : 'I Own This'}
+              </button>
+            </div>
+            {/* LFG / LFM buttons */}
+            <div className="flex gap-3 mb-6">
+              {myFlare ? (
+                <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/10 border border-accent/30">
+                  <Swords className="w-4 h-4 text-accent shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-accent uppercase">{myFlare.flare_type === 'lfg' ? 'LFG Active' : 'LFM Active'}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Need {myFlare.players_needed}{myFlare.group_size ? `/${myFlare.group_size}` : ''}
+                      {myFlare.game_mode ? ` · ${myFlare.game_mode}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => lfgFlaresAPI.remove(myFlare.id).then(() => {
+                      setMyFlare(null);
+                      setGameFlares(prev => prev.filter(f => f.id !== myFlare.id));
+                    })}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setLfgModalType('lfg'); setShowLFGModal(true); }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+                  >
+                    <Swords className="w-4 h-4" />
+                    Looking for Group
+                  </button>
+                  <button
+                    onClick={() => { setLfgModalType('lfm'); setShowLFGModal(true); }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+                  >
+                    <Users className="w-4 h-4" />
+                    Looking for More
+                  </button>
+                </>
+              )}
+            </div>
+          </>
         )}
 
         {/* Stats row */}
@@ -379,6 +449,58 @@ export function GameDetail() {
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
           </button>
+        )}
+
+        {/* Group Finder — LFG/LFM flares for this game */}
+        {(loadingFlares || gameFlares.length > 0) && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Swords className="w-5 h-5 text-accent" />
+              <h2 className="text-xl font-semibold">Group Finder</h2>
+            </div>
+            {loadingFlares ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (() => {
+              // Sort: friends first, then everyone else
+              const friendFlares = gameFlares.filter(f => followingIds.has((f as any).user?.id));
+              const otherFlares = gameFlares.filter(f => !followingIds.has((f as any).user?.id));
+              return [...friendFlares, ...otherFlares].map(flare => {
+                const player = (flare as any).user;
+                if (!player) return null;
+                const isFriend = followingIds.has(player.id);
+                return (
+                  <div
+                    key={flare.id}
+                    className="flex items-start gap-3 p-3 bg-card rounded-xl mb-2 cursor-pointer hover:bg-card/80 transition-colors"
+                    onClick={() => navigate(`/profile/${player.id}`)}
+                  >
+                    <ProfileAvatar
+                      username={player.display_name || player.handle || '?'}
+                      profilePicture={player.profile_picture ?? null}
+                      size="md"
+                      userId={player.id}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm truncate">{player.display_name || player.handle}</span>
+                        {isFriend && <span className="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded-full">Friend</span>}
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                          flare.flare_type === 'lfg' ? 'bg-accent/20 text-accent' : 'bg-purple-500/20 text-purple-400'
+                        }`}>
+                          {flare.flare_type.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
+                        {flare.game_mode ? ` · ${flare.game_mode}` : ''}
+                        {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
         )}
 
         {/* Posts section with Top / Latest filter */}
@@ -462,6 +584,20 @@ export function GameDetail() {
           </div>
         )}
       </div>
+
+      {/* LFG Flare Modal */}
+      {game && (
+        <LFGFlareModal
+          isOpen={showLFGModal}
+          onClose={() => setShowLFGModal(false)}
+          prefilledGame={{ id: gameId!, title: game.title }}
+          prefilledType={lfgModalType}
+          onCreated={flare => {
+            setMyFlare(flare);
+            setGameFlares(prev => [{ ...flare, user: currentUser } as any, ...prev]);
+          }}
+        />
+      )}
     </div>
   );
 }

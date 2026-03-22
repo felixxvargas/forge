@@ -371,6 +371,7 @@ export const posts = {
     communityId?: string;
     gameId?: string;
     gameTitle?: string;
+    platform?: string;
   } = {}) {
     const { data, error } = await supabase
       .from('posts')
@@ -383,6 +384,7 @@ export const posts = {
         community_id: options.communityId ?? null,
         game_id: options.gameId ?? null,
         game_title: options.gameTitle ?? null,
+        ...(options.platform ? { platform: options.platform } : {}),
       })
       .select(`
         *,
@@ -675,6 +677,14 @@ export const groups = {
       .then(({ data: d }) => supabase.from('communities').update({ member_count: Math.max(0, (d?.member_count ?? 0) - 1) }).eq('id', communityId))
       .catch(() => {});
   },
+
+  async addMember(communityId: string, userId: string) {
+    const { error } = await supabase
+      .from('community_members')
+      .insert({ community_id: communityId, user_id: userId, role: 'member' });
+    if (error && error.code !== '23505') throw new Error(error.message);
+    await supabase.rpc('increment_member_count', { community_id: communityId }).catch(() => {});
+  },
 };
 
 // ============================================================
@@ -933,6 +943,110 @@ export const userGamesAPI = {
       .contains('game_ids', [gameId]);
     if (error) return [];
     return data ?? [];
+  },
+};
+
+// ============================================================
+// LFG FLARES
+// ============================================================
+export interface LFGFlare {
+  id: string;
+  user_id: string;
+  game_id: string;
+  game_title: string;
+  flare_type: 'lfg' | 'lfm';
+  players_needed: number;
+  group_size?: number;
+  game_mode?: string;
+  scheduled_for?: string;
+  expires_at: string;
+  post_id?: string;
+  created_at: string;
+  user?: any; // joined profile
+}
+
+export const lfgFlares = {
+  async create(userId: string, data: {
+    game_id: string;
+    game_title: string;
+    flare_type: 'lfg' | 'lfm';
+    players_needed: number;
+    group_size?: number;
+    game_mode?: string;
+    scheduled_for?: string;
+    expires_at: string;
+    post_id?: string;
+  }): Promise<LFGFlare> {
+    const { data: row, error } = await supabase
+      .from('lfg_flares')
+      .insert({ user_id: userId, ...data })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  },
+
+  async updatePostId(flareId: string, postId: string) {
+    await supabase.from('lfg_flares').update({ post_id: postId }).eq('id', flareId);
+  },
+
+  async remove(flareId: string) {
+    const { error } = await supabase.from('lfg_flares').delete().eq('id', flareId);
+    if (error) throw new Error(error.message);
+  },
+
+  async removeForUserGame(userId: string, gameId: string) {
+    await supabase.from('lfg_flares').delete().eq('user_id', userId).eq('game_id', gameId);
+  },
+
+  /** Active flares for a specific user (not yet expired). */
+  async getActiveForUser(userId: string): Promise<LFGFlare[]> {
+    const { data, error } = await supabase
+      .from('lfg_flares')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return data ?? [];
+  },
+
+  /** All active flares, joined with user profiles. */
+  async getActive(limit = 50): Promise<LFGFlare[]> {
+    const { data, error } = await supabase
+      .from('lfg_flares')
+      .select('*, user:profiles!user_id(id, handle, display_name, profile_picture)')
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return data ?? [];
+  },
+
+  /** Active flares for a specific game, joined with user profiles. */
+  async getActiveForGame(gameId: string): Promise<LFGFlare[]> {
+    const { data, error } = await supabase
+      .from('lfg_flares')
+      .select('*, user:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('game_id', gameId)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return data ?? [];
+  },
+
+  /** Check if user has an active flare for a specific game. */
+  async getUserFlareForGame(userId: string, gameId: string): Promise<LFGFlare | null> {
+    const { data } = await supabase
+      .from('lfg_flares')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('game_id', gameId)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ?? null;
   },
 };
 

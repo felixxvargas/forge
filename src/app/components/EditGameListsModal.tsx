@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, GripVertical, Trash2, Check, Loader2, Search } from 'lucide-react';
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
@@ -43,9 +43,11 @@ export function EditGameListsModal({
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Drag-and-drop state
+  // Pointer-based drag state (works on desktop and mobile touch)
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const dragPtrRef = useRef<{ fromIdx: number; currentOver: number | null } | null>(null);
+  const itemElsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   const listTitles: Record<GameListType, string> = {
     'recently-played': 'Recently Played',
@@ -113,43 +115,50 @@ export function EditGameListsModal({
     onClose();
   };
 
-  // Drag handlers for selected games reorder
-  const onDragStart = (i: number) => (e: React.DragEvent) => {
+  // Pointer-based drag handlers (work on desktop mouse and mobile touch)
+  const onGripPointerDown = useCallback((i: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    dragPtrRef.current = { fromIdx: i, currentOver: i };
     setDragIdx(i);
-    e.dataTransfer.effectAllowed = 'move';
-    // Ghost image: transparent
-    const ghost = document.createElement('div');
-    ghost.style.opacity = '0';
-    document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 0, 0);
-    setTimeout(() => document.body.removeChild(ghost), 0);
-  };
+  }, []);
 
-  const onDragOver = (i: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverIdx !== i) setDragOverIdx(i);
-  };
-
-  const onDrop = (i: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    if (dragIdx === null || dragIdx === i) {
-      setDragIdx(null);
-      setDragOverIdx(null);
-      return;
+  const onGripPointerMove = useCallback((i: number) => (e: React.PointerEvent) => {
+    if (!dragPtrRef.current || dragPtrRef.current.fromIdx !== i) return;
+    let overIdx = i;
+    for (let j = 0; j < itemElsRef.current.length; j++) {
+      const el = itemElsRef.current[j];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) { overIdx = j; break; }
+      overIdx = j;
     }
-    const newGames = [...selectedGames];
-    const [moved] = newGames.splice(dragIdx, 1);
-    newGames.splice(i, 0, moved);
-    setSelectedGames(newGames);
-    setDragIdx(null);
-    setDragOverIdx(null);
-  };
+    dragPtrRef.current.currentOver = overIdx;
+    setDragOverIdx(overIdx);
+  }, []);
 
-  const onDragEnd = () => {
+  const onGripPointerUp = useCallback((i: number) => (_e: React.PointerEvent) => {
+    if (!dragPtrRef.current || dragPtrRef.current.fromIdx !== i) return;
+    const from = i;
+    const to = dragPtrRef.current.currentOver;
+    dragPtrRef.current = null;
+    if (to !== null && to !== from) {
+      setSelectedGames(prev => {
+        const next = [...prev];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
+      });
+    }
     setDragIdx(null);
     setDragOverIdx(null);
-  };
+  }, []);
+
+  const onGripPointerCancel = useCallback(() => {
+    dragPtrRef.current = null;
+    setDragIdx(null);
+    setDragOverIdx(null);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -258,11 +267,7 @@ export function EditGameListsModal({
                   return (
                     <div
                       key={game.id}
-                      draggable
-                      onDragStart={onDragStart(i)}
-                      onDragOver={onDragOver(i)}
-                      onDrop={onDrop(i)}
-                      onDragEnd={onDragEnd}
+                      ref={el => { itemElsRef.current[i] = el; }}
                       className={`flex items-center gap-3 p-2 rounded-lg transition-all select-none ${
                         isDragging
                           ? 'opacity-40 bg-accent/10 border-2 border-accent/40'
@@ -271,7 +276,13 @@ export function EditGameListsModal({
                           : 'bg-secondary border-2 border-transparent'
                       }`}
                     >
-                      <div className="cursor-grab active:cursor-grabbing touch-none p-1">
+                      <div
+                        className="cursor-grab active:cursor-grabbing touch-none p-1"
+                        onPointerDown={onGripPointerDown(i)}
+                        onPointerMove={onGripPointerMove(i)}
+                        onPointerUp={onGripPointerUp(i)}
+                        onPointerCancel={onGripPointerCancel}
+                      >
                         <GripVertical className="w-4 h-4 text-muted-foreground" />
                       </div>
                       {cover ? (

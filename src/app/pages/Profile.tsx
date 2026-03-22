@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2 } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
@@ -16,7 +16,9 @@ import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI, profiles } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
+import type { LFGFlare } from '../utils/supabase';
+import { LFGFlareModal } from '../components/LFGFlareModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,6 +75,9 @@ export function Profile() {
   });
   const [listDragIdx, setListDragIdx] = useState<number | null>(null);
   const [listDragOverIdx, setListDragOverIdx] = useState<number | null>(null);
+  // Pointer-based drag state (works on mobile touch)
+  const listDragPtrRef = useRef<{ fromIdx: number; currentOver: number | null } | null>(null);
+  const listItemElsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [pinnedPostId, setPinnedPostId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -87,6 +92,10 @@ export function Profile() {
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
   const [freshFollowerCount, setFreshFollowerCount] = useState<number | null>(null);
   const [freshFollowingCount, setFreshFollowingCount] = useState<number | null>(null);
+
+  // LFG Flare state
+  const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
+  const [showLFGFlareModal, setShowLFGFlareModal] = useState(false);
 
   // Scroll to top when viewing another user's profile; own profile restores last position
   useEffect(() => {
@@ -161,6 +170,12 @@ export function Profile() {
       );
       setProfileUserPosts(all);
     }).catch(() => setProfileUserPosts([]));
+  }, [profileUser?.id]);
+
+  // Load active LFG flares for this profile user
+  useEffect(() => {
+    if (!profileUser?.id) return;
+    lfgFlaresAPI.getActiveForUser(profileUser.id).then(setActiveFlares).catch(() => setActiveFlares([]));
   }, [profileUser?.id]);
 
   // Load profile user's liked posts when likes tab is active
@@ -563,6 +578,55 @@ export function Profile() {
           )}
         </div>
 
+        {/* Active LFG Flares */}
+        {activeFlares.length > 0 && (
+          <div className="px-4 mb-3 space-y-2">
+            {activeFlares.map(flare => (
+              <div key={flare.id} className="flex items-start gap-3 p-3 bg-accent/10 border border-accent/30 rounded-xl">
+                <Swords className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className="text-xs font-bold uppercase tracking-wide text-accent">
+                      {flare.flare_type === 'lfg' ? 'LFG' : 'LFM'}
+                    </span>
+                    <span className="text-sm font-semibold truncate">{flare.game_title}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
+                    {flare.game_mode ? ` · ${flare.game_mode}` : ''}
+                    {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">
+                    Expires {new Date(flare.expires_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => lfgFlaresAPI.remove(flare.id).then(() => setActiveFlares(prev => prev.filter(f => f.id !== flare.id)))}
+                    className="p-1.5 hover:bg-destructive/20 rounded-lg transition-colors shrink-0"
+                    title="Remove flare"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Create LFG Flare button (own profile only, shown above tabs) */}
+        {isOwnProfile && (
+          <div className="px-4 mb-3">
+            <button
+              onClick={() => setShowLFGFlareModal(true)}
+              className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
+            </button>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-4 border-b border-border px-4">
           {(() => {
@@ -634,34 +698,46 @@ export function Profile() {
               const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
               const hasAnyList = ALL_LISTS.some(l => (gameLists[l.key] ?? []).length > 0);
 
-              const handleListDragStart = (i: number) => (e: React.DragEvent) => {
+              const handleGripPointerDown = (i: number) => (e: React.PointerEvent) => {
+                e.preventDefault();
+                (e.currentTarget as Element).setPointerCapture(e.pointerId);
+                listDragPtrRef.current = { fromIdx: i, currentOver: i };
                 setListDragIdx(i);
-                e.dataTransfer.effectAllowed = 'move';
-                const ghost = document.createElement('div');
-                ghost.style.opacity = '0';
-                document.body.appendChild(ghost);
-                e.dataTransfer.setDragImage(ghost, 0, 0);
-                setTimeout(() => document.body.removeChild(ghost), 0);
               };
-              const handleListDragOver = (i: number) => (e: React.DragEvent) => {
-                e.preventDefault();
-                if (listDragOverIdx !== i) setListDragOverIdx(i);
-              };
-              const handleListDrop = (i: number) => (e: React.DragEvent) => {
-                e.preventDefault();
-                if (listDragIdx === null || listDragIdx === i) {
-                  setListDragIdx(null); setListDragOverIdx(null); return;
+              const handleGripPointerMove = (i: number) => (e: React.PointerEvent) => {
+                if (!listDragPtrRef.current || listDragPtrRef.current.fromIdx !== i) return;
+                let overIdx = i;
+                for (let j = 0; j < listItemElsRef.current.length; j++) {
+                  const el = listItemElsRef.current[j];
+                  if (!el) continue;
+                  const rect = el.getBoundingClientRect();
+                  if (e.clientY < rect.top + rect.height / 2) { overIdx = j; break; }
+                  overIdx = j;
                 }
-                const newOrder = [...orderedLists.map(l => l.key)];
-                const [moved] = newOrder.splice(listDragIdx, 1);
-                newOrder.splice(i, 0, moved);
-                setListOrder(newOrder);
-                setListDragIdx(null); setListDragOverIdx(null);
-                // Persist
-                const existing = currentUser?.game_lists ?? {};
-                updateCurrentUser({ game_lists: { ...existing, listOrder: newOrder } });
+                listDragPtrRef.current.currentOver = overIdx;
+                if (listDragOverIdx !== overIdx) setListDragOverIdx(overIdx);
               };
-              const handleListDragEnd = () => { setListDragIdx(null); setListDragOverIdx(null); };
+              const handleGripPointerUp = (i: number) => (_e: React.PointerEvent) => {
+                if (!listDragPtrRef.current || listDragPtrRef.current.fromIdx !== i) return;
+                const from = i;
+                const to = listDragPtrRef.current.currentOver;
+                listDragPtrRef.current = null;
+                if (to !== null && to !== from) {
+                  const newOrder = [...orderedLists.map(l => l.key)];
+                  const [moved] = newOrder.splice(from, 1);
+                  newOrder.splice(to, 0, moved);
+                  setListOrder(newOrder);
+                  setListDragIdx(null); setListDragOverIdx(null);
+                  const existing = currentUser?.game_lists ?? {};
+                  updateCurrentUser({ game_lists: { ...existing, listOrder: newOrder } });
+                } else {
+                  setListDragIdx(null); setListDragOverIdx(null);
+                }
+              };
+              const handleGripPointerCancel = (_e: React.PointerEvent) => {
+                listDragPtrRef.current = null;
+                setListDragIdx(null); setListDragOverIdx(null);
+              };
 
               return (
                 <>
@@ -673,11 +749,7 @@ export function Profile() {
                     return (
                       <div
                         key={listType}
-                        draggable={isOwnProfile}
-                        onDragStart={isOwnProfile ? handleListDragStart(i) : undefined}
-                        onDragOver={isOwnProfile ? handleListDragOver(i) : undefined}
-                        onDrop={isOwnProfile ? handleListDrop(i) : undefined}
-                        onDragEnd={isOwnProfile ? handleListDragEnd : undefined}
+                        ref={el => { listItemElsRef.current[i] = el; }}
                         className={`rounded-xl transition-all ${
                           isDragging ? 'opacity-40' : isOver ? 'ring-2 ring-accent/50 bg-accent/5' : ''
                         }`}
@@ -691,6 +763,10 @@ export function Profile() {
                           listType={listType}
                           showFirstOnly={true}
                           dragHandle={isOwnProfile}
+                          onGripPointerDown={isOwnProfile ? handleGripPointerDown(i) : undefined}
+                          onGripPointerMove={isOwnProfile ? handleGripPointerMove(i) : undefined}
+                          onGripPointerUp={isOwnProfile ? handleGripPointerUp(i) : undefined}
+                          onGripPointerCancel={isOwnProfile ? handleGripPointerCancel : undefined}
                         />
                       </div>
                     );
@@ -734,11 +810,6 @@ export function Profile() {
                     </div>
                   )}
 
-                  {!hasAnyList && !isOwnProfile && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <p>No game lists yet</p>
-                    </div>
-                  )}
 
                   {/* Posts below lists */}
                   {profileUserPosts.length > 0 && (
@@ -894,6 +965,18 @@ export function Profile() {
                   />
                 ));
               })()
+            ) : isTopicAccount && blueskyData.posts.length > 0 ? (
+              blueskyData.posts.map((post: any) => (
+                <PostCard
+                  key={post.id}
+                  post={{ ...post, user_id: profileUser.id, created_at: post.timestamp }}
+                  user={profileUser as any}
+                  onLike={handleLikeToggle}
+                  onRepost={handleRepostToggle}
+                  isLiked={likedPosts.has(post.id)}
+                  isReposted={repostedPosts.has(post.id)}
+                />
+              ))
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No posts yet</p>
@@ -1117,6 +1200,13 @@ export function Profile() {
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         user={profileUser}
+      />
+
+      {/* LFG Flare Modal */}
+      <LFGFlareModal
+        isOpen={showLFGFlareModal}
+        onClose={() => setShowLFGFlareModal(false)}
+        onCreated={flare => setActiveFlares(prev => [flare, ...prev])}
       />
 
       {/* Report Modal */}

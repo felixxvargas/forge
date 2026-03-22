@@ -7,7 +7,8 @@ import { GroupIcon } from '../components/GroupIcon';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { type User, type Group } from '../data/data';
-import { posts as postsAPI, profiles as profilesAPI, supabase } from '../utils/supabase';
+import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, supabase } from '../utils/supabase';
+import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
@@ -30,7 +31,7 @@ export function Explore() {
   const [loadingGames, setLoadingGames] = useState(false);
   const [trendingCounts, setTrendingCounts] = useState<Record<string, number>>({});
   const [listCounts, setListCounts] = useState<Record<string, number>>({});
-  const [lfgPlayers, setLfgPlayers] = useState<any[]>([]);
+  const [lfgPlayers, setLfgPlayers] = useState<LFGFlare[]>([]);
   const [loadingLfg, setLoadingLfg] = useState(false);
   const [groupGameTitles, setGroupGameTitles] = useState<Record<string, string>>({});
 
@@ -69,7 +70,7 @@ export function Explore() {
   useEffect(() => {
     if (activeTab !== 'groups') return;
     setLoadingLfg(true);
-    profilesAPI.getPlayersLookingForGroup(50)
+    lfgFlaresAPI.getActive(50)
       .then(setLfgPlayers)
       .finally(() => setLoadingLfg(false));
   }, [activeTab]);
@@ -618,45 +619,62 @@ export function Explore() {
                   ))
                 )}
 
-                {/* Group Finder — players with LFG list */}
+                {/* Group Finder — active LFG flares */}
                 <div className="mt-6">
                   <div className="flex items-center gap-2 mb-3">
                     <Swords className="w-5 h-5 text-accent" />
                     <h2 className="font-semibold text-white">Group Finder</h2>
                   </div>
-                  <p className="text-sm text-gray-500 mb-3">Players looking for a group to play with</p>
+                  <p className="text-sm text-gray-500 mb-3">Active LFG flares from players looking to group up</p>
                   {loadingLfg ? (
                     <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
                   ) : lfgPlayers.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <Swords className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                      <p className="text-sm">No players looking for group right now</p>
+                      <p className="text-sm">No active LFG flares right now</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {lfgPlayers.map(player => (
-                        <div
-                          key={player.id}
-                          onClick={() => navigate(`/profile/${player.id}`)}
-                          className="flex items-center gap-3 p-3 bg-gray-900 border border-gray-800 rounded-lg hover:border-purple-600 transition-colors cursor-pointer"
-                        >
-                          {player.profile_picture ? (
-                            <img src={player.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                              <UserIcon className="w-5 h-5 text-gray-400" />
+                      {lfgPlayers.map(flare => {
+                        const player = (flare as any).user;
+                        if (!player) return null;
+                        return (
+                          <div
+                            key={flare.id}
+                            onClick={() => navigate(`/profile/${player.id}`)}
+                            className="p-3 bg-gray-900 border border-gray-800 rounded-lg hover:border-purple-600 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              {player.profile_picture ? (
+                                <img src={player.profile_picture} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                                  <UserIcon className="w-4 h-4 text-gray-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm text-white truncate">{player.display_name || player.handle}</p>
+                                <p className="text-xs text-gray-500">@{(player.handle || '').replace(/^@/, '')}</p>
+                              </div>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                flare.flare_type === 'lfg'
+                                  ? 'bg-accent/20 text-accent'
+                                  : 'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {flare.flare_type.toUpperCase()}
+                              </span>
                             </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-white truncate">{player.display_name || player.handle}</p>
-                            <p className="text-xs text-gray-500 truncate">@{player.handle}</p>
+                            <div className="pl-12">
+                              <p className="text-sm text-white font-medium">{flare.game_title}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
+                                {flare.game_mode ? ` · ${flare.game_mode}` : ''}
+                                {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 text-xs text-accent shrink-0">
-                            <Swords className="w-3.5 h-3.5" />
-                            <span>{(player.game_lists?.lfg ?? []).length} game{(player.game_lists?.lfg ?? []).length !== 1 ? 's' : ''}</span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

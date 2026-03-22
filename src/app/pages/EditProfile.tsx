@@ -40,7 +40,7 @@ export function EditProfile() {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'battlenet', 'riot'];
+  const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
   const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
 
   const handleSave = async () => {
@@ -174,8 +174,8 @@ export function EditProfile() {
       'nintendo': 'Nintendo',
       'xbox': 'Xbox',
       'pc': 'PC',
-      'battlenet': 'Battle.net',
-      'riot': 'Riot',
+      'mac': 'Mac Gaming',
+      'linux': 'Linux Gaming',
       'epic': 'Epic Games',
       'ea': 'EA',
       'gog': 'GOG',

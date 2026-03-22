@@ -13,6 +13,6 @@ export const GAMING_PLATFORMS: PlatformOption[] = [
   { id: 'xbox', name: 'Xbox', description: 'Xbox Series X|S, Xbox One' },
   { id: 'steam', name: 'Steam', description: 'PC gaming platform' },
   { id: 'pc', name: 'PC Gaming', description: 'Epic, GOG, and other PC games' },
-  { id: 'battlenet', name: 'Battle.net', description: 'Blizzard games' },
-  { id: 'riot', name: 'Riot Games', description: 'League of Legends, Valorant' }
+  { id: 'mac', name: 'Mac Gaming', description: 'macOS games and Apple Arcade' },
+  { id: 'linux', name: 'Linux Gaming', description: 'Linux native and Proton games' }
 ];

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 
 interface LinkPreviewProps {
   url: string;
@@ -15,49 +15,59 @@ interface LinkMetadata {
 export function LinkPreview({ url }: LinkPreviewProps) {
   const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    // For now, we'll show a simple link preview without fetching metadata
-    // In a production app, you would call a backend endpoint that fetches
-    // the og:meta tags from the URL
-    
-    // Extract domain from URL for display
-    try {
-      const urlObj = new URL(url);
-      setMetadata({
-        title: urlObj.hostname,
-        description: url,
-        siteName: urlObj.hostname
-      });
-      setIsLoading(false);
-    } catch {
-      setError(true);
-      setIsLoading(false);
-    }
+    let mounted = true;
+    setIsLoading(true);
+    setFailed(false);
+    setMetadata(null);
+
+    fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!mounted) return;
+        if (json.status !== 'success') { setFailed(true); return; }
+        const d = json.data ?? {};
+        setMetadata({
+          title: d.title ?? undefined,
+          description: d.description ?? undefined,
+          image: d.image?.url ?? d.screenshot?.url ?? undefined,
+          siteName: d.publisher ?? new URL(url).hostname,
+        });
+      })
+      .catch(() => { if (mounted) setFailed(true); })
+      .finally(() => { if (mounted) setIsLoading(false); });
+
+    return () => { mounted = false; };
   }, [url]);
 
   if (isLoading) {
-    return (
-      <div className="mt-3 border border-border rounded-lg p-4 flex items-center justify-center bg-secondary/20">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading preview...</span>
-      </div>
-    );
-  }
-
-  if (error || !metadata) {
     return (
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 block border border-border rounded-lg p-3 hover:bg-secondary/20 transition-colors group"
+        onClick={e => e.stopPropagation()}
+        className="mt-2 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-secondary/30 text-sm text-muted-foreground hover:bg-secondary transition-colors"
       >
-        <div className="flex items-center gap-2 text-accent">
-          <ExternalLink className="w-4 h-4" />
-          <span className="text-sm truncate group-hover:underline">{url}</span>
-        </div>
+        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+        <span className="truncate">{new URL(url).hostname}</span>
+      </a>
+    );
+  }
+
+  if (failed || !metadata) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        className="mt-2 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-secondary/30 text-sm text-accent hover:bg-secondary transition-colors group"
+      >
+        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+        <span className="truncate group-hover:underline">{url}</span>
       </a>
     );
   }
@@ -67,7 +77,8 @@ export function LinkPreview({ url }: LinkPreviewProps) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-3 block border border-border rounded-lg overflow-hidden hover:border-accent/50 transition-colors group"
+      onClick={e => e.stopPropagation()}
+      className="mt-2 mb-3 block rounded-xl border border-border overflow-hidden hover:border-accent/50 transition-colors group"
     >
       {metadata.image && (
         <div className="aspect-video bg-secondary relative overflow-hidden">
@@ -75,33 +86,26 @@ export function LinkPreview({ url }: LinkPreviewProps) {
             src={metadata.image}
             alt={metadata.title || 'Link preview'}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              // Hide image if it fails to load
-              e.currentTarget.style.display = 'none';
-            }}
+            onError={e => { e.currentTarget.parentElement!.style.display = 'none'; }}
           />
         </div>
       )}
-      <div className="p-3">
+      <div className="p-3 bg-secondary/30">
         {metadata.siteName && (
-          <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">
+          <p className="text-xs text-muted-foreground mb-0.5 uppercase tracking-wide truncate">
             {metadata.siteName}
           </p>
         )}
         {metadata.title && (
-          <h4 className="font-medium text-sm line-clamp-2 mb-1 group-hover:text-accent transition-colors">
+          <p className="font-medium text-sm line-clamp-2 group-hover:text-accent transition-colors">
             {metadata.title}
-          </h4>
+          </p>
         )}
         {metadata.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
             {metadata.description}
           </p>
         )}
-        <div className="flex items-center gap-1 mt-2 text-accent">
-          <ExternalLink className="w-3 h-3" />
-          <span className="text-xs truncate">{url}</span>
-        </div>
       </div>
     </a>
   );

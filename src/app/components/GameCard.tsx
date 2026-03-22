@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Game } from '../data/data';
 
@@ -8,6 +9,7 @@ interface GameCardProps {
 
 export function GameCard({ game, showHours = false }: GameCardProps) {
   const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
 
   // Support both old local Game format (coverArt) and IGDB DB format (artwork[])
   const coverUrl = (game as any).artwork?.find((a: any) => a.artwork_type === 'cover')?.url
@@ -20,11 +22,12 @@ export function GameCard({ game, showHours = false }: GameCardProps) {
       onClick={() => navigate(`/game/${game.id}`)}
     >
       <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
-        {coverUrl ? (
+        {coverUrl && !imgError ? (
           <img
             src={coverUrl}
             alt={game.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">

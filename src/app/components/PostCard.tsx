@@ -270,10 +270,17 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </DropdownMenu>
       </div>
 
-      {/* Content */}
-      <p className="mb-3 whitespace-pre-wrap">
-        <LinkifyMentions text={post.content} />
-      </p>
+      {/* Content — strip the attached URL from text so the preview isn't duplicated */}
+      {(() => {
+        const displayContent = post.url
+          ? post.content.replace(post.url, '').trimEnd()
+          : post.content;
+        return displayContent ? (
+          <p className="mb-3 whitespace-pre-wrap">
+            <LinkifyMentions text={displayContent} />
+          </p>
+        ) : null;
+      })()}
 
       {/* Link Preview */}
       {post.url && (

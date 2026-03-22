@@ -1,12 +1,12 @@
 // Mock data for Forge gaming social app
 
-export type Platform = 
-  | 'nintendo' 
-  | 'playstation' 
-  | 'steam' 
-  | 'pc' 
-  | 'battlenet' 
-  | 'riot' 
+export type Platform =
+  | 'nintendo'
+  | 'playstation'
+  | 'steam'
+  | 'pc'
+  | 'mac'
+  | 'linux'
   | 'xbox'
   | 'epic'
   | 'ea'
@@ -154,14 +154,14 @@ export const mockGames: Game[] = [
   {
     id: '6',
     title: 'Valorant',
-    platform: 'riot',
+    platform: 'pc',
     year: 2020,
     coverArt: 'https://images.unsplash.com/photo-1560419015-7c427e8ae5ba?w=300&h=400&fit=crop'
   },
   {
     id: '7',
     title: 'Diablo IV',
-    platform: 'battlenet',
+    platform: 'pc',
     year: 2023,
     coverArt: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&h=400&fit=crop'
   },
