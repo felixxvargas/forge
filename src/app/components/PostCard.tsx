@@ -340,7 +340,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className={`mb-3 flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors text-sm ${
+          className={`mb-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm ${
             post.platform === 'bluesky'
               ? 'border-sky-500/30 bg-sky-500/5 hover:bg-sky-500/10 text-sky-400'
               : post.platform === 'mastodon'
@@ -349,7 +349,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           }`}
         >
           <PlatformIcon platform={post.platform as SocialPlatform} className="w-4 h-4 shrink-0" />
-          <span className="flex-1 font-medium">
+          <span className="font-medium">
             View on {post.platform === 'bluesky' ? 'Bluesky' : post.platform === 'mastodon' ? 'Mastodon' : 'source'}
           </span>
           <ExternalLink className="w-3.5 h-3.5 shrink-0" />

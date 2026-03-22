@@ -15,6 +15,7 @@ import PatreonIcon from '../../assets/icons/patreon.svg?react';
 // Gaming platform SVG imports
 import SteamIcon from '../../assets/icons/steam.svg?react';
 import XboxIcon from '../../assets/icons/xbox.svg?react';
+import PlayStationIcon from '../../assets/icons/playstation.svg?react';
 import WindowsIcon from '../../assets/icons/windows.svg?react';
 import AppleIcon from '../../assets/icons/apple.svg?react';
 
@@ -104,12 +105,7 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
       // ── Gaming (SVG file imports) ──────────────────────────
       case 'steam':     return <SteamIcon className={cls} />;
       case 'xbox':      return <XboxIcon className={cls} />;
-      case 'playstation':
-        return (
-          <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
-            <path d="M8.985 2.596v17.548l3.069 1.838V7.344L8.985 2.596zm11.85 9.618l-4.7-1.505v4.157l4.7 1.503c.656.204.969.545.969 1.002 0 .456-.313.792-.969.996l-4.7 1.505V22l4.684-1.505c2.285-.705 3.848-1.946 3.848-3.799 0-1.854-1.563-3.092-3.832-3.482zM8.985 17v4.095l4.538 1.396c1.188.365 2.082.68 3.116 1.054v-5.01c-1.053-.374-2.291-.699-3.504-1.042L8.985 17z"/>
-          </svg>
-        );
+      case 'playstation': return <PlayStationIcon className={cls} />;
       case 'nintendo':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>

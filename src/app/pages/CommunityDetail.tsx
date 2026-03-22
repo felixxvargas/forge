@@ -347,10 +347,13 @@ export function CommunityDetail() {
             </button>
           )}
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <button
+            onClick={() => setShowMembersModal(true)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
             <Users className="w-4 h-4" />
             <span>{(community.member_count ?? community.memberCount ?? 0).toLocaleString()} members</span>
-          </div>
+          </button>
 
           <p className="text-muted-foreground mb-4">{community.description}</p>
 
