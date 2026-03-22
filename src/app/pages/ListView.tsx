@@ -33,7 +33,7 @@ export function ListView() {
   const viewUserId = searchParams.get('userId');
   const { currentUser, users, updateGameList } = useAppData();
 
-  const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
+  const [sortOrder, setSortOrder] = useState<'default' | 'a-z' | 'z-a'>('default');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const listKey = LIST_KEY_MAP[listType];
@@ -44,11 +44,18 @@ export function ListView() {
   const gameLists = (sourceUser as any)?.game_lists ?? (sourceUser as any)?.gameLists ?? {};
   const games: Game[] = gameLists[listKey] ?? [];
 
-  const sortedGames = [...games].sort((a, b) =>
-    sortOrder === 'a-z'
-      ? a.title.localeCompare(b.title)
-      : b.title.localeCompare(a.title)
-  );
+  const sortedGames = sortOrder === 'default'
+    ? [...games]
+    : [...games].sort((a, b) =>
+        sortOrder === 'a-z'
+          ? a.title.localeCompare(b.title)
+          : b.title.localeCompare(a.title)
+      );
+
+  const cycleSortOrder = () => {
+    setSortOrder(s => s === 'default' ? 'a-z' : s === 'a-z' ? 'z-a' : 'default');
+  };
+  const sortLabel = sortOrder === 'default' ? 'Default' : sortOrder === 'a-z' ? 'A-Z' : 'Z-A';
 
   const handleSaveGameList = (updatedGames: Game[]) => {
     updateGameList(listType, updatedGames);
@@ -161,10 +168,10 @@ export function ListView() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setSortOrder(sortOrder === 'a-z' ? 'z-a' : 'a-z')}
+                onClick={cycleSortOrder}
                 className="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
               >
-                {sortOrder === 'a-z' ? 'A-Z' : 'Z-A'}
+                {sortLabel}
               </button>
               {!viewUser && (
                 <button
@@ -182,7 +189,7 @@ export function ListView() {
 
       {/* Games Grid */}
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-5">
           {sortedGames.map((game) => (
             <GameCard
               key={game.id}

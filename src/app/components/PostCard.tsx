@@ -282,7 +282,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           <>
             {displayContent ? (
               <p className="mb-3 whitespace-pre-wrap">
-                <LinkifyMentions text={displayContent} />
+                <LinkifyMentions text={displayContent} gameId={post.game_id} gameTitle={post.game_title} />
               </p>
             ) : null}
             {previewUrl && <LinkPreview url={previewUrl} />}

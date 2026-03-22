@@ -34,7 +34,9 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
       )
     : games;
 
-  const displayGames = showFirstOnly ? sortedGames.slice(0, 5) : sortedGames;
+  const PREVIEW_LIMIT = 5;
+  const displayGames = showFirstOnly ? sortedGames.slice(0, PREVIEW_LIMIT) : sortedGames;
+  const overflowCount = showFirstOnly ? Math.max(0, sortedGames.length - PREVIEW_LIMIT) : 0;
 
   const handleViewAll = () => {
     if (listType) navigate(`/list?type=${listType}`);
@@ -122,10 +124,21 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
         {displayGames.map((game) => (
           <GameCard key={game.id} game={game} showHours={showHours} />
         ))}
+        {/* +X more overflow card */}
+        {overflowCount > 0 && listType && (
+          <button
+            onClick={handleViewAll}
+            className="flex-shrink-0 w-32 flex flex-col items-center justify-center rounded-lg bg-secondary hover:bg-secondary/80 transition-colors cursor-pointer gap-1"
+            style={{ aspectRatio: '3/4' }}
+          >
+            <span className="text-2xl font-bold text-accent">+{overflowCount}</span>
+            <span className="text-xs text-muted-foreground">more</span>
+          </button>
+        )}
       </div>
 
       {/* View All link */}
-      {games.length > 5 && showFirstOnly && listType && (
+      {games.length > PREVIEW_LIMIT && showFirstOnly && listType && (
         <button
           onClick={handleViewAll}
           className="flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors mt-2"
