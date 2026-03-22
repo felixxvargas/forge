@@ -25,9 +25,49 @@ export function PostDetail() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const mentionTriggerIndex = useRef<number>(-1);
 
+  // Bluesky fallback — used when the postId is an AT-URI and not in the Supabase feed
+  const [blueskyPost, setBlueskyPost] = useState<any>(null);
+  const [loadingBluesky, setLoadingBluesky] = useState(false);
+
   // Find original post (prefer one without repostedBy for detail view)
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
+
+  // If the postId looks like a Bluesky AT-URI and wasn't found in context, fetch it live
+  useEffect(() => {
+    if (!postId?.startsWith('at://') || post) return;
+    setLoadingBluesky(true);
+    fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getPosts?uris=${encodeURIComponent(postId)}`)
+      .then(r => r.json())
+      .then(data => {
+        const bp = data.posts?.[0];
+        if (!bp) return;
+        const handle = bp.author?.handle ?? '';
+        const rkey = bp.uri?.split('/').pop() ?? '';
+        setBlueskyPost({
+          id: bp.uri,
+          content: bp.record?.text ?? '',
+          created_at: bp.record?.createdAt ?? bp.indexedAt,
+          like_count: bp.likeCount ?? 0,
+          repost_count: bp.repostCount ?? 0,
+          comment_count: bp.replyCount ?? 0,
+          platform: 'bluesky',
+          external_url: `https://bsky.app/profile/${handle}/post/${rkey}`,
+          images: bp.embed?.images?.map((img: any) => img.fullsize ?? img.thumb) ?? undefined,
+          author: {
+            id: bp.author?.did ?? handle,
+            handle,
+            display_name: bp.author?.displayName ?? handle,
+            profile_picture: bp.author?.avatar ?? '',
+          },
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoadingBluesky(false));
+  }, [postId, post]);
+
+  const activePost = post ?? blueskyPost;
+  const activeUser = postUser ?? blueskyPost?.author;
 
   // Load comments
   useEffect(() => {
@@ -174,7 +214,15 @@ export function PostDetail() {
     }
   };
 
-  if (!post || !postUser) {
+  if (loadingBluesky) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
+      </div>
+    );
+  }
+
+  if (!activePost || !activeUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Post not found</p>
@@ -183,7 +231,7 @@ export function PostDetail() {
   }
 
   // Strip repostedBy so the reposter header is hidden in detail view
-  const detailPost = { ...post, repostedBy: undefined };
+  const detailPost = { ...activePost, repostedBy: undefined };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -205,17 +253,17 @@ export function PostDetail() {
         <div className="bg-card px-4 pt-4 pb-4 border-b border-border">
           <PostCard
             post={detailPost}
-            user={postUser}
+            user={activeUser}
             onLike={handleLikeToggle}
             onComment={() => commentsRef.current?.scrollIntoView({ behavior: 'smooth' })}
-            onDelete={currentUser && post.user_id === currentUser.id ? async (id) => { await deletePost(id); navigate(-1); } : undefined}
+            onDelete={currentUser && activePost.user_id === currentUser.id ? async (id) => { await deletePost(id); navigate(-1); } : undefined}
             isDetailView={true}
           />
           {/* Repost count */}
-          {((post.repost_count ?? post.reposts ?? 0) > 0) && (
+          {((activePost.repost_count ?? activePost.reposts ?? 0) > 0) && (
             <div className="mt-2 pt-3 border-t border-border text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">
-                {post.repost_count ?? post.reposts}
+                {activePost.repost_count ?? activePost.reposts}
               </span>{' '}
               Reposts
             </div>
