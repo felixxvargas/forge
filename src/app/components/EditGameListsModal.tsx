@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Plus, GripVertical, Trash2, Check, Loader2, Search } from 'lucide-react';
 import type { GameListType } from '../data/data';
-import { gamesAPI } from '../utils/api';
+import { gamesAPI, rawgAPI } from '../utils/api';
 
 // Use a generic game shape compatible with both local Game and IGDB DB games
 interface AnyGame {
@@ -43,12 +43,17 @@ export function EditGameListsModal({
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Drag-and-drop state
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
   const listTitles: Record<GameListType, string> = {
     'recently-played': 'Recently Played',
     'library': 'Library',
     'favorite': 'Favorite Games',
     'wishlist': 'Wishlist',
     'custom': 'Custom List',
+    'lfg': 'Looking for Group',
   };
 
   // Debounced IGDB search
@@ -61,9 +66,18 @@ export function EditGameListsModal({
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await gamesAPI.searchGames(searchQuery, 30);
-        const list: AnyGame[] = Array.isArray(res) ? res : (res as any)?.games ?? [];
-        setSearchResults(list);
+        const [serverRes, rawgRes] = await Promise.allSettled([
+          gamesAPI.searchGames(searchQuery, 30),
+          rawgAPI.searchGames(searchQuery, 20),
+        ]);
+        const serverGames: AnyGame[] = serverRes.status === 'fulfilled'
+          ? (Array.isArray(serverRes.value) ? serverRes.value : (serverRes.value as any)?.games ?? [])
+          : [];
+        const rawgGames: AnyGame[] = rawgRes.status === 'fulfilled' ? rawgRes.value : [];
+        // Merge: prefer server results, append RAWG results that aren't duplicates by title
+        const serverTitles = new Set(serverGames.map((g: AnyGame) => g.title.toLowerCase()));
+        const merged = [...serverGames, ...rawgGames.filter((g: AnyGame) => !serverTitles.has(g.title.toLowerCase()))];
+        setSearchResults(merged);
       } catch {
         setSearchResults([]);
       } finally {
@@ -79,6 +93,8 @@ export function EditGameListsModal({
       setSelectedGames(currentGames);
       setSearchQuery('');
       setSearchResults([]);
+      setDragIdx(null);
+      setDragOverIdx(null);
     }
   }, [isOpen]);
 
@@ -97,12 +113,50 @@ export function EditGameListsModal({
     onClose();
   };
 
+  // Drag handlers for selected games reorder
+  const onDragStart = (i: number) => (e: React.DragEvent) => {
+    setDragIdx(i);
+    e.dataTransfer.effectAllowed = 'move';
+    // Ghost image: transparent
+    const ghost = document.createElement('div');
+    ghost.style.opacity = '0';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+  };
+
+  const onDragOver = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== i) setDragOverIdx(i);
+  };
+
+  const onDrop = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === i) {
+      setDragIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const newGames = [...selectedGames];
+    const [moved] = newGames.splice(dragIdx, 1);
+    newGames.splice(i, 0, moved);
+    setSelectedGames(newGames);
+    setDragIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const onDragEnd = () => {
+    setDragIdx(null);
+    setDragOverIdx(null);
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0">
+      <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />
@@ -117,25 +171,115 @@ export function EditGameListsModal({
         </button>
       </div>
 
+      {/* Sticky Search Bar */}
+      <div className="sticky top-[65px] z-10 px-4 py-3 border-b border-border/50 bg-background/80 backdrop-blur-md">
+        <div className="relative max-w-2xl mx-auto w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search games to add…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-9 py-2.5 bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
+          />
+          {isSearching ? (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+          ) : searchQuery ? (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4 max-w-2xl mx-auto w-full">
+
+          {/* Search Results */}
+          {searchQuery.trim() && (
+            <div>
+              {searchResults.length > 0 ? (
+                <div className="space-y-2">
+                  {searchResults.map((game) => {
+                    const isSelected = selectedGames.some(g => g.id === game.id);
+                    const cover = getCoverUrl(game);
+                    return (
+                      <button
+                        key={game.id}
+                        onClick={() => !isSelected && addGame(game)}
+                        disabled={isSelected}
+                        className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
+                          isSelected
+                            ? 'bg-accent/20 cursor-default border-2 border-accent'
+                            : 'bg-secondary/50 hover:bg-secondary'
+                        }`}
+                      >
+                        {cover ? (
+                          <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded flex-shrink-0" />
+                        ) : (
+                          <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">?</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{game.title}</p>
+                          <p className="text-sm text-muted-foreground">{game.year ?? ''}</p>
+                        </div>
+                        {isSelected ? (
+                          <div className="flex items-center gap-1 text-accent text-sm font-medium shrink-0">
+                            <Check className="w-4 h-4" />
+                          </div>
+                        ) : (
+                          <Plus className="w-5 h-5 text-accent shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : !isSearching ? (
+                <p className="text-center py-4 text-muted-foreground text-sm">No games found</p>
+              ) : null}
+            </div>
+          )}
 
           {/* Selected Games */}
           {selectedGames.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium mb-2">Selected Games ({selectedGames.length})</h3>
+              <h3 className="text-sm font-medium mb-2 text-muted-foreground">
+                In this list ({selectedGames.length}) · drag to reorder
+              </h3>
               <div className="space-y-2">
-                {selectedGames.map((game) => {
+                {selectedGames.map((game, i) => {
                   const cover = getCoverUrl(game);
+                  const isDragging = dragIdx === i;
+                  const isOver = dragOverIdx === i && dragIdx !== i;
                   return (
-                    <div key={game.id} className="flex items-center gap-3 p-2 bg-secondary rounded-lg">
-                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                    <div
+                      key={game.id}
+                      draggable
+                      onDragStart={onDragStart(i)}
+                      onDragOver={onDragOver(i)}
+                      onDrop={onDrop(i)}
+                      onDragEnd={onDragEnd}
+                      className={`flex items-center gap-3 p-2 rounded-lg transition-all select-none ${
+                        isDragging
+                          ? 'opacity-40 bg-accent/10 border-2 border-accent/40'
+                          : isOver
+                          ? 'bg-accent/10 border-2 border-accent/60 scale-[1.01]'
+                          : 'bg-secondary border-2 border-transparent'
+                      }`}
+                    >
+                      <div className="cursor-grab active:cursor-grabbing touch-none p-1">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                      </div>
                       {cover ? (
-                        <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded" />
+                        <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded pointer-events-none" />
                       ) : (
-                        <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">?</div>
+                        <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground pointer-events-none">?</div>
                       )}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pointer-events-none">
                         <p className="font-medium truncate">{game.title}</p>
                         {game.year && <p className="text-sm text-muted-foreground">{game.year}</p>}
                       </div>
@@ -152,69 +296,11 @@ export function EditGameListsModal({
             </div>
           )}
 
-          {/* Search */}
-          <div>
-            <h3 className="text-sm font-medium mb-2">Search Games</h3>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search IGDB games..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-secondary rounded-lg border border-transparent focus:border-accent focus:outline-none transition-colors"
-              />
-              {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-
-            {searchQuery.trim() === '' && (
-              <p className="text-center py-6 text-muted-foreground text-sm">Type a game name to search</p>
-            )}
-
-            {searchResults.length > 0 && (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {searchResults.map((game) => {
-                  const isSelected = selectedGames.some(g => g.id === game.id);
-                  const cover = getCoverUrl(game);
-                  return (
-                    <button
-                      key={game.id}
-                      onClick={() => !isSelected && addGame(game)}
-                      disabled={isSelected}
-                      className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
-                        isSelected
-                          ? 'bg-accent/20 cursor-default border-2 border-accent'
-                          : 'bg-secondary/50 hover:bg-secondary'
-                      }`}
-                    >
-                      {cover ? (
-                        <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded flex-shrink-0" />
-                      ) : (
-                        <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">?</div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{game.title}</p>
-                        <p className="text-sm text-muted-foreground">{game.year ?? ''}</p>
-                      </div>
-                      {isSelected ? (
-                        <div className="flex items-center gap-1 text-accent text-sm font-medium shrink-0">
-                          <Check className="w-4 h-4" />
-                        </div>
-                      ) : (
-                        <Plus className="w-5 h-5 text-accent shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-              <p className="text-center py-4 text-muted-foreground text-sm">No games found</p>
-            )}
-          </div>
+          {selectedGames.length === 0 && !searchQuery.trim() && (
+            <p className="text-center py-10 text-muted-foreground text-sm">
+              Search for games above to add them to this list
+            </p>
+          )}
         </div>
       </div>
     </div>

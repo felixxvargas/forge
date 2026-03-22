@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, ChevronRight, Trash2, Users } from 'lucide-react';
+import { Edit2, ChevronRight, Trash2, Users, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
@@ -14,9 +14,10 @@ interface GameListProps {
   onDelete?: () => void;
   listType?: GameListType;
   showFirstOnly?: boolean;
+  dragHandle?: boolean;
 }
 
-export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onDelete, listType, showFirstOnly = false }: GameListProps) {
+export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onDelete, listType, showFirstOnly = false, dragHandle = false }: GameListProps) {
   const navigate = useNavigate();
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -46,6 +47,9 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
+          {dragHandle && (
+            <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing shrink-0" />
+          )}
           <h3 className="font-medium">{title}</h3>
           {badges && badges.map((badge) => (
             <span

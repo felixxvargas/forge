@@ -10,8 +10,8 @@ import { useAppData } from '../context/AppDataContext';
 
 // Feed v1.0.1 - Context should now be available through Layout
 export function Feed() {
-  const { posts, currentUser, communities, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading } = useAppData();
-  const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
+  const { posts, currentUser, groups, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading } = useAppData();
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
 
@@ -40,13 +40,13 @@ export function Feed() {
     setShowMutedPosts(prev => new Set([...prev, postId]));
   };
 
-  // Get user's communities
-  const userCommunities = currentUser?.communities?.map(membership => {
-    const community = communities.find(c => c.id === membership.community_id);
-    return community;
+  // Get user's groups
+  const userGroups = currentUser?.communities?.map(membership => {
+    const group = groups.find(c => c.id === membership.community_id);
+    return group;
   }).filter(Boolean) || [];
 
-  // Filter posts based on selected community, filtered social platforms, and blocked/muted users
+  // Filter posts based on selected group, filtered social platforms, and blocked/muted users
   const filteredPosts = posts.filter(post => {
     // Filter out posts with no content
     if (!post.content?.trim()) return false;
@@ -56,9 +56,9 @@ export function Feed() {
       return false;
     }
 
-    // Filter by community
-    if (selectedCommunity) {
-      return post.community_id === selectedCommunity;
+    // Filter by group
+    if (selectedGroup) {
+      return post.community_id === selectedGroup;
     }
 
     // Show all posts when "Following" is selected (no community_id filter)
@@ -70,9 +70,9 @@ export function Feed() {
   const mutedPosts = filteredPosts.filter(post => mutedUsers.has(post.user_id) && !showMutedPosts.has(post.id));
 
   const getSelectedName = () => {
-    if (!selectedCommunity) return 'Following';
-    const community = communities.find(c => c.id === selectedCommunity);
-    return community ? community.name : 'Following';
+    if (!selectedGroup) return 'Following';
+    const group = groups.find(c => c.id === selectedGroup);
+    return group ? group.name : 'Following';
   };
 
   return (
@@ -99,13 +99,13 @@ export function Feed() {
               <div className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                 <button
                   onClick={() => {
-                    setSelectedCommunity(null);
+                    setSelectedGroup(null);
                     setShowDropdown(false);
                   }}
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-secondary transition-colors text-left"
                 >
                   <span className="font-medium">Following</span>
-                  {!selectedCommunity && <Check className="w-4 h-4 text-accent" />}
+                  {!selectedGroup && <Check className="w-4 h-4 text-accent" />}
                 </button>
                 
                 <button
@@ -126,27 +126,27 @@ export function Feed() {
                   <span className="font-medium">Trending</span>
                 </button>
                 
-                {userCommunities.length > 0 && (
+                {userGroups.length > 0 && (
                   <>
                     <div className="px-4 py-2 text-xs text-muted-foreground uppercase tracking-wide">
-                      Your Communities
+                      Your Groups
                     </div>
-                    {userCommunities.map(community => {
-                      if (!community) return null;
+                    {userGroups.map(group => {
+                      if (!group) return null;
                       return (
                         <button
-                          key={community.id}
+                          key={group.id}
                           onClick={() => {
-                            setSelectedCommunity(community.id);
+                            setSelectedGroup(group.id);
                             setShowDropdown(false);
                           }}
                           className="w-full px-4 py-3 flex items-center justify-between hover:bg-secondary transition-colors text-left"
                         >
                           <div className="flex items-center gap-2">
-                            <span>{community.icon}</span>
-                            <span className="font-medium">{community.name}</span>
+                            <span>{group.icon}</span>
+                            <span className="font-medium">{group.name}</span>
                           </div>
-                          {selectedCommunity === community.id && (
+                          {selectedGroup === group.id && (
                             <Check className="w-4 h-4 text-accent" />
                           )}
                         </button>
@@ -221,8 +221,8 @@ export function Feed() {
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No posts yet</p>
             <p className="text-sm text-muted-foreground">
-              {selectedCommunity 
-                ? 'Be the first to post in this community!' 
+              {selectedGroup
+                ? 'Be the first to post in this group!'
                 : 'Follow some gamers to see their posts here'}
             </p>
           </div>

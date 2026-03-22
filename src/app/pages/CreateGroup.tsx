@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Globe, Users, Lock } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
-import type { CommunityType } from '../data/data';
+import type { GroupType } from '../data/data';
 import { GAMING_ICONS, DEFAULT_ICON_KEY, GroupIcon } from '../components/GroupIcon';
 
 interface TypeOption {
-  value: CommunityType;
+  value: GroupType;
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -20,12 +20,12 @@ const TYPE_OPTIONS: TypeOption[] = [
 
 export function CreateGroup() {
   const navigate = useNavigate();
-  const { createCommunity } = useAppData();
+  const { createGroup } = useAppData();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState(DEFAULT_ICON_KEY);
-  const [type, setType] = useState<CommunityType>('open');
+  const [type, setType] = useState<GroupType>('open');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,8 +36,8 @@ export function CreateGroup() {
     setIsSubmitting(true);
     setError('');
     try {
-      const community = await createCommunity(name.trim(), description.trim(), icon, type);
-      navigate(`/community/${community.id}`);
+      const group = await createGroup(name.trim(), description.trim(), icon, type);
+      navigate(`/group/${group.id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to create group. Please try again.');
     } finally {

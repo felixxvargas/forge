@@ -359,18 +359,25 @@ export const uploadAPI = {
     }
     
     const resolvedBucket = BUCKET_NAMES[bucketType] ?? bucketType;
-    const userId = localStorage.getItem('forge-user-id') || 'unknown';
+    // Decode userId from the JWT `sub` claim — always authoritative, never stale
+    let userId = 'unknown';
+    try {
+      const payload = JSON.parse(atob(token!.split('.')[1]));
+      userId = payload.sub ?? localStorage.getItem('forge-user-id') ?? 'unknown';
+    } catch {
+      userId = localStorage.getItem('forge-user-id') ?? 'unknown';
+    }
     const ext = file.name.split('.').pop() || 'bin';
     const timestamp = Date.now();
 
-    // Build a per-bucket path
+    // Build a per-bucket path using userId as folder prefix (matches RLS policy pattern)
     let storagePath: string;
     if (bucketType === 'avatar') {
-      storagePath = `avatars/${userId}.${ext}`;
+      storagePath = `${userId}/avatar-${timestamp}.${ext}`;
     } else if (bucketType === 'banner') {
-      storagePath = `banners/${userId}.${ext}`;
+      storagePath = `${userId}/banner-${timestamp}.${ext}`;
     } else {
-      storagePath = `${bucketType}/${userId}/${timestamp}-${file.name}`;
+      storagePath = `${userId}/${timestamp}-${file.name}`;
     }
 
     console.log('[Upload] Uploading directly to Supabase Storage:', resolvedBucket, storagePath);
@@ -553,7 +560,43 @@ export const gamesAPI = {
 
   async getGamePlayers(gameId: string) {
     return apiRequest(`/games/${gameId}/players`);
+  },
+
+  async getSimilarGames(gameId: string, genres: string[], limit = 8) {
+    const genresParam = genres.length ? `&genres=${encodeURIComponent(genres.join(','))}` : '';
+    return apiRequest(`/games/${gameId}/similar?limit=${limit}${genresParam}`);
+  },
+
+  async getGameVersions(gameId: string, title: string, limit = 6) {
+    return apiRequest(`/games/${gameId}/versions?title=${encodeURIComponent(title)}&limit=${limit}`);
   }
+};
+
+// RAWG Game Database API (https://rawg.io/apiv2)
+// Set VITE_RAWG_API_KEY in your .env file to enable
+export const rawgAPI = {
+  async searchGames(query: string, limit = 20): Promise<any[]> {
+    const key = import.meta.env.VITE_RAWG_API_KEY;
+    if (!key || !query.trim()) return [];
+    try {
+      // exclude_additions=true removes patches, DLC, and minor add-ons; expansions sold
+      // as standalone titles remain. This keeps results to games + standalone expansions.
+      const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit}&search_exact=false&exclude_additions=true`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const { results } = await res.json();
+      return (results ?? []).map((g: any) => ({
+        id: `rawg-${g.id}`,
+        title: g.name,
+        platform: (g.platforms?.[0]?.platform?.slug ?? 'pc') as any,
+        year: g.released ? parseInt(g.released.split('-')[0]) : undefined,
+        coverArt: g.background_image ?? '',
+        genres: g.genres?.map((genre: any) => genre.name) ?? [],
+      }));
+    } catch {
+      return [];
+    }
+  },
 };
 
 // Admin API

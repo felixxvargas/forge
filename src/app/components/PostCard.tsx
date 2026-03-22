@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -26,6 +26,8 @@ interface PostCardProps {
   onRepost?: (postId: string) => void;
   onComment?: (postId: string) => void;
   onDelete?: (postId: string) => void;
+  onPin?: (postId: string) => void;
+  isPinned?: boolean;
   showDelete?: boolean;
   isDetailView?: boolean;
   explorePurpleMode?: boolean;
@@ -35,7 +37,7 @@ interface PostCardProps {
   onUserClick?: (e: React.MouseEvent) => void;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -157,6 +159,14 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
       className={`bg-card p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer hover:bg-card/80 transition-colors' : ''}`}
       onClick={handlePostClick}
     >
+      {/* Pinned post indicator */}
+      {isPinned && (
+        <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+          <Pin className="w-3 h-3" />
+          <span>Pinned post</span>
+        </div>
+      )}
+
       {/* Repost header */}
       {reposter && (
         <button
@@ -201,7 +211,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
                 post.platform === 'mastodon' ? 'bg-purple-500/15 text-purple-400' :
                 'bg-secondary text-muted-foreground'
               }`}>
-                {post.platform === 'bluesky' ? '🦋' : post.platform === 'mastodon' ? '🐘' : ''}
+                <PlatformIcon platform={post.platform as SocialPlatform} className="w-3 h-3" />
                 {' '}via {post.platform === 'bluesky' ? 'Bluesky' : post.platform === 'mastodon' ? 'Mastodon' : post.platform}
               </span>
             )}
@@ -229,6 +239,20 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
                 <BellOff className="w-4 h-4 mr-2" />
                 Mute this post
               </DropdownMenuItem>
+            )}
+            {onPin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onPin(post.id); }}
+                >
+                  {isPinned ? (
+                    <><PinOff className="w-4 h-4 mr-2" />Unpin from profile</>
+                  ) : (
+                    <><Pin className="w-4 h-4 mr-2" />Pin to profile</>
+                  )}
+                </DropdownMenuItem>
+              </>
             )}
             {onDelete && (
               <>
@@ -317,9 +341,9 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, sh
               : 'border-border bg-secondary/50 hover:bg-secondary text-muted-foreground'
           }`}
         >
-          <span className="text-base">{post.platform === 'bluesky' ? '🦋' : post.platform === 'mastodon' ? '🐘' : '🔗'}</span>
+          <PlatformIcon platform={post.platform as SocialPlatform} className="w-4 h-4 shrink-0" />
           <span className="flex-1 font-medium">
-            View original on {post.platform === 'bluesky' ? 'Bluesky' : post.platform === 'mastodon' ? 'Mastodon' : 'source'}
+            View on {post.platform === 'bluesky' ? 'Bluesky' : post.platform === 'mastodon' ? 'Mastodon' : 'source'}
           </span>
           <ExternalLink className="w-3.5 h-3.5 shrink-0" />
         </a>

@@ -124,6 +124,13 @@ export const profiles = {
       .from('follows')
       .insert({ follower_id: followerId, following_id: followingId });
     if (error && error.code !== '23505') throw new Error(error.message);
+    // Persist counter increments — fire-and-forget, don't block the call
+    Promise.allSettled([
+      supabase.from('profiles').select('follower_count').eq('id', followingId).single()
+        .then(({ data }) => supabase.from('profiles').update({ follower_count: (data?.follower_count ?? 0) + 1 }).eq('id', followingId)),
+      supabase.from('profiles').select('following_count').eq('id', followerId).single()
+        .then(({ data }) => supabase.from('profiles').update({ following_count: (data?.following_count ?? 0) + 1 }).eq('id', followerId)),
+    ]).catch(() => {});
   },
 
   async unfollow(followerId: string, followingId: string) {
@@ -133,6 +140,13 @@ export const profiles = {
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
     if (error) throw new Error(error.message);
+    // Persist counter decrements — fire-and-forget
+    Promise.allSettled([
+      supabase.from('profiles').select('follower_count').eq('id', followingId).single()
+        .then(({ data }) => supabase.from('profiles').update({ follower_count: Math.max(0, (data?.follower_count ?? 0) - 1) }).eq('id', followingId)),
+      supabase.from('profiles').select('following_count').eq('id', followerId).single()
+        .then(({ data }) => supabase.from('profiles').update({ following_count: Math.max(0, (data?.following_count ?? 0) - 1) }).eq('id', followerId)),
+    ]).catch(() => {});
   },
 
   async getFollowers(userId: string) {
@@ -209,11 +223,45 @@ export const profiles = {
     return (data ?? []).map((r: any) => r.following_id);
   },
 
+  /** Returns profiles of people currentUser follows who also follow targetUserId. */
+  async getMutualFollowers(currentUserId: string, targetUserId: string) {
+    // Get IDs that currentUser follows
+    const { data: followingData } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUserId);
+    const followingIds = (followingData ?? []).map((r: any) => r.following_id);
+    if (followingIds.length === 0) return [];
+
+    // Of those, find who also follows targetUserId
+    const { data, error } = await supabase
+      .from('follows')
+      .select('follower:profiles!follower_id(id, handle, display_name, profile_picture)')
+      .eq('following_id', targetUserId)
+      .in('follower_id', followingIds);
+    if (error) return [];
+    return (data ?? []).map((r: any) => r.follower).filter(Boolean);
+  },
+
   async report(reporterId: string, reportedId: string, reason: string) {
     const { error } = await supabase
       .from('reports')
       .insert({ reporter_id: reporterId, reported_id: reportedId, reason });
     if (error) throw new Error(error.message);
+  },
+
+  /** Returns profiles that have at least one game in their LFG list. */
+  async getPlayersLookingForGroup(limit = 50) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, handle, display_name, profile_picture, game_lists')
+      .not('game_lists->lfg', 'is', null)
+      .limit(limit);
+    if (error) return [];
+    return (data ?? []).filter((p: any) => {
+      const lfg = p.game_lists?.lfg;
+      return Array.isArray(lfg) && lfg.length > 0;
+    });
   },
 };
 
@@ -358,6 +406,11 @@ export const posts = {
       .from('likes')
       .insert({ user_id: userId, post_id: postId });
     if (error && error.code !== '23505') throw new Error(error.message);
+    // Persist like_count increment — fire-and-forget
+    Promise.allSettled([
+      supabase.from('posts').select('like_count').eq('id', postId).single()
+        .then(({ data }) => supabase.from('posts').update({ like_count: (data?.like_count ?? 0) + 1 }).eq('id', postId)),
+    ]).catch(() => {});
   },
 
   async unlike(userId: string, postId: string) {
@@ -367,6 +420,11 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
+    // Persist like_count decrement — fire-and-forget
+    Promise.allSettled([
+      supabase.from('posts').select('like_count').eq('id', postId).single()
+        .then(({ data }) => supabase.from('posts').update({ like_count: Math.max(0, (data?.like_count ?? 0) - 1) }).eq('id', postId)),
+    ]).catch(() => {});
   },
 
   async getLikedIds(userId: string) {
@@ -464,9 +522,9 @@ export const posts = {
 };
 
 // ============================================================
-// COMMUNITIES
+// GROUPS
 // ============================================================
-export const communities = {
+export const groups = {
   async getAll() {
     const { data, error } = await supabase
       .from('communities')
@@ -493,6 +551,28 @@ export const communities = {
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r: any) => ({ ...r.community, role: r.role }));
+  },
+
+  /** Returns lightweight membership rows: [{ community_id, role }] */
+  async getUserMemberships(userId: string): Promise<Array<{ community_id: string; role: string }>> {
+    const { data } = await supabase
+      .from('community_members')
+      .select('community_id, role')
+      .eq('user_id', userId);
+    return data ?? [];
+  },
+
+  async updateGroupImage(groupId: string, file: File): Promise<string> {
+    const ext = file.name.split('.').pop();
+    const path = `groups/${groupId}.${ext}`;
+    const { error } = await supabase.storage
+      .from('forge-avatars')
+      .upload(path, file, { upsert: true });
+    if (error) throw new Error(error.message);
+    const { data } = supabase.storage.from('forge-avatars').getPublicUrl(path);
+    const url = data.publicUrl;
+    await supabase.from('communities').update({ profile_picture: url }).eq('id', groupId);
+    return url;
   },
 
   async create(userId: string, name: string, description: string, icon: string, type: string) {
@@ -544,7 +624,57 @@ export const communities = {
       .update({ game_ids: gameIds })
       .eq('id', communityId);
     if (error) throw new Error(error.message);
-  }
+  },
+
+  async updateGroup(communityId: string, updates: { name?: string; description?: string; type?: string }) {
+    const { error } = await supabase
+      .from('communities')
+      .update(updates)
+      .eq('id', communityId);
+    if (error) throw new Error(error.message);
+  },
+
+  async getMembers(communityId: string) {
+    const { data, error } = await supabase
+      .from('community_members')
+      .select('user_id, role, member:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('community_id', communityId);
+    if (error) return [];
+    return (data ?? []).map((r: any) => ({ ...r.member, role: r.role })).filter(Boolean);
+  },
+
+  async removeMember(communityId: string, userId: string) {
+    const { error } = await supabase
+      .from('community_members')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    // Decrement member count — fire-and-forget
+    supabase.from('communities').select('member_count').eq('id', communityId).single()
+      .then(({ data }) => supabase.from('communities').update({ member_count: Math.max(0, (data?.member_count ?? 0) - 1) }).eq('id', communityId))
+      .catch(() => {});
+  },
+
+  async banMember(communityId: string, userId: string) {
+    // Remove from community first
+    const { error: removeErr } = await supabase
+      .from('community_members')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', userId);
+    if (removeErr) throw new Error(removeErr.message);
+    // Add to banned list stored as JSONB on the community row
+    const { data } = await supabase.from('communities').select('banned_member_ids').eq('id', communityId).single();
+    const current: string[] = data?.banned_member_ids ?? [];
+    if (!current.includes(userId)) {
+      await supabase.from('communities').update({ banned_member_ids: [...current, userId] }).eq('id', communityId);
+    }
+    // Decrement member count — fire-and-forget
+    supabase.from('communities').select('member_count').eq('id', communityId).single()
+      .then(({ data: d }) => supabase.from('communities').update({ member_count: Math.max(0, (d?.member_count ?? 0) - 1) }).eq('id', communityId))
+      .catch(() => {});
+  },
 };
 
 // ============================================================
@@ -646,12 +776,26 @@ export const commentsAPI = {
   },
 
   async delete(userId: string, commentId: string) {
+    // Fetch post_id before deleting so we can decrement comment_count
+    const { data: comment } = await supabase
+      .from('comments')
+      .select('post_id')
+      .eq('id', commentId)
+      .eq('user_id', userId)
+      .maybeSingle();
     const { error } = await supabase
       .from('comments')
       .delete()
       .eq('id', commentId)
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
+    // Decrement comment_count on the parent post — fire-and-forget
+    if (comment?.post_id) {
+      Promise.allSettled([
+        supabase.from('posts').select('comment_count').eq('id', comment.post_id).single()
+          .then(({ data }) => supabase.from('posts').update({ comment_count: Math.max(0, (data?.comment_count ?? 0) - 1) }).eq('id', comment.post_id)),
+      ]).catch(() => {});
+    }
   },
 };
 
@@ -715,6 +859,81 @@ export const userGamesAPI = {
     const unique = new Set((data ?? []).map((r: any) => r.user_id));
     return unique.size;
   },
+
+  /**
+   * Total unique "list adds" for a game:
+   * - Each user who added the game to any personal list (played/owned) counts once.
+   * - Each admin/creator of a group that has this game in game_ids counts once.
+   * - The two sets are merged so a user who does both is only counted once.
+   */
+  async getListCount(gameId: string): Promise<number> {
+    // Games are stored in profiles.game_lists as JSONB (recentlyPlayed, favorites, wishlist, library, lfg arrays)
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, game_lists')
+      .not('game_lists', 'is', null);
+
+    if (!data) return 0;
+
+    return data.filter(profile => {
+      const lists = profile.game_lists ?? {};
+      return Object.values(lists).some((list: any) =>
+        Array.isArray(list) && list.some((g: any) => String(g.id) === String(gameId))
+      );
+    }).length;
+  },
+
+  /**
+   * Returns all users who have added this game to any personal list,
+   * along with which list types they added it to.
+   */
+  async getListEntries(gameId: string): Promise<{ userId: string; handle: string; displayName: string; profilePicture?: string; listTypes: string[] }[]> {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, handle, display_name, profile_picture, game_lists')
+      .not('game_lists', 'is', null);
+
+    if (!data) return [];
+
+    const LIST_LABELS: Record<string, string> = {
+      recentlyPlayed: 'Recently Played',
+      favorites: 'Favorites',
+      wishlist: 'Wishlist',
+      library: 'Library',
+      lfg: 'Looking for Group',
+    };
+
+    const results: { userId: string; handle: string; displayName: string; profilePicture?: string; listTypes: string[] }[] = [];
+    for (const profile of data) {
+      const lists = profile.game_lists ?? {};
+      const listTypes: string[] = [];
+      for (const [key, list] of Object.entries(lists)) {
+        if (Array.isArray(list) && list.some((g: any) => String(g.id) === String(gameId)) && LIST_LABELS[key]) {
+          listTypes.push(LIST_LABELS[key]);
+        }
+      }
+      if (listTypes.length > 0) {
+        results.push({
+          userId: profile.id,
+          handle: profile.handle ?? '',
+          displayName: profile.display_name ?? profile.handle ?? '',
+          profilePicture: profile.profile_picture ?? undefined,
+          listTypes,
+        });
+      }
+    }
+    return results;
+  },
+
+  /** Returns communities that have this game in their game_ids list. */
+  async getGroupsWithGame(gameId: string) {
+    const { data, error } = await supabase
+      .from('communities')
+      .select('*')
+      .contains('game_ids', [gameId]);
+    if (error) return [];
+    return data ?? [];
+  },
 };
 
 // ============================================================
@@ -764,6 +983,66 @@ export const directMessages = {
       .single();
     if (error) throw new Error(error.message);
     return data;
+  },
+};
+
+// ============================================================
+// GROUP MESSAGE THREADS
+// Requires DB tables: group_threads, group_messages (see SQL below)
+// ============================================================
+export const groupThreads = {
+  async create(creatorId: string, name: string, participantIds: string[]) {
+    const allParticipants = [...new Set([creatorId, ...participantIds])];
+    const { data, error } = await supabase
+      .from('group_threads')
+      .insert({ created_by: creatorId, name, participant_ids: allParticipants })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async getForUser(userId: string) {
+    const { data, error } = await supabase
+      .from('group_threads')
+      .select('*')
+      .contains('participant_ids', [userId])
+      .order('updated_at', { ascending: false });
+    if (error) return [];
+    return data ?? [];
+  },
+
+  async getMessages(threadId: string) {
+    const { data, error } = await supabase
+      .from('group_messages')
+      .select('*, sender:profiles!sender_id(id, handle, display_name, profile_picture)')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+    if (error) return [];
+    return data ?? [];
+  },
+
+  async sendMessage(threadId: string, senderId: string, content: string) {
+    const { data, error } = await supabase
+      .from('group_messages')
+      .insert({ thread_id: threadId, sender_id: senderId, content })
+      .select('*, sender:profiles!sender_id(id, handle, display_name, profile_picture)')
+      .single();
+    if (error) throw new Error(error.message);
+    await supabase
+      .from('group_threads')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', threadId);
+    return data;
+  },
+
+  async getParticipants(participantIds: string[]) {
+    if (!participantIds.length) return [];
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, handle, display_name, profile_picture')
+      .in('id', participantIds);
+    return data ?? [];
   },
 };
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform } from '../data/data';
-import { auth, profiles, posts as postsAPI, communities as communitiesAPI, notifications as notificationsAPI, supabase } from '../utils/supabase';
+import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, supabase } from '../utils/supabase';
 
 interface AppDataContextType {
   currentUser: any | null;
@@ -32,11 +32,11 @@ interface AppDataContextType {
   muteUser: (userId: string) => Promise<void>;
   unmuteUser: (userId: string) => Promise<void>;
   followingIds: Set<string>;
-  communities: any[];
+  groups: any[];
   getUserById: (userId: string) => any | undefined;
   getUserByHandle: (handle: string) => any | undefined;
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
-  createCommunity: (name: string, description: string, icon: string, type: string) => Promise<any>;
+  createGroup: (name: string, description: string, icon: string, type: string) => Promise<any>;
   refreshFeed: () => Promise<void>;
   markNotificationsAsRead: () => void;
 }
@@ -65,7 +65,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
   const [mutedUsers, setMutedUsers] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
-  const [communitiesList, setCommunitiesList] = useState<any[]>([]);
+  const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
@@ -106,15 +106,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profile = fetched;
       }
 
-      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount] = await Promise.all([
+      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),
         profiles.getMutedIds(userId),
         profiles.getFollowingIds(userId),
         notificationsAPI.getUnreadCount(userId),
+        groupsAPI.getUserMemberships(userId),
       ]);
-      setCurrentUser(normalizeProfile(profile));
+      setCurrentUser({ ...normalizeProfile(profile), communities: memberships });
       setLikedPosts(new Set(likedIds));
       setRepostedPosts(new Set(repostedIds));
       setBlockedUsers(new Set(blockedIds));
@@ -143,10 +144,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       console.error('Error loading users:', e);
     }
     try {
-      const allCommunities = await communitiesAPI.getAll();
-      setCommunitiesList(allCommunities);
+      const allGroups = await groupsAPI.getAll();
+      setGroupsList(allGroups);
     } catch (e) {
-      console.error('Error loading communities:', e);
+      console.error('[AppData] Error loading groups:', e);
     }
   }, []);
 
@@ -249,7 +250,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setRepostedPosts(prev => new Set([...prev, postId]));
     setPostList(prev => {
       const original = prev.find(p => p.id === postId && !p.repostedBy);
-      const updated = prev.map(p => p.id === postId ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p);
+      const updated = prev.map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p);
       if (original) {
         return [{ ...original, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
       }
@@ -265,7 +266,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPostList(prev =>
       prev
         .filter(p => !(p.id === postId && p.repostedBy === uid))
-        .map(p => p.id === postId ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p)
+        .map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p)
     );
   };
 
@@ -335,11 +336,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCurrentUser(normalizeProfile(updated));
   };
 
-  const createCommunity = async (name: string, description: string, icon: string, type: string) => {
+  const createGroup = async (name: string, description: string, icon: string, type: string) => {
     if (!session?.user) throw new Error('Not authenticated');
-    const community = await communitiesAPI.create(session.user.id, name, description, icon, type);
-    setCommunitiesList(prev => [...prev, community]);
-    return community;
+    const group = await groupsAPI.create(session.user.id, name, description, icon, type);
+    setGroupsList(prev => [...prev, group]);
+    return group;
   };
 
   const markNotificationsAsRead = async () => {
@@ -379,11 +380,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       muteUser,
       unmuteUser,
       followingIds,
-      communities: communitiesList,
+      groups: groupsList,
       getUserById,
       getUserByHandle,
       updateGameList,
-      createCommunity,
+      createGroup,
       refreshFeed,
       markNotificationsAsRead,
     }}>

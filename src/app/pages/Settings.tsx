@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle } from 'lucide-react';
+import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle, QrCode, X, Download, Copy, Check, Bug, Lightbulb } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { FeedbackModal } from '../components/FeedbackModal';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
@@ -15,6 +17,10 @@ export function Settings() {
     return saved !== 'false'; // Default to true
   });
   const [allowDMs, setAllowDMs] = useState<boolean>(currentUser?.allow_dms !== false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const qrRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     setAllowDMs(currentUser?.allow_dms !== false);
@@ -32,6 +38,38 @@ export function Settings() {
     } catch {
       setAllowDMs(!next); // revert on failure
     }
+  };
+
+  const profileUrl = currentUser
+    ? `https://forge-social.app/profile/${currentUser.id}`
+    : 'https://forge-social.app';
+
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(profileUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadQR = () => {
+    const svg = qrRef.current;
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const size = 400;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const img = new Image();
+    img.onload = () => {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, 0, 0, size, size);
+      const a = document.createElement('a');
+      a.download = `forge-${currentUser?.handle || 'profile'}-qr.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    };
+    img.src = `data:image/svg+xml;base64,${btoa(svgData)}`;
   };
 
   const handleSetInterests = () => {
@@ -174,6 +212,16 @@ export function Settings() {
               </div>
             </button>
             <button
+              onClick={() => setShowQRModal(true)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <QrCode className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Profile QR Code</p>
+                <p className="text-sm text-muted-foreground">Share your profile with others</p>
+              </div>
+            </button>
+            <button
               onClick={() => setToastNotificationsEnabled(!toastNotificationsEnabled)}
               className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
             >
@@ -260,6 +308,35 @@ export function Settings() {
           </div>
         </div>
 
+        {/* Feedback Section */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            Feedback
+          </h2>
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <button
+              onClick={() => setShowFeedbackModal(true)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Lightbulb className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Request a Feature</p>
+                <p className="text-sm text-muted-foreground">Suggest something new for Forge</p>
+              </div>
+            </button>
+            <button
+              onClick={() => setShowFeedbackModal(true)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Bug className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Report a Bug</p>
+                <p className="text-sm text-muted-foreground">Let us know what's broken</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* About Section */}
         <div className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
@@ -285,6 +362,83 @@ export function Settings() {
           <span className="font-medium">Log Out</span>
         </button>
       </div>
+
+      {/* QR Code Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowQRModal(false)}>
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 flex flex-col items-center gap-5" onClick={e => e.stopPropagation()}>
+            <div className="w-full flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Profile QR Code</h2>
+              <button onClick={() => setShowQRModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground text-center -mt-1">
+              Others can scan this to find your Forge profile
+            </p>
+
+            {/* QR Code */}
+            <div className="bg-white p-4 rounded-xl shadow-lg">
+              <QRCodeSVG
+                ref={qrRef}
+                value={profileUrl}
+                size={220}
+                bgColor="#ffffff"
+                fgColor="#1a0533"
+                level="M"
+                imageSettings={{
+                  src: '/forge-icon.png',
+                  x: undefined,
+                  y: undefined,
+                  height: 40,
+                  width: 40,
+                  excavate: true,
+                }}
+              />
+            </div>
+
+            {/* Handle */}
+            <div className="text-center">
+              <p className="font-semibold text-lg">
+                {currentUser?.display_name || currentUser?.handle}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                @{(currentUser?.handle || '').replace(/^@/, '')}
+              </p>
+            </div>
+
+            {/* URL pill */}
+            <div className="w-full bg-secondary rounded-lg px-3 py-2 flex items-center gap-2">
+              <p className="text-xs text-muted-foreground flex-1 truncate">{profileUrl}</p>
+              <button
+                onClick={handleCopyLink}
+                className="shrink-0 p-1.5 hover:bg-card rounded transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="w-full flex gap-3">
+              <button
+                onClick={handleDownloadQR}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors text-sm font-medium"
+              >
+                <Download className="w-4 h-4" />
+                Save Image
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 transition-colors text-sm font-medium"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Modal */}
       {showChangePassword && (
@@ -340,6 +494,8 @@ export function Settings() {
           </div>
         </div>
       )}
+
+      {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
     </div>
   );
 }

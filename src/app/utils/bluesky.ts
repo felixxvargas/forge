@@ -1,6 +1,3 @@
-import { projectId, publicAnonKey } from '/utils/supabase/info';
-
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7`;
 
 interface BlueskyProfile {
   handle: string;
@@ -38,13 +35,23 @@ export async function fetchBlueskyProfile(handle: string): Promise<BlueskyProfil
   }
 
   try {
-    const response = await fetch(`${API_BASE}/bluesky/profile/${handle}`, {
-      headers: { 'Authorization': `Bearer ${publicAnonKey}` }
-    });
+    const response = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(handle)}`
+    );
 
     if (!response.ok) return null;
 
-    const data = await response.json();
+    const raw = await response.json();
+    const data: BlueskyProfile = {
+      handle: raw.handle,
+      displayName: raw.displayName ?? raw.handle,
+      avatar: raw.avatar ?? '',
+      banner: raw.banner,
+      description: raw.description ?? '',
+      followersCount: raw.followersCount ?? 0,
+      followsCount: raw.followsCount ?? 0,
+      postsCount: raw.postsCount ?? 0,
+    };
     profileCache.set(handle, { data, timestamp: Date.now() });
     return data;
   } catch {
@@ -60,17 +67,35 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
   }
 
   try {
-    const response = await fetch(`${API_BASE}/bluesky/posts/${handle}?limit=${limit}`, {
-      headers: { 'Authorization': `Bearer ${publicAnonKey}` }
-    });
+    const response = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=${limit}&filter=posts_no_replies`
+    );
 
     if (!response.ok) return [];
 
-    const { posts } = await response.json();
-    const transformedPosts = posts.map((post: any) => ({
-      ...post,
-      timestamp: new Date(post.timestamp)
-    }));
+    const { feed } = await response.json();
+    const transformedPosts: BlueskyPost[] = (feed ?? [])
+      .filter((item: any) => item?.post && !item.reason) // skip reposts
+      .map((item: any) => {
+        const post = item.post;
+        const record = post.record ?? {};
+        const images: string[] | undefined = post.embed?.images
+          ?.map((img: any) => img.fullsize ?? img.thumb)
+          .filter(Boolean);
+
+        return {
+          id: post.uri,
+          userId: handle,
+          content: record.text ?? '',
+          timestamp: new Date(record.createdAt ?? post.indexedAt),
+          likes: post.likeCount ?? 0,
+          reposts: post.repostCount ?? 0,
+          comments: post.replyCount ?? 0,
+          images: images?.length ? images : undefined,
+          platform: 'bluesky' as const,
+          externalUrl: `https://bsky.app/profile/${post.author?.handle ?? handle}/post/${post.uri.split('/').pop()}`,
+        };
+      });
 
     postsCache.set(cacheKey, { data: transformedPosts, timestamp: Date.now() });
     return transformedPosts;
@@ -146,21 +171,21 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
   }
 
   try {
-    const [blueskyResponse, mastodonPosts] = await Promise.all([
-      fetch(`${API_BASE}/bluesky/posts/all/gaming-media?limit=${limit}`, {
-        headers: { 'Authorization': `Bearer ${publicAnonKey}` }
-      }),
+    // Fetch from each gaming media handle directly via Public API + Mastodon
+    const gamingMediaHandles = [
+      'ign.com', 'gamespot.com', 'polygon.bsky.social', 'kotaku.com',
+      'eurogamer.bsky.social', 'nintendolife.com', 'pcgamer.bsky.social',
+      'destructoid.bsky.social', 'rockpapershotgun.bsky.social',
+    ];
+
+    const [blueskyResults, mastodonPosts] = await Promise.all([
+      Promise.allSettled(gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))),
       fetchMassivelyOPPosts(limit),
     ]);
 
-    let blueskyPosts: BlueskyPost[] = [];
-    if (blueskyResponse.ok) {
-      const { posts } = await blueskyResponse.json();
-      blueskyPosts = posts.map((post: any) => ({
-        ...post,
-        timestamp: new Date(post.timestamp)
-      }));
-    }
+    const blueskyPosts = blueskyResults.flatMap(r =>
+      r.status === 'fulfilled' ? r.value : []
+    );
 
     const allPosts = [...blueskyPosts, ...mastodonPosts].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -177,8 +202,8 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
 // Topic accounts and their Bluesky handles
 // Keyed by both old user-xxx IDs and Supabase profile handle slugs
 export const topicAccountBlueskyHandles: Record<string, string> = {
-  // Old ID-based keys (legacy)
-  'user-ign': 'ign.bsky.social',
+  // Gaming media — ID-based keys (legacy)
+  'user-ign': 'ign.com',
   'user-gamespot': 'gamespot.com',
   'user-polygon': 'polygon.bsky.social',
   'user-kotaku': 'kotaku.com',
@@ -188,13 +213,48 @@ export const topicAccountBlueskyHandles: Record<string, string> = {
   'user-destructoid': 'destructoid.bsky.social',
   'user-rockpapershotgun': 'rockpapershotgun.bsky.social',
   'user-massivelyop': 'massivelyop.bsky.social',
-  // Handle-slug keys (matches Supabase profile handles)
-  'ign': 'ign.bsky.social',
+  // Gaming media — handle-slug keys (and display_name-derived slugs)
+  'ign': 'ign.com',
   'gamespot': 'gamespot.com',
   'kotaku': 'kotaku.com',
   'eurogamer': 'eurogamer.bsky.social',
   'rockpapershotgun': 'rockpapershotgun.bsky.social',
   'massivelyop': 'massivelyop.bsky.social',
+  'pcgamer': 'pcgamer.bsky.social',
+  'polygon': 'polygon.bsky.social',
+  'destructoid': 'destructoid.bsky.social',
+  'nintendolife': 'nintendolife.com',
+  // display_name-derived slugs for resilience
+  'ignentertainment': 'ign.com',
+  'rockpapershotgun': 'rockpapershotgun.bsky.social',
+  // Gaming studios & platforms — ID-based keys
+  'user-blizzard': 'blizzard.bsky.social',
+  'user-riot': 'riotgames.bsky.social',
+  'user-larian': 'larianstudios.bsky.social',
+  'user-koop': 'ko-op.bsky.social',
+  'user-fromsoft': 'fromsoftware.bsky.social',
+  'user-nintendo': 'nintendo.com',
+  'user-playstation': 'playstation.bsky.social',
+  'user-xbox': 'xbox.com',
+  'user-steam': 'steampowered.bsky.social',
+  'user-itchio': 'itch.io',
+  // Gaming studios & platforms — handle-slug keys (and display_name-derived slugs)
+  'blizzard': 'blizzard.bsky.social',
+  'blizzardentertainment': 'blizzard.bsky.social',
+  'riot': 'riotgames.bsky.social',
+  'riotgames': 'riotgames.bsky.social',
+  'larian': 'larianstudios.bsky.social',
+  'larianstudios': 'larianstudios.bsky.social',
+  'koop': 'ko-op.bsky.social',
+  'koop': 'ko-op.bsky.social',
+  'fromsoft': 'fromsoftware.bsky.social',
+  'fromsoftware': 'fromsoftware.bsky.social',
+  'nintendo': 'nintendo.com',
+  'playstation': 'playstation.bsky.social',
+  'xbox': 'xbox.com',
+  'steam': 'steampowered.bsky.social',
+  'steampowered': 'steampowered.bsky.social',
+  'itchio': 'itch.io',
 };
 
 export function getBlueskyHandleForUser(userId: string): string | undefined {

@@ -49,6 +49,7 @@ export function BottomNav() {
         
         <Link
           to="/profile"
+          onClick={() => { if (isActive('/profile')) window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
             isActive('/profile') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
           }`}

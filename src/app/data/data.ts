@@ -24,24 +24,34 @@ export type SocialPlatform =
   | 'rednote'
   | 'upscrolled'
   | 'discord'
-  | 'mastodon';
+  | 'mastodon'
+  | 'twitch'
+  | 'reddit'
+  | 'facebook'
+  | 'github'
+  | 'youtube'
+  | 'spotify'
+  | 'youtubemusic'
+  | 'soundcloud'
+  | 'patreon';
 
-export type GameListType = 
-  | 'recently-played' 
-  | 'library' 
-  | 'favorite' 
-  | 'wishlist' 
-  | 'custom';
+export type GameListType =
+  | 'recently-played'
+  | 'library'
+  | 'favorite'
+  | 'wishlist'
+  | 'custom'
+  | 'lfg';
 
-export type CommunityType = 'open' | 'request' | 'invite';
+export type GroupType = 'open' | 'request' | 'invite';
 
-export type CommunityRole = 'creator' | 'moderator' | 'member';
+export type GroupRole = 'creator' | 'moderator' | 'member';
 
-export interface Community {
+export interface Group {
   id: string;
   name: string;
   description: string;
-  type: CommunityType;
+  type: GroupType;
   icon: string;
   banner?: string;
   memberCount: number;
@@ -51,9 +61,9 @@ export interface Community {
   createdAt: Date;
 }
 
-export interface CommunityMembership {
+export interface GroupMembership {
   communityId: string;
-  role: CommunityRole;
+  role: GroupRole;
   joinedAt: Date;
 }
 
@@ -89,8 +99,8 @@ export interface User {
     wishlist: Game[];
     custom?: Game[];
   };
-  communities?: CommunityMembership[];
-  displayedCommunities?: string[]; // IDs of communities to display on profile (max 3)
+  communities?: GroupMembership[];
+  displayedCommunities?: string[]; // IDs of groups to display on profile (max 3)
   isFollowing?: boolean;
   followerCount?: number;
   followingCount?: number;
@@ -336,11 +346,123 @@ export const topicAccounts: User[] = [
     socialPlatforms: ['x', 'bluesky', 'threads'],
     gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
     followerCount: 0,
-  }
+  },
+  // Gaming studios
+  {
+    id: 'user-blizzard',
+    handle: '@blizzard',
+    displayName: 'Blizzard Entertainment',
+    bio: 'Dedicated to creating the most epic entertainment experiences... ever.',
+    profilePicture: '',
+    platforms: ['battlenet'],
+    socialPlatforms: ['x', 'youtube', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-riot',
+    handle: '@riot',
+    displayName: 'Riot Games',
+    bio: 'We are Riot Games. We exist to be the most player-focused game company in the world.',
+    profilePicture: '',
+    platforms: ['riot'],
+    socialPlatforms: ['x', 'youtube', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-larian',
+    handle: '@larian',
+    displayName: 'Larian Studios',
+    bio: 'Makers of Divinity: Original Sin, Baldur\'s Gate 3, and more.',
+    profilePicture: '',
+    platforms: ['steam', 'pc'],
+    socialPlatforms: ['x', 'youtube', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-koop',
+    handle: '@koop',
+    displayName: 'KO_OP',
+    bio: 'Worker-owned indie game studio. Making Thirsty Suitors, GNOG, and more.',
+    profilePicture: '',
+    platforms: ['steam', 'pc'],
+    socialPlatforms: ['x', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-fromsoft',
+    handle: '@fromsoft',
+    displayName: 'FromSoftware',
+    bio: 'Japanese video game developer and publisher. Dark Souls, Elden Ring, Armored Core.',
+    profilePicture: '',
+    platforms: ['playstation', 'xbox', 'steam'],
+    socialPlatforms: ['x'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  // Gaming platforms
+  {
+    id: 'user-nintendo',
+    handle: '@nintendo',
+    displayName: 'Nintendo',
+    bio: 'Welcome to Nintendo! The official home of the Nintendo account on Bluesky.',
+    profilePicture: '',
+    platforms: ['nintendo'],
+    socialPlatforms: ['x', 'youtube', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-playstation',
+    handle: '@playstation',
+    displayName: 'PlayStation',
+    bio: 'Be the player. Official PlayStation account.',
+    profilePicture: '',
+    platforms: ['playstation'],
+    socialPlatforms: ['x', 'youtube', 'instagram', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-xbox',
+    handle: '@xbox',
+    displayName: 'Xbox',
+    bio: 'Play more. Official Xbox account.',
+    profilePicture: '',
+    platforms: ['xbox'],
+    socialPlatforms: ['x', 'youtube', 'instagram', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-steam',
+    handle: '@steam',
+    displayName: 'Steam',
+    bio: 'The ultimate destination for playing, discussing, and creating games. Official Steam account.',
+    profilePicture: '',
+    platforms: ['steam'],
+    socialPlatforms: ['x', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
+  {
+    id: 'user-itchio',
+    handle: '@itchio',
+    displayName: 'itch.io',
+    bio: 'The indie game marketplace. Thousands of games by independent creators.',
+    profilePicture: '',
+    platforms: ['pc'],
+    socialPlatforms: ['x', 'bluesky'],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
 ];
 
 // No posts - will be loaded from backend and Bluesky integration
 export const initialPosts: Post[] = [];
 
-// Communities are loaded from Supabase via AppDataContext
-export const communities: Community[] = [];
+// Groups are loaded from Supabase via AppDataContext
+export const communities: Group[] = [];

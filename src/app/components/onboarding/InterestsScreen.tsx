@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { GAMING_PLATFORMS } from '../../constants/platforms';
@@ -88,6 +88,13 @@ const iconMap: { [key: string]: any } = {
 export function InterestsScreen({ onComplete, initialInterests }: InterestsScreenProps) {
   const navigate = useNavigate();
   const [selectedInterests, setSelectedInterests] = useState<Interest[]>(initialInterests ?? []);
+
+  // Sync when initialInterests loads async (e.g. fetched from Supabase after mount)
+  useEffect(() => {
+    if (initialInterests && initialInterests.length > 0) {
+      setSelectedInterests(initialInterests);
+    }
+  }, [initialInterests]);
 
   const toggleInterest = (interest: Interest) => {
     setSelectedInterests(prev => {

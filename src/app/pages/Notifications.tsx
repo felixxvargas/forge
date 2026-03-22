@@ -41,7 +41,7 @@ export function Notifications() {
       case 'follow':  return 'started following you';
       case 'repost':  return 'reposted your post';
       case 'mention': return 'mentioned you in a post';
-      case 'communityInvite': return 'invited you to a community';
+      case 'communityInvite': return 'invited you to a group';
       default: return 'interacted with you';
     }
   };

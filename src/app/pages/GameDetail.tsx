@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -8,6 +8,8 @@ import { Header } from '../components/Header';
 import { posts as postsAPI, userGamesAPI } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
+type PostSort = 'latest' | 'top';
+
 export function GameDetail() {
   const navigate = useNavigate();
   const { gameId } = useParams();
@@ -15,18 +17,21 @@ export function GameDetail() {
 
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postSort, setPostSort] = useState<PostSort>('latest');
   const [game, setGame] = useState<any>(null);
   const [loadingGame, setLoadingGame] = useState(true);
 
-  // Played/owned status for current user
   const [isPlayed, setIsPlayed] = useState(false);
   const [isOwned, setIsOwned] = useState(false);
   const [togglingPlayed, setTogglingPlayed] = useState(false);
   const [togglingOwned, setTogglingOwned] = useState(false);
 
-  // All players for this game
   const [players, setPlayers] = useState<any[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
+
+  const [similarGames, setSimilarGames] = useState<any[]>([]);
+  const [gameVersions, setGameVersions] = useState<any[]>([]);
+  const [listCount, setListCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -36,6 +41,19 @@ export function GameDetail() {
       .catch(() => setGame(null))
       .finally(() => setLoadingGame(false));
   }, [gameId]);
+
+  // Load dependent data once game is loaded
+  useEffect(() => {
+    if (!game || !gameId) return;
+
+    gamesAPI.getSimilarGames(gameId, game.genres ?? [], 8)
+      .then((res: any) => setSimilarGames(Array.isArray(res) ? res : res?.games ?? []))
+      .catch(() => {});
+
+    gamesAPI.getGameVersions(gameId, game.title, 6)
+      .then((res: any) => setGameVersions(Array.isArray(res) ? res : res?.games ?? []))
+      .catch(() => {});
+  }, [game?.id]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -60,6 +78,9 @@ export function GameDetail() {
       .then(setPlayers)
       .catch(() => {})
       .finally(() => setLoadingPlayers(false));
+    userGamesAPI.getListCount(gameId)
+      .then(setListCount)
+      .catch(() => setListCount(0));
   }, [gameId]);
 
   const handleTogglePlayed = async () => {
@@ -69,27 +90,20 @@ export function GameDetail() {
       if (isPlayed) {
         await userGamesAPI.remove(session.user.id, gameId, 'played');
         setIsPlayed(false);
-        setPlayers(prev => {
-          const updated = prev.map(p =>
-            p.id === session.user.id ? { ...p, played: false } : p
-          );
-          // Remove user from list if they have no status left
-          return updated.filter(p => p.id !== session.user.id || p.played || p.owned);
-        });
+        setPlayers(prev => prev.map(p => p.id === session.user.id ? { ...p, played: false } : p)
+          .filter(p => p.id !== session.user.id || p.played || p.owned));
       } else {
         await userGamesAPI.add(session.user.id, gameId, 'played');
         setIsPlayed(true);
-        // Add current user to players if not already there
         if (currentUser) {
           setPlayers(prev => {
-            const existing = prev.find(p => p.id === currentUser.id);
-            if (existing) return prev.map(p => p.id === currentUser.id ? { ...p, played: true } : p);
+            const ex = prev.find(p => p.id === currentUser.id);
+            if (ex) return prev.map(p => p.id === currentUser.id ? { ...p, played: true } : p);
             return [...prev, { ...currentUser, played: true, owned: isOwned }];
           });
         }
       }
-    } catch { /* ignore */ }
-    finally { setTogglingPlayed(false); }
+    } catch { /* ignore */ } finally { setTogglingPlayed(false); }
   };
 
   const handleToggleOwned = async () => {
@@ -99,25 +113,20 @@ export function GameDetail() {
       if (isOwned) {
         await userGamesAPI.remove(session.user.id, gameId, 'owned');
         setIsOwned(false);
-        setPlayers(prev => {
-          const updated = prev.map(p =>
-            p.id === session.user.id ? { ...p, owned: false } : p
-          );
-          return updated.filter(p => p.id !== session.user.id || p.played || p.owned);
-        });
+        setPlayers(prev => prev.map(p => p.id === session.user.id ? { ...p, owned: false } : p)
+          .filter(p => p.id !== session.user.id || p.played || p.owned));
       } else {
         await userGamesAPI.add(session.user.id, gameId, 'owned');
         setIsOwned(true);
         if (currentUser) {
           setPlayers(prev => {
-            const existing = prev.find(p => p.id === currentUser.id);
-            if (existing) return prev.map(p => p.id === currentUser.id ? { ...p, owned: true } : p);
+            const ex = prev.find(p => p.id === currentUser.id);
+            if (ex) return prev.map(p => p.id === currentUser.id ? { ...p, owned: true } : p);
             return [...prev, { ...currentUser, played: isPlayed, owned: true }];
           });
         }
       }
-    } catch { /* ignore */ }
-    finally { setTogglingOwned(false); }
+    } catch { /* ignore */ } finally { setTogglingOwned(false); }
   };
 
   if (loadingGame) {
@@ -146,15 +155,23 @@ export function GameDetail() {
   const coverUrl = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
     ?? game.artwork?.[0]?.url
     ?? game.coverArt;
-
   const screenshotUrl = game.artwork?.find((a: any) => a.artwork_type === 'screenshot')?.url;
   const bgUrl = screenshotUrl ?? coverUrl;
 
   const friends = players.filter(p => followingIds.has(p.id) && p.id !== currentUser?.id);
   const totalCount = players.length;
   const friendCount = friends.length;
-
   const platforms: string[] = game.platforms ?? (game.platform ? [game.platform] : []);
+
+  // Sort posts
+  const sortedPosts = [...taggedPosts].sort((a, b) => {
+    if (postSort === 'top') {
+      const engA = (a.like_count ?? 0) + (a.repost_count ?? 0) + (a.comment_count ?? 0);
+      const engB = (b.like_count ?? 0) + (b.repost_count ?? 0) + (b.comment_count ?? 0);
+      return engB - engA;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   const handleLikeToggle = (postId: string) => {
     likedPosts.has(postId) ? unlikePost(postId) : likePost(postId);
@@ -179,18 +196,15 @@ export function GameDetail() {
 
       {/* Hero: blurred background + portrait cover */}
       <div className="relative w-full max-w-2xl mx-auto mb-6 rounded-2xl overflow-hidden">
-        {/* Blurred background */}
         {bgUrl ? (
           <div
             className="absolute inset-0 bg-cover bg-center scale-110"
-            style={{ backgroundImage: `url(${bgUrl})`, filter: 'blur(20px) brightness(0.4)' }}
+            style={{ backgroundImage: `url(${bgUrl})`, filter: 'blur(20px) brightness(0.35)' }}
           />
         ) : (
           <div className="absolute inset-0 bg-secondary" />
         )}
-
-        {/* Portrait cover art, full height */}
-        <div className="relative flex justify-center items-end px-4 pt-10 pb-0 min-h-[320px]">
+        <div className="relative flex justify-center items-center px-4 pt-8 pb-8 min-h-[320px]">
           {coverUrl ? (
             <img
               src={coverUrl}
@@ -207,31 +221,12 @@ export function GameDetail() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto px-4">
-        {/* Title + Year + Platforms */}
+        {/* Title + Year + Genres */}
         <div className="mb-4">
           <h1 className="text-3xl font-bold mb-1">{game.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 text-muted-foreground mb-3">
-            {(game.year || game.release_year) && (
-              <span className="text-base">{game.year ?? game.release_year}</span>
-            )}
-            {platforms.length > 0 && (
-              <>
-                {(game.year || game.release_year) && <span>·</span>}
-                <div className="flex flex-wrap gap-1.5">
-                  {platforms.map((p: string) => (
-                    <span
-                      key={p}
-                      className="px-2 py-0.5 text-xs bg-secondary text-foreground rounded-full"
-                    >
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Genres */}
+          {(game.year || game.release_year) && (
+            <p className="text-base text-muted-foreground mb-2">{game.year ?? game.release_year}</p>
+          )}
           {game.genres && game.genres.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {game.genres.map((g: string) => (
@@ -239,11 +234,54 @@ export function GameDetail() {
               ))}
             </div>
           )}
-
           {game.description && (
             <p className="text-sm text-muted-foreground leading-relaxed">{game.description}</p>
           )}
         </div>
+
+        {/* Platform versions (other DB entries with similar title) */}
+        {gameVersions.length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Other Versions</h3>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {gameVersions.map((v: any) => {
+                const vCover = v.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? v.artwork?.[0]?.url;
+                const vPlatforms: string[] = v.platforms ?? [];
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => navigate(`/game/${v.id}`)}
+                    className="flex-shrink-0 flex flex-col items-center gap-1 p-2 rounded-xl bg-card hover:bg-secondary transition-colors w-24"
+                  >
+                    {vCover ? (
+                      <img src={vCover} alt={v.title} className="w-16 rounded-lg object-cover" style={{ aspectRatio: '3/4' }} />
+                    ) : (
+                      <div className="w-16 bg-secondary rounded-lg flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
+                        <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <p className="text-xs font-medium text-center line-clamp-2 leading-tight">{v.title}</p>
+                    {vPlatforms[0] && (
+                      <p className="text-xs text-muted-foreground text-center truncate w-full">{vPlatforms[0]}</p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Platform pills */}
+        {platforms.length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Platforms</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {platforms.map((p: string) => (
+                <span key={p} className="px-3 py-1 text-sm bg-secondary text-foreground rounded-full">{p}</span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Played / Owned action buttons */}
         {session?.user && (
@@ -252,9 +290,7 @@ export function GameDetail() {
               onClick={handleTogglePlayed}
               disabled={togglingPlayed}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-                isPlayed
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-secondary text-foreground hover:bg-secondary/80'
+                isPlayed ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
               }`}
             >
               {isPlayed ? <CheckCircle2 className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
@@ -264,9 +300,7 @@ export function GameDetail() {
               onClick={handleToggleOwned}
               disabled={togglingOwned}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-                isOwned
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-secondary text-foreground hover:bg-secondary/80'
+                isOwned ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'
               }`}
             >
               {isOwned ? <CheckCircle2 className="w-4 h-4" /> : <Library className="w-4 h-4" />}
@@ -277,7 +311,6 @@ export function GameDetail() {
 
         {/* Stats row */}
         <div className="bg-card rounded-2xl p-4 mb-6 flex items-center divide-x divide-border">
-          {/* Total Players — always shown */}
           <button
             onClick={() => navigate(`/game/${gameId}/players`)}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
@@ -285,11 +318,9 @@ export function GameDetail() {
             <p className="text-2xl font-bold">{loadingPlayers ? '…' : totalCount}</p>
             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
               <Users className="w-3.5 h-3.5" />
-              <span className="text-xs">Total Players</span>
+              <span className="text-xs">Players</span>
             </div>
           </button>
-
-          {/* Friends that Play — always shown */}
           <button
             onClick={() => navigate(`/game/${gameId}/players`)}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
@@ -297,11 +328,19 @@ export function GameDetail() {
             <p className="text-2xl font-bold">{loadingPlayers ? '…' : friendCount}</p>
             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
               <Users className="w-3.5 h-3.5" />
-              <span className="text-xs">Friends Play</span>
+              <span className="text-xs">Friends</span>
             </div>
           </button>
-
-          {/* Tagged Posts */}
+          <button
+            onClick={() => navigate(`/game/${gameId}/lists`)}
+            className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
+          >
+            <p className="text-2xl font-bold">{listCount === null ? '…' : listCount}</p>
+            <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+              <List className="w-3.5 h-3.5" />
+              <span className="text-xs">On Lists</span>
+            </div>
+          </button>
           <div className="flex-1 flex flex-col items-center py-2">
             <p className="text-2xl font-bold">{taggedPosts.length}</p>
             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
@@ -311,7 +350,7 @@ export function GameDetail() {
           </div>
         </div>
 
-        {/* Friends who play — mini preview */}
+        {/* Friends preview row */}
         {!loadingPlayers && friends.length > 0 && (
           <button
             onClick={() => navigate(`/game/${gameId}/players`)}
@@ -342,15 +381,37 @@ export function GameDetail() {
           </button>
         )}
 
-        {/* Tagged Posts */}
+        {/* Posts section with Top / Latest filter */}
         {(loadingPosts || taggedPosts.length > 0) && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">Posts about {game.title}</h2>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Posts</h2>
+              <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+                <button
+                  onClick={() => setPostSort('latest')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    postSort === 'latest' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Clock className="w-3 h-3" />
+                  Latest
+                </button>
+                <button
+                  onClick={() => setPostSort('top')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    postSort === 'top' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <TrendingUp className="w-3 h-3" />
+                  Top
+                </button>
+              </div>
+            </div>
             {loadingPosts ? (
               <p className="text-muted-foreground text-sm">Loading posts…</p>
             ) : (
-              <div className="space-y-0">
-                {taggedPosts.map(post => {
+              <div>
+                {sortedPosts.map(post => {
                   const author = post.author;
                   if (!author) return null;
                   return (
@@ -367,6 +428,37 @@ export function GameDetail() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Similar Games module */}
+        {similarGames.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Similar Games</h2>
+            <div className="grid grid-cols-4 gap-3">
+              {similarGames.slice(0, 8).map((g: any) => {
+                const gCover = g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url;
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => navigate(`/game/${g.id}`)}
+                    className="flex flex-col gap-1 group"
+                  >
+                    <div className="rounded-lg overflow-hidden bg-secondary" style={{ aspectRatio: '3/4' }}>
+                      {gCover ? (
+                        <img src={gCover} alt={g.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium line-clamp-2 leading-tight group-hover:text-accent transition-colors">{g.title}</p>
+                    {g.year && <p className="text-xs text-muted-foreground">{g.year}</p>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

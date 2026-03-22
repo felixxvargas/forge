@@ -18,6 +18,7 @@ import { CommunityDetail } from './pages/CommunityDetail';
 import { UserCommunities } from './pages/UserCommunities';
 import { GameDetail } from './pages/GameDetail';
 import { GamePlayers } from './pages/GamePlayers';
+import { GameLists } from './pages/GameLists';
 import { EditProfile } from './pages/EditProfile';
 import { NewPost } from './pages/NewPost';
 import { SubmitIndieGame } from './pages/SubmitIndieGame';
@@ -59,14 +60,15 @@ export const router = createBrowserRouter([
       { path: 'social-integrations',    element: <SocialMediaIntegrations />, errorElement: <ErrorBoundary /> },
       { path: 'social-filtering',       element: <SocialMediaFiltering />,    errorElement: <ErrorBoundary /> },
       { path: 'messages',               element: <Messages />,                errorElement: <ErrorBoundary /> },
-      { path: 'community/:communityId', element: <CommunityDetail />,         errorElement: <ErrorBoundary /> },
-      { path: 'user-communities',       element: <UserCommunities />,         errorElement: <ErrorBoundary /> },
+      { path: 'group/:groupId',         element: <CommunityDetail />,         errorElement: <ErrorBoundary /> },
+      { path: 'user-groups',            element: <UserCommunities />,         errorElement: <ErrorBoundary /> },
       { path: 'followers',              element: <FollowersList />,           errorElement: <ErrorBoundary /> },
       { path: 'followers/:userId',      element: <FollowersList />,           errorElement: <ErrorBoundary /> },
       { path: 'following',              element: <FollowingList />,           errorElement: <ErrorBoundary /> },
       { path: 'following/:userId',      element: <FollowingList />,           errorElement: <ErrorBoundary /> },
       { path: 'game/:gameId',           element: <GameDetail />,              errorElement: <ErrorBoundary /> },
       { path: 'game/:gameId/players',   element: <GamePlayers />,             errorElement: <ErrorBoundary /> },
+      { path: 'game/:gameId/lists',     element: <GameLists />,               errorElement: <ErrorBoundary /> },
       { path: 'submit-indie-game',      element: <SubmitIndieGame />,         errorElement: <ErrorBoundary /> },
       { path: 'review-submissions',     element: <ReviewSubmissions />,       errorElement: <ErrorBoundary /> },
       { path: 'create-group',           element: <CreateGroup />,             errorElement: <ErrorBoundary /> },

@@ -6,13 +6,14 @@ import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { PlatformIcon } from '../components/PlatformIcon';
 
 const BIO_MAX_LENGTH = 150;
 const ABOUT_MAX_LENGTH = 500;
 
 export function EditProfile() {
   const navigate = useNavigate();
-  const { currentUser, updateCurrentUser, communities } = useAppData();
+  const { currentUser, updateCurrentUser, groups } = useAppData();
   
   const [formData, setFormData] = useState({
     displayName: currentUser.display_name || currentUser.displayName || '',
@@ -196,6 +197,14 @@ export function EditProfile() {
       'rednote': 'Red Note',
       'upscrolled': 'Upscrolled',
       'discord': 'Discord',
+      'twitch': 'Twitch',
+      'reddit': 'Reddit',
+      'facebook': 'Facebook',
+      'github': 'GitHub',
+      'youtube': 'YouTube',
+      'spotify': 'Spotify',
+      'youtubemusic': 'YouTube Music',
+      'soundcloud': 'SoundCloud',
     };
     return labels[social] || social;
   };
@@ -342,7 +351,10 @@ export function EditProfile() {
             {(formData.platforms || []).map(platform => (
               <div key={platform} className="bg-secondary rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{getPlatformLabel(platform)}</span>
+                  <div className="flex items-center gap-2">
+                    <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{getPlatformLabel(platform)}</span>
+                  </div>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <span className="text-xs text-muted-foreground">Show Handle</span>
                     <input
@@ -386,7 +398,10 @@ export function EditProfile() {
             {(formData.socialPlatforms || []).map(social => (
               <div key={social} className="bg-secondary rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{getSocialLabel(social)}</span>
+                  <div className="flex items-center gap-2">
+                    <PlatformIcon platform={social} className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{getSocialLabel(social)}</span>
+                  </div>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <span className="text-xs text-muted-foreground">Show on Profile</span>
                     <input
@@ -414,17 +429,17 @@ export function EditProfile() {
           </div>
         </div>
 
-        {/* Communities to Display */}
+        {/* Groups to Display */}
         {currentUser.communities && currentUser.communities.length > 0 && (
           <div>
-            <label className="block text-sm mb-2">Communities to Display (Max 3)</label>
+            <label className="block text-sm mb-2">Groups to Display (Max 3)</label>
             <p className="text-xs text-muted-foreground mb-3">
-              Select up to 3 communities to show on your profile
+              Select up to 3 groups to show on your profile
             </p>
             <div className="space-y-2">
               {currentUser.communities.map((membership: any) => {
                 const communityId = membership.community_id || membership.communityId;
-                const community = communities.find((c: any) => c.id === communityId);
+                const community = groups.find((c: any) => c.id === communityId);
                 if (!community) return null;
 
                 const isSelected = (formData.displayedCommunities || []).includes(communityId);

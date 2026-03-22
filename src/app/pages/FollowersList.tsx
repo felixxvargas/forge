@@ -1,14 +1,17 @@
 import { ArrowLeft } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { profiles } from '../utils/supabase';
 
 export function FollowersList() {
   const navigate = useNavigate();
   const { userId } = useParams();
+  const [searchParams] = useSearchParams();
+  const highlightFollowing = searchParams.get('highlight') === 'following';
+
   const { currentUser, followingIds } = useAppData();
   const [followers, setFollowers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,17 @@ export function FollowersList() {
       .finally(() => setLoading(false));
   }, [viewingUserId]);
 
+  // Sort: when coming from social-proof link, put people currentUser follows at the top
+  const sortedFollowers = useMemo(() => {
+    if (!highlightFollowing || !followingIds.size) return followers;
+    return [
+      ...followers.filter(u => followingIds.has(u.id)),
+      ...followers.filter(u => !followingIds.has(u.id)),
+    ];
+  }, [followers, highlightFollowing, followingIds]);
+
+  const youFollowCount = followers.filter(u => followingIds.has(u.id)).length;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="sticky top-0 bg-card border-b border-border z-10">
@@ -47,6 +61,13 @@ export function FollowersList() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto px-4 py-4">
+        {/* Section header when people you follow are sorted to top */}
+        {highlightFollowing && youFollowCount > 0 && !loading && (
+          <p className="text-sm text-muted-foreground mb-3 font-medium">
+            {youFollowCount} follower{youFollowCount !== 1 ? 's' : ''} you follow
+          </p>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-muted-foreground">Loading...</p>
@@ -58,38 +79,53 @@ export function FollowersList() {
               Try Again
             </button>
           </div>
-        ) : followers.length === 0 ? (
+        ) : sortedFollowers.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-sm">No followers yet</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {followers.map(user => (
-              <div key={user.id} className="bg-card rounded-xl p-4 flex items-center gap-3">
-                <div onClick={() => navigate(`/profile/${user.id}`)} className="cursor-pointer">
-                  <ProfileAvatar
-                    username={user.display_name || user.handle || '?'}
-                    profilePicture={user.profile_picture}
-                    size="lg"
-                  />
+            {sortedFollowers.map((user, idx) => {
+              const isFirstNonFollowing =
+                highlightFollowing &&
+                youFollowCount > 0 &&
+                idx === youFollowCount;
+
+              return (
+                <div key={user.id}>
+                  {isFirstNonFollowing && (
+                    <p className="text-sm text-muted-foreground mb-3 mt-4 font-medium">
+                      Other followers
+                    </p>
+                  )}
+                  <div className="bg-card rounded-xl p-4 flex items-center gap-3">
+                    <div onClick={() => navigate(`/profile/${user.id}`)} className="cursor-pointer">
+                      <ProfileAvatar
+                        username={user.display_name || user.handle || '?'}
+                        profilePicture={user.profile_picture}
+                        size="lg"
+                        userId={user.id}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <button onClick={() => navigate(`/profile/${user.id}`)} className="font-medium hover:underline block truncate text-left">
+                        {user.display_name || user.handle}
+                      </button>
+                      <button onClick={() => navigate(`/profile/${user.id}`)} className="text-sm text-muted-foreground hover:underline block truncate text-left">
+                        @{(user.handle || '').replace(/^@/, '')}
+                      </button>
+                      {user.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>}
+                    </div>
+                    {user.id !== currentUser?.id && (
+                      <FollowButton
+                        userId={user.id}
+                        initialFollowingState={followingIds.has(user.id)}
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <button onClick={() => navigate(`/profile/${user.id}`)} className="font-medium hover:underline block truncate">
-                    {user.display_name || user.handle}
-                  </button>
-                  <button onClick={() => navigate(`/profile/${user.id}`)} className="text-sm text-muted-foreground hover:underline block truncate">
-                    @{(user.handle || '').replace(/^@/, '')}
-                  </button>
-                  {user.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>}
-                </div>
-                {user.id !== currentUser?.id && (
-                  <FollowButton
-                    userId={user.id}
-                    initialFollowingState={followingIds.has(user.id)}
-                  />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

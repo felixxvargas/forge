@@ -223,12 +223,12 @@ export function EditProfileModal({ user, isOpen, onClose, onSave }: EditProfileM
             </p>
           </div>
 
-          {/* Communities */}
+          {/* Groups */}
           {user.communities && user.communities.length > 0 && (
             <div>
-              <label className="block text-sm mb-2">Profile Communities (Max 3)</label>
+              <label className="block text-sm mb-2">Profile Groups (Max 3)</label>
               <p className="text-xs text-muted-foreground mb-3">
-                Select up to 3 communities to display on your profile
+                Select up to 3 groups to display on your profile
               </p>
               <div className="flex flex-wrap gap-2">
                 {user.communities.map(membership => {
@@ -265,7 +265,7 @@ export function EditProfileModal({ user, isOpen, onClose, onSave }: EditProfileM
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {(formData.displayedCommunities || []).length}/3 selected
+                {(formData.displayedCommunities || []).length}/3 groups selected
               </p>
             </div>
           )}

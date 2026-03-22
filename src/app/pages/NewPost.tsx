@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
@@ -18,47 +18,54 @@ export function NewPost() {
   const [error, setError] = useState('');
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
   const [showMentions, setShowMentions] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mentionStartRef = useRef<number>(-1);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
 
-    // Check for @ mentions
-    const cursorPosition = e.target.selectionStart;
+    const cursorPosition = e.target.selectionStart ?? newContent.length;
     const textBeforeCursor = newContent.slice(0, cursorPosition);
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
 
     if (mentionMatch) {
+      mentionStartRef.current = textBeforeCursor.lastIndexOf('@');
       const query = mentionMatch[1].toLowerCase();
-      
-      // Filter users by handle or display name
       const filtered = users
-        .filter(user => 
-          user.handle.toLowerCase().includes(query) || 
-          (user.display_name || user.displayName || '').toLowerCase().includes(query)
-        )
+        .filter(u => {
+          const handle = (u.handle || '').replace(/^@/, '').toLowerCase();
+          const name = (u.display_name || (u as any).displayName || '').toLowerCase();
+          return handle.includes(query) || name.includes(query);
+        })
         .slice(0, 5);
-      
       setMentionSuggestions(filtered);
-      setShowMentions(true);
+      setShowMentions(filtered.length > 0);
     } else {
+      mentionStartRef.current = -1;
       setShowMentions(false);
       setMentionSuggestions([]);
     }
   };
 
   const handleMentionSelect = (user: User) => {
-    // Replace the current @query with @handle
-    const cursorPosition = content.length;
-    const textBeforeCursor = content.slice(0, cursorPosition);
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-    
-    if (mentionMatch) {
-      const startIndex = textBeforeCursor.lastIndexOf('@');
-      const newContent = content.slice(0, startIndex) + user.handle + ' ' + content.slice(cursorPosition);
-      setContent(newContent);
-    }
-    
+    const startIdx = mentionStartRef.current;
+    if (startIdx < 0) { setShowMentions(false); return; }
+    const handle = (user.handle || '').startsWith('@') ? user.handle : `@${user.handle}`;
+    const cursorPos = textareaRef.current?.selectionStart ?? content.length;
+    const afterAt = content.slice(startIdx + 1);
+    const wordEnd = afterAt.search(/[^\w]/);
+    const tokenEnd = wordEnd === -1 ? content.length : startIdx + 1 + wordEnd;
+    const newContent = content.slice(0, startIdx) + handle + ' ' + content.slice(Math.max(cursorPos, tokenEnd));
+    setContent(newContent);
+    const newCursorPos = startIdx + handle.length + 1;
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current.focus();
+      }
+    }, 0);
+    mentionStartRef.current = -1;
     setShowMentions(false);
     setMentionSuggestions([]);
   };
@@ -149,14 +156,40 @@ export function NewPost() {
       </div>
 
       {/* Content area */}
-      <div className="p-4">
+      <div className="p-4 relative">
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={handleContentChange}
           placeholder="What's on your mind? Use @username to mention other gamers"
           className="w-full min-h-[200px] bg-transparent resize-none outline-none text-base"
           autoFocus
         />
+
+        {/* Mention suggestions dropdown */}
+        {showMentions && mentionSuggestions.length > 0 && (
+          <div className="absolute left-4 right-4 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+            {mentionSuggestions.map(user => (
+              <button
+                key={user.id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(user); }}
+                className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
+              >
+                <ProfileAvatar
+                  username={(user as any).display_name || (user as any).displayName || user.handle || '?'}
+                  profilePicture={(user as any).profile_picture || (user as any).profilePicture}
+                  userId={user.id}
+                  size="sm"
+                />
+                <div>
+                  <p className="font-medium text-sm">{(user as any).display_name || (user as any).displayName || user.handle}</p>
+                  <p className="text-xs text-muted-foreground">@{(user.handle || '').replace(/^@/, '')}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Image upload */}
         {showImageUpload && (
@@ -180,30 +213,6 @@ export function NewPost() {
               placeholder="https://example.com"
               className="w-full bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent"
             />
-          </div>
-        )}
-
-        {/* Mention suggestions */}
-        {showMentions && mentionSuggestions.length > 0 && (
-          <div className="absolute z-10 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto w-full max-w-md">
-            {mentionSuggestions.map(user => (
-              <button
-                key={user.id}
-                className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
-                onClick={() => handleMentionSelect(user)}
-              >
-                <ProfileAvatar
-                  username={user.display_name || user.displayName || user.handle || '?'}
-                  profilePicture={user.profile_picture || user.profilePicture}
-                  userId={user.id}
-                  size="sm"
-                />
-                <div>
-                  <p className="font-medium text-sm">{user.display_name || user.displayName || user.handle}</p>
-                  <p className="text-xs text-muted-foreground">{user.handle}</p>
-                </div>
-              </button>
-            ))}
           </div>
         )}
       </div>

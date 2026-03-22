@@ -13,6 +13,7 @@ const LIST_LABELS: Record<GameListType, string> = {
   'wishlist': 'Wishlist',
   'library': 'Library',
   'custom': 'Custom List',
+  'lfg': 'Looking for Group',
 };
 
 const LIST_KEY_MAP: Record<GameListType, string> = {
@@ -21,6 +22,7 @@ const LIST_KEY_MAP: Record<GameListType, string> = {
   'wishlist': 'wishlist',
   'library': 'library',
   'custom': 'custom',
+  'lfg': 'lfg',
 };
 
 export function ListView() {
@@ -57,6 +59,12 @@ export function ListView() {
   const title = LIST_LABELS[listType] ?? 'Games';
 
   if (isBrowseMode) {
+    const ownGames: Game[] = games;
+    const allEntries = [
+      ...(ownGames.length > 0 && currentUser ? [{ user: currentUser, games: ownGames, isSelf: true }] : []),
+      ...usersWithList.map(u => ({ user: u, games: (u.game_lists ?? (u as any).gameLists ?? {})[listKey] ?? [] as Game[], isSelf: false })),
+    ];
+
     return (
       <div className="min-h-screen pb-20 bg-background">
         <div className="bg-card sticky top-0 z-10 border-b border-border">
@@ -65,53 +73,52 @@ export function ListView() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-semibold">Who's playing {title}</h1>
-              <p className="text-sm text-muted-foreground">{usersWithList.length} gamers</p>
+              <h1 className="text-xl font-semibold">{title} Lists</h1>
+              <p className="text-sm text-muted-foreground">{allEntries.length} {allEntries.length === 1 ? 'list' : 'lists'}</p>
             </div>
           </div>
         </div>
 
         <div className="w-full max-w-2xl mx-auto px-4 py-4 space-y-4">
-          {usersWithList.length === 0 ? (
+          {allEntries.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
-              <p>No other gamers have a {title} list yet</p>
+              <p>No {title} lists yet</p>
             </div>
           ) : (
-            usersWithList.map(u => {
-              const ul = u.game_lists ?? u.gameLists ?? {};
-              const uGames: Game[] = ul[listKey] ?? [];
-              return (
-                <div
-                  key={u.id}
-                  className="bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors"
-                  onClick={() => navigate(`/profile/${u.id}`)}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <ProfileAvatar
-                      username={u.display_name || u.displayName || u.handle || '?'}
-                      profilePicture={u.profile_picture || u.profilePicture}
-                      size="md"
-                      userId={u.id}
-                    />
-                    <div>
-                      <p className="font-semibold text-sm">{u.display_name || u.displayName || u.handle}</p>
-                      <p className="text-xs text-muted-foreground">{uGames.length} games</p>
+            allEntries.map(({ user: u, games: uGames, isSelf }) => (
+              <div
+                key={u.id}
+                className={`bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors ${isSelf ? 'border border-accent/30' : ''}`}
+                onClick={() => navigate(isSelf ? '/profile' : `/profile/${u.id}`)}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <ProfileAvatar
+                    username={(u as any).display_name || (u as any).displayName || u.handle || '?'}
+                    profilePicture={(u as any).profile_picture || (u as any).profilePicture}
+                    size="md"
+                    userId={u.id}
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm">{(u as any).display_name || (u as any).displayName || u.handle}</p>
+                      {isSelf && <span className="text-xs text-accent font-medium">You</span>}
                     </div>
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {uGames.slice(0, 6).map(game => (
-                      <img
-                        key={game.id}
-                        src={game.coverArt}
-                        alt={game.title}
-                        className="w-12 h-16 object-cover rounded shrink-0"
-                      />
-                    ))}
+                    <p className="text-xs text-muted-foreground">{uGames.length} games</p>
                   </div>
                 </div>
-              );
-            })
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {uGames.slice(0, 6).map((game: Game) => (
+                    <img
+                      key={game.id}
+                      src={game.coverArt}
+                      alt={game.title}
+                      className="w-12 h-16 object-cover rounded shrink-0"
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
@@ -157,7 +164,7 @@ export function ListView() {
 
       {/* Games Grid */}
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="flex flex-wrap justify-center gap-4">
           {sortedGames.map((game) => (
             <GameCard
               key={game.id}
@@ -183,7 +190,7 @@ export function ListView() {
         {usersWithList.length > 0 && (
           <div className="mt-10">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Other gamers' {title}</h2>
+              <h2 className="text-lg font-semibold">{title} Lists</h2>
               {usersWithList.length > 3 && (
                 <button
                   onClick={() => navigate(`/list?type=${listType}&browse=true`)}

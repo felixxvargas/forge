@@ -246,6 +246,65 @@ export async function getGameArtwork(gameId: string, artworkType?: string) {
 }
 
 /**
+ * Get games with similar genres (for "Similar Games" module)
+ */
+export async function getSimilarGames(gameId: string, genres: string[], limit = 8) {
+  if (genres.length === 0) {
+    // Fallback: just return some recent games
+    const { data } = await supabase
+      .from('forge_games_17285bd7')
+      .select('*, artwork:forge_game_artwork_17285bd7(*)')
+      .neq('id', gameId)
+      .order('year', { ascending: false })
+      .limit(limit);
+    return data ?? [];
+  }
+
+  // Try matching on first genre
+  const { data } = await supabase
+    .from('forge_games_17285bd7')
+    .select('*, artwork:forge_game_artwork_17285bd7(*)')
+    .contains('genres', [genres[0]])
+    .neq('id', gameId)
+    .order('year', { ascending: false })
+    .limit(limit);
+
+  if ((data ?? []).length >= 3) return data ?? [];
+
+  // Fallback: second genre or keyword match on title
+  const { data: fallback } = await supabase
+    .from('forge_games_17285bd7')
+    .select('*, artwork:forge_game_artwork_17285bd7(*)')
+    .neq('id', gameId)
+    .order('year', { ascending: false })
+    .limit(limit);
+  return fallback ?? [];
+}
+
+/**
+ * Get other platform versions of a game (same/similar title, different entries)
+ */
+export async function getGameVersions(gameId: string, title: string, limit = 6) {
+  // Use first 2-3 significant words of the title
+  const words = title
+    .replace(/[^a-zA-Z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2)
+    .slice(0, 3)
+    .join(' ');
+
+  if (!words) return [];
+
+  const { data } = await supabase
+    .from('forge_games_17285bd7')
+    .select('*, artwork:forge_game_artwork_17285bd7(*)')
+    .ilike('title', `%${words}%`)
+    .neq('id', gameId)
+    .limit(limit);
+  return data ?? [];
+}
+
+/**
  * Get IGDB access token using OAuth
  */
 async function getIGDBAccessToken(): Promise<string> {

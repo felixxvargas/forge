@@ -32,15 +32,15 @@ export type GameListType =
   | 'wishlist' 
   | 'custom';
 
-export type CommunityType = 'open' | 'request' | 'invite';
+export type GroupType = 'open' | 'request' | 'invite';
 
-export type CommunityRole = 'creator' | 'moderator' | 'member';
+export type GroupRole = 'creator' | 'moderator' | 'member';
 
-export interface Community {
+export interface Group {
   id: string;
   name: string;
   description: string;
-  type: CommunityType;
+  type: GroupType;
   icon: string;
   banner?: string;
   memberCount: number;
@@ -50,9 +50,9 @@ export interface Community {
   createdAt: Date;
 }
 
-export interface CommunityMembership {
+export interface GroupMembership {
   communityId: string;
-  role: CommunityRole;
+  role: GroupRole;
   joinedAt: Date;
 }
 
@@ -87,8 +87,8 @@ export interface User {
     wishlist: Game[];
     custom?: Game[];
   };
-  communities?: CommunityMembership[];
-  displayedCommunities?: string[]; // IDs of communities to display on profile (max 3)
+  communities?: GroupMembership[];
+  displayedCommunities?: string[]; // IDs of groups to display on profile (max 3)
   isFollowing?: boolean;
   followerCount?: number;
   followingCount?: number;
@@ -329,8 +329,8 @@ export const mockUsers: User[] = [
 // Mock posts
 export const mockPosts: Post[] = [];
 
-// Mock communities
-export const mockCommunities: Community[] = [
+// Mock groups
+export const mockCommunities: Group[] = [
   {
     id: 'comm-1',
     name: 'FFXIV Raiders',
@@ -399,7 +399,7 @@ export const mockCommunities: Community[] = [
   {
     id: 'comm-6',
     name: 'Elite Speedrunners',
-    description: 'Invite-only community for verified speedrunners. Share strats and WR attempts.',
+    description: 'Invite-only group for verified speedrunners. Share strats and WR attempts.',
     type: 'invite',
     icon: '⏱️',
     memberCount: 234,
@@ -410,7 +410,7 @@ export const mockCommunities: Community[] = [
   }
 ];
 
-// Add communities to users
+// Add groups to users
 mockUsers[0].communities = [
   { communityId: 'comm-3', role: 'creator', joinedAt: new Date('2025-01-20T00:00:00') }
 ];

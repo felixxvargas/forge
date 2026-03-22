@@ -2,11 +2,13 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import svgr from 'vite-plugin-svgr'
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    svgr(),
   ],
   resolve: {
     alias: {
@@ -14,7 +16,7 @@ export default defineConfig({
       '/utils': path.resolve(__dirname, './utils'),
     },
   },
-  assetsInclude: ['**/*.svg', '**/*.csv'],
+  assetsInclude: ['**/*.csv'],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

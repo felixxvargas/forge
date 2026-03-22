@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
@@ -16,7 +16,7 @@ import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles } from '../utils/supabase';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,12 +58,22 @@ const BIO_MAX_LENGTH = 150;
 export function Profile() {
   const navigate = useNavigate();
   const { userId } = useParams();
-  const { currentUser, communities, updateGameList, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers } = useAppData();
+  const { currentUser, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers } = useAppData();
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
   }>({ isOpen: false, listType: null });
   const [showListTypeSelector, setShowListTypeSelector] = useState(false);
+
+  // List drag-and-drop reorder
+  const DEFAULT_LIST_ORDER = ['recentlyPlayed', 'favorites', 'wishlist', 'library'] as const;
+  const [listOrder, setListOrder] = useState<string[]>(() => {
+    const saved = (currentUser?.game_lists as any)?.listOrder;
+    return Array.isArray(saved) && saved.length === 4 ? saved : [...DEFAULT_LIST_ORDER];
+  });
+  const [listDragIdx, setListDragIdx] = useState<number | null>(null);
+  const [listDragOverIdx, setListDragOverIdx] = useState<number | null>(null);
+  const [pinnedPostId, setPinnedPostId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -74,27 +84,68 @@ export function Profile() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
+  const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
+  const [freshFollowerCount, setFreshFollowerCount] = useState<number | null>(null);
+  const [freshFollowingCount, setFreshFollowingCount] = useState<number | null>(null);
 
-  // Scroll to top when viewing a new profile
+  // Scroll to top when viewing another user's profile; own profile restores last position
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (userId) {
+      window.scrollTo(0, 0);
+    } else {
+      const saved = sessionStorage.getItem('own-profile-scroll-y');
+      if (saved) {
+        const y = parseInt(saved, 10);
+        // Double rAF: wait for content to render before restoring scroll
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+      }
+    }
+    // Save scroll position when leaving own profile
+    return () => {
+      if (!userId) sessionStorage.setItem('own-profile-scroll-y', String(window.scrollY));
+    };
   }, [userId]);
 
   // Determine which user profile to show
   const isOwnProfile = !userId || userId === currentUser?.id;
   const profileUser = isOwnProfile ? currentUser : getUserById(userId || '');
 
+  // Sync pinned post id from profile data
+  useEffect(() => {
+    setPinnedPostId((profileUser as any)?.pinned_post_id ?? null);
+  }, [(profileUser as any)?.pinned_post_id]);
+
   // Fetch Bluesky data for Topic accounts (if applicable)
   const blueskyData = useBlueskyData(profileUser || currentUser);
 
-  // Use Bluesky avatar if available for Topic accounts
-  const profilePicture = blueskyData.avatar || profileUser?.profile_picture || undefined;
-  const bannerImage = blueskyData.banner || profileUser?.bannerImage;
+  // Only use Bluesky avatar/banner for topic accounts — prevents stale data bleeding into own profile
+  const isTopicAccount = ((profileUser || currentUser) as any)?.account_type === 'topic';
+  const profilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || profileUser?.profile_picture || undefined;
+  const bannerImage = (isTopicAccount ? blueskyData.banner : undefined) || profileUser?.bannerImage;
 
   // Check persistent follow state from DB when viewing another user
   useEffect(() => {
     if (isOwnProfile || !currentUser?.id || !profileUser?.id) return;
     profilesAPI.isFollowing(currentUser.id, profileUser.id).then(setIsFollowing);
+  }, [isOwnProfile, currentUser?.id, profileUser?.id]);
+
+  // Fetch fresh follower/following counts directly from DB for other users' profiles
+  useEffect(() => {
+    if (isOwnProfile || !profileUser?.id) return;
+    profilesAPI.getById(profileUser.id).then(data => {
+      if (data) {
+        setFreshFollowerCount(data.follower_count ?? 0);
+        setFreshFollowingCount(data.following_count ?? 0);
+      }
+    }).catch(() => {});
+  }, [isOwnProfile, profileUser?.id]);
+
+  // Load mutual followers (people you follow who also follow this profile)
+  useEffect(() => {
+    if (isOwnProfile || !currentUser?.id || !profileUser?.id) return;
+    profiles.getMutualFollowers(currentUser.id, profileUser.id)
+      .then(setMutualFollowers)
+      .catch(() => setMutualFollowers([]));
   }, [isOwnProfile, currentUser?.id, profileUser?.id]);
 
   // Load the profile user's posts + reposts directly from Supabase
@@ -159,6 +210,13 @@ export function Profile() {
     setEditGameListModal({ isOpen: true, listType });
   };
 
+  const handlePinPost = async (postId: string) => {
+    if (!currentUser?.id) return;
+    const newPinnedId = pinnedPostId === postId ? null : postId;
+    setPinnedPostId(newPinnedId);
+    await updateCurrentUser({ pinned_post_id: newPinnedId });
+  };
+
   const handleSaveGameList = (games: any[]) => {
     if (!editGameListModal.listType) return;
     updateGameList(editGameListModal.listType, games);
@@ -210,9 +268,24 @@ export function Profile() {
       'rednote': 'Red Note',
       'upscrolled': 'Upscrolled',
       'discord': 'Discord',
+      'twitch': 'Twitch',
+      'reddit': 'Reddit',
+      'facebook': 'Facebook',
+      'github': 'GitHub',
+      'youtube': 'YouTube',
+      'spotify': 'Spotify',
+      'youtubemusic': 'YouTube Music',
+      'soundcloud': 'SoundCloud',
+      'patreon': 'Patreon',
     };
     return labels[platform] || platform;
   };
+
+  // For other users' profiles: if they have no lists, treat active tab as 'posts'
+  // so the empty Lists section (including "No game lists yet") is never shown.
+  const _glCheck = (profileUser as any)?.game_lists ?? (profileUser as any)?.gameLists ?? {};
+  const profileHasLists = ['recentlyPlayed', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
+  const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists') ? 'posts' : activeTab;
 
   return (
     <div className="min-h-screen pb-20">
@@ -239,6 +312,15 @@ export function Profile() {
                   size="md"
                   variant="default"
                 />
+                {currentUser && (
+                  <button
+                    onClick={() => navigate(`/messages?to=${profileUser.id}`)}
+                    className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                    title="Send message"
+                  >
+                    <Mail className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
@@ -246,6 +328,15 @@ export function Profile() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {currentUser && (
+                      <>
+                        <DropdownMenuItem onClick={() => navigate(`/messages?to=${profileUser.id}`)}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Send Message
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     {isMuted ? (
                       <DropdownMenuItem onClick={() => unmuteUser(profileUser.id)}>
                         <Bell className="w-4 h-4 mr-2" />
@@ -345,18 +436,18 @@ export function Profile() {
                 onClick={() => navigate(isOwnProfile ? '/followers' : `/followers/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{formatNumber(profileUser.follower_count ?? profileUser.followerCount ?? 0)}</p>
+                <p className="text-xl font-semibold">{formatNumber(freshFollowerCount ?? profileUser.follower_count ?? profileUser.followerCount ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Followers</p>
               </button>
               <button
                 onClick={() => navigate(isOwnProfile ? '/following' : `/following/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{formatNumber(profileUser.following_count ?? profileUser.followingCount ?? 0)}</p>
+                <p className="text-xl font-semibold">{formatNumber(freshFollowingCount ?? profileUser.following_count ?? profileUser.followingCount ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Following</p>
               </button>
             </div>
-            <button 
+            <button
               className="p-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
               title="Share Profile"
               onClick={() => setShareModalOpen(true)}
@@ -364,6 +455,35 @@ export function Profile() {
               <Upload className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Social proof: mutual followers */}
+          {!isOwnProfile && mutualFollowers.length > 0 && (
+            <button
+              onClick={() => navigate(`/followers/${profileUser.id}?highlight=following`)}
+              className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity text-left w-full"
+            >
+              <div className="flex -space-x-2 shrink-0">
+                {mutualFollowers.slice(0, 4).map((u: any) => (
+                  <ProfileAvatar
+                    key={u.id}
+                    username={u.display_name || u.handle || '?'}
+                    profilePicture={u.profile_picture ?? null}
+                    size="sm"
+                    userId={u.id}
+                    className="border-2 border-card"
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Followed by{' '}
+                <span className="text-foreground font-medium">
+                  {mutualFollowers.slice(0, 2).map((u: any) => u.display_name || u.handle).join(', ')}
+                </span>
+                {mutualFollowers.length > 2 && ` and ${mutualFollowers.length - 2} others`}
+                {' '}you follow
+              </p>
+            </button>
+          )}
 
           {/* Platforms */}
           {profileUser.platforms && profileUser.platforms.length > 0 && (
@@ -390,16 +510,16 @@ export function Profile() {
             </div>
           )}
 
-          {/* Communities */}
+          {/* Groups */}
           {profileUser.communities && profileUser.communities.length > 0 && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm text-muted-foreground uppercase tracking-wide">
-                  Communities
+                  Groups
                 </h3>
                 {profileUser.communities.length > 3 && (
                   <button
-                    onClick={() => navigate('/user-communities')}
+                    onClick={() => navigate('/user-groups')}
                     className="text-sm text-accent hover:text-accent/80 transition-colors"
                   >
                     View All
@@ -408,22 +528,23 @@ export function Profile() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {(() => {
-                  // Use displayedCommunities if set, otherwise show first 3
-                  const displayIds = profileUser.displayedCommunities && profileUser.displayedCommunities.length > 0
-                    ? profileUser.displayedCommunities
-                    : profileUser.communities.slice(0, 3).map(m => m.community_id);
+                  // Use displayed_communities (DB field) or displayedCommunities (camelCase), fallback to first 3
+                  const rawDisplayIds = profileUser.displayed_communities || profileUser.displayedCommunities;
+                  const displayIds = rawDisplayIds && rawDisplayIds.length > 0
+                    ? rawDisplayIds
+                    : profileUser.communities.slice(0, 3).map((m: any) => m.community_id);
 
                   return profileUser.communities
                     .filter(membership => displayIds.includes(membership.community_id))
                     .slice(0, 3)
                     .map(membership => {
-                      const community = communities.find(c => c.id === membership.community_id);
-                      if (!community) return null;
+                      const group = groups.find(c => c.id === membership.community_id);
+                      if (!group) return null;
 
                       return (
                         <button
                           key={membership.community_id}
-                          onClick={() => navigate(`/community/${community.id}`)}
+                          onClick={() => navigate(`/group/${group.id}`)}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full hover:bg-secondary/80 transition-colors text-sm"
                         >
                           {membership.role === 'creator' && (
@@ -432,7 +553,7 @@ export function Profile() {
                           {membership.role === 'moderator' && (
                             <Shield className="w-3.5 h-3.5 text-accent" title="Moderator" />
                           )}
-                          <span>{community.name}</span>
+                          <span>{group.name}</span>
                         </button>
                       );
                     });
@@ -494,26 +615,74 @@ export function Profile() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'lists' && (
+        {effectiveTab === 'lists' && (
           <div className="px-4 space-y-6">
             {(() => {
-              const lists: { key: 'recentlyPlayed' | 'favorites' | 'wishlist' | 'library'; listType: GameListType; label: string; icon: string }[] = [
-                { key: 'recentlyPlayed', listType: 'recently-played', label: 'Recently Played', icon: '🕐' },
-                { key: 'favorites', listType: 'favorite', label: 'Favorite Games', icon: '⭐' },
-                { key: 'wishlist', listType: 'wishlist', label: 'Wishlist', icon: '🎯' },
-                { key: 'library', listType: 'library', label: 'Library', icon: '📚' },
+              const ALL_LISTS: { key: 'recentlyPlayed' | 'favorites' | 'wishlist' | 'library'; listType: GameListType; label: string }[] = [
+                { key: 'recentlyPlayed', listType: 'recently-played', label: 'Recently Played' },
+                { key: 'favorites', listType: 'favorite', label: 'Favorite Games' },
+                { key: 'wishlist', listType: 'wishlist', label: 'Wishlist' },
+                { key: 'library', listType: 'library', label: 'Library' },
               ];
+              // Sort by user's saved order
+              const orderedLists = listOrder
+                .map(k => ALL_LISTS.find(l => l.key === k))
+                .filter(Boolean) as typeof ALL_LISTS;
+              // Append any missing (safety)
+              ALL_LISTS.forEach(l => { if (!orderedLists.find(o => o.key === l.key)) orderedLists.push(l); });
+
               const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
-              const hasAnyList = lists.some(l => (gameLists[l.key] ?? []).length > 0);
+              const hasAnyList = ALL_LISTS.some(l => (gameLists[l.key] ?? []).length > 0);
+
+              const handleListDragStart = (i: number) => (e: React.DragEvent) => {
+                setListDragIdx(i);
+                e.dataTransfer.effectAllowed = 'move';
+                const ghost = document.createElement('div');
+                ghost.style.opacity = '0';
+                document.body.appendChild(ghost);
+                e.dataTransfer.setDragImage(ghost, 0, 0);
+                setTimeout(() => document.body.removeChild(ghost), 0);
+              };
+              const handleListDragOver = (i: number) => (e: React.DragEvent) => {
+                e.preventDefault();
+                if (listDragOverIdx !== i) setListDragOverIdx(i);
+              };
+              const handleListDrop = (i: number) => (e: React.DragEvent) => {
+                e.preventDefault();
+                if (listDragIdx === null || listDragIdx === i) {
+                  setListDragIdx(null); setListDragOverIdx(null); return;
+                }
+                const newOrder = [...orderedLists.map(l => l.key)];
+                const [moved] = newOrder.splice(listDragIdx, 1);
+                newOrder.splice(i, 0, moved);
+                setListOrder(newOrder);
+                setListDragIdx(null); setListDragOverIdx(null);
+                // Persist
+                const existing = currentUser?.game_lists ?? {};
+                updateCurrentUser({ game_lists: { ...existing, listOrder: newOrder } });
+              };
+              const handleListDragEnd = () => { setListDragIdx(null); setListDragOverIdx(null); };
 
               return (
                 <>
-                  {lists.map(({ key, listType, label }) => {
+                  {orderedLists.map(({ key, listType, label }, i) => {
                     const games = gameLists[key] ?? [];
-                    if (games.length > 0) {
-                      return (
+                    if (games.length === 0) return null;
+                    const isDragging = listDragIdx === i;
+                    const isOver = listDragOverIdx === i && listDragIdx !== i;
+                    return (
+                      <div
+                        key={listType}
+                        draggable={isOwnProfile}
+                        onDragStart={isOwnProfile ? handleListDragStart(i) : undefined}
+                        onDragOver={isOwnProfile ? handleListDragOver(i) : undefined}
+                        onDrop={isOwnProfile ? handleListDrop(i) : undefined}
+                        onDragEnd={isOwnProfile ? handleListDragEnd : undefined}
+                        className={`rounded-xl transition-all ${
+                          isDragging ? 'opacity-40' : isOver ? 'ring-2 ring-accent/50 bg-accent/5' : ''
+                        }`}
+                      >
                         <GameList
-                          key={listType}
                           title={label}
                           games={games}
                           sortable={listType === 'library'}
@@ -521,26 +690,25 @@ export function Profile() {
                           onDelete={isOwnProfile ? () => updateGameList(listType, []) : undefined}
                           listType={listType}
                           showFirstOnly={true}
+                          dragHandle={isOwnProfile}
                         />
-                      );
-                    }
-                    return null;
+                      </div>
+                    );
                   })}
 
                   {/* Single "Create list" button for own profile */}
-                  {isOwnProfile && lists.some(({ key }) => (gameLists[key] ?? []).length === 0) && (
+                  {isOwnProfile && ALL_LISTS.some(({ key }) => (gameLists[key] ?? []).length === 0) && (
                     <div>
                       {showListTypeSelector ? (
                         <div className="bg-card/50 border border-border rounded-xl p-4">
                           <p className="text-sm font-medium mb-3">Choose list type</p>
                           <div className="grid grid-cols-2 gap-2">
-                            {lists.filter(({ key }) => (gameLists[key] ?? []).length === 0).map(({ listType, label, icon }) => (
+                            {ALL_LISTS.filter(({ key }) => (gameLists[key] ?? []).length === 0).map(({ listType, label }) => (
                               <button
                                 key={listType}
                                 onClick={() => { setShowListTypeSelector(false); handleOpenGameListEdit(listType); }}
                                 className="flex items-center gap-2 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
                               >
-                                <span>{icon}</span>
                                 <span>{label}</span>
                               </button>
                             ))}
@@ -576,18 +744,25 @@ export function Profile() {
                   {profileUserPosts.length > 0 && (
                     <div className="mt-4">
                       <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Recent Posts</h3>
-                      {profileUserPosts.slice(0, 5).map(post => (
-                        <PostCard
-                          key={post.id + (post.repostedBy || '')}
-                          post={post}
-                          user={post.author || profileUser}
-                          onLike={handleLikeToggle}
-                          onRepost={handleRepostToggle}
-                          onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
-                          isLiked={likedPosts.has(post.id)}
-                          isReposted={repostedPosts.has(post.id)}
-                        />
-                      ))}
+                      {(() => {
+                        const pinned = pinnedPostId ? profileUserPosts.find(p => p.id === pinnedPostId && !p.repostedBy) : null;
+                        const rest = profileUserPosts.filter(p => !(pinnedPostId && p.id === pinnedPostId && !p.repostedBy));
+                        const preview = pinned ? [pinned, ...rest].slice(0, 5) : rest.slice(0, 5);
+                        return preview.map(post => (
+                          <PostCard
+                            key={post.id + (post.repostedBy || '')}
+                            post={post}
+                            user={post.author || profileUser}
+                            onLike={handleLikeToggle}
+                            onRepost={handleRepostToggle}
+                            onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
+                            onPin={isOwnProfile && !post.repostedBy ? handlePinPost : undefined}
+                            isPinned={!!pinnedPostId && post.id === pinnedPostId && !post.repostedBy}
+                            isLiked={likedPosts.has(post.id)}
+                            isReposted={repostedPosts.has(post.id)}
+                          />
+                        ));
+                      })()}
                       {profileUserPosts.length > 5 && (
                         <button
                           onClick={() => setActiveTab('posts')}
@@ -598,6 +773,53 @@ export function Profile() {
                       )}
                     </div>
                   )}
+
+                  {/* LFG List */}
+                  {(() => {
+                    const lfgGames = (gameLists as any).lfg ?? [];
+                    const isPremium = (profileUser as any).is_premium;
+                    if (lfgGames.length > 0) {
+                      return (
+                        <GameList
+                          key="lfg"
+                          listType="lfg"
+                          title="Looking for Group"
+                          games={lfgGames}
+                          onEdit={isOwnProfile ? () => handleOpenGameListEdit('lfg') : undefined}
+                          onDelete={isOwnProfile ? () => updateGameList('lfg', []) : undefined}
+                        />
+                      );
+                    }
+                    if (isOwnProfile) {
+                      return (
+                        <button
+                          onClick={() => isPremium ? handleOpenGameListEdit('lfg') : navigate('/premium')}
+                          className={`w-full flex items-center gap-4 p-4 border-2 border-dashed rounded-xl transition-colors text-left ${
+                            isPremium
+                              ? 'bg-card/50 border-muted hover:border-accent/50 hover:bg-card'
+                              : 'bg-accent/5 border-accent/30 hover:border-accent/50'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-medium text-sm">Looking for Group</p>
+                              {!isPremium && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/20 text-accent rounded-full text-xs font-semibold">
+                                  <Crown className="w-3 h-3" />
+                                  Premium
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {isPremium ? '+ Add games you want to find group for' : 'Unlock LFG with Forge Premium'}
+                            </p>
+                          </div>
+                          {!isPremium && <Crown className="w-5 h-5 text-accent/70 shrink-0" />}
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Custom Lists */}
                   {(() => {
@@ -613,32 +835,32 @@ export function Profile() {
                         />
                       ));
                     }
-                    if (isOwnProfile && !isPremium) {
-                      return (
-                        <div className="bg-card/50 rounded-xl p-6 text-center border-2 border-dashed border-muted">
-                          <h3 className="font-medium mb-2">Custom Lists</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Create your own custom game lists with a premium subscription
-                          </p>
-                          <button
-                            onClick={() => navigate('/premium')}
-                            className="px-6 py-2 bg-secondary text-foreground border border-border rounded-lg hover:bg-secondary/80 transition-colors font-medium"
-                          >
-                            Upgrade to Premium
-                          </button>
-                        </div>
-                      );
-                    }
-                    if (isOwnProfile && isPremium) {
+                    if (isOwnProfile) {
+                      // Always show custom list button; non-premium redirects to /premium
                       return (
                         <button
-                          onClick={() => navigate('/create-custom-list')}
-                          className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
+                          onClick={() => navigate(isPremium ? '/create-custom-list' : '/premium')}
+                          className={`w-full flex items-center gap-4 p-4 border-2 border-dashed rounded-xl transition-colors text-left ${
+                            isPremium
+                              ? 'bg-card/50 border-muted hover:border-accent/50 hover:bg-card'
+                              : 'bg-gradient-to-r from-accent/5 to-accent/10 border-accent/30 hover:border-accent/60 hover:bg-accent/10'
+                          }`}
                         >
-                          <div>
-                            <p className="font-medium text-sm">Custom List</p>
-                            <p className="text-xs text-muted-foreground">+ Create list</p>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-medium text-sm">Custom List</p>
+                              {!isPremium && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/20 text-accent rounded-full text-xs font-semibold">
+                                  <Crown className="w-3 h-3" />
+                                  Premium
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {isPremium ? '+ Create a custom list' : 'Unlock custom lists with Forge Premium'}
+                            </p>
                           </div>
+                          {!isPremium && <Crown className="w-5 h-5 text-accent/70 shrink-0" />}
                         </button>
                       );
                     }
@@ -650,21 +872,28 @@ export function Profile() {
           </div>
         )}
 
-        {activeTab === 'posts' && (
+        {effectiveTab === 'posts' && (
           <div className="px-4">
             {profileUserPosts.length > 0 ? (
-              profileUserPosts.map(post => (
-                <PostCard
-                  key={post.id + (post.repostedBy || '')}
-                  post={post}
-                  user={post.author || profileUser}
-                  onLike={handleLikeToggle}
-                  onRepost={handleRepostToggle}
-                  onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
-                  isLiked={likedPosts.has(post.id)}
-                  isReposted={repostedPosts.has(post.id)}
-                />
-              ))
+              (() => {
+                const pinned = pinnedPostId ? profileUserPosts.find(p => p.id === pinnedPostId && !p.repostedBy) : null;
+                const rest = profileUserPosts.filter(p => !(pinnedPostId && p.id === pinnedPostId && !p.repostedBy));
+                const ordered = pinned ? [pinned, ...rest] : rest;
+                return ordered.map(post => (
+                  <PostCard
+                    key={post.id + (post.repostedBy || '')}
+                    post={post}
+                    user={post.author || profileUser}
+                    onLike={handleLikeToggle}
+                    onRepost={handleRepostToggle}
+                    onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
+                    onPin={isOwnProfile && !post.repostedBy ? handlePinPost : undefined}
+                    isPinned={!!pinnedPostId && post.id === pinnedPostId && !post.repostedBy}
+                    isLiked={likedPosts.has(post.id)}
+                    isReposted={repostedPosts.has(post.id)}
+                  />
+                ));
+              })()
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No posts yet</p>
@@ -681,7 +910,7 @@ export function Profile() {
           </div>
         )}
 
-        {activeTab === 'likes' && (
+        {effectiveTab === 'likes' && (
           <div className="px-4">
             {likesLoading ? (
               <div className="flex justify-center py-12">
@@ -709,39 +938,76 @@ export function Profile() {
           </div>
         )}
 
-        {activeTab === 'about' && (
+        {effectiveTab === 'about' && (
           <div className="px-4 pb-24">
-            {/* Interests Section */}
-            {profileUser.interests && profileUser.interests.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
-                  Interests
-                </h3>
-                <div className="space-y-3">
-                  {/* Group interests by category */}
-                  {['genre', 'platform', 'playstyle'].map(category => {
-                    const categoryInterests = profileUser.interests?.filter(i => i.category === category);
-                    if (!categoryInterests || categoryInterests.length === 0) return null;
-                    
-                    return (
-                      <div key={category}>
-                        <p className="text-xs text-muted-foreground capitalize mb-2">{category}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {categoryInterests.map(interest => (
-                            <span
-                              key={interest.id}
-                              className="px-3 py-1.5 bg-secondary rounded-full text-sm"
-                            >
-                              {interest.label}
-                            </span>
-                          ))}
-                        </div>
+            {profileUser.interests && profileUser.interests.length > 0 && (() => {
+              const playstyleInterests = profileUser.interests!.filter(i => i.category === 'playstyle');
+              const genreInterests = profileUser.interests!.filter(i => i.category === 'genre');
+              const platformInterests = profileUser.interests!.filter(i => i.category === 'platform');
+              return (
+                <>
+                  {/* Playstyle — dedicated section */}
+                  {playstyleInterests.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Trophy className="w-4 h-4 text-accent" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Playstyle</h3>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      <div className="flex flex-wrap gap-2">
+                        {playstyleInterests.map(interest => (
+                          <span
+                            key={interest.id}
+                            className="px-3 py-1.5 bg-accent/15 text-accent border border-accent/30 rounded-full text-sm font-medium"
+                          >
+                            {interest.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Favorite Genres */}
+                  {genreInterests.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Genres</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {genreInterests.map(interest => (
+                          <span
+                            key={interest.id}
+                            className="px-3 py-1.5 bg-secondary rounded-full text-sm"
+                          >
+                            {interest.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Platforms */}
+                  {platformInterests.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Monitor className="w-4 h-4 text-muted-foreground" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Platforms</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {platformInterests.map(interest => (
+                          <span
+                            key={interest.id}
+                            className="px-3 py-1.5 bg-secondary rounded-full text-sm"
+                          >
+                            {interest.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Social Accounts */}
             {(() => {
@@ -754,13 +1020,14 @@ export function Profile() {
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedPlatforms.map(platform => {
-                      const handle = profileUser.socialHandles?.[platform];
-                      const showHandle = profileUser.showSocialHandles?.[platform];
+                      const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
+                      const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
                       return (
                         <div
                           key={platform}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm"
                         >
+                          <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
                           <span className="font-medium">{getSocialPlatformLabel(platform)}</span>
                           {showHandle && handle && (
                             <span className="text-muted-foreground">· @{handle}</span>

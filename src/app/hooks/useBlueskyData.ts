@@ -18,18 +18,21 @@ export function useBlueskyData(user: User): BlueskyData {
   });
 
   useEffect(() => {
-    // Try: explicit bluesky_handle field, then map by user ID, then map by handle slug for topic accounts
-    const handleSlug = (user.handle || '').replace(/^@/, '').toLowerCase();
+    // Try: explicit bluesky_handle field, then map by user ID, then by handle slug, then by display_name slug
+    const handleSlug = (user.handle || '').replace(/^@/, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    const displayNameSlug = ((user as any).display_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const isTopic = (user as any).account_type === 'topic';
     const blueskyHandle = (user as any).bluesky_handle
       || getBlueskyHandleForUser(user.id)
-      || ((user as any).account_type === 'topic' ? getBlueskyHandleForUser(handleSlug) : undefined);
+      || (isTopic ? (getBlueskyHandleForUser(handleSlug) || getBlueskyHandleForUser(displayNameSlug)) : undefined);
 
     if (!blueskyHandle) {
       return;
     }
 
     let mounted = true;
-    setBlueskyData(prev => ({ ...prev, isLoading: true }));
+    // Reset avatar/banner immediately so stale data from a previous user never bleeds through
+    setBlueskyData({ avatar: undefined, banner: undefined, posts: [], isLoading: true });
 
     async function loadBlueskyData() {
       try {

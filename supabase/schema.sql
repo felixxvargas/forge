@@ -26,6 +26,7 @@ create table if not exists public.profiles (
   game_lists jsonb default '{"recentlyPlayed":[],"library":[],"favorites":[],"wishlist":[]}',
   follower_count int default 0,
   following_count int default 0,
+  pinned_post_id uuid references public.posts(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -146,7 +147,8 @@ begin
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1))
-  );
+  )
+  on conflict (id) do nothing;
   return new;
 end;
 $$ language plpgsql security definer;
@@ -291,3 +293,33 @@ create index if not exists follows_follower_idx on public.follows(follower_id);
 create index if not exists follows_following_idx on public.follows(following_id);
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 create index if not exists profiles_handle_idx on public.profiles(handle);
+
+-- ============================================================
+-- FEEDBACK (feature requests & bug reports from users)
+-- ============================================================
+create table if not exists public.feedback (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete set null,
+  user_handle text,
+  type text not null check (type in ('feature_request', 'bug', 'general')),
+  title text not null,
+  description text not null,
+  status text not null default 'open' check (status in ('open', 'in_progress', 'done', 'wont_fix')),
+  created_at timestamptz default now()
+);
+
+alter table public.feedback enable row level security;
+
+-- Anyone authenticated can submit feedback
+create policy "Authenticated users can submit feedback"
+  on public.feedback for insert to authenticated
+  with check (true);
+
+-- Only admins can read all feedback (via service role)
+-- Users can see their own submissions
+create policy "Users can view own feedback"
+  on public.feedback for select
+  using (auth.uid() = user_id);
+
+-- Run these separately in your Supabase SQL editor to apply new columns:
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pinned_post_id uuid REFERENCES public.posts(id) ON DELETE SET NULL;

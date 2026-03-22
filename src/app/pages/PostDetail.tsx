@@ -10,7 +10,7 @@ import { formatTimeAgo } from '../utils/formatTimeAgo';
 export function PostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { posts, getUserById, users, currentUser, likePost, unlikePost, likedPosts, createPost, session } = useAppData();
+  const { posts, getUserById, users, currentUser, likePost, unlikePost, likedPosts, createPost, deletePost, session } = useAppData();
   const commentsRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -208,6 +208,7 @@ export function PostDetail() {
             user={postUser}
             onLike={handleLikeToggle}
             onComment={() => commentsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            onDelete={currentUser && post.user_id === currentUser.id ? async (id) => { await deletePost(id); navigate(-1); } : undefined}
             isDetailView={true}
           />
           {/* Repost count */}

@@ -1814,6 +1814,33 @@ app.post("/make-server-17285bd7/games/moby", async (c) => {
   }
 });
 
+// Get similar games by genre
+app.get("/make-server-17285bd7/games/:gameId/similar", async (c) => {
+  try {
+    const gameId = c.req.param('gameId');
+    const genresParam = c.req.query('genres') || '';
+    const genres = genresParam ? genresParam.split(',').map(g => g.trim()).filter(Boolean) : [];
+    const limit = parseInt(c.req.query('limit') || '8');
+    const games = await gamesAPI.getSimilarGames(gameId, genres, limit);
+    return c.json({ games });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch similar games' }, 500);
+  }
+});
+
+// Get other platform versions of a game (similar title)
+app.get("/make-server-17285bd7/games/:gameId/versions", async (c) => {
+  try {
+    const gameId = c.req.param('gameId');
+    const title = c.req.query('title') || '';
+    const limit = parseInt(c.req.query('limit') || '6');
+    const games = await gamesAPI.getGameVersions(gameId, title, limit);
+    return c.json({ games });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch game versions' }, 500);
+  }
+});
+
 // Get players for a game (users who self-declared played/owned)
 app.get("/make-server-17285bd7/games/:gameId/players", async (c) => {
   try {
@@ -2379,12 +2406,133 @@ app.post("/make-server-17285bd7/seed/topic-accounts", async (c) => {
         id: 'user-forge',
         handle: '@forge',
         displayName: 'Forge',
-        bio: 'The gaming social network for everyone. Share your gaming adventures across all platforms. 🎮⚡',
+        bio: 'The gaming social network for everyone. Share your gaming adventures across all platforms.',
         email: 'admin@forge.com',
         profilePicture: '',
         platforms: [],
         socialPlatforms: ['x', 'bluesky', 'threads'],
-      }
+      },
+      // Game Studios
+      {
+        id: 'studio-riot',
+        handle: '@riotgames',
+        displayName: 'Riot Games',
+        bio: 'We are Riot. We make League of Legends, VALORANT, Teamfight Tactics, Legends of Runeterra, and more.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'riotgames.bsky.social',
+      },
+      {
+        id: 'studio-blizzard',
+        handle: '@blizzard',
+        displayName: 'Blizzard Entertainment',
+        bio: 'Makers of World of Warcraft, Diablo, Hearthstone, Overwatch, StarCraft, and Heroes of the Storm.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'blizzard.bsky.social',
+      },
+      {
+        id: 'studio-larian',
+        handle: '@larianstudios',
+        displayName: 'Larian Studios',
+        bio: 'Making Baldur\'s Gate 3 and other amazing RPGs. Swen and team.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky', 'mastodon'],
+        blueskyHandle: 'larianstudios.bsky.social',
+      },
+      {
+        id: 'studio-cdprojekt',
+        handle: '@cdprojektred',
+        displayName: 'CD PROJEKT RED',
+        bio: 'We make The Witcher series and Cyberpunk 2077.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'cdprojektred.bsky.social',
+      },
+      {
+        id: 'studio-naughtydog',
+        handle: '@naughtydog',
+        displayName: 'Naughty Dog',
+        bio: 'Official Naughty Dog account. The Last of Us, Uncharted, Crash Bandicoot.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'naughtydog.bsky.social',
+      },
+      {
+        id: 'studio-insomniac',
+        handle: '@insomniacgames',
+        displayName: 'Insomniac Games',
+        bio: 'Making Marvel\'s Spider-Man, Ratchet & Clank, and more at PlayStation Studios.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'insomniacgames.bsky.social',
+      },
+      {
+        id: 'studio-fromsoft',
+        handle: '@fromsoftware',
+        displayName: 'FromSoftware',
+        bio: 'Elden Ring, Dark Souls, Bloodborne, Armored Core. Official news and updates.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'fromsoftware.bsky.social',
+      },
+      {
+        id: 'studio-capcom',
+        handle: '@capcomusa',
+        displayName: 'Capcom',
+        bio: 'Street Fighter, Resident Evil, Monster Hunter, Devil May Cry, Mega Man.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'capcomusa.bsky.social',
+      },
+      {
+        id: 'studio-koopmode',
+        handle: '@koopmode',
+        displayName: 'Ko_op Mode',
+        bio: 'Independent game studio. Making weird games with weird people.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'mastodon', 'bluesky'],
+        blueskyHandle: 'koopmode.bsky.social',
+      },
+      {
+        id: 'studio-sega',
+        handle: '@sega',
+        displayName: 'SEGA',
+        bio: 'Sonic the Hedgehog, Yakuza/Like a Dragon, Persona, Total War, Football Manager.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'sega.bsky.social',
+      },
+      {
+        id: 'studio-nintendo',
+        handle: '@nintendo',
+        displayName: 'Nintendo',
+        bio: 'Official Nintendo account. Home of Mario, Zelda, Pokémon, Metroid, Animal Crossing, and more.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'nintendo.bsky.social',
+      },
+      {
+        id: 'studio-xbox',
+        handle: '@xbox',
+        displayName: 'Xbox',
+        bio: 'Official Xbox account. Play everywhere. Halo, Forza, Starfield, and more.',
+        profilePicture: '',
+        platforms: [],
+        socialPlatforms: ['x', 'bluesky'],
+        blueskyHandle: 'xbox.bsky.social',
+      },
     ];
 
     const created = [];

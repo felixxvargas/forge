@@ -6,12 +6,12 @@ import { useAppData } from '../context/AppDataContext';
 
 export function UserCommunities() {
   const navigate = useNavigate();
-  const { currentUser, communities } = useAppData();
+  const { currentUser, groups } = useAppData();
 
   const userCommunities = (currentUser?.communities || [])
     .map((membership: any) => {
-      const community = communities.find((c: any) => c.id === (membership.community_id ?? membership.communityId));
-      return community ? { ...membership, ...community } : null;
+      const group = groups.find((c: any) => c.id === (membership.community_id ?? membership.communityId));
+      return group ? { ...membership, ...group } : null;
     })
     .filter(Boolean);
 
@@ -34,18 +34,18 @@ export function UserCommunities() {
 
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold mb-2">Communities</h1>
+          <h1 className="text-2xl font-semibold mb-2">Groups</h1>
           <p className="text-muted-foreground">
-            {userCommunities.length} {userCommunities.length === 1 ? 'community' : 'communities'}
+            {userCommunities.length} {userCommunities.length === 1 ? 'group' : 'groups'}
           </p>
         </div>
 
-        {/* Communities list */}
+        {/* Groups list */}
         <div className="space-y-3">
           {userCommunities.map((item: any) => (
             <div
               key={item.communityId}
-              onClick={() => navigate(`/community/${item.id}`)}
+              onClick={() => navigate(`/group/${item.id}`)}
               className="bg-card rounded-xl p-4 hover:bg-card/80 transition-colors cursor-pointer"
             >
               <div className="flex items-start gap-3">
@@ -78,12 +78,12 @@ export function UserCommunities() {
         {/* Empty state */}
         {userCommunities.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No communities yet</p>
+            <p className="text-muted-foreground mb-4">No groups yet</p>
             <button
               onClick={() => navigate('/explore')}
               className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
             >
-              Explore Communities
+              Explore Groups
             </button>
           </div>
         )}

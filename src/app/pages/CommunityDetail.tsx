@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GroupIcon } from '../components/GroupIcon';
 import { gamesAPI } from '../utils/api';
-import { communities as communitiesAPI } from '../utils/supabase';
+import { groups as groupsAPI } from '../utils/supabase';
 
 function getCoverUrl(game: any): string | null {
   return game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
@@ -16,15 +16,32 @@ function getCoverUrl(game: any): string | null {
 }
 
 export function CommunityDetail() {
-  const { communityId } = useParams();
+  const { groupId } = useParams();
+  const communityId = groupId; // alias for DB queries that still use communityId
   const navigate = useNavigate();
-  const { currentUser, posts, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, users, communities } = useAppData();
+  const { currentUser, posts, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, users, groups } = useAppData();
 
-  const community = communities.find((c: any) => c.id === communityId);
+  const community = groups.find((c: any) => c.id === groupId);
   const [isMember, setIsMember] = useState(
-    currentUser?.communities?.some((c: any) => c.community_id === communityId) || false
+    currentUser?.communities?.some((c: any) => c.community_id === groupId) ?? false
   );
+
+  // Verify membership from DB (communities may not be populated in currentUser yet)
+  useEffect(() => {
+    if (!currentUser?.id || !groupId) return;
+    groupsAPI.isMember(currentUser.id, groupId).then(setIsMember).catch(() => {});
+  }, [currentUser?.id, groupId]);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [dbMembers, setDbMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [memberActionLoading, setMemberActionLoading] = useState<string | null>(null);
+  const [groupImageUrl, setGroupImageUrl] = useState<string | null>(community?.profile_picture ?? null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState(community?.name ?? '');
+  const [editDescription, setEditDescription] = useState(community?.description ?? '');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Community games
   const [communityGames, setCommunityGames] = useState<any[]>([]);
@@ -39,7 +56,7 @@ export function CommunityDetail() {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="w-full max-w-2xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-2xl font-bold">Community not found</h2>
+          <h2 className="text-2xl font-bold">Group not found</h2>
         </div>
       </div>
     );
@@ -50,6 +67,75 @@ export function CommunityDetail() {
   const isAdmin = isCreator || isModerator;
 
   const adminUser = getUserById(community.creator_id ?? community.creatorId ?? '');
+  const creatorId = community.creator_id ?? community.creatorId ?? '';
+
+  // Load members from DB when modal opens
+  useEffect(() => {
+    if (!showMembersModal) return;
+    setLoadingMembers(true);
+    groupsAPI.getMembers(communityId!)
+      .then(setDbMembers)
+      .catch(() => setDbMembers([]))
+      .finally(() => setLoadingMembers(false));
+  }, [showMembersModal, communityId]);
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!isAdmin || userId === creatorId) return;
+    setMemberActionLoading(userId);
+    try {
+      await groupsAPI.removeMember(communityId!, userId);
+      setDbMembers(prev => prev.filter(m => m.id !== userId));
+    } catch (e: any) {
+      alert(e.message || 'Failed to remove member.');
+    } finally {
+      setMemberActionLoading(null);
+    }
+  };
+
+  const handleBanMember = async (userId: string) => {
+    if (!isAdmin || userId === creatorId) return;
+    if (!confirm('Ban this user from the group? They will be removed and cannot rejoin.')) return;
+    setMemberActionLoading(userId);
+    try {
+      await groupsAPI.banMember(communityId!, userId);
+      setDbMembers(prev => prev.filter(m => m.id !== userId));
+    } catch (e: any) {
+      alert(e.message || 'Failed to ban member.');
+    } finally {
+      setMemberActionLoading(null);
+    }
+  };
+
+  const handleGroupImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !communityId) return;
+    setUploadingImage(true);
+    try {
+      const url = await groupsAPI.updateGroupImage(communityId, file);
+      setGroupImageUrl(url);
+    } catch (err: any) {
+      alert(err.message || 'Failed to upload image.');
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveGroupEdit = async () => {
+    if (!communityId || !editName.trim()) return;
+    setSavingEdit(true);
+    try {
+      await groupsAPI.updateGroup(communityId, {
+        name: editName.trim(),
+        description: editDescription.trim(),
+      });
+      setShowEditModal(false);
+    } catch (e: any) {
+      alert(e.message || 'Failed to save changes.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   // Load community games from stored IDs
   useEffect(() => {
@@ -88,13 +174,13 @@ export function CommunityDetail() {
     const updated = [...communityGames, game];
     setCommunityGames(updated);
     // Persist to DB
-    await communitiesAPI.updateGameIds?.(communityId!, updated.map(g => g.id)).catch(() => {});
+    await groupsAPI.updateGameIds?.(communityId!, updated.map(g => g.id)).catch(() => {});
   };
 
   const removeGameFromCommunity = async (gameId: string) => {
     const updated = communityGames.filter(g => g.id !== gameId);
     setCommunityGames(updated);
-    await communitiesAPI.updateGameIds?.(communityId!, updated.map(g => g.id)).catch(() => {});
+    await groupsAPI.updateGameIds?.(communityId!, updated.map(g => g.id)).catch(() => {});
   };
 
   // Get all members
@@ -108,7 +194,7 @@ export function CommunityDetail() {
 
   const handleJoinCommunity = () => {
     if (community.type === 'invite') {
-      alert('This is an invite-only community. You need an invitation to join.');
+      alert('This is an invite-only group. You need an invitation to join.');
       return;
     }
     if (community.type === 'request') {
@@ -120,7 +206,7 @@ export function CommunityDetail() {
 
   const getTypeLabel = () => {
     switch (community.type) {
-      case 'open': return 'Open Community';
+      case 'open': return 'Open Group';
       case 'request': return 'Approval Required';
       case 'invite': return 'Invite Only';
       default: return '';
@@ -158,8 +244,33 @@ export function CommunityDetail() {
         {/* Community Info */}
         <div className="px-4 py-6 bg-card border-b border-border">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center flex-shrink-0 text-accent">
-              <GroupIcon iconKey={community.icon} className="w-8 h-8" />
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center text-accent overflow-hidden">
+                {groupImageUrl ? (
+                  <img src={groupImageUrl} alt={community.name} className="w-full h-full object-cover" />
+                ) : (
+                  <GroupIcon iconKey={community.icon} className="w-8 h-8" />
+                )}
+              </div>
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors"
+                    title="Change group image"
+                  >
+                    {uploadingImage ? <Loader2 className="w-3 h-3 text-white animate-spin" /> : <Camera className="w-3 h-3 text-white" />}
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleGroupImageUpload}
+                  />
+                </>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-2xl font-bold mb-1">{community.name}</h2>
@@ -171,9 +282,9 @@ export function CommunityDetail() {
               {adminUser && (
                 <button
                   onClick={() => navigate(`/profile/${adminUser.id}`)}
-                  className="text-xs text-muted-foreground hover:text-accent transition-colors"
+                  className="text-xs text-muted-foreground hover:opacity-80 transition-opacity"
                 >
-                  Admin: <span className="font-medium">{adminUser.display_name || adminUser.handle}</span>
+                  Admin: <span className="font-bold text-accent">{adminUser.display_name || adminUser.handle}</span>
                 </button>
               )}
             </div>
@@ -207,22 +318,38 @@ export function CommunityDetail() {
 
           <p className="text-muted-foreground mb-4">{community.description}</p>
 
-          <div className="flex gap-2">
-            {!isMember ? (
+          <div className="flex gap-2 flex-wrap">
+            {isMember ? (
+              <button className="px-6 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium">
+                Joined
+              </button>
+            ) : community.type !== 'invite' ? (
               <button
                 onClick={handleJoinCommunity}
                 className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium flex items-center gap-2"
               >
                 <UserPlus className="w-4 h-4" />
-                {community.type === 'invite' ? 'Invite Only' : community.type === 'request' ? 'Request to Join' : 'Join Community'}
+                {community.type === 'request' ? 'Request to Join' : 'Join Group'}
               </button>
-            ) : (
-              <button className="px-6 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium">
-                Joined
+            ) : null}
+
+            {/* Message Admin — invite-only groups only; respects admin's DM setting (on by default) */}
+            {community.type === 'invite' && !isAdmin && adminUser && (adminUser as any).allow_dms !== false && (
+              <button
+                onClick={() => navigate(`/messages?to=${adminUser.id}`)}
+                className="px-4 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium flex items-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Message Admin
               </button>
             )}
+
             {isAdmin && (
-              <button className="p-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors" title="Community Settings">
+              <button
+                onClick={() => { setEditName(community.name); setEditDescription(community.description ?? ''); setShowEditModal(true); }}
+                className="p-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
+                title="Edit Group"
+              >
                 <Settings className="w-5 h-5" />
               </button>
             )}
@@ -281,9 +408,9 @@ export function CommunityDetail() {
           )}
         </div>
 
-        {/* Community Feed */}
+        {/* Group Feed */}
         <div className="px-4 py-6">
-          <h3 className="text-lg font-semibold mb-4">Community Posts</h3>
+          <h3 className="text-lg font-semibold mb-4">Group Posts</h3>
           {isMember ? (
             communityPosts.length > 0 ? (
               communityPosts.map(post => {
@@ -303,13 +430,13 @@ export function CommunityDetail() {
               })
             ) : (
               <div className="text-center py-12 text-muted-foreground">
-                <p>No posts yet. Be the first to post in this community!</p>
+                <p>No posts yet. Be the first to post in this group!</p>
               </div>
             )
           ) : (
             <div className="text-center py-12 bg-card rounded-xl border border-border">
               <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Join this community to see posts and participate</p>
+              <p className="text-muted-foreground">Join this group to see posts and participate</p>
             </div>
           )}
         </div>
@@ -326,23 +453,101 @@ export function CommunityDetail() {
               </button>
             </div>
             <div className="p-4 space-y-2">
-              {[...friends, ...otherMembers].map((member: any) => (
-                <button
-                  key={member.id}
-                  onClick={() => { setShowMembersModal(false); navigate(`/profile/${member.id}`); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors"
-                >
-                  <ProfileAvatar
-                    username={member.display_name || member.handle || '?'}
-                    profilePicture={member.profile_picture || member.profilePicture}
-                    size="md"
-                  />
-                  <div className="text-left">
-                    <p className="font-semibold">{member.display_name || member.handle}</p>
-                    <p className="text-sm text-muted-foreground">@{(member.handle || '').replace(/^@/, '')}</p>
-                  </div>
-                </button>
-              ))}
+              {loadingMembers ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : dbMembers.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-6">No members found</p>
+              ) : (
+                dbMembers.map((member: any) => {
+                  const isCreatorRow = member.id === creatorId;
+                  const isActionLoading = memberActionLoading === member.id;
+                  return (
+                    <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors">
+                      <button
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                        onClick={() => { setShowMembersModal(false); navigate(`/profile/${member.id}`); }}
+                      >
+                        <ProfileAvatar
+                          username={member.display_name || member.handle || '?'}
+                          profilePicture={member.profile_picture}
+                          size="md"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{member.display_name || member.handle}</p>
+                          <p className="text-sm text-muted-foreground">@{(member.handle || '').replace(/^@/, '')}</p>
+                          {isCreatorRow && <p className="text-xs text-accent font-medium">Admin</p>}
+                        </div>
+                      </button>
+                      {isAdmin && !isCreatorRow && member.id !== currentUser?.id && (
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => handleRemoveMember(member.id)}
+                            disabled={isActionLoading}
+                            className="p-2 rounded-lg hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Remove from group"
+                          >
+                            {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => handleBanMember(member.id)}
+                            disabled={isActionLoading}
+                            className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Ban from group"
+                          >
+                            {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldOff className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Group Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl">
+            <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Edit Group</h2>
+              <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Group Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  maxLength={60}
+                  className="w-full px-3 py-2.5 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={e => setEditDescription(e.target.value)}
+                  maxLength={500}
+                  rows={4}
+                  className="w-full px-3 py-2.5 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm resize-none"
+                />
+              </div>
+              <button
+                onClick={handleSaveGroupEdit}
+                disabled={savingEdit || !editName.trim()}
+                className="w-full py-3 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {savingEdit ? 'Saving…' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>

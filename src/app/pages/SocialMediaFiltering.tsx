@@ -1,17 +1,19 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import { PlatformIcon } from '../components/PlatformIcon';
 import type { SocialPlatform } from '../data/data';
 
-const socialPlatforms: { id: SocialPlatform; name: string; icon: string }[] = [
-  { id: 'bluesky', name: 'Bluesky', icon: '🦋' },
-  { id: 'tumblr', name: 'Tumblr', icon: 't' },
-  { id: 'x', name: 'X (Twitter)', icon: '𝕏' },
-  { id: 'tiktok', name: 'TikTok', icon: '🎵' },
-  { id: 'instagram', name: 'Instagram', icon: '📷' },
-  { id: 'threads', name: 'Threads', icon: '@' },
-  { id: 'rednote', name: 'Red Note', icon: '📕' },
-  { id: 'upscrolled', name: 'Upscrolled', icon: '↑' }
+const socialPlatforms: { id: SocialPlatform; name: string }[] = [
+  { id: 'bluesky', name: 'Bluesky' },
+  { id: 'tumblr', name: 'Tumblr' },
+  { id: 'x', name: 'X (Twitter)' },
+  { id: 'tiktok', name: 'TikTok' },
+  { id: 'instagram', name: 'Instagram' },
+  { id: 'threads', name: 'Threads' },
+  { id: 'rednote', name: 'Red Note' },
+  { id: 'upscrolled', name: 'Upscrolled' },
 ];
 
 export function SocialMediaFiltering() {
@@ -49,8 +51,8 @@ export function SocialMediaFiltering() {
                 onClick={() => toggleSocialPlatformFilter(platform.id)}
                 className="w-full px-4 py-4 flex items-center gap-4 rounded-xl bg-card hover:bg-secondary transition-colors"
               >
-                <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0 text-2xl">
-                  {platform.icon}
+                <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                  <PlatformIcon platform={platform.id} className="w-6 h-6" />
                 </div>
                 <div className="flex-1 text-left">
                   <h3 className="font-semibold">{platform.name}</h3>
