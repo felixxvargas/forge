@@ -360,17 +360,6 @@ export const topicAccounts: User[] = [
     followerCount: 0,
   },
   {
-    id: 'user-riot',
-    handle: '@riot',
-    displayName: 'Riot Games',
-    bio: 'We are Riot Games. We exist to be the most player-focused game company in the world.',
-    profilePicture: '',
-    platforms: ['pc'],
-    socialPlatforms: ['x', 'youtube', 'bluesky'],
-    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
-    followerCount: 0,
-  },
-  {
     id: 'user-larian',
     handle: '@larian',
     displayName: 'Larian Studios',

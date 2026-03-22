@@ -205,7 +205,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const updateCurrentUser = async (data: Partial<any>) => {
     if (!session?.user) return;
     const updated = await profiles.update(session.user.id, data);
-    setCurrentUser(updated);
+    // Preserve communities (group memberships) — they're fetched separately and
+    // not part of the profiles table, so the update response won't include them.
+    setCurrentUser((prev: any) => ({ ...updated, communities: prev?.communities }));
   };
 
   const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string) => {

@@ -458,7 +458,10 @@ export function EditProfile() {
                         : 'bg-secondary/50 border-2 border-transparent opacity-50 cursor-not-allowed'
                     }`}
                   >
-                    <span className="text-2xl">{community.icon}</span>
+                    {community.profile_picture
+                      ? <img src={community.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                      : <span className="text-2xl">{community.icon}</span>
+                    }
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{community.name}</p>
