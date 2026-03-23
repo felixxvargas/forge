@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Swords, Flame, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -9,6 +9,7 @@ import { LFGFlareModal } from '../components/LFGFlareModal';
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
+import { loadTrendingRankings, getGameRank } from '../utils/gameRankings';
 
 type PostSort = 'latest' | 'top';
 
@@ -34,6 +35,18 @@ export function GameDetail() {
   const [similarGames, setSimilarGames] = useState<any[]>([]);
   const [gameVersions, setGameVersions] = useState<any[]>([]);
   const [listCount, setListCount] = useState<number | null>(null);
+
+  const [gameRank, setGameRank] = useState<number | null>(null);
+
+  // Load trending rank (non-blocking)
+  useEffect(() => {
+    if (!gameId) return;
+    const cached = getGameRank(gameId);
+    if (cached !== null) { setGameRank(cached); return; }
+    loadTrendingRankings().then(() => {
+      setGameRank(getGameRank(gameId) ?? null);
+    }).catch(() => {});
+  }, [gameId]);
 
   // LFG / LFM state
   const [myFlare, setMyFlare] = useState<LFGFlare | null>(null);
@@ -255,12 +268,20 @@ export function GameDetail() {
             {(game.year || game.release_year) && (
               <p className="text-base text-muted-foreground">{game.year ?? game.release_year}</p>
             )}
-            {(listCount !== null || taggedPosts.length > 0) && (
-              <span className="flex items-center gap-1 text-sm font-semibold text-orange-400">
-                <TrendingUp className="w-3.5 h-3.5" />
-                {(listCount ?? 0) + taggedPosts.length} popularity
-              </span>
-            )}
+            {(() => {
+              const score = (listCount ?? 0) + taggedPosts.length;
+              if (score === 0) return null;
+              const rankInTop = gameRank !== null && gameRank <= 1000;
+              return (
+                <button
+                  onClick={() => navigate('/trending-games')}
+                  className="flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  {rankInTop ? `#${gameRank} on Forge` : 'Trending'}
+                </button>
+              );
+            })()}
           </div>
           {game.genres && game.genres.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
@@ -409,22 +430,13 @@ export function GameDetail() {
                   </button>
                 </div>
               ) : (
-                <>
-                  <button
-                    onClick={() => { setLfgModalType('lfg'); setShowLFGModal(true); }}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
-                  >
-                    <Flame className="w-4 h-4" />
-                    Looking for Group
-                  </button>
-                  <button
-                    onClick={() => { setLfgModalType('lfm'); setShowLFGModal(true); }}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
-                  >
-                    <Flame className="w-4 h-4" />
-                    Looking for More
-                  </button>
-                </>
+                <button
+                  onClick={() => { setLfgModalType('lfg'); setShowLFGModal(true); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
+                >
+                  <Flame className="w-4 h-4" />
+                  Looking for Group
+                </button>
               )}
             </div>
           </>
@@ -506,8 +518,8 @@ export function GameDetail() {
         {(loadingFlares || gameFlares.length > 0) && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <Swords className="w-5 h-5 text-accent" />
-              <h2 className="text-xl font-semibold">Group Finder</h2>
+              <Flame className="w-5 h-5 text-orange-400" />
+              <h2 className="text-xl font-semibold">Active Flares</h2>
             </div>
             {loadingFlares ? (
               <p className="text-sm text-muted-foreground">Loading…</p>

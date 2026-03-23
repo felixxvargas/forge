@@ -4,7 +4,7 @@ import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from './ImageUpload';
 import { ProfileAvatar } from './ProfileAvatar';
 import { gamesAPI } from '../utils/api';
-import { gameSearchCache, buildHighlightedHtml } from '../utils/mentionHighlight';
+import { gameSearchCache, buildHighlightedHtml, gameCoverCache } from '../utils/mentionHighlight';
 import type { User } from '../data/data';
 
 interface WritePostModalProps {
@@ -152,9 +152,14 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
     const startIdx = mentionTriggerIndex.current;
     if (startIdx < 0) { setShowMentions(false); setAtGameResults([]); return; }
     const curPos = textareaRef.current?.selectionStart ?? content.length;
-    const newContent = content.slice(0, startIdx) + '@' + game.title + ' ' + content.slice(curPos);
+    // Insert bare title (no @) — game is identified by the selectedGame chip
+    const newContent = content.slice(0, startIdx) + game.title + ' ' + content.slice(curPos);
     setContent(newContent);
-    setSelectedGame({ id: String(game.id ?? game.game_id ?? ''), title: game.title });
+    const gameId = String(game.id ?? game.game_id ?? '');
+    setSelectedGame({ id: gameId, title: game.title });
+    // Populate cover cache from search result
+    const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
+    if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
     mentionTriggerIndex.current = -1;
     setShowMentions(false);
     setMentionSuggestions([]);
@@ -170,7 +175,10 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
     const tokenEnd = wordEnd === -1 ? content.length : startIdx + 1 + wordEnd;
     const newContent = content.slice(0, startIdx) + content.slice(tokenEnd);
     setContent(newContent.trimStart());
-    setSelectedGame({ id: String(game.id ?? game.game_id ?? ''), title: game.title });
+    const gameId = String(game.id ?? game.game_id ?? '');
+    setSelectedGame({ id: gameId, title: game.title });
+    const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
+    if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
     hashTriggerIndex.current = -1;
     setShowHashGames(false);
     setHashGameResults([]);

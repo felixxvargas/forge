@@ -241,6 +241,7 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
               onChange={e => setGameMode(e.target.value)}
               maxLength={60}
               className="w-full px-4 py-3 bg-secondary rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-sm"
+              style={{ fontSize: '16px' }}
             />
           </div>
 
@@ -254,6 +255,7 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
                 value={expiryMinutes}
                 onChange={e => setExpiryMinutes(Number(e.target.value))}
                 className="w-full appearance-none px-4 py-3 bg-secondary rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-sm font-medium pr-10 cursor-pointer"
+                style={{ fontSize: '16px' }}
               >
                 {EXPIRY_OPTIONS.map(opt => (
                   <option key={opt.minutes} value={opt.minutes}>{opt.label}</option>

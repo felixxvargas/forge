@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
@@ -9,6 +9,8 @@ import { formatNumber } from '../utils/formatNumber';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
 import { ShareModal } from './ShareModal';
+import { gameCoverCache } from '../utils/mentionHighlight';
+import { gamesAPI } from '../utils/api';
 import { LinkPreview } from './LinkPreview';
 import { BlurredImage } from './BlurredImage';
 import {
@@ -41,6 +43,20 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   const navigate = useNavigate();
   const context = useAppData();
   const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  // Lazy-load cover art for game tag (checks cache first, then fetches if needed)
+  const [gameCover, setGameCover] = useState<string | null>(() =>
+    post.game_id ? (gameCoverCache.has(post.game_id) ? gameCoverCache.get(post.game_id) ?? null : null) : null
+  );
+  useEffect(() => {
+    if (!post.game_id || gameCoverCache.has(post.game_id)) return;
+    gamesAPI.getGame(post.game_id).then((data: any) => {
+      const g = data?.game ?? data;
+      const url = g?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g?.artwork?.[0]?.url ?? null;
+      gameCoverCache.set(post.game_id!, url);
+      setGameCover(url);
+    }).catch(() => { gameCoverCache.set(post.game_id!, null); });
+  }, [post.game_id]);
 
   // Safely destructure with fallbacks
   const {
@@ -326,13 +342,32 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       {/* Game tag */}
       {post.game_title && (
         <div className="mb-3">
-          <button
-            onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
-          >
-            <Gamepad2 className="w-3.5 h-3.5" />
-            {post.game_title}
-          </button>
+          {gameCover ? (
+            /* Rich preview: cover art + title */
+            <button
+              onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
+            >
+              <img
+                src={gameCover}
+                alt={post.game_title}
+                className="w-8 h-10 rounded-md object-cover shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
+                <p className="text-sm font-semibold truncate leading-tight">{post.game_title}</p>
+              </div>
+            </button>
+          ) : (
+            /* Fallback pill */
+            <button
+              onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+            >
+              <Gamepad2 className="w-3.5 h-3.5" />
+              {post.game_title}
+            </button>
+          )}
         </div>
       )}
 

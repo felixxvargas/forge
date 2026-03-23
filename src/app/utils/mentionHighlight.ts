@@ -8,6 +8,9 @@
 /** In-session game search cache so repeated queries are instant. */
 export const gameSearchCache = new Map<string, any[]>();
 
+/** Cover art URL cache: game_id → url (null if fetched but no cover). */
+export const gameCoverCache = new Map<string, string | null>();
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -18,7 +21,7 @@ function escapeHtml(s: string): string {
 /**
  * Converts plain post text into HTML where:
  *  - @KnownHandle (matching a user in `users`) → bold accent span
- *  - @GameTitle   (matching selectedGame.title, may contain spaces) → bold accent span
+ *  - GameTitle    (matching selectedGame.title, bare — no @ prefix) → bold accent span
  *  - everything else → escaped plain text (displayed in the container's foreground color)
  */
 export function buildHighlightedHtml(
@@ -29,10 +32,10 @@ export function buildHighlightedHtml(
   type Range = { start: number; end: number };
   const ranges: Range[] = [];
 
-  // 1. Highlight @GameTitle (may have spaces — must run first)
+  // 1. Highlight bare GameTitle (no @ — game is tagged via chip, title appears as plain text)
   if (selectedGame?.title) {
     const escaped = selectedGame.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`@${escaped}`, 'g');
+    const re = new RegExp(escaped, 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
       ranges.push({ start: m.index, end: m.index + m[0].length });

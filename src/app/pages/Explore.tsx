@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Swords } from 'lucide-react';
+import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
@@ -285,9 +285,9 @@ export function Explore() {
       );
     })
     .sort((a, b) => {
-      // Score = post tags + unique list adds (each user counted once per game)
-      const scoreA = (trendingCounts[a.id] ?? 0) + (listCounts[a.id] ?? 0);
-      const scoreB = (trendingCounts[b.id] ?? 0) + (listCounts[b.id] ?? 0);
+      // Score = IGDB/RAWG popularity + post tags + unique list adds
+      const scoreA = (a.popularity_score ?? a.rating ?? 0) + (trendingCounts[a.id] ?? 0) + (listCounts[a.id] ?? 0);
+      const scoreB = (b.popularity_score ?? b.rating ?? 0) + (trendingCounts[b.id] ?? 0) + (listCounts[b.id] ?? 0);
       if (scoreB !== scoreA) return scoreB - scoreA;
       return (b.year ?? 0) - (a.year ?? 0);
     });
@@ -638,8 +638,8 @@ export function Explore() {
                               </div>
                             )}
                             {score > 0 && !isSearchActive && (
-                              <div className="absolute top-1.5 left-1.5 bg-purple-600/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                                🔥 {score}
+                              <div className="absolute top-1.5 left-1.5 bg-accent/80 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                <Flame className="w-2.5 h-2.5" />{score}
                               </div>
                             )}
                           </div>
@@ -675,18 +675,18 @@ export function Explore() {
                   ))
                 )}
 
-                {/* Group Finder — active LFG flares */}
+                {/* Active Flares — LFG flare branding */}
                 <div className="mt-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Swords className="w-5 h-5 text-accent" />
-                    <h2 className="font-semibold text-white">Group Finder</h2>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Flame className="w-5 h-5 text-orange-400" />
+                    <h2 className="font-semibold text-white">Active Flares</h2>
                   </div>
-                  <p className="text-sm text-gray-500 mb-3">Active LFG flares from players looking to group up</p>
+                  <p className="text-sm text-gray-500 mb-3">Players looking to group up right now</p>
                   {loadingLfg ? (
                     <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
                   ) : lfgPlayers.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      <Swords className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                      <Flame className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p className="text-sm">No active LFG flares right now</p>
                     </div>
                   ) : (
