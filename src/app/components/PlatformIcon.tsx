@@ -10,10 +10,13 @@ import TikTokIcon from '../../assets/icons/tiktok.svg?react';
 import TumblrIcon from '../../assets/icons/tumblr.svg?react';
 import MastodonIcon from '../../assets/icons/mastodon.svg?react';
 import ThreadsIcon from '../../assets/icons/threads.svg?react';
+import BlueskyIcon from '../../assets/icons/bluesky.svg?react';
+import UpscrolledIcon from '../../assets/icons/upscrolled.svg?react';
 import SpotifyIcon from '../../assets/icons/spotify.svg?react';
 import GitHubIcon from '../../assets/icons/github.svg?react';
 import PatreonIcon from '../../assets/icons/patreon.svg?react';
 // Gaming platform SVG imports
+import NintendoIcon from '../../assets/icons/nintendoswitch.svg?react';
 import SteamIcon from '../../assets/icons/steam.svg?react';
 import XboxIcon from '../../assets/icons/xbox.svg?react';
 import PlayStationIcon from '../../assets/icons/playstation.svg?react';
@@ -62,14 +65,7 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
       case 'spotify':    return <SpotifyIcon className={cls} />;
       case 'github':     return <GitHubIcon className={cls} />;
       case 'patreon':    return <PatreonIcon className={cls} />;
-
-      // ── Social (inline — no SVG file available) ────────────
-      case 'bluesky':
-        return (
-          <svg viewBox="0 0 360 320" fill="currentColor" className={cls}>
-            <path d="M180 142C164 110 120 50 75 27 50 14 0 3 0 60c0 29 17 99 28 120 16 27 47 39 77 28 31-12 33-46 33-46s-4 55-39 78c-35 23-82 5-82 5s34 117 163 85c129-31 163-85 163-85s-47 18-82-5c-35-23-39-78-39-78s2 34 33 46c30 11 61-1 77-28C343 159 360 89 360 60c0-57-50-46-75-33C241 50 196 110 180 142z"/>
-          </svg>
-        );
+      case 'bluesky':    return <BlueskyIcon className={cls} />;
       case 'threads':    return <ThreadsIcon className={cls} />;
       case 'rednote':
         return (
@@ -77,13 +73,7 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM8 17v-1.5c0-.28.22-.5.5-.5h7c.28 0 .5.22.5.5V17H8zm8-4H8v-1.5c0-.28.22-.5.5-.5h.5V9h5v2h.5c.28 0 .5.22.5.5V13z"/>
           </svg>
         );
-      case 'upscrolled':
-        return (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={cls}>
-            <polyline points="17 11 12 6 7 11"/>
-            <polyline points="17 18 12 13 7 18"/>
-          </svg>
-        );
+      case 'upscrolled':  return <UpscrolledIcon className={cls} />;
       case 'youtubemusic':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
@@ -102,12 +92,7 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
       case 'steam':     return <SteamIcon className={cls} />;
       case 'xbox':      return <XboxIcon className={cls} />;
       case 'playstation': return <PlayStationIcon className={cls} />;
-      case 'nintendo':
-        return (
-          <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
-            <path d="M14.941 2.994H9.059C5.261 2.994 2.994 5.261 2.994 9.059v5.882c0 3.798 2.267 6.065 6.065 6.065h5.882c3.798 0 6.065-2.267 6.065-6.065V9.059c0-3.798-2.267-6.065-6.065-6.065zM9.059 4.494h5.882c2.54 0 4.565 2.025 4.565 4.565v5.882c0 2.54-2.025 4.565-4.565 4.565H9.059c-2.54 0-4.565-2.025-4.565-4.565V9.059c0-2.54 2.025-4.565 4.565-4.565zM12.75 4.494h-1.5v15h1.5v-15zM9.5 7A1.5 1.5 0 0 0 8 8.5 1.5 1.5 0 0 0 9.5 10 1.5 1.5 0 0 0 11 8.5 1.5 1.5 0 0 0 9.5 7zm5 4A1.5 1.5 0 0 0 13 12.5 1.5 1.5 0 0 0 14.5 14 1.5 1.5 0 0 0 16 12.5 1.5 1.5 0 0 0 14.5 11z"/>
-          </svg>
-        );
+      case 'nintendo':    return <NintendoIcon className={cls} />;
       case 'pc':        return <WindowsIcon className={cls} />;
       case 'mac':       return <AppleIcon className={cls} />;
       case 'linux':
