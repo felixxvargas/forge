@@ -22,7 +22,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
         {/* Centered Logo */}
         {!title && (
           <div className="absolute left-1/2 -translate-x-1/2">
-            <ZapIcon className="w-5 h-5 fill-current" />
+            <img src="/src/assets/forge-logo.svg" className="w-5 h-5 fill-current" />
           </div>
         )}
         
