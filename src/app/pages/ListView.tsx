@@ -188,13 +188,14 @@ export function ListView() {
       </div>
 
       {/* Games Grid */}
-      <div className="w-full max-w-2xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-6">
+      <div className="w-full max-w-2xl mx-auto px-7 py-6">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6">
           {sortedGames.map((game) => (
             <GameCard
               key={game.id}
               game={game}
               showHours={listType === 'recently-played'}
+              fullWidth
             />
           ))}
         </div>

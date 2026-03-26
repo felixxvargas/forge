@@ -16,7 +16,7 @@ type PostSort = 'latest' | 'top';
 export function GameDetail() {
   const navigate = useNavigate();
   const { gameId } = useParams();
-  const { currentUser, session, followingIds, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost } = useAppData();
+  const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeed, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost } = useAppData();
 
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -26,10 +26,12 @@ export function GameDetail() {
 
   const [isPlayed, setIsPlayed] = useState(false);
   const [isOwned, setIsOwned] = useState(false);
-  const [isFollowed, setIsFollowed] = useState(false);
   const [togglingPlayed, setTogglingPlayed] = useState(false);
   const [togglingOwned, setTogglingOwned] = useState(false);
   const [togglingFollowed, setTogglingFollowed] = useState(false);
+
+  // Derive isFollowed from context so it stays in sync with the feed
+  const isFollowed = gameId ? followedGameIds.has(gameId) : false;
 
   const [players, setPlayers] = useState<any[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -91,7 +93,7 @@ export function GameDetail() {
   useEffect(() => {
     if (!gameId || !session?.user) return;
     userGamesAPI.getStatus(session.user.id, gameId)
-      .then(({ played, owned, followed }) => { setIsPlayed(played); setIsOwned(owned); setIsFollowed(followed); })
+      .then(({ played, owned }) => { setIsPlayed(played); setIsOwned(owned); })
       .catch(() => {});
   }, [gameId, session?.user?.id]);
 
@@ -176,12 +178,12 @@ export function GameDetail() {
     setTogglingFollowed(true);
     try {
       if (isFollowed) {
-        await userGamesAPI.remove(session.user.id, gameId, 'followed');
-        setIsFollowed(false);
+        await unfollowGame(gameId);
       } else {
-        await userGamesAPI.add(session.user.id, gameId, 'followed');
-        setIsFollowed(true);
+        await followGame(gameId);
       }
+      // Refresh feed so game posts appear / disappear immediately
+      refreshFeed();
     } catch { /* ignore */ } finally { setTogglingFollowed(false); }
   };
 
@@ -426,14 +428,20 @@ export function GameDetail() {
             <button
               onClick={handleToggleFollowed}
               disabled={togglingFollowed}
-              className={`w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-medium text-sm transition-all ${
+              className={`w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-semibold text-sm transition-all ${
                 isFollowed
-                  ? 'bg-accent/20 border-2 border-accent/60 text-accent'
-                  : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                  : 'bg-secondary border-2 border-border text-foreground hover:bg-secondary/80'
               }`}
             >
-              {isFollowed ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-              {isFollowed ? 'Following · Posts in Feed' : 'Follow Game'}
+              {togglingFollowed ? (
+                <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+              ) : isFollowed ? (
+                <Bell className="w-4 h-4" />
+              ) : (
+                <Bell className="w-4 h-4" />
+              )}
+              {isFollowed ? '✓ Following — Posts appear in your feed' : 'Follow Game'}
             </button>
             {/* LFG / LFM buttons — fire flare branding */}
             <div className="flex gap-3 mb-6">

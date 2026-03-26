@@ -83,13 +83,13 @@ export function Premium() {
                   type="text"
                   placeholder="MM / YY"
                   maxLength={7}
-                  className="flex-1 px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="flex-1 min-w-0 px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
                 <input
                   type="text"
                   placeholder="CVC"
                   maxLength={4}
-                  className="flex-1 px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="flex-1 min-w-0 px-4 py-2.5 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
               <input

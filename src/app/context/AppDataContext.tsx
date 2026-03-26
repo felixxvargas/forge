@@ -32,6 +32,7 @@ interface AppDataContextType {
   muteUser: (userId: string) => Promise<void>;
   unmuteUser: (userId: string) => Promise<void>;
   followingIds: Set<string>;
+  followedGameIds: Set<string>;
   groups: any[];
   getUserById: (userId: string) => any | undefined;
   getUserByHandle: (handle: string) => any | undefined;
@@ -39,6 +40,8 @@ interface AppDataContextType {
   createGroup: (name: string, description: string, icon: string, type: string) => Promise<any>;
   refreshFeed: () => Promise<void>;
   markNotificationsAsRead: () => void;
+  followGame: (gameId: string) => Promise<void>;
+  unfollowGame: (gameId: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -76,7 +79,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef(session);
   useEffect(() => { sessionRef.current = session; }, [session]);
 
-  // Ref to followed game IDs so refreshFeed can include game-tagged posts
+  // Both a state (exposed to UI) and a ref (used in refreshFeed closure)
+  const [followedGameIds, setFollowedGameIds] = useState<Set<string>>(new Set());
   const followedGameIdsRef = useRef<string[]>([]);
 
   const loadUserData = useCallback(async (userId: string) => {
@@ -120,6 +124,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         userGamesAPI.getFollowedGameIds(userId),
       ]);
       followedGameIdsRef.current = followedGameIds;
+      setFollowedGameIds(new Set(followedGameIds));
       setCurrentUser({ ...normalizeProfile(profile), communities: memberships });
       setLikedPosts(new Set(likedIds));
       setRepostedPosts(new Set(repostedIds));
@@ -132,6 +137,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error('Error loading user data:', e);
     }
+  }, []);
+
+  const followGame = useCallback(async (gameId: string) => {
+    const userId = sessionRef.current?.user?.id;
+    if (!userId) return;
+    await userGamesAPI.add(userId, gameId, 'followed');
+    const next = [...followedGameIdsRef.current, gameId];
+    followedGameIdsRef.current = next;
+    setFollowedGameIds(new Set(next));
+  }, []);
+
+  const unfollowGame = useCallback(async (gameId: string) => {
+    const userId = sessionRef.current?.user?.id;
+    if (!userId) return;
+    await userGamesAPI.remove(userId, gameId, 'followed');
+    const next = followedGameIdsRef.current.filter(id => id !== gameId);
+    followedGameIdsRef.current = next;
+    setFollowedGameIds(new Set(next));
   }, []);
 
   const refreshFeed = useCallback(async () => {
@@ -421,6 +444,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       muteUser,
       unmuteUser,
       followingIds,
+      followedGameIds,
+      followGame,
+      unfollowGame,
       groups: groupsList,
       getUserById,
       getUserByHandle,

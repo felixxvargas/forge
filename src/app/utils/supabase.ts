@@ -727,6 +727,38 @@ export const groups = {
     if (error && error.code !== '23505') throw new Error(error.message);
     await supabase.rpc('increment_member_count', { community_id: communityId }).catch(() => {});
   },
+
+  async transferAdmin(communityId: string, newCreatorId: string) {
+    // Get current creator so we can demote them
+    const { data: community, error: fetchErr } = await supabase
+      .from('communities')
+      .select('creator_id')
+      .eq('id', communityId)
+      .single();
+    if (fetchErr) throw new Error(fetchErr.message);
+    const oldCreatorId = community.creator_id;
+
+    // Promote new admin on the community row
+    const { error: updateErr } = await supabase
+      .from('communities')
+      .update({ creator_id: newCreatorId })
+      .eq('id', communityId);
+    if (updateErr) throw new Error(updateErr.message);
+
+    // Update roles in community_members
+    await supabase
+      .from('community_members')
+      .update({ role: 'creator' })
+      .eq('community_id', communityId)
+      .eq('user_id', newCreatorId);
+    if (oldCreatorId) {
+      await supabase
+        .from('community_members')
+        .update({ role: 'member' })
+        .eq('community_id', communityId)
+        .eq('user_id', oldCreatorId);
+    }
+  },
 };
 
 // ============================================================

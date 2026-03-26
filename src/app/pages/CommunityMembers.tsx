@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Loader2, ShieldOff, UserMinus, Crown } from 'lucide-react';
+import { ArrowLeft, Loader2, ShieldOff, UserMinus, Crown, ShieldCheck } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { groups as groupsAPI } from '../utils/supabase';
@@ -19,6 +19,10 @@ export function CommunityMembers() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (!groupId) return;
@@ -50,6 +54,26 @@ export function CommunityMembers() {
       setMembers(prev => prev.filter(m => m.id !== userId));
     } catch (e: any) {
       alert(e.message || 'Failed to ban member.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTransferAdmin = async (userId: string, displayName: string) => {
+    if (!isCreator || userId === creatorId) return;
+    if (!confirm(`Make ${displayName} the new group admin? You will lose admin privileges.`)) return;
+    setActionLoading(userId);
+    try {
+      await groupsAPI.transferAdmin(groupId!, userId);
+      // Update local member roles to reflect the change
+      setMembers(prev => prev.map(m => {
+        if (m.id === userId) return { ...m, role: 'creator' };
+        if (m.id === currentUser?.id) return { ...m, role: 'member' };
+        return m;
+      }));
+      navigate(-1);
+    } catch (e: any) {
+      alert(e.message || 'Failed to transfer admin.');
     } finally {
       setActionLoading(null);
     }
@@ -115,6 +139,16 @@ export function CommunityMembers() {
 
                   {isAdmin && !isCreatorRow && member.id !== currentUser?.id && (
                     <div className="flex gap-1 shrink-0">
+                      {isCreator && (
+                        <button
+                          onClick={() => handleTransferAdmin(member.id, member.display_name || member.handle || 'this user')}
+                          disabled={busy}
+                          className="p-2 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"
+                          title="Make group admin"
+                        >
+                          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleRemove(member.id)}
                         disabled={busy}

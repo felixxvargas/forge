@@ -77,8 +77,12 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     mutedPosts = new Set(),
     mutePost = async () => {},
     unmutePost = async () => {},
-    likedPosts = new Set()
+    likedPosts = new Set(),
+    followedGameIds = new Set()
   } = context || {};
+
+  // Games in this post that the user follows (drives the "following" indicator)
+  const followedTaggedGames = taggedGames.filter(g => (followedGameIds as Set<string>).has(g.id));
 
   const isMutedUser = mutedUsers.has(post.user_id);
   const isMutedPost = mutedPosts.has(post.id);
@@ -186,6 +190,14 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       className={`bg-card p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer hover:bg-card/80 transition-colors' : ''}`}
       onClick={handlePostClick}
     >
+      {/* Following game indicator */}
+      {followedTaggedGames.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-2 text-xs text-accent/70">
+          <Bell className="w-3 h-3" />
+          <span>Following {followedTaggedGames.map(g => g.title).join(', ')}</span>
+        </div>
+      )}
+
       {/* Pinned post indicator */}
       {isPinned && (
         <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">

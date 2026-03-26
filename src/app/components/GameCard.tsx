@@ -5,9 +5,10 @@ import type { Game } from '../data/data';
 interface GameCardProps {
   game: Game;
   showHours?: boolean;
+  fullWidth?: boolean;
 }
 
-export function GameCard({ game, showHours = false }: GameCardProps) {
+export function GameCard({ game, showHours = false, fullWidth = false }: GameCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
@@ -18,7 +19,7 @@ export function GameCard({ game, showHours = false }: GameCardProps) {
 
   return (
     <div
-      className="flex-shrink-0 w-32 group cursor-pointer"
+      className={`group cursor-pointer ${fullWidth ? 'w-full' : 'flex-shrink-0 w-32'}`}
       onClick={() => navigate(`/game/${game.id}`)}
     >
       <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
