@@ -116,10 +116,9 @@ export function Profile() {
   // Fetch Bluesky data for Topic accounts (if applicable)
   const blueskyData = useBlueskyData(profileUser || currentUser);
 
-  // Only use Bluesky avatar/banner for topic accounts — prevents stale data bleeding into own profile
+  // Only use Bluesky avatar for topic accounts — prevents stale data bleeding into own profile
   const isTopicAccount = ((profileUser || currentUser) as any)?.account_type === 'topic';
   const profilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || profileUser?.profile_picture || undefined;
-  const bannerImage = (isTopicAccount ? blueskyData.banner : undefined) || profileUser?.bannerImage;
 
   // Check persistent follow state from DB when viewing another user
   useEffect(() => {

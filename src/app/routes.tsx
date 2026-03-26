@@ -35,6 +35,7 @@ import { Layout } from './components/Layout';
 import { NotFound } from './pages/NotFound';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Admin from './pages/Admin';
+import { FlareDetail } from './pages/FlareDetail';
 
 export const router = createBrowserRouter([
   { path: '/login',         element: <Login />,       errorElement: <ErrorBoundary /> },
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
       { path: 'premium',               element: <Premium />,                 errorElement: <ErrorBoundary /> },
       { path: 'create-custom-list',    element: <CreateCustomList />,        errorElement: <ErrorBoundary /> },
       { path: 'trending-games',        element: <TrendingGames />,           errorElement: <ErrorBoundary /> },
+      { path: 'flare/:flareId',        element: <FlareDetail />,             errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },
     ],
   },

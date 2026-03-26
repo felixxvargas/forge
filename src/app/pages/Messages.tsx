@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';
-import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut, Flame } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase } from '../utils/supabase';
 
@@ -746,18 +746,26 @@ export function Messages() {
                     ) : (
                       <div className="bg-card rounded-xl flex items-center overflow-hidden">
                         <button
-                          onClick={() => openGroupThread(item)}
+                          onClick={() => item.flare_id ? navigate(`/flare/${item.flare_id}`) : openGroupThread(item)}
                           className="flex-1 p-4 hover:bg-card/80 transition-colors flex items-center gap-3 text-left min-w-0"
                         >
-                          <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
-                            <Users className="w-5 h-5 text-muted-foreground" />
-                          </div>
+                          {item.flare_id ? (
+                            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shrink-0">
+                              <Flame className="w-5 h-5 text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
+                              <Users className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
                               <p className="font-semibold truncate">{item.name}</p>
                               <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatTime(item.updated_at || item.created_at)}</span>
                             </div>
-                            <p className="text-sm text-muted-foreground">{(item.participant_ids?.length ?? 0)} participants</p>
+                            <p className="text-sm text-muted-foreground">
+                              {item.flare_id ? 'LFG Flare · Tap to view' : `${(item.participant_ids?.length ?? 0)} participants`}
+                            </p>
                           </div>
                         </button>
                         <button

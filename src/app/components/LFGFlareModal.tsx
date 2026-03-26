@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Search, Loader2, Flame, Users, Gamepad2, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Search, Loader2, Flame, Users, Gamepad2, ChevronDown, ChevronRight } from 'lucide-react';
 import { gamesAPI } from '../utils/api';
-import { lfgFlares } from '../utils/supabase';
+import { lfgFlares, groups as groupsAPI } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
 
@@ -10,6 +11,7 @@ interface LFGFlareModalProps {
   onClose: () => void;
   prefilledGame?: { id: string; title: string };
   prefilledType?: 'lfg' | 'lfm';
+  prefilledCommunity?: { id: string; name: string };
   onCreated?: (flare: LFGFlare) => void;
 }
 
@@ -25,7 +27,7 @@ const EXPIRY_OPTIONS = [
   { label: '1 month',  minutes: 43200 },
 ];
 
-export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, onCreated }: LFGFlareModalProps) {
+export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, prefilledCommunity, onCreated }: LFGFlareModalProps) {
   const { session, createPost } = useAppData() as any;
 
   const [gameQuery, setGameQuery] = useState('');
@@ -40,7 +42,15 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
   const [gameMode, setGameMode] = useState('');
   const [expiryMinutes, setExpiryMinutes] = useState(1440); // default 24 hours
 
+  // Scope: personal vs group
+  const [scope, setScope] = useState<'personal' | 'group'>(prefilledCommunity ? 'group' : 'personal');
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(prefilledCommunity ?? null);
+  const [adminGroups, setAdminGroups] = useState<any[]>([]);
+  const [loadingAdminGroups, setLoadingAdminGroups] = useState(false);
+  const [groupFlareCount, setGroupFlareCount] = useState<Record<string, number>>({});
+
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -54,8 +64,31 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
       setGameQuery('');
       setGameResults([]);
       setError('');
+      setScope(prefilledCommunity ? 'group' : 'personal');
+      setSelectedGroup(prefilledCommunity ?? null);
     }
   }, [isOpen]);
+
+  // Load admin groups when scope is 'group'
+  useEffect(() => {
+    if (scope !== 'group' || !session?.user?.id) return;
+    setLoadingAdminGroups(true);
+    groupsAPI.getUserCommunities(session.user.id)
+      .then(async (communities: any[]) => {
+        const adminOnes = communities.filter(c => c.role === 'creator' || c.role === 'admin');
+        setAdminGroups(adminOnes);
+        // Check flare counts for each
+        const counts: Record<string, number> = {};
+        await Promise.all(adminOnes.map(async (c: any) => {
+          try {
+            counts[c.id] = await lfgFlares.getCommunityFlareCount(c.id);
+          } catch { counts[c.id] = 0; }
+        }));
+        setGroupFlareCount(counts);
+      })
+      .catch(() => setAdminGroups([]))
+      .finally(() => setLoadingAdminGroups(false));
+  }, [scope, session?.user?.id]);
 
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
@@ -75,6 +108,7 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
   const handleSubmit = async () => {
     if (!selectedGame) { setError('Please select a game.'); return; }
     if (!session?.user) { setError('You must be logged in.'); return; }
+    if (scope === 'group' && !selectedGroup) { setError('Please select a group.'); return; }
     setError('');
     setSaving(true);
     try {
@@ -87,6 +121,7 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
         group_size: groupSize !== '' ? Number(groupSize) : undefined,
         game_mode: gameMode.trim() || undefined,
         expires_at: expiresAt,
+        community_id: scope === 'group' ? selectedGroup?.id : undefined,
       });
 
       const typeLabel = flareType === 'lfg' ? 'Looking for Group' : 'Looking for More';
@@ -96,11 +131,17 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
         gameMode.trim() ? `Mode: ${gameMode.trim()}` : null,
       ].filter(Boolean);
       try {
-        await createPost(parts.join('\n'), undefined, undefined, undefined, undefined, selectedGame.id, selectedGame.title);
+        const postId = await createPost(parts.join('\n'), undefined, undefined, undefined, undefined, selectedGame.id, selectedGame.title, undefined, undefined, flare.id);
+        if (postId) await lfgFlares.updatePostId(flare.id, postId).catch(() => {});
       } catch { /* best-effort */ }
 
-      onCreated?.(flare);
-      onClose();
+      // Show success animation, then close
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        onCreated?.(flare);
+        onClose();
+      }, 1800);
     } catch (e: any) {
       setError(e.message || 'Failed to create flare.');
     } finally {
@@ -112,7 +153,62 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-card w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-card w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col overflow-hidden relative">
+
+        {/* Success animation overlay */}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 rounded-t-2xl sm:rounded-2xl overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              {/* Fire gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-950 via-red-950/90 to-orange-950" />
+              {/* Embers */}
+              {[...Array(6)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1.5 h-1.5 rounded-full bg-orange-400"
+                  initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
+                  animate={{
+                    opacity: [0, 1, 0],
+                    scale: [0, 1, 0.5],
+                    x: (i % 3 - 1) * 60 + Math.random() * 30,
+                    y: -(80 + i * 20),
+                  }}
+                  transition={{ delay: 0.1 + i * 0.1, duration: 1.2, ease: 'easeOut' }}
+                />
+              ))}
+              <motion.div
+                className="relative w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-red-600 flex items-center justify-center shadow-2xl shadow-orange-500/50"
+                initial={{ scale: 0, rotate: -15 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 0.1, duration: 0.5, type: 'spring', bounce: 0.4 }}
+              >
+                <Flame className="w-12 h-12 text-white" />
+              </motion.div>
+              <motion.h3
+                className="relative text-2xl font-bold text-white"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.4 }}
+              >
+                Flare Posted! 🔥
+              </motion.h3>
+              <motion.p
+                className="relative text-sm text-orange-200/70"
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.45, duration: 0.4 }}
+              >
+                Your flare is live — time to squad up
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
@@ -128,6 +224,70 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, o
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
+
+          {/* Scope toggle — Personal vs Group */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Flare For</label>
+            <div className="flex p-1 bg-secondary rounded-xl gap-1">
+              {(['personal', 'group'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => { setScope(s); if (s === 'personal') setSelectedGroup(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    scope === s
+                      ? 'bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {s === 'personal' ? <Flame className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                  {s === 'personal' ? 'Personal' : 'Group Flare'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Group picker */}
+          {scope === 'group' && (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Select Group</label>
+              {loadingAdminGroups ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : adminGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-1">You're not an admin of any groups.</p>
+              ) : (
+                <div className="space-y-2">
+                  {adminGroups.map(g => {
+                    const count = groupFlareCount[g.id] ?? 0;
+                    const atLimit = count >= 1;
+                    const isSelected = selectedGroup?.id === g.id;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => !atLimit && setSelectedGroup({ id: g.id, name: g.name })}
+                        disabled={atLimit && !isSelected}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
+                          isSelected
+                            ? 'bg-orange-500/15 border border-orange-500/40'
+                            : atLimit
+                            ? 'bg-secondary opacity-50 cursor-not-allowed'
+                            : 'bg-secondary hover:bg-secondary/80'
+                        }`}
+                      >
+                        <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{g.name}</p>
+                          {atLimit && <p className="text-xs text-orange-400">1 active flare · Upgrade for unlimited</p>}
+                        </div>
+                        {isSelected && <ChevronRight className="w-4 h-4 text-orange-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Type toggle — full width pill */}
           <div className="flex p-1 bg-secondary rounded-xl gap-1">

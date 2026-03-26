@@ -408,6 +408,7 @@ export const posts = {
     gameIds?: string[];
     gameTitles?: string[];
     platform?: string;
+    flareId?: string;
   } = {}) {
     // Support multi-game tagging: game_ids/game_titles arrays are the source of truth.
     // game_id/game_title kept for backward compat (first entry mirrors the array).
@@ -427,6 +428,7 @@ export const posts = {
         game_ids: gameIds,
         game_titles: gameTitles,
         ...(options.platform ? { platform: options.platform } : {}),
+        ...(options.flareId ? { flare_id: options.flareId } : {}),
       })
       .select(`
         *,
@@ -1046,8 +1048,10 @@ export interface LFGFlare {
   scheduled_for?: string;
   expires_at: string;
   post_id?: string;
+  community_id?: string;  // set for group flares
+  thread_id?: string;     // linked group_thread for chat
   created_at: string;
-  user?: any; // joined profile
+  user?: any;             // joined profile
 }
 
 export const lfgFlares = {
@@ -1061,6 +1065,7 @@ export const lfgFlares = {
     scheduled_for?: string;
     expires_at: string;
     post_id?: string;
+    community_id?: string;
   }): Promise<LFGFlare> {
     const { data: row, error } = await supabase
       .from('lfg_flares')
@@ -1068,11 +1073,26 @@ export const lfgFlares = {
       .select()
       .single();
     if (error) throw new Error(error.message);
+    // Auto-add creator as a member
+    await supabase.from('lfg_flare_members').insert({ flare_id: row.id, user_id: userId, status: 'member' }).then(() => {});
     return row;
+  },
+
+  async getById(flareId: string): Promise<LFGFlare | null> {
+    const { data } = await supabase
+      .from('lfg_flares')
+      .select('*, user:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('id', flareId)
+      .maybeSingle();
+    return data ?? null;
   },
 
   async updatePostId(flareId: string, postId: string) {
     await supabase.from('lfg_flares').update({ post_id: postId }).eq('id', flareId);
+  },
+
+  async updateThreadId(flareId: string, threadId: string) {
+    await supabase.from('lfg_flares').update({ thread_id: threadId }).eq('id', flareId);
   },
 
   async remove(flareId: string) {
@@ -1142,6 +1162,105 @@ export const lfgFlares = {
       .limit(1)
       .maybeSingle();
     return data ?? null;
+  },
+
+  /** Active flares for a specific community/group. */
+  async getActiveForCommunity(communityId: string): Promise<LFGFlare[]> {
+    const { data } = await supabase
+      .from('lfg_flares')
+      .select('*, user:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('community_id', communityId)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  /** Check how many active flares a community has. */
+  async getCommunityFlareCount(communityId: string): Promise<number> {
+    const { count } = await supabase
+      .from('lfg_flares')
+      .select('id', { count: 'exact', head: true })
+      .eq('community_id', communityId)
+      .gte('expires_at', new Date().toISOString());
+    return count ?? 0;
+  },
+
+  // ── Member management (requires lfg_flare_members table) ──────
+
+  async getMembers(flareId: string): Promise<any[]> {
+    const { data } = await supabase
+      .from('lfg_flare_members')
+      .select('status, user:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('flare_id', flareId)
+      .eq('status', 'member')
+      .order('joined_at', { ascending: true });
+    return (data ?? []).map((r: any) => ({ ...r.user, status: r.status })).filter(Boolean);
+  },
+
+  async getPendingRequests(flareId: string): Promise<any[]> {
+    const { data } = await supabase
+      .from('lfg_flare_members')
+      .select('status, joined_at, user:profiles!user_id(id, handle, display_name, profile_picture)')
+      .eq('flare_id', flareId)
+      .eq('status', 'pending')
+      .order('joined_at', { ascending: true });
+    return (data ?? []).map((r: any) => ({ ...r.user, requestedAt: r.joined_at })).filter(Boolean);
+  },
+
+  async isMember(flareId: string, userId: string): Promise<boolean> {
+    const { data } = await supabase
+      .from('lfg_flare_members')
+      .select('status')
+      .eq('flare_id', flareId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.status === 'member';
+  },
+
+  async requestJoin(flareId: string, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('lfg_flare_members')
+      .insert({ flare_id: flareId, user_id: userId, status: 'pending' });
+    if (error && error.code !== '23505') throw new Error(error.message);
+  },
+
+  async approveRequest(flareId: string, userId: string, threadId?: string): Promise<void> {
+    const { error } = await supabase
+      .from('lfg_flare_members')
+      .update({ status: 'member' })
+      .eq('flare_id', flareId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    // Add user to the flare's chat thread
+    if (threadId) {
+      const { data: thread } = await supabase.from('group_threads').select('participant_ids').eq('id', threadId).single();
+      if (thread) {
+        const updated = [...new Set([...thread.participant_ids, userId])];
+        await supabase.from('group_threads').update({ participant_ids: updated }).eq('id', threadId);
+      }
+    }
+  },
+
+  async rejectRequest(flareId: string, userId: string): Promise<void> {
+    await supabase.from('lfg_flare_members').delete().eq('flare_id', flareId).eq('user_id', userId);
+  },
+
+  /** Get or create the group_thread chat for a flare. */
+  async getOrCreateThread(flare: LFGFlare): Promise<string> {
+    if (flare.thread_id) return flare.thread_id;
+    const { data: thread, error } = await supabase
+      .from('group_threads')
+      .insert({
+        created_by: flare.user_id,
+        name: `🔥 ${flare.game_title}`,
+        participant_ids: [flare.user_id],
+        flare_id: flare.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await supabase.from('lfg_flares').update({ thread_id: thread.id }).eq('id', flare.id);
+    return thread.id;
   },
 };
 

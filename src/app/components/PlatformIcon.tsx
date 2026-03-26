@@ -92,7 +92,12 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
       case 'steam':     return <SteamIcon className={cls} />;
       case 'xbox':      return <XboxIcon className={cls} />;
       case 'playstation': return <PlayStationIcon className={cls} />;
-      case 'nintendo':    return <NintendoIcon className={cls} />;
+      case 'nintendo':
+        return (
+          <span className="inline-flex items-center justify-center" style={{ transform: 'scale(0.78)', transformOrigin: 'center' }}>
+            <NintendoIcon className={cls} />
+          </span>
+        );
       case 'pc':        return <WindowsIcon className={cls} />;
       case 'mac':       return <AppleIcon className={cls} />;
       case 'linux':

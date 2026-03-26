@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -102,9 +102,19 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
 
   const sourceUrl = post.external_url || post.externalUrl;
 
+  // Flare post detection
+  const flareId = post.flare_id;
+  const isFlarePost = !!flareId || /^🔥 (Looking for Group|Looking for More):/.test(post.content ?? '');
+  const flareTypeMatch = (post.content ?? '').match(/^🔥 (Looking for Group|Looking for More):/);
+  const flareLabel = flareTypeMatch?.[1] ?? 'LFG Flare';
+
   const handlePostClick = () => {
     if (isDetailView) return;
-    navigate(`/post/${post.id}`);
+    if (isFlarePost && flareId) {
+      navigate(`/flare/${flareId}`);
+    } else {
+      navigate(`/post/${post.id}`);
+    }
   };
 
   const handleReposterClick = (e: React.MouseEvent) => {
@@ -186,10 +196,29 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   }
 
   return (
-    <div 
-      className={`bg-card p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer hover:bg-card/80 transition-colors' : ''}`}
+    <div
+      className={`${
+        isFlarePost
+          ? 'relative overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-950/60 via-red-950/30 to-card'
+          : 'bg-card'
+      } p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer transition-colors' : ''} ${
+        isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-card/80' : ''
+      }`}
       onClick={handlePostClick}
     >
+      {/* Flare header banner */}
+      {isFlarePost && (
+        <div className="flex items-center gap-2 -mx-4 -mt-4 mb-3 px-4 py-2 bg-gradient-to-r from-orange-500/25 via-red-500/15 to-transparent border-b border-orange-500/25">
+          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shrink-0">
+            <Flame className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-xs font-bold text-orange-400 tracking-wide uppercase">{flareLabel}</span>
+          {flareId && !isDetailView && (
+            <span className="ml-auto text-xs text-orange-400/60 font-medium">View Flare →</span>
+          )}
+        </div>
+      )}
+
       {/* Following game indicator */}
       {followedTaggedGames.length > 0 && (
         <div className="flex items-center gap-1.5 mb-2 text-xs text-accent/70">

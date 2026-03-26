@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check } from 'lucide-react';
+import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GroupIcon } from '../components/GroupIcon';
+import { LFGFlareModal } from '../components/LFGFlareModal';
 import { gamesAPI } from '../utils/api';
-import { groups as groupsAPI, profiles as profilesAPI } from '../utils/supabase';
+import { groups as groupsAPI, profiles as profilesAPI, lfgFlares as flaresAPI } from '../utils/supabase';
 
 function getCoverUrl(game: any): string | null {
   return game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
@@ -50,6 +51,11 @@ export function CommunityDetail() {
   const [isSearchingInvite, setIsSearchingInvite] = useState(false);
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
+
+  // Group flares
+  const [groupFlares, setGroupFlares] = useState<any[]>([]);
+  const [loadingFlares, setLoadingFlares] = useState(false);
+  const [showFlareModal, setShowFlareModal] = useState(false);
 
   // Community games
   const [communityGames, setCommunityGames] = useState<any[]>([]);
@@ -172,6 +178,16 @@ export function CommunityDetail() {
       setSavingEdit(false);
     }
   };
+
+  // Load active group flares
+  useEffect(() => {
+    if (!communityId) return;
+    setLoadingFlares(true);
+    flaresAPI.getActiveForCommunity(communityId)
+      .then(setGroupFlares)
+      .catch(() => setGroupFlares([]))
+      .finally(() => setLoadingFlares(false));
+  }, [communityId]);
 
   // Load community games from stored IDs
   useEffect(() => {
@@ -456,6 +472,62 @@ export function CommunityDetail() {
             </div>
           )}
         </div>
+
+        {/* Group Flares */}
+        <div className="px-4 py-5 bg-card border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-orange-400" />
+              <h3 className="font-semibold">Active Flares</h3>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setShowFlareModal(true)}
+                className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Post Flare
+              </button>
+            )}
+          </div>
+          {loadingFlares ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : groupFlares.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {isAdmin ? 'No active flares. Post one to recruit group members!' : 'No active flares.'}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {groupFlares.map((flare: any) => (
+                <button
+                  key={flare.id}
+                  onClick={() => navigate(`/flare/${flare.id}`)}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-xl text-left hover:bg-orange-500/10 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shrink-0">
+                    <Flame className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{flare.game_title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {flare.flare_type === 'lfg' ? 'LFG' : 'LFM'} · {flare.players_needed} needed
+                      {flare.game_mode ? ` · ${flare.game_mode}` : ''}
+                    </p>
+                  </div>
+                  <span className="text-xs text-orange-400 shrink-0">View →</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Flare Modal */}
+        <LFGFlareModal
+          isOpen={showFlareModal}
+          onClose={() => setShowFlareModal(false)}
+          prefilledCommunity={community ? { id: communityId!, name: community.name } : undefined}
+          onCreated={(flare) => setGroupFlares(prev => [flare, ...prev])}
+        />
 
         {/* Group Feed */}
         <div className="px-4 py-6">

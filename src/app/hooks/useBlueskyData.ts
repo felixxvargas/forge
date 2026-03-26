@@ -4,7 +4,6 @@ import type { User } from '../data/mockData';
 
 interface BlueskyData {
   avatar?: string;
-  banner?: string;
   posts: any[];
   isLoading: boolean;
 }
@@ -12,7 +11,6 @@ interface BlueskyData {
 export function useBlueskyData(user: User): BlueskyData {
   const [blueskyData, setBlueskyData] = useState<BlueskyData>({
     avatar: undefined,
-    banner: undefined,
     posts: [],
     isLoading: false
   });
@@ -31,8 +29,8 @@ export function useBlueskyData(user: User): BlueskyData {
     }
 
     let mounted = true;
-    // Reset avatar/banner immediately so stale data from a previous user never bleeds through
-    setBlueskyData({ avatar: undefined, banner: undefined, posts: [], isLoading: true });
+    // Reset avatar immediately so stale data from a previous user never bleeds through
+    setBlueskyData({ avatar: undefined, posts: [], isLoading: true });
 
     async function loadBlueskyData() {
       try {
@@ -45,7 +43,6 @@ export function useBlueskyData(user: User): BlueskyData {
 
         setBlueskyData({
           avatar: profile?.avatar,
-          banner: profile?.banner,
           posts: posts || [],
           isLoading: false
         });

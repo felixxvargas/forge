@@ -19,7 +19,7 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[]) => Promise<void>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string) => Promise<string | undefined>;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
   unlikePost: (postId: string) => Promise<void>;
@@ -251,9 +251,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[]) => {
-    if (!session?.user) return;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles });
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string): Promise<string | undefined> => {
+    if (!session?.user) return undefined;
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId });
     setPostList(prev => [post, ...prev]);
     // Send notifications for @mentions
     const mentionMatches = content.match(/@(\w+)/g) ?? [];
@@ -266,6 +266,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* silently ignore */ }
     }
+    return post.id;
   };
 
   const deletePost = async (postId: string) => {
@@ -293,9 +294,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setRepostedPosts(prev => new Set([...prev, postId]));
     setPostList(prev => {
       const original = prev.find(p => p.id === postId && !p.repostedBy);
-      const updated = prev.map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p);
+      const newCount = (original?.repost_count ?? 0) + 1;
+      const updated = prev.map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: newCount } : p);
       if (original) {
-        return [{ ...original, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
+        // Repost copy uses the same new count so both instances display identically
+        return [{ ...original, repost_count: newCount, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
       }
       return updated;
     });

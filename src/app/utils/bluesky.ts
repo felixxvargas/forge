@@ -3,7 +3,6 @@ interface BlueskyProfile {
   handle: string;
   displayName: string;
   avatar: string;
-  banner?: string;
   description: string;
   followersCount: number;
   followsCount: number;
@@ -46,7 +45,6 @@ export async function fetchBlueskyProfile(handle: string): Promise<BlueskyProfil
       handle: raw.handle,
       displayName: raw.displayName ?? raw.handle,
       avatar: raw.avatar || undefined,
-      banner: raw.banner,
       description: raw.description ?? '',
       followersCount: raw.followersCount ?? 0,
       followsCount: raw.followsCount ?? 0,

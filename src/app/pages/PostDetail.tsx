@@ -259,15 +259,6 @@ export function PostDetail() {
             onDelete={currentUser && activePost.user_id === currentUser.id ? async (id) => { await deletePost(id); navigate(-1); } : undefined}
             isDetailView={true}
           />
-          {/* Repost count */}
-          {((activePost.repost_count ?? activePost.reposts ?? 0) > 0) && (
-            <div className="mt-2 pt-3 border-t border-border text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">
-                {activePost.repost_count ?? activePost.reposts}
-              </span>{' '}
-              Reposts
-            </div>
-          )}
         </div>
 
         {/* Comments Section */}

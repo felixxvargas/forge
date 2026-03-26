@@ -84,7 +84,6 @@ export interface User {
   bio: string;
   about?: string;
   profilePicture: string;
-  bannerImage?: string;
   email?: string; // Email address (only available for current user)
   platforms: Platform[];
   platformHandles?: Partial<Record<Platform, string>>; // Gaming handles for each platform
@@ -135,6 +134,7 @@ export interface Post {
   repost_count?: number;
   comment_count?: number;
   image_alts?: string[];
+  flare_id?: string;
 }
 
 // Sample game data

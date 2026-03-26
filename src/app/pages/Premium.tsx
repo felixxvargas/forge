@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Check, Crown, Sparkles, List } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Sparkles, List, Flame } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 
 const FEATURES = [
   { icon: <List className="w-5 h-5" />, label: 'Custom Game Lists', description: 'Create unlimited custom lists for any category you want' },
+  { icon: <Flame className="w-5 h-5" />, label: 'Unlimited Group Flares', description: 'Post unlimited LFG flares per group — free accounts are limited to 1 active flare per group' },
   { icon: <Sparkles className="w-5 h-5" />, label: 'Profile Badge', description: 'Show off your Premium status with a special crown badge' },
   { icon: <Crown className="w-5 h-5" />, label: 'Early Access', description: 'Get first access to new Forge features before anyone else' },
 ];

@@ -342,7 +342,6 @@ export const postAPI = {
 // Maps short bucket identifiers to actual Supabase bucket names
 const BUCKET_NAMES: Record<string, string> = {
   'avatar': 'forge-avatars',
-  'banner': 'forge-banners',
   'post': 'forge-post-media',
   'community-icon': 'forge-community-icons',
   'community-banner': 'forge-community-banners',
@@ -350,7 +349,7 @@ const BUCKET_NAMES: Record<string, string> = {
 
 // Upload API
 export const uploadAPI = {
-  async uploadFile(file: File, bucketType: 'avatar' | 'banner' | 'post' | 'community-icon' | 'community-banner' = 'avatar') {
+  async uploadFile(file: File, bucketType: 'avatar' | 'post' | 'community-icon' | 'community-banner' = 'avatar') {
     // getValidToken() refreshes silently if the stored token has expired
     const token = await getValidToken();
 
@@ -374,8 +373,6 @@ export const uploadAPI = {
     let storagePath: string;
     if (bucketType === 'avatar') {
       storagePath = `${userId}/avatar-${timestamp}.${ext}`;
-    } else if (bucketType === 'banner') {
-      storagePath = `${userId}/banner-${timestamp}.${ext}`;
     } else {
       storagePath = `${userId}/${timestamp}-${file.name}`;
     }

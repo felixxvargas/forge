@@ -72,7 +72,6 @@ export interface User {
   bio: string;
   about?: string;
   profilePicture: string;
-  bannerImage?: string;
   email?: string; // Email address (only available for current user)
   platforms: Platform[];
   platformHandles?: Partial<Record<Platform, string>>; // Gaming handles for each platform

@@ -39,7 +39,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         </motion.div>
         
         <motion.h1
-          className="text-5xl font-bold text-foreground"
+          className="text-5xl font-bold text-foreground font-sora"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ 
