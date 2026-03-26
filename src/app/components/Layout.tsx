@@ -23,8 +23,10 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Outlet />
+    <div className="min-h-dvh bg-background">
+      <div className="pb-[calc(4rem+env(safe-area-inset-bottom))]">
+        <Outlet />
+      </div>
       <BottomNav />
     </div>
   );

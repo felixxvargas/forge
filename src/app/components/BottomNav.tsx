@@ -18,7 +18,7 @@ export function BottomNav() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
       <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
         <Link
           to="/feed"
