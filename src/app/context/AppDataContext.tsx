@@ -307,13 +307,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const unrepostPost = async (postId: string) => {
     if (!session?.user) return;
     const uid = session.user.id;
-    await postsAPI.unrepost(uid, postId);
+    // Optimistic update — remove repost copy and decrement count immediately
     setRepostedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
     setPostList(prev =>
       prev
         .filter(p => !(p.id === postId && p.repostedBy === uid))
         .map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p)
     );
+    try {
+      await postsAPI.unrepost(uid, postId);
+    } catch {
+      // Revert on error
+      setRepostedPosts(prev => new Set([...prev, postId]));
+    }
   };
 
   // Topic account IDs are local synthetic IDs (e.g. 'user-koop') not in the Supabase profiles table.

@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   ArrowLeft, Flame, Users, Gamepad2, Clock, Loader2,
-  Check, X, Send, MessageCircle, Lock, UserPlus,
+  Check, X, Send, MessageCircle, Lock, UserPlus, Plus,
 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
-import { lfgFlares as flaresAPI, groupThreads as threadAPI, supabase } from '../utils/supabase';
+import { lfgFlares as flaresAPI, groupThreads as threadAPI, groups as groupsAPI, supabase } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
 
@@ -44,6 +44,18 @@ export function FlareDetail() {
   const [joining, setJoining] = useState(false);
   const [joinRequested, setJoinRequested] = useState(false);
 
+  // Linked group
+  const [linkedGroup, setLinkedGroup] = useState<any | null>(null);
+  const [loadingLinkedGroup, setLoadingLinkedGroup] = useState(false);
+
+  // Create Group modal
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupType, setNewGroupType] = useState<'open' | 'request' | 'invite'>('open');
+  const [newGroupDesc, setNewGroupDesc] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [createGroupError, setCreateGroupError] = useState('');
+
   // Chat state
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -73,6 +85,26 @@ export function FlareDetail() {
       if (f?.thread_id) setThreadId(f.thread_id);
     }).finally(() => setLoading(false));
   }, [flareId, userId]);
+
+  // Load linked group whenever community_id changes
+  useEffect(() => {
+    const cid = (flare as any)?.community_id;
+    if (!cid) { setLinkedGroup(null); return; }
+    setLoadingLinkedGroup(true);
+    groupsAPI.getById(cid)
+      .then(setLinkedGroup)
+      .catch(() => setLinkedGroup(null))
+      .finally(() => setLoadingLinkedGroup(false));
+  }, [(flare as any)?.community_id]);
+
+  // Pre-fill group name when modal opens
+  useEffect(() => {
+    if (showCreateGroup && flare) {
+      setNewGroupName(`${flare.game_title} Squad`);
+      setNewGroupDesc(`${flare.flare_type === 'lfg' ? 'Looking for Group' : 'Looking for More'} team for ${flare.game_title}`);
+      setCreateGroupError('');
+    }
+  }, [showCreateGroup, flare]);
 
   // Load chat messages when thread is known and user is a member
   useEffect(() => {
@@ -127,7 +159,6 @@ export function FlareDetail() {
       if (approved) {
         setPending(prev => prev.filter(p => p.id !== memberId));
         setMembers(prev => [...prev, approved]);
-        // Add to thread participants if thread exists
         if (threadId) {
           const { data: thread } = await supabase.from('group_threads').select('participant_ids').eq('id', threadId).maybeSingle();
           if (thread) {
@@ -158,7 +189,7 @@ export function FlareDetail() {
 
   const handleOpenChat = async () => {
     if (!flare || !userId) return;
-    if (threadId) return; // already open
+    if (threadId) return;
     try {
       const tid = await flaresAPI.getOrCreateThread(flare);
       setThreadId(tid);
@@ -179,6 +210,38 @@ export function FlareDetail() {
       setMessageInput(content);
     } finally {
       setSendingMsg(false);
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    if (!flare || !userId || !newGroupName.trim() || creatingGroup) return;
+    setCreatingGroup(true);
+    setCreateGroupError('');
+    try {
+      // Create the group
+      const newGroup = await groupsAPI.create(
+        userId,
+        newGroupName.trim(),
+        newGroupDesc.trim(),
+        'gamepad2',
+        newGroupType,
+      );
+      // Add all current flare members (except creator who is auto-added)
+      await Promise.all(
+        members
+          .filter(m => m.id !== userId)
+          .map(m => groupsAPI.addMember(newGroup.id, m.id).catch(() => {}))
+      );
+      // Link flare ↔ group
+      await flaresAPI.setCommunityId(flare.id, newGroup.id);
+      setFlare(prev => prev ? { ...prev, community_id: newGroup.id } as any : prev);
+      setLinkedGroup(newGroup);
+      setShowCreateGroup(false);
+      navigate(`/group/${newGroup.id}`);
+    } catch (e: any) {
+      setCreateGroupError(e.message || 'Failed to create group.');
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -233,7 +296,7 @@ export function FlareDetail() {
             </div>
             <div>
               <p className="font-semibold">{flare.game_title}</p>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-500 to-red-500 text-white`}>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-500 to-red-500 text-white">
                 <Flame className="w-3 h-3" />
                 {typeLabel}
               </span>
@@ -259,7 +322,6 @@ export function FlareDetail() {
             </div>
           )}
 
-          {/* Posted by */}
           {flare.user && (
             <button
               onClick={() => navigate(`/profile/${flare.user.id}`)}
@@ -279,6 +341,25 @@ export function FlareDetail() {
           )}
         </div>
 
+        {/* Linked group card */}
+        {loadingLinkedGroup ? (
+          <div className="flex justify-center py-2"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+        ) : linkedGroup ? (
+          <button
+            onClick={() => navigate(`/group/${linkedGroup.id}`)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 bg-accent/10 border border-accent/25 rounded-2xl hover:bg-accent/15 transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm">{linkedGroup.name}</p>
+              <p className="text-xs text-muted-foreground">Flare Group · {linkedGroup.member_count ?? 0} members</p>
+            </div>
+            <span className="text-xs text-accent font-medium shrink-0">View Group →</span>
+          </button>
+        ) : null}
+
         {/* Join button for non-members */}
         {!isMember && !isCreator && !isExpired && userId && (
           <button
@@ -291,17 +372,27 @@ export function FlareDetail() {
             }`}
           >
             {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-            {joinRequested ? 'Request Sent' : 'Request to Join'}
+            {joinRequested ? 'Request Sent — Awaiting Approval' : 'Request to Join'}
           </button>
         )}
 
         {/* Members */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-border/60">
+          <div className="px-5 py-4 border-b border-border/60 flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <Users className="w-4 h-4 text-orange-400" />
               Members · {members.length}
             </h2>
+            {/* Create Group button — only for creator, only if no group linked yet */}
+            {isCreator && !(flare as any).community_id && members.length > 0 && (
+              <button
+                onClick={() => setShowCreateGroup(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent rounded-lg text-xs font-semibold transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create Group
+              </button>
+            )}
           </div>
           {members.length === 0 ? (
             <p className="px-5 py-4 text-sm text-muted-foreground">No members yet</p>
@@ -391,10 +482,7 @@ export function FlareDetail() {
               Flare Chat
             </h2>
             {isMember && !threadId && (
-              <button
-                onClick={handleOpenChat}
-                className="text-xs text-accent hover:underline"
-              >
+              <button onClick={handleOpenChat} className="text-xs text-accent hover:underline">
                 Open chat
               </button>
             )}
@@ -411,7 +499,6 @@ export function FlareDetail() {
             </div>
           ) : (
             <>
-              {/* Messages */}
               <div className="px-4 py-3 max-h-64 overflow-y-auto space-y-3">
                 {messages.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-4">No messages yet — say hi!</p>
@@ -443,8 +530,6 @@ export function FlareDetail() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* Input */}
               <div className="px-4 pb-4 pt-2 border-t border-border/60">
                 <div className="flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
                   <input
@@ -469,6 +554,96 @@ export function FlareDetail() {
           )}
         </div>
       </div>
+
+      {/* Create Group Modal */}
+      {showCreateGroup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-card w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent/15 flex items-center justify-center">
+                  <Users className="w-4 h-4 text-accent" />
+                </div>
+                <h2 className="text-lg font-bold">Create Group from Flare</h2>
+              </div>
+              <button
+                onClick={() => setShowCreateGroup(false)}
+                className="w-8 h-8 flex items-center justify-center hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-5 py-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create a permanent group for your flare team. All {members.length > 1 ? `${members.length} current members` : 'current members'} will be added automatically.
+              </p>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Group Name</label>
+                <input
+                  type="text"
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                  maxLength={60}
+                  className="w-full px-4 py-3 bg-secondary rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm"
+                  style={{ fontSize: '16px' }}
+                  placeholder="e.g. Elden Ring Squad"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Description</label>
+                <textarea
+                  value={newGroupDesc}
+                  onChange={e => setNewGroupDesc(e.target.value)}
+                  maxLength={200}
+                  rows={2}
+                  className="w-full px-4 py-3 bg-secondary rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm resize-none"
+                  style={{ fontSize: '16px' }}
+                  placeholder="What is this group about?"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Group Type</label>
+                <div className="flex p-1 bg-secondary rounded-xl gap-1">
+                  {([
+                    { value: 'open', label: 'Open' },
+                    { value: 'request', label: 'Request' },
+                    { value: 'invite', label: 'Invite Only' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setNewGroupType(opt.value)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                        newGroupType === opt.value
+                          ? 'bg-accent text-accent-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {createGroupError && <p className="text-sm text-destructive">{createGroupError}</p>}
+            </div>
+
+            <div className="px-5 pb-6 pt-2 border-t border-border/60">
+              <button
+                onClick={handleCreateGroup}
+                disabled={!newGroupName.trim() || creatingGroup}
+                className="w-full py-3.5 rounded-xl font-bold text-sm bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                {creatingGroup ? 'Creating…' : 'Create Group'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

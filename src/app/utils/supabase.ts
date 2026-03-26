@@ -1095,6 +1095,11 @@ export const lfgFlares = {
     await supabase.from('lfg_flares').update({ thread_id: threadId }).eq('id', flareId);
   },
 
+  async setCommunityId(flareId: string, communityId: string) {
+    const { error } = await supabase.from('lfg_flares').update({ community_id: communityId }).eq('id', flareId);
+    if (error) throw new Error(error.message);
+  },
+
   async remove(flareId: string) {
     const { error } = await supabase.from('lfg_flares').delete().eq('id', flareId);
     if (error) throw new Error(error.message);
