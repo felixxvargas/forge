@@ -43,11 +43,14 @@ export function Explore() {
   const [searchGames, setSearchGames] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks extra game IDs fetched to fill engagement gaps — reset on tab change
+  const fetchedExtraGameIds = useRef<Set<string>>(new Set());
 
   const navigate = useNavigate();
 
   useEffect(() => {
     localStorage.setItem('explore-active-tab', activeTab);
+    fetchedExtraGameIds.current = new Set();
   }, [activeTab]);
 
   useEffect(() => {
@@ -133,8 +136,7 @@ export function Explore() {
     if (searchQuery.trim()) return;
     if (dbGames.length > 0) return;
     setLoadingGames(true);
-    const load = gamesAPI.listGames(100, 0);
-    load
+    gamesAPI.listGames(500, 0)
       .then((res: any) => {
         const list = Array.isArray(res) ? res : res?.games ?? [];
         setDbGames(list);
@@ -142,6 +144,31 @@ export function Explore() {
       .catch(() => {})
       .finally(() => setLoadingGames(false));
   }, [activeTab, searchQuery]);
+
+  // Supplementary fetch: any game with engagement (post tags / list adds) that
+  // wasn't returned in the initial 500 still needs to be shown and sorted.
+  useEffect(() => {
+    if (activeTab !== 'games') return;
+    if (loadingGames) return; // wait for the primary load to finish
+    if (dbGames.length === 0) return; // primary load not done yet
+    const countedIds = new Set([...Object.keys(trendingCounts), ...Object.keys(listCounts)]);
+    if (countedIds.size === 0) return;
+    const existingIds = new Set(dbGames.map((g: any) => String(g.id)));
+    const missing = [...countedIds].filter(id => !existingIds.has(id) && !fetchedExtraGameIds.current.has(id));
+    if (missing.length === 0) return;
+    for (const id of missing) fetchedExtraGameIds.current.add(id);
+    gamesAPI.getGames(missing)
+      .then((res: any) => {
+        const list: any[] = Array.isArray(res) ? res : res?.games ?? [];
+        if (list.length > 0) {
+          setDbGames(prev => {
+            const existingSet = new Set(prev.map((g: any) => String(g.id)));
+            return [...prev, ...list.filter((g: any) => !existingSet.has(String(g.id)))];
+          });
+        }
+      })
+      .catch(() => {});
+  }, [activeTab, trendingCounts, listCounts, dbGames, loadingGames]);
 
   useEffect(() => {
     if (activeTab !== 'posts') return;

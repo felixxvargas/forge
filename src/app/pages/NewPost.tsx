@@ -452,20 +452,30 @@ export function NewPost() {
         )}
 
         {/* Selected game tag */}
-        {selectedGame && (
-          <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-              <Gamepad2 className="w-3.5 h-3.5" />
-              {selectedGame.title}
-            </span>
-            <button
-              onClick={() => setSelectedGame(null)}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Remove
-            </button>
-          </div>
-        )}
+        {selectedGame && (() => {
+          const cover = gameCoverCache.get(selectedGame.id) ?? null;
+          return (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 max-w-[260px]">
+                {cover ? (
+                  <img src={cover} alt={selectedGame.title} className="w-8 h-10 rounded-md object-cover shrink-0" />
+                ) : (
+                  <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
+                  <p className="text-sm font-semibold truncate leading-tight">{selectedGame.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedGame(null)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Remove
+              </button>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

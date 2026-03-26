@@ -342,32 +342,24 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       {/* Game tag */}
       {post.game_title && (
         <div className="mb-3">
-          {gameCover ? (
-            /* Rich preview: cover art + title */
-            <button
-              onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
-            >
+          <button
+            onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
+            className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
+          >
+            {gameCover ? (
               <img
                 src={gameCover}
                 alt={post.game_title}
                 className="w-8 h-10 rounded-md object-cover shrink-0"
               />
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
-                <p className="text-sm font-semibold truncate leading-tight">{post.game_title}</p>
-              </div>
-            </button>
-          ) : (
-            /* Fallback pill */
-            <button
-              onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
-            >
-              <Gamepad2 className="w-3.5 h-3.5" />
-              {post.game_title}
-            </button>
-          )}
+            ) : (
+              <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
+              <p className="text-sm font-semibold truncate leading-tight">{post.game_title}</p>
+            </div>
+          </button>
         </div>
       )}
 

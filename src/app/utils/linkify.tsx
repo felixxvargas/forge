@@ -51,10 +51,10 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
     return parts;
   };
 
-  // If a game is tagged, first extract @GameTitle patterns (may contain spaces)
+  // If a game is tagged, extract both "@GameTitle" (old posts) and bare "GameTitle" (new posts)
   if (gameTitle && gameId) {
     const escapedTitle = gameTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const gameRegex = new RegExp(`@${escapedTitle}`, 'g');
+    const gameRegex = new RegExp(`@?${escapedTitle}`, 'g');
     const parts: ReactNode[] = [];
     let lastIndex = 0;
     let match;

@@ -208,7 +208,7 @@ export function EditGameListsModal({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="p-4 space-y-4 max-w-2xl mx-auto w-full">
 
           {/* Search Results */}
