@@ -44,19 +44,30 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   const context = useAppData();
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
-  // Lazy-load cover art for game tag (checks cache first, then fetches if needed)
-  const [gameCover, setGameCover] = useState<string | null>(() =>
-    post.game_id ? (gameCoverCache.has(post.game_id) ? gameCoverCache.get(post.game_id) ?? null : null) : null
-  );
+  // Build the full list of tagged games (multi-tag array takes priority; falls back to single field)
+  const taggedGames: { id: string; title: string }[] = (() => {
+    const ids: string[] = post.game_ids?.length > 0 ? post.game_ids : post.game_id ? [post.game_id] : [];
+    const titles: string[] = post.game_titles?.length > 0 ? post.game_titles : post.game_title ? [post.game_title] : [];
+    return ids.map((id: string, i: number) => ({ id, title: titles[i] || '' })).filter((g: { id: string; title: string }) => g.id);
+  })();
+
+  // Lazy-load cover art for all tagged games
+  const [gameCovers, setGameCovers] = useState<Map<string, string | null>>(() => {
+    const m = new Map<string, string | null>();
+    taggedGames.forEach(g => { if (gameCoverCache.has(g.id)) m.set(g.id, gameCoverCache.get(g.id) ?? null); });
+    return m;
+  });
   useEffect(() => {
-    if (!post.game_id || gameCoverCache.has(post.game_id)) return;
-    gamesAPI.getGame(post.game_id).then((data: any) => {
-      const g = data?.game ?? data;
-      const url = g?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g?.artwork?.[0]?.url ?? null;
-      gameCoverCache.set(post.game_id!, url);
-      setGameCover(url);
-    }).catch(() => { gameCoverCache.set(post.game_id!, null); });
-  }, [post.game_id]);
+    taggedGames.forEach(g => {
+      if (gameCoverCache.has(g.id)) return;
+      gamesAPI.getGame(g.id).then((data: any) => {
+        const game = data?.game ?? data;
+        const url = game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game?.artwork?.[0]?.url ?? null;
+        gameCoverCache.set(g.id, url);
+        setGameCovers(prev => new Map(prev).set(g.id, url));
+      }).catch(() => { gameCoverCache.set(g.id, null); });
+    });
+  }, [post.game_ids?.join(',') ?? post.game_id]);
 
   // Safely destructure with fallbacks
   const {
@@ -339,27 +350,29 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </div>
       )}
 
-      {/* Game tag */}
-      {post.game_title && (
-        <div className="mb-3">
-          <button
-            onClick={(e) => { e.stopPropagation(); if (post.game_id) navigate(`/game/${post.game_id}`); }}
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
-          >
-            {gameCover ? (
-              <img
-                src={gameCover}
-                alt={post.game_title}
-                className="w-8 h-10 rounded-md object-cover shrink-0"
-              />
-            ) : (
-              <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
-              <p className="text-sm font-semibold truncate leading-tight">{post.game_title}</p>
-            </div>
-          </button>
+      {/* Game tags */}
+      {taggedGames.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {taggedGames.map(g => {
+            const cover = gameCovers.get(g.id) ?? null;
+            return (
+              <button
+                key={g.id}
+                onClick={(e) => { e.stopPropagation(); navigate(`/game/${g.id}`); }}
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
+              >
+                {cover ? (
+                  <img src={cover} alt={g.title} className="w-8 h-10 rounded-md object-cover shrink-0" />
+                ) : (
+                  <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
+                  <p className="text-sm font-semibold truncate leading-tight">{g.title}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 

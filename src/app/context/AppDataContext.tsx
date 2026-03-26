@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform } from '../data/data';
-import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, supabase } from '../utils/supabase';
+import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
 
 interface AppDataContextType {
   currentUser: any | null;
@@ -19,7 +19,7 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string) => Promise<void>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[]) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
   unlikePost: (postId: string) => Promise<void>;
@@ -76,6 +76,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef(session);
   useEffect(() => { sessionRef.current = session; }, [session]);
 
+  // Ref to followed game IDs so refreshFeed can include game-tagged posts
+  const followedGameIdsRef = useRef<string[]>([]);
+
   const loadUserData = useCallback(async (userId: string) => {
     try {
       let profile = await profiles.getById(userId);
@@ -106,7 +109,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profile = fetched;
       }
 
-      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships] = await Promise.all([
+      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships, followedGameIds] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),
@@ -114,7 +117,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profiles.getFollowingIds(userId),
         notificationsAPI.getUnreadCount(userId),
         groupsAPI.getUserMemberships(userId),
+        userGamesAPI.getFollowedGameIds(userId),
       ]);
+      followedGameIdsRef.current = followedGameIds;
       setCurrentUser({ ...normalizeProfile(profile), communities: memberships });
       setLikedPosts(new Set(likedIds));
       setRepostedPosts(new Set(repostedIds));
@@ -133,7 +138,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     try {
       const userId = sessionRef.current?.user?.id;
       const feed = userId
-        ? await postsAPI.getFollowingFeed(userId, 50)
+        ? await postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current)
         : await postsAPI.getFeed(50);
       setPostList(feed);
     } catch (e) {
@@ -223,9 +228,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string) => {
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[]) => {
     if (!session?.user) return;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle });
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles });
     setPostList(prev => [post, ...prev]);
     // Send notifications for @mentions
     const mentionMatches = content.match(/@(\w+)/g) ?? [];

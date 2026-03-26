@@ -31,7 +31,7 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
   }
 
   // If this is the @forge account, show the Forge logo
-  const cleanName = username.replace(/^@/, '').toLowerCase();
+  const cleanName = (username ?? '').replace(/^@/, '').toLowerCase();
   if (cleanName === 'forge') {
     return (
       <img
@@ -43,7 +43,7 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
   }
 
   // Default: two-letter initials on a fixed deep purple background
-  const initials = username.replace(/^@/, '').slice(0, 2).toUpperCase() || '??';
+  const initials = (username ?? '').replace(/^@/, '').slice(0, 2).toUpperCase() || '??';
 
   return (
     <div

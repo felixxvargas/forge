@@ -48,7 +48,15 @@ export function Onboarding() {
           .eq('account_type', 'topic')
           .limit(10);
         if (data && data.length > 0) {
-          setSuggestedUsers(data);
+          // Normalize snake_case Supabase fields → camelCase User type
+          setSuggestedUsers(data.map((u: any) => ({
+            ...u,
+            displayName: u.display_name || u.handle || 'User',
+            handle: u.handle || '',
+            profilePicture: u.profile_picture ?? null,
+            followerCount: u.follower_count ?? 0,
+            bio: u.bio || '',
+          })));
         } else {
           // Fallback to static list
           const forgeAccount = topicAccounts.find(u => u.id === 'user-forge');

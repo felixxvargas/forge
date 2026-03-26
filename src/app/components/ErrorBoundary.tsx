@@ -1,10 +1,18 @@
 import { useRouteError, useNavigate, isRouteErrorResponse } from 'react-router';
+import * as Sentry from '@sentry/react';
 import { AlertCircle, Home, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function ErrorBoundary() {
   const error = useRouteError();
   const navigate = useNavigate();
+
+  // Report unhandled errors to Sentry (only non-404/401/403 errors)
+  if (error instanceof Error) {
+    Sentry.captureException(error);
+  } else if (isRouteErrorResponse(error) && error.status >= 500) {
+    Sentry.captureMessage(`Route error ${error.status}: ${error.statusText}`, 'error');
+  }
 
   // Determine error type and user-friendly message
   let title = "Something went wrong";
@@ -40,7 +48,7 @@ export function ErrorBoundary() {
       message = "The content you're looking for couldn't be found.";
     } else {
       title = "Something went wrong";
-      message = "We encountered an unexpected error. Our team has been notified.";
+      message = "We encountered an unexpected error. Please try refreshing the page.";
       errorDetails = error.message;
       showDetails = true;
     }

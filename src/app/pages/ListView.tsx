@@ -189,7 +189,7 @@ export function ListView() {
 
       {/* Games Grid */}
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-5">
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-6">
           {sortedGames.map((game) => (
             <GameCard
               key={game.id}

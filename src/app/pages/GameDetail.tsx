@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Bell, BellOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -26,8 +26,10 @@ export function GameDetail() {
 
   const [isPlayed, setIsPlayed] = useState(false);
   const [isOwned, setIsOwned] = useState(false);
+  const [isFollowed, setIsFollowed] = useState(false);
   const [togglingPlayed, setTogglingPlayed] = useState(false);
   const [togglingOwned, setTogglingOwned] = useState(false);
+  const [togglingFollowed, setTogglingFollowed] = useState(false);
 
   const [players, setPlayers] = useState<any[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -89,7 +91,7 @@ export function GameDetail() {
   useEffect(() => {
     if (!gameId || !session?.user) return;
     userGamesAPI.getStatus(session.user.id, gameId)
-      .then(({ played, owned }) => { setIsPlayed(played); setIsOwned(owned); })
+      .then(({ played, owned, followed }) => { setIsPlayed(played); setIsOwned(owned); setIsFollowed(followed); })
       .catch(() => {});
   }, [gameId, session?.user?.id]);
 
@@ -167,6 +169,20 @@ export function GameDetail() {
         }
       }
     } catch { /* ignore */ } finally { setTogglingOwned(false); }
+  };
+
+  const handleToggleFollowed = async () => {
+    if (!session?.user || !gameId || togglingFollowed) return;
+    setTogglingFollowed(true);
+    try {
+      if (isFollowed) {
+        await userGamesAPI.remove(session.user.id, gameId, 'followed');
+        setIsFollowed(false);
+      } else {
+        await userGamesAPI.add(session.user.id, gameId, 'followed');
+        setIsFollowed(true);
+      }
+    } catch { /* ignore */ } finally { setTogglingFollowed(false); }
   };
 
   if (loadingGame) {
@@ -407,6 +423,18 @@ export function GameDetail() {
                 {isOwned ? 'In Library ✓' : 'I Own This'}
               </button>
             </div>
+            <button
+              onClick={handleToggleFollowed}
+              disabled={togglingFollowed}
+              className={`w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-medium text-sm transition-all ${
+                isFollowed
+                  ? 'bg-accent/20 border-2 border-accent/60 text-accent'
+                  : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {isFollowed ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+              {isFollowed ? 'Following · Posts in Feed' : 'Follow Game'}
+            </button>
             {/* LFG / LFM buttons — fire flare branding */}
             <div className="flex gap-3 mb-6">
               {myFlare ? (

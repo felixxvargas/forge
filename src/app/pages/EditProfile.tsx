@@ -318,7 +318,7 @@ export function EditProfile() {
         {/* About */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm">About</label>
+            <label className="text-sm">About <span className="font-normal opacity-50 text-xs">(Optional)</span></label>
             <span className={`text-xs ${
               (formData.about || '').length > ABOUT_MAX_LENGTH ? 'text-red-500' : 'text-muted-foreground'
             }`}>

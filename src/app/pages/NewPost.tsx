@@ -19,7 +19,7 @@ export function NewPost() {
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
-  const [selectedGame, setSelectedGame] = useState<{ id: string; title: string } | null>(null);
+  const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState('');
@@ -51,16 +51,29 @@ export function NewPost() {
     const cursorPos = e.target.selectionStart ?? newContent.length;
     const before = newContent.slice(0, cursorPos);
 
-    // @mention — allow spaces so game titles like "Elden Ring" work
-    const mentionMatch = before.match(/@([\w ]*)$/);
+    // @mention — allow spaces and unicode (é, apostrophes, etc.)
+    const mentionMatch = before.match(/@([\w\u00C0-\u024F\u1E00-\u1EFF ''\-]*)$/);
     if (mentionMatch) {
       mentionStartRef.current = before.lastIndexOf('@');
       const query = mentionMatch[1].trim().toLowerCase();
+      const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const normQuery = norm(query);
+      const queryWords = normQuery.split(/\s+/).filter(Boolean);
+      const scoreText = (text: string) => {
+        const t = norm(text);
+        if (!queryWords.length) return 0;
+        return queryWords.filter(w => t.includes(w)).length;
+      };
       const filtered = users
         .filter(u => {
-          const handle = (u.handle || '').replace(/^@/, '').toLowerCase();
-          const name = (u.display_name || '').toLowerCase();
-          return handle.includes(query) || name.includes(query);
+          const handle = norm((u.handle || '').replace(/^@/, ''));
+          const name = norm(u.display_name || '');
+          return scoreText(handle) > 0 || scoreText(name) > 0;
+        })
+        .sort((a, b) => {
+          const sa = Math.max(scoreText((a.handle || '').replace(/^@/, '')), scoreText(a.display_name || ''));
+          const sb = Math.max(scoreText((b.handle || '').replace(/^@/, '')), scoreText(b.display_name || ''));
+          return sb - sa;
         })
         .slice(0, 4);
       setMentionSuggestions(filtered);
@@ -88,8 +101,8 @@ export function NewPost() {
       return;
     }
 
-    // #game tag — allow spaces so "elden ring" etc. work
-    const hashMatch = before.match(/#([\w ]+)$/);
+    // #game tag — allow spaces and unicode chars
+    const hashMatch = before.match(/#([\w\u00C0-\u024F\u1E00-\u1EFF ''\-]+)$/);
     if (hashMatch) {
       hashTriggerIndex.current = before.lastIndexOf('#');
       const query = hashMatch[1].trim();
@@ -146,11 +159,11 @@ export function NewPost() {
     const startIdx = mentionStartRef.current;
     if (startIdx < 0) { setShowMentions(false); setAtGameResults([]); return; }
     const curPos = textareaRef.current?.selectionStart ?? content.length;
-    // Insert bare title (no @) — game is identified by the selectedGame chip
+    // Insert bare title (no @) — game is identified by the selected game chip
     const newContent = content.slice(0, startIdx) + game.title + ' ' + content.slice(curPos);
     setContent(newContent);
     const gameId = String(game.id ?? game.game_id ?? '');
-    setSelectedGame({ id: gameId, title: game.title });
+    setSelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
     const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
     if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
     mentionStartRef.current = -1;
@@ -162,13 +175,11 @@ export function NewPost() {
   const handleHashGameSelect = (game: any) => {
     const startIdx = hashTriggerIndex.current;
     if (startIdx < 0) { setShowHashGames(false); return; }
-    const afterHash = content.slice(startIdx + 1);
-    const wordEnd = afterHash.search(/[^\w]/);
-    const tokenEnd = wordEnd === -1 ? content.length : startIdx + 1 + wordEnd;
-    const newContent = content.slice(0, startIdx) + content.slice(tokenEnd);
+    const curPos = textareaRef.current?.selectionStart ?? content.length;
+    const newContent = content.slice(0, startIdx) + content.slice(curPos);
     setContent(newContent.trimStart());
     const gameId = String(game.id ?? game.game_id ?? '');
-    setSelectedGame({ id: gameId, title: game.title });
+    setSelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
     const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
     if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
     hashTriggerIndex.current = -1;
@@ -194,7 +205,10 @@ export function NewPost() {
   };
 
   const handleSelectGame = (game: any) => {
-    setSelectedGame({ id: String(game.id ?? game.game_id ?? ''), title: game.title });
+    const gameId = String(game.id ?? game.game_id ?? '');
+    setSelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
+    const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
+    if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
     setShowGamePicker(false);
     setGameQuery('');
     setGameResults([]);
@@ -206,7 +220,9 @@ export function NewPost() {
     setError('');
     try {
       const images = imageUrl ? [imageUrl] : undefined;
-      await createPost(content, images, linkUrl || undefined, undefined, undefined, selectedGame?.id, selectedGame?.title);
+      const gameIds = selectedGames.map(g => g.id);
+      const gameTitles = selectedGames.map(g => g.title);
+      await createPost(content, images, linkUrl || undefined, undefined, undefined, gameIds[0], gameTitles[0], gameIds, gameTitles);
       navigate(-1);
     } catch (err: any) {
       setError(err.message || 'Failed to create post. Please try again.');
@@ -266,7 +282,7 @@ export function NewPost() {
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: 0 }}
             dangerouslySetInnerHTML={{
               __html: content
-                ? buildHighlightedHtml(content, users, selectedGame)
+                ? buildHighlightedHtml(content, users, selectedGames[0] ?? null)
                 : '<span style="color:var(--muted-foreground)">What\'s on your mind? @mention people or games, #game to tag</span>',
             }}
           />
@@ -369,7 +385,7 @@ export function NewPost() {
           </button>
           <button
             onClick={() => setShowGamePicker(!showGamePicker)}
-            className={`p-2 rounded-lg transition-colors ${(showGamePicker || selectedGame) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+            className={`p-2 rounded-lg transition-colors ${(showGamePicker || selectedGames.length > 0) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
             title="Tag a game"
           >
             <Gamepad2 className="w-5 h-5" />
@@ -451,31 +467,35 @@ export function NewPost() {
           </div>
         )}
 
-        {/* Selected game tag */}
-        {selectedGame && (() => {
-          const cover = gameCoverCache.get(selectedGame.id) ?? null;
-          return (
-            <div className="mt-3 flex items-center gap-2">
-              <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 max-w-[260px]">
-                {cover ? (
-                  <img src={cover} alt={selectedGame.title} className="w-8 h-10 rounded-md object-cover shrink-0" />
-                ) : (
-                  <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
-                  <p className="text-sm font-semibold truncate leading-tight">{selectedGame.title}</p>
+        {/* Selected game tags */}
+        {selectedGames.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selectedGames.map(g => {
+              const cover = gameCoverCache.get(g.id) ?? null;
+              return (
+                <div key={g.id} className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 max-w-[200px]">
+                    {cover ? (
+                      <img src={cover} alt={g.title} className="w-8 h-10 rounded-md object-cover shrink-0" />
+                    ) : (
+                      <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
+                      <p className="text-sm font-semibold truncate leading-tight">{g.title}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedGames(prev => prev.filter(x => x.id !== g.id))}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              </div>
-              <button
-                onClick={() => setSelectedGame(null)}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Remove
-              </button>
-            </div>
-          );
-        })()}
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

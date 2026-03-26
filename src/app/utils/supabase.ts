@@ -298,7 +298,7 @@ export const posts = {
     return data ?? [];
   },
 
-  async getFollowingFeed(userId: string, limit = 30, offset = 0) {
+  async getFollowingFeed(userId: string, limit = 30, offset = 0, followedGameIds: string[] = []) {
     // Get posts from people the user follows + own posts
     const { data: followingData } = await supabase
       .from('follows')
@@ -308,7 +308,7 @@ export const posts = {
     const followingIds = (followingData ?? []).map((r: any) => r.following_id);
     followingIds.push(userId);
 
-    const [{ data: postsData, error }, { data: repostsData }] = await Promise.all([
+    const queries: Promise<any>[] = [
       supabase
         .from('posts')
         .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
@@ -321,7 +321,25 @@ export const posts = {
         .in('user_id', followingIds)
         .order('created_at', { ascending: false })
         .limit(limit),
-    ]);
+    ];
+
+    // Fetch posts tagged with followed games (if any)
+    if (followedGameIds.length > 0) {
+      queries.push(
+        supabase
+          .from('posts')
+          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+          .in('game_id', followedGameIds)
+          .order('created_at', { ascending: false })
+          .limit(limit)
+      );
+    }
+
+    const results = await Promise.all(queries);
+    const { data: postsData, error } = results[0];
+    const { data: repostsData } = results[1];
+    const gamePostsData: any[] = followedGameIds.length > 0 ? (results[2]?.data ?? []) : [];
+
     if (error) throw new Error(error.message);
 
     const repostItems = (repostsData ?? [])
@@ -329,7 +347,7 @@ export const posts = {
       .map((r: any) => ({ ...r.post, repostedBy: r.user_id, repostedAt: r.created_at }));
 
     const seen = new Set<string>();
-    const merged = [...(postsData ?? []), ...repostItems].filter((p: any) => {
+    const merged = [...(postsData ?? []), ...repostItems, ...gamePostsData].filter((p: any) => {
       const key = p.id + (p.repostedBy || '');
       if (seen.has(key)) return false;
       seen.add(key);
@@ -387,8 +405,14 @@ export const posts = {
     communityId?: string;
     gameId?: string;
     gameTitle?: string;
+    gameIds?: string[];
+    gameTitles?: string[];
     platform?: string;
   } = {}) {
+    // Support multi-game tagging: game_ids/game_titles arrays are the source of truth.
+    // game_id/game_title kept for backward compat (first entry mirrors the array).
+    const gameIds = options.gameIds ?? (options.gameId ? [options.gameId] : []);
+    const gameTitles = options.gameTitles ?? (options.gameTitle ? [options.gameTitle] : []);
     const { data, error } = await supabase
       .from('posts')
       .insert({
@@ -398,8 +422,10 @@ export const posts = {
         image_alts: options.imageAlts ?? [],
         url: options.url ?? null,
         community_id: options.communityId ?? null,
-        game_id: options.gameId ?? null,
-        game_title: options.gameTitle ?? null,
+        game_id: gameIds[0] ?? null,
+        game_title: gameTitles[0] ?? null,
+        game_ids: gameIds,
+        game_titles: gameTitles,
         ...(options.platform ? { platform: options.platform } : {}),
       })
       .select(`
@@ -829,25 +855,36 @@ export const commentsAPI = {
 // USER GAMES (played / owned declarations)
 // ============================================================
 export const userGamesAPI = {
-  async getStatus(userId: string, gameId: string): Promise<{ played: boolean; owned: boolean }> {
+  async getStatus(userId: string, gameId: string): Promise<{ played: boolean; owned: boolean; followed: boolean }> {
     const { data } = await supabase
       .from('user_games')
       .select('status')
       .eq('user_id', userId)
       .eq('game_id', gameId);
-    const played = (data ?? []).some((r: any) => r.status === 'played');
-    const owned  = (data ?? []).some((r: any) => r.status === 'owned');
-    return { played, owned };
+    const played   = (data ?? []).some((r: any) => r.status === 'played');
+    const owned    = (data ?? []).some((r: any) => r.status === 'owned');
+    const followed = (data ?? []).some((r: any) => r.status === 'followed');
+    return { played, owned, followed };
   },
 
-  async add(userId: string, gameId: string, status: 'played' | 'owned') {
+  /** Returns all game IDs that the user follows. */
+  async getFollowedGameIds(userId: string): Promise<string[]> {
+    const { data } = await supabase
+      .from('user_games')
+      .select('game_id')
+      .eq('user_id', userId)
+      .eq('status', 'followed');
+    return (data ?? []).map((r: any) => String(r.game_id));
+  },
+
+  async add(userId: string, gameId: string, status: 'played' | 'owned' | 'followed') {
     const { error } = await supabase
       .from('user_games')
       .upsert({ user_id: userId, game_id: gameId, status }, { onConflict: 'user_id,game_id,status', ignoreDuplicates: true });
     if (error) throw new Error(error.message);
   },
 
-  async remove(userId: string, gameId: string, status: 'played' | 'owned') {
+  async remove(userId: string, gameId: string, status: 'played' | 'owned' | 'followed') {
     const { error } = await supabase
       .from('user_games')
       .delete()

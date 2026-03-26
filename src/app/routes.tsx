@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router';
+import { trackPageView } from './utils/analytics';
 import { Feed } from './pages/Feed';
 import { Explore } from './pages/Explore';
 import { Profile } from './pages/Profile';
@@ -82,3 +83,10 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+// Track page views on every navigation
+router.subscribe((state) => {
+  if (state.navigation.state === 'idle') {
+    trackPageView(state.location.pathname + state.location.search);
+  }
+});

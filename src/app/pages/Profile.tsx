@@ -29,7 +29,7 @@ import {
 
 // Helper component to linkify mentions
 function LinkifyMentions({ text }: { text: string }) {
-  const parts = text.split(/(@\w+)/g);
+  const parts = (text ?? '').split(/(@\w+)/g);
   return (
     <>
       {parts.map((part, i) => {
@@ -99,22 +99,9 @@ export function Profile() {
   const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
   const [showLFGFlareModal, setShowLFGFlareModal] = useState(false);
 
-  // Scroll to top when viewing another user's profile; own profile restores last position
+  // Always scroll to top when the profile page loads or the target user changes
   useEffect(() => {
-    if (userId) {
-      window.scrollTo(0, 0);
-    } else {
-      const saved = sessionStorage.getItem('own-profile-scroll-y');
-      if (saved) {
-        const y = parseInt(saved, 10);
-        // Double rAF: wait for content to render before restoring scroll
-        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
-      }
-    }
-    // Save scroll position when leaving own profile
-    return () => {
-      if (!userId) sessionStorage.setItem('own-profile-scroll-y', String(window.scrollY));
-    };
+    window.scrollTo(0, 0);
   }, [userId]);
 
   // Determine which user profile to show
