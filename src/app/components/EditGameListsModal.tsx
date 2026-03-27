@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, GripVertical, Trash2, Check, Loader2, Search } from 'lucide-react';
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
+import { getGameRank } from '../utils/gameRankings';
 
 // Use a generic game shape compatible with both local Game and IGDB DB games
 interface AnyGame {
@@ -21,6 +22,7 @@ interface EditGameListsModalProps {
   listType: GameListType;
   currentGames: AnyGame[];
   onSave: (games: AnyGame[]) => void;
+  autoFocusSearch?: boolean;
 }
 
 function getCoverUrl(game: AnyGame): string | null {
@@ -36,15 +38,12 @@ export function EditGameListsModal({
   listType,
   currentGames,
   onSave,
+  autoFocusSearch = false,
 }: EditGameListsModalProps) {
   const [selectedGames, setSelectedGames] = useState<AnyGame[]>(currentGames);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showSearchHistory, setShowSearchHistory] = useState(false);
-  const [gameSearchHistory, setGameSearchHistory] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('forge-game-search-history') || '[]'); } catch { return []; }
-  });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,6 +58,7 @@ export function EditGameListsModal({
     'library': 'Library',
     'favorite': 'Favorite Games',
     'wishlist': 'Wishlist',
+    'completed': 'Completed Games',
     'custom': 'Custom List',
     'lfg': 'Looking for Group',
   };
@@ -81,22 +81,32 @@ export function EditGameListsModal({
           ? (Array.isArray(serverRes.value) ? serverRes.value : (serverRes.value as any)?.games ?? [])
           : [];
         const rawgGames: AnyGame[] = rawgRes.status === 'fulfilled' ? rawgRes.value : [];
+
         // Merge: prefer server/IGDB results, append RAWG results not already present.
         // Normalise titles by lowercasing and stripping everything after " - " or ": "
-        // so e.g. "Elden Ring: Shadow of the Erdtree" deduplicates against "Elden Ring".
         const normalise = (t: string) => t.toLowerCase().replace(/\s*[:\-–]\s+.*$/, '').trim();
         const serverTitles = new Set(serverGames.map((g: AnyGame) => normalise(g.title)));
         const merged = [...serverGames, ...rawgGames.filter((g: AnyGame) => !serverTitles.has(normalise(g.title)))];
+
+        // Re-rank by: Forge popularity → title word coverage → alphabetical
+        const queryWords = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        const wordCoverage = (title: string) => {
+          const t = title.toLowerCase();
+          return queryWords.filter(w => t.includes(w)).length;
+        };
+        merged.sort((a, b) => {
+          const rankA = getGameRank(String(a.id)) ?? 9999;
+          const rankB = getGameRank(String(b.id)) ?? 9999;
+          const covA = wordCoverage(a.title);
+          const covB = wordCoverage(b.title);
+          // Primary: title word coverage (more words matched = better)
+          if (covB !== covA) return covB - covA;
+          // Secondary: Forge popularity rank
+          if (rankA !== rankB) return rankA - rankB;
+          return 0;
+        });
+
         setSearchResults(merged);
-        const trimmed = searchQuery.trim();
-        if (trimmed) {
-          setGameSearchHistory(prev => {
-            const filtered = prev.filter(h => h.toLowerCase() !== trimmed.toLowerCase());
-            const updated = [trimmed, ...filtered].slice(0, 10);
-            localStorage.setItem('forge-game-search-history', JSON.stringify(updated));
-            return updated;
-          });
-        }
       } catch {
         setSearchResults([]);
       } finally {
@@ -115,6 +125,9 @@ export function EditGameListsModal({
       if (!savedQuery) setSearchResults([]);
       setDragIdx(null);
       setDragOverIdx(null);
+      if (autoFocusSearch) {
+        setTimeout(() => searchInputRef.current?.focus(), 100);
+      }
     }
   }, [isOpen]);
 
@@ -127,7 +140,7 @@ export function EditGameListsModal({
 
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
-      setSelectedGames(prev => [...prev, game]);
+      setSelectedGames(prev => [game, ...prev]);
     }
   };
 
@@ -214,9 +227,7 @@ export function EditGameListsModal({
             type="text"
             placeholder="Search games to add…"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setShowSearchHistory(!e.target.value); }}
-            onFocus={() => { if (!searchQuery) setShowSearchHistory(true); }}
-            onBlur={() => { setTimeout(() => setShowSearchHistory(false), 150); }}
+            onChange={(e) => { setSearchQuery(e.target.value); }}
             className="w-full pl-9 pr-9 py-2.5 bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
             style={{ fontSize: '16px' }}
           />
@@ -224,55 +235,13 @@ export function EditGameListsModal({
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
           ) : searchQuery ? (
             <button
-              onClick={() => { setSearchQuery(''); setShowSearchHistory(true); searchInputRef.current?.focus(); }}
+              onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           ) : null}
-          {showSearchHistory && gameSearchHistory.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl overflow-hidden z-30 shadow-2xl">
-              <div className="px-3 py-2 flex items-center justify-between border-b border-border">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Recent searches</p>
-                <button
-                  onMouseDown={e => {
-                    e.preventDefault();
-                    setGameSearchHistory([]);
-                    localStorage.removeItem('forge-game-search-history');
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Clear all
-                </button>
-              </div>
-              {gameSearchHistory.map((item, i) => (
-                <div key={i} className="flex items-center border-b border-border/50 last:border-0">
-                  <button
-                    onMouseDown={e => {
-                      e.preventDefault();
-                      setSearchQuery(item);
-                      setShowSearchHistory(false);
-                    }}
-                    className="flex-1 px-3 py-2.5 flex items-center gap-2 hover:bg-secondary transition-colors text-left"
-                  >
-                    <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm">{item}</span>
-                  </button>
-                  <button
-                    onMouseDown={e => {
-                      e.preventDefault();
-                      const updated = gameSearchHistory.filter((_, idx) => idx !== i);
-                      setGameSearchHistory(updated);
-                      localStorage.setItem('forge-game-search-history', JSON.stringify(updated));
-                    }}
-                    className="px-2.5 py-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -375,14 +344,31 @@ export function EditGameListsModal({
                     </div>
                   );
                 })}
+
+                {/* Add a game placeholder — always last in the list */}
+                <button
+                  onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+                  className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
+                >
+                  <div className="w-12 h-16 rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/30 shrink-0">
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Add a game to this list…</p>
+                </button>
               </div>
             </div>
           )}
 
           {selectedGames.length === 0 && !searchQuery.trim() && (
-            <p className="text-center py-10 text-muted-foreground text-sm">
-              Search for games above to add them to this list
-            </p>
+            <button
+              onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+              className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
+            >
+              <div className="w-12 h-16 rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/30 shrink-0">
+                <Plus className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">Search for games above to add them to this list…</p>
+            </button>
           )}
         </div>
       </div>

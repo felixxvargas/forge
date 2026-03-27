@@ -16,7 +16,7 @@ import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
 import { LFGFlareModal } from '../components/LFGFlareModal';
 import {
@@ -64,14 +64,19 @@ export function Profile() {
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
+    focusSearch?: boolean;
   }>({ isOpen: false, listType: null });
   const [showListTypeSelector, setShowListTypeSelector] = useState(false);
 
   // List drag-and-drop reorder
-  const DEFAULT_LIST_ORDER = ['recentlyPlayed', 'favorites', 'wishlist', 'library'] as const;
+  const DEFAULT_LIST_ORDER = ['recentlyPlayed', 'favorites', 'wishlist', 'library', 'completed'] as const;
   const [listOrder, setListOrder] = useState<string[]>(() => {
     const saved = (currentUser?.game_lists as any)?.listOrder;
-    return Array.isArray(saved) && saved.length === 4 ? saved : [...DEFAULT_LIST_ORDER];
+    // Accept saved orders of either 4 (legacy) or 5 (with completed)
+    if (Array.isArray(saved) && (saved.length === 4 || saved.length === 5)) {
+      return saved.includes('completed') ? saved : [...saved, 'completed'];
+    }
+    return [...DEFAULT_LIST_ORDER];
   });
   const [listDragIdx, setListDragIdx] = useState<number | null>(null);
   const [listDragOverIdx, setListDragOverIdx] = useState<number | null>(null);
@@ -216,7 +221,11 @@ export function Profile() {
   const isUnclaimedAccount = (profileUser as any)?.account_type === 'topic';
 
   const handleOpenGameListEdit = (listType: GameListType) => {
-    setEditGameListModal({ isOpen: true, listType });
+    setEditGameListModal({ isOpen: true, listType, focusSearch: false });
+  };
+
+  const handleOpenGameListEditWithSearch = (listType: GameListType) => {
+    setEditGameListModal({ isOpen: true, listType, focusSearch: true });
   };
 
   const handlePinPost = async (postId: string) => {
@@ -226,9 +235,21 @@ export function Profile() {
     await updateCurrentUser({ pinned_post_id: newPinnedId });
   };
 
-  const handleSaveGameList = (games: any[]) => {
+  const handleSaveGameList = async (games: any[]) => {
     if (!editGameListModal.listType) return;
-    updateGameList(editGameListModal.listType, games);
+    await updateGameList(editGameListModal.listType, games);
+    // Sync user_games table when library list changes
+    if (editGameListModal.listType === 'library' && currentUser) {
+      const prevLibrary: any[] = currentUser?.game_lists?.library ?? [];
+      const prevIds = new Set(prevLibrary.map((g: any) => String(g.id)));
+      const newIds = new Set(games.map((g: any) => String(g.id)));
+      const added = games.filter((g: any) => !prevIds.has(String(g.id)));
+      const removed = prevLibrary.filter((g: any) => !newIds.has(String(g.id)));
+      await Promise.allSettled([
+        ...added.map((g: any) => userGamesAPI.add(currentUser.id, String(g.id), 'owned')),
+        ...removed.map((g: any) => userGamesAPI.remove(currentUser.id, String(g.id), 'owned')),
+      ]);
+    }
   };
 
   // Get liked posts from the feed (what we have in context)
@@ -676,11 +697,12 @@ export function Profile() {
         {effectiveTab === 'lists' && (
           <div className="px-4 space-y-6">
             {(() => {
-              const ALL_LISTS: { key: 'recentlyPlayed' | 'favorites' | 'wishlist' | 'library'; listType: GameListType; label: string }[] = [
+              const ALL_LISTS: { key: 'recentlyPlayed' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [
                 { key: 'recentlyPlayed', listType: 'recently-played', label: 'Recently Played' },
                 { key: 'favorites', listType: 'favorite', label: 'Favorite Games' },
                 { key: 'wishlist', listType: 'wishlist', label: 'Wishlist' },
                 { key: 'library', listType: 'library', label: 'Library' },
+                { key: 'completed', listType: 'completed', label: 'Completed Games' },
               ];
               // Sort by user's saved order
               const orderedLists = listOrder
@@ -768,6 +790,7 @@ export function Profile() {
                           games={games}
                           sortable={listType === 'library'}
                           onEdit={isOwnProfile ? () => handleOpenGameListEdit(listType) : undefined}
+                          onAddGame={isOwnProfile ? () => handleOpenGameListEditWithSearch(listType) : undefined}
                           onDelete={isOwnProfile ? () => updateGameList(listType, []) : undefined}
                           listType={listType}
                           showFirstOnly={true}
@@ -1238,9 +1261,11 @@ export function Profile() {
           editGameListModal.listType === 'recently-played' ? (profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []) :
           editGameListModal.listType === 'favorite' ? (profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []) :
           editGameListModal.listType === 'wishlist' ? (profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []) :
+          editGameListModal.listType === 'completed' ? (profileUser.game_lists?.completed ?? []) :
           (profileUser.game_lists?.library ?? profileUser.gameLists?.library ?? [])
         ) : []}
         listType={editGameListModal.listType || 'library'}
+        autoFocusSearch={editGameListModal.focusSearch}
       />
 
       {/* Profile Picture Lightbox */}

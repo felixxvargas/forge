@@ -533,16 +533,41 @@ export const gamesAPI = {
   async searchGames(query: string, limit = 20) {
     const raw: any = await apiRequest(`/games/search/${encodeURIComponent(query)}?limit=${limit}`);
     const list: any[] = Array.isArray(raw) ? raw : raw?.games ?? [];
-    // IGDB categories to exclude: 1=dlc_addon, 3=bundle, 5=mod, 6=episode, 7=season, 13=pack, 14=update
+
+    // IGDB categories:
+    //   0=main_game, 1=dlc_addon, 2=expansion, 3=bundle, 4=standalone_expansion,
+    //   5=mod, 6=episode, 7=season, 8=remake, 9=remaster, 10=expanded_game,
+    //   11=port, 12=fork, 13=pack, 14=update
     const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 13, 14]);
-    // Title patterns that are almost always packs / passes / subscriptions
-    const ADDON_RE = /\b(dlc|season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|upgrade pack|game pack|booster pack|weapon pack|skin pack|cosmetic pack|points pack)\b/i;
+    // Full-game categories (used for sort priority)
+    const MAIN_CATEGORIES = new Set([0, 4, 8, 9, 10, 11, 12]);
+
+    // Title patterns that indicate non-game content
+    const NOISE_RE = /\b(dlc|season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|upgrade pack|game pack|booster pack|weapon pack|skin pack|cosmetic pack|points pack|randomizer|randomiser|mod pack|fan edit|fan made|fan-made|texture pack|sound pack|voice pack)\b/i;
+
     const filtered = list.filter((g: any) => {
       const cat = g.category ?? g.game_type ?? g.type;
       if (cat !== undefined && cat !== null && EXCLUDED_CATEGORIES.has(Number(cat))) return false;
-      if (ADDON_RE.test(g.title ?? g.name ?? '')) return false;
+      if (NOISE_RE.test(g.title ?? g.name ?? '')) return false;
       return true;
     });
+
+    // Re-rank: full games first, then by title-word coverage of the query
+    const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const titleScore = (title: string) => {
+      const t = title.toLowerCase();
+      return queryWords.filter(w => t.includes(w)).length;
+    };
+    filtered.sort((a: any, b: any) => {
+      const catA = a.category ?? a.game_type ?? a.type ?? 0;
+      const catB = b.category ?? b.game_type ?? b.type ?? 0;
+      const mainA = MAIN_CATEGORIES.has(Number(catA)) ? 0 : 1;
+      const mainB = MAIN_CATEGORIES.has(Number(catB)) ? 0 : 1;
+      if (mainA !== mainB) return mainA - mainB;
+      // Within same tier, prefer titles that cover more query words
+      return titleScore(b.title ?? '') - titleScore(a.title ?? '');
+    });
+
     if (Array.isArray(raw)) return filtered;
     return { ...raw, games: filtered };
   },
@@ -589,17 +614,21 @@ export const rawgAPI = {
     const key = import.meta.env.VITE_RAWG_API_KEY;
     if (!key || !query.trim()) return [];
     try {
-      // exclude_additions=true removes patches and DLC. We also filter client-side on
-      // parents_count: if a game has parent games it is an expansion/edition of another
-      // title (e.g. "WoW TWW: Undermined") and should be excluded from results.
+      // exclude_additions=true removes patches and DLC.
       const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit * 2}&search_exact=false&exclude_additions=true`;
       const res = await fetch(url);
       if (!res.ok) return [];
-      // Title patterns that indicate passes, bundles, or year subscriptions rather than games
-      const ADDON_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack)\b/i;
+      // Title patterns for non-game content
+      const NOISE_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack|randomizer|randomiser|mod pack|fan edit|texture pack)\b/i;
+      const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const titleScore = (name: string) => {
+        const t = name.toLowerCase();
+        return queryWords.filter(w => t.includes(w)).length;
+      };
       const { results } = await res.json();
       return (results ?? [])
-        .filter((g: any) => !g.parents_count && !ADDON_RE.test(g.name))
+        .filter((g: any) => !NOISE_RE.test(g.name))
+        .sort((a: any, b: any) => titleScore(b.name) - titleScore(a.name))
         .slice(0, limit)
         .map((g: any) => ({
         id: `rawg-${g.id}`,

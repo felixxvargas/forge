@@ -249,14 +249,23 @@ export function ListView() {
                       </div>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                      {uGames.slice(0, 6).map(game => (
-                        <img
-                          key={game.id}
-                          src={game.coverArt}
-                          alt={game.title}
-                          className="w-10 h-14 object-cover rounded shrink-0"
-                        />
-                      ))}
+                      {uGames.slice(0, 6).map(game => {
+                        const cover = (game as any).artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+                          ?? (game as any).artwork?.[0]?.url
+                          ?? game.coverArt;
+                        return cover ? (
+                          <img
+                            key={game.id}
+                            src={cover}
+                            alt={game.title}
+                            className="w-10 h-14 object-cover rounded shrink-0"
+                          />
+                        ) : (
+                          <div key={game.id} className="w-10 h-14 rounded shrink-0 bg-secondary flex items-center justify-center">
+                            <span className="text-xs text-muted-foreground text-center px-1 leading-tight">{game.title.slice(0, 8)}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

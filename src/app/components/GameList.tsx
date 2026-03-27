@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, ChevronRight, Trash2, Users, GripVertical } from 'lucide-react';
+import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
@@ -11,6 +11,7 @@ interface GameListProps {
   badges?: string[];
   sortable?: boolean;
   onEdit?: () => void;
+  onAddGame?: () => void;
   onDelete?: () => void;
   listType?: GameListType;
   showFirstOnly?: boolean;
@@ -21,9 +22,10 @@ interface GameListProps {
   onGripPointerCancel?: (e: React.PointerEvent) => void;
 }
 
-export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onDelete, listType, showFirstOnly = false, dragHandle = false, onGripPointerDown, onGripPointerMove, onGripPointerUp, onGripPointerCancel }: GameListProps) {
+export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onAddGame, onDelete, listType, showFirstOnly = false, dragHandle = false, onGripPointerDown, onGripPointerMove, onGripPointerUp, onGripPointerCancel }: GameListProps) {
   const navigate = useNavigate();
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
+  const [showActionTray, setShowActionTray] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const sortedGames = sortable
@@ -46,6 +48,8 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
     e.stopPropagation();
     if (listType) navigate(`/list?type=${listType}&browse=true`);
   };
+
+  const hasActions = onEdit || onDelete || (listType && games.length > 0);
 
   if (games.length === 0 && !onEdit) return null;
 
@@ -72,52 +76,15 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
             </span>
           ))}
         </div>
-        <div className="flex items-center gap-1">
-          {listType && games.length > 0 && (
-            <button
-              onClick={handleViewOtherUsers}
-              className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-              title="See other users with this list"
-            >
-              <Users className="w-4 h-4 text-muted-foreground hover:text-accent" />
-            </button>
-          )}
-          {onEdit && (
-            <button
-              onClick={onEdit}
-              className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-              title="Edit list"
-            >
-              <Edit2 className="w-4 h-4 text-muted-foreground hover:text-accent" />
-            </button>
-          )}
-          {onDelete && (
-            confirmDelete ? (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => { onDelete(); setConfirmDelete(false); }}
-                  className="text-xs text-destructive hover:underline px-1"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="text-xs text-muted-foreground hover:underline px-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-                title="Delete list"
-              >
-                <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-              </button>
-            )
-          )}
-        </div>
+        {hasActions && (
+          <button
+            onClick={() => { setShowActionTray(true); setConfirmDelete(false); }}
+            className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
+            aria-label="List options"
+          >
+            <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
@@ -146,6 +113,67 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
           View All ({games.length})
           <ChevronRight className="w-4 h-4" />
         </button>
+      )}
+
+      {/* Action tray */}
+      {showActionTray && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => { setShowActionTray(false); setConfirmDelete(false); }}
+          />
+          <div className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-2xl shadow-xl safe-area-bottom">
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1" />
+            {confirmDelete ? (
+              <div className="p-4 space-y-3 pb-8">
+                <p className="text-center font-semibold">Delete "{title}"?</p>
+                <p className="text-center text-sm text-muted-foreground">All games in this list will be removed.</p>
+                <button
+                  onClick={() => { onDelete?.(); setShowActionTray(false); setConfirmDelete(false); }}
+                  className="w-full py-3.5 rounded-xl bg-destructive text-destructive-foreground font-semibold text-sm"
+                >
+                  Delete List
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="w-full py-3.5 rounded-xl bg-secondary text-foreground font-medium text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="p-2 pb-8">
+                {listType && games.length > 0 && (
+                  <button
+                    onClick={(e) => { handleViewOtherUsers(e); setShowActionTray(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-secondary transition-colors text-left"
+                  >
+                    <Users className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-sm">See others with this list</span>
+                  </button>
+                )}
+                {onEdit && (
+                  <button
+                    onClick={() => { onEdit(); setShowActionTray(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-secondary transition-colors text-left"
+                  >
+                    <Edit2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-sm">Edit list</span>
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-secondary transition-colors text-left"
+                  >
+                    <Trash2 className="w-5 h-5 text-destructive shrink-0" />
+                    <span className="text-sm text-destructive">Delete list</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

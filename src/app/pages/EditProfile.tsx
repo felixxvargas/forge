@@ -15,7 +15,19 @@ export function EditProfile() {
   const navigate = useNavigate();
   const { currentUser, updateCurrentUser, groups } = useAppData();
   
+  // Handle change restriction: once every 14 days
+  const rawHandle = (currentUser.handle || '').replace(/^@/, '');
+  const handleChangedAt: string | null = currentUser.handle_changed_at ?? null;
+  const daysSinceHandleChange = handleChangedAt
+    ? (Date.now() - new Date(handleChangedAt).getTime()) / (1000 * 60 * 60 * 24)
+    : Infinity;
+  const canChangeHandle = daysSinceHandleChange >= 14;
+  const nextHandleChangeDate = handleChangedAt && !canChangeHandle
+    ? new Date(new Date(handleChangedAt).getTime() + 14 * 24 * 60 * 60 * 1000)
+    : null;
+
   const [formData, setFormData] = useState({
+    handle: rawHandle,
     displayName: currentUser.display_name || currentUser.displayName || '',
     pronouns: currentUser.pronouns || '',
     bio: currentUser.bio || '',
@@ -39,14 +51,30 @@ export function EditProfile() {
   const [isSaving, setIsSaving] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [handleError, setHandleError] = useState('');
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
   const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
 
   const handleSave = async () => {
+    setHandleError('');
+    const trimmedHandle = formData.handle.trim().replace(/^@/, '');
+    const handleChanged = trimmedHandle !== rawHandle;
+
+    if (handleChanged) {
+      if (!canChangeHandle) {
+        setHandleError(`You can change your handle again on ${nextHandleChangeDate?.toLocaleDateString()}.`);
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedHandle)) {
+        setHandleError('Handle must be 3–20 characters using only letters, numbers, and underscores.');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
-      await updateCurrentUser({
+      const updates: Record<string, any> = {
         display_name: formData.displayName,
         pronouns: formData.pronouns,
         bio: formData.bio,
@@ -61,11 +89,20 @@ export function EditProfile() {
         social_handles: formData.socialHandles,
         show_social_handles: formData.showSocialHandles,
         displayed_communities: formData.displayedCommunities,
-      });
+      };
+      if (handleChanged) {
+        updates.handle = trimmedHandle;
+        updates.handle_changed_at = new Date().toISOString();
+      }
+      await updateCurrentUser(updates);
       navigate('/profile');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
+      if (error?.message?.includes('unique') || error?.message?.includes('duplicate')) {
+        setHandleError('That handle is already taken. Please choose a different one.');
+      } else {
+        alert('Failed to save profile. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -280,8 +317,53 @@ export function EditProfile() {
             type="text"
             value={formData.displayName}
             onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+            style={{ fontSize: '16px' }}
             className="w-full px-4 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
           />
+        </div>
+
+        {/* Handle */}
+        <div>
+          <label className="block text-sm mb-2">Username</label>
+          {canChangeHandle ? (
+            <>
+              <div className="flex items-center bg-secondary rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+                <span className="px-3 py-2 text-muted-foreground select-none">@</span>
+                <input
+                  type="text"
+                  value={formData.handle}
+                  onChange={(e) => {
+                    setHandleError('');
+                    setFormData(prev => ({ ...prev, handle: e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() }));
+                  }}
+                  placeholder="your_handle"
+                  maxLength={20}
+                  style={{ fontSize: '16px' }}
+                  className="flex-1 pr-4 py-2 bg-transparent focus:outline-none"
+                />
+              </div>
+              {handleError ? (
+                <p className="text-xs text-destructive mt-1">{handleError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">Can be changed once every 2 weeks.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center bg-secondary rounded-lg overflow-hidden opacity-60">
+                <span className="px-3 py-2 text-muted-foreground select-none">@</span>
+                <input
+                  disabled
+                  value={formData.handle}
+                  style={{ fontSize: '16px' }}
+                  className="flex-1 pr-4 py-2 bg-transparent cursor-not-allowed"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Next change available: {nextHandleChangeDate?.toLocaleDateString()}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Pronouns */}

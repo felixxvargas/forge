@@ -194,6 +194,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Poll for unread notifications every 60s so the badge updates while the user is active
+  useEffect(() => {
+    if (!session?.user) return;
+    const userId = session.user.id;
+    const poll = async () => {
+      try {
+        const count = await notificationsAPI.getUnreadCount(userId);
+        setHasUnreadNotifications(count > 0);
+      } catch { /* ignore */ }
+    };
+    const id = setInterval(poll, 60_000);
+    return () => clearInterval(id);
+  }, [session?.user?.id]);
+
   // Load data when session changes
   useEffect(() => {
     const init = async () => {
@@ -401,6 +415,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       'favorite': 'favorites',
       'wishlist': 'wishlist',
       'library': 'library',
+      'completed': 'completed',
     };
     const key = keyMap[listType];
     const updatedLists = { ...(currentUser.game_lists ?? {}), [key]: games };

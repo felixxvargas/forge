@@ -359,6 +359,82 @@ export const posts = {
     return merged.slice(0, limit);
   },
 
+  async getTrendingFeed(limit = 30) {
+    // Fetch recent posts (last 14 days) and rank by total engagement
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .gte('created_at', cutoff)
+      .order('like_count', { ascending: false })
+      .limit(limit * 3);
+    if (error) throw new Error(error.message);
+    const posts = (data ?? []).filter((p: any) => p.content?.trim());
+    // Re-rank by composite engagement score
+    posts.sort((a: any, b: any) => {
+      const scoreA = (a.like_count ?? 0) + (a.repost_count ?? 0) * 2 + (a.comment_count ?? 0) * 3;
+      const scoreB = (b.like_count ?? 0) + (b.repost_count ?? 0) * 2 + (b.comment_count ?? 0) * 3;
+      return scoreB - scoreA;
+    });
+    return posts.slice(0, limit);
+  },
+
+  async getForYouFeed(userId: string, followedGameIds: string[] = [], limit = 30) {
+    // Blend: posts tagged with followed games + trending from network + recent trending
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [gamePostsRes, trendingRes] = await Promise.all([
+      followedGameIds.length > 0
+        ? supabase
+            .from('posts')
+            .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+            .in('game_id', followedGameIds)
+            .order('created_at', { ascending: false })
+            .limit(limit)
+        : Promise.resolve({ data: [] as any[], error: null }),
+      supabase
+        .from('posts')
+        .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+        .gte('created_at', cutoff)
+        .neq('user_id', userId)
+        .order('like_count', { ascending: false })
+        .limit(limit),
+    ]);
+
+    const gamePosts: any[] = gamePostsRes.data ?? [];
+    const trendingPosts: any[] = trendingRes.data ?? [];
+
+    const seen = new Set<string>();
+    const merged = [...gamePosts, ...trendingPosts].filter((p: any) => {
+      if (!p.content?.trim()) return false;
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+
+    // Score: game-follow match + engagement
+    merged.sort((a: any, b: any) => {
+      const gameA = followedGameIds.includes(String(a.game_id)) ? 1000 : 0;
+      const gameB = followedGameIds.includes(String(b.game_id)) ? 1000 : 0;
+      const engA = (a.like_count ?? 0) + (a.repost_count ?? 0) * 2 + (a.comment_count ?? 0) * 3;
+      const engB = (b.like_count ?? 0) + (b.repost_count ?? 0) * 2 + (b.comment_count ?? 0) * 3;
+      return (gameB + engB) - (gameA + engA);
+    });
+
+    return merged.slice(0, limit);
+  },
+
+  async getGameFeed(gameId: string, limit = 30) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []).filter((p: any) => p.content?.trim());
+  },
+
   async getById(postId: string) {
     const { data, error } = await supabase
       .from('posts')
@@ -452,11 +528,12 @@ export const posts = {
       .from('likes')
       .insert({ user_id: userId, post_id: postId });
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Persist like_count increment — fire-and-forget
-    Promise.allSettled([
-      supabase.from('posts').select('like_count').eq('id', postId).single()
-        .then(({ data }) => supabase.from('posts').update({ like_count: (data?.like_count ?? 0) + 1 }).eq('id', postId)),
-    ]).catch(() => {});
+    // Increment like_count atomically via rpc; fall back to read-modify-write
+    Promise.resolve(supabase.rpc('increment_like_count', { post_id: postId })).catch(() =>
+      supabase.from('posts').select('like_count').eq('id', postId).single().then(({ data }) =>
+        supabase.from('posts').update({ like_count: (data?.like_count ?? 0) + 1 }).eq('id', postId)
+      )
+    );
   },
 
   async unlike(userId: string, postId: string) {
@@ -466,11 +543,12 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
-    // Persist like_count decrement — fire-and-forget
-    Promise.allSettled([
-      supabase.from('posts').select('like_count').eq('id', postId).single()
-        .then(({ data }) => supabase.from('posts').update({ like_count: Math.max(0, (data?.like_count ?? 0) - 1) }).eq('id', postId)),
-    ]).catch(() => {});
+    // Decrement like_count atomically via rpc; fall back to read-modify-write
+    Promise.resolve(supabase.rpc('decrement_like_count', { post_id: postId })).catch(() =>
+      supabase.from('posts').select('like_count').eq('id', postId).single().then(({ data }) =>
+        supabase.from('posts').update({ like_count: Math.max(0, (data?.like_count ?? 0) - 1) }).eq('id', postId)
+      )
+    );
   },
 
   async getLikedIds(userId: string) {
@@ -496,6 +574,12 @@ export const posts = {
       .from('reposts')
       .insert({ user_id: userId, post_id: postId });
     if (error && error.code !== '23505') throw new Error(error.message);
+    // Persist repost_count atomically via rpc; fall back to read-modify-write
+    Promise.resolve(supabase.rpc('increment_repost_count', { post_id: postId })).catch(() =>
+      supabase.from('posts').select('repost_count').eq('id', postId).single().then(({ data }) =>
+        supabase.from('posts').update({ repost_count: (data?.repost_count ?? 0) + 1 }).eq('id', postId)
+      )
+    );
   },
 
   async unrepost(userId: string, postId: string) {
@@ -505,6 +589,12 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
+    // Persist repost_count decrement atomically via rpc; fall back to read-modify-write
+    Promise.resolve(supabase.rpc('decrement_repost_count', { post_id: postId })).catch(() =>
+      supabase.from('posts').select('repost_count').eq('id', postId).single().then(({ data }) =>
+        supabase.from('posts').update({ repost_count: Math.max(0, (data?.repost_count ?? 0) - 1) }).eq('id', postId)
+      )
+    );
   },
 
   async getRepostedIds(userId: string) {
@@ -723,11 +813,11 @@ export const groups = {
   },
 
   async addMember(communityId: string, userId: string) {
-    const { error } = await supabase
-      .from('community_members')
-      .insert({ community_id: communityId, user_id: userId, role: 'member' });
-    if (error && error.code !== '23505') throw new Error(error.message);
-    await supabase.rpc('increment_member_count', { community_id: communityId }).catch(() => {});
+    const { error } = await supabase.rpc('add_community_member_invite', {
+      p_community_id: communityId,
+      p_user_id: userId,
+    });
+    if (error) throw new Error(error.message);
   },
 
   async transferAdmin(communityId: string, newCreatorId: string) {
@@ -834,6 +924,12 @@ export const commentsAPI = {
       .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
       .single();
     if (error) throw new Error(error.message);
+    // Persist comment_count increment atomically via rpc; fall back to read-modify-write
+    Promise.resolve(supabase.rpc('increment_comment_count', { post_id: postId })).catch(() =>
+      supabase.from('posts').select('comment_count').eq('id', postId).single().then(({ data }) =>
+        supabase.from('posts').update({ comment_count: (data?.comment_count ?? 0) + 1 }).eq('id', postId)
+      )
+    );
     return data;
   },
 
@@ -875,12 +971,12 @@ export const commentsAPI = {
       .eq('id', commentId)
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
-    // Decrement comment_count on the parent post — fire-and-forget
     if (comment?.post_id) {
-      Promise.allSettled([
-        supabase.from('posts').select('comment_count').eq('id', comment.post_id).single()
-          .then(({ data }) => supabase.from('posts').update({ comment_count: Math.max(0, (data?.comment_count ?? 0) - 1) }).eq('id', comment.post_id)),
-      ]).catch(() => {});
+      Promise.resolve(supabase.rpc('decrement_comment_count', { post_id: comment.post_id })).catch(() =>
+        supabase.from('posts').select('comment_count').eq('id', comment.post_id).single().then(({ data }) =>
+          supabase.from('posts').update({ comment_count: Math.max(0, (data?.comment_count ?? 0) - 1) }).eq('id', comment.post_id)
+        )
+      );
     }
   },
 };

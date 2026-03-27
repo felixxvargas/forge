@@ -244,7 +244,12 @@ export function CommunityDetail() {
 
   const communityPosts = posts.filter(p => p.communityId === communityId || p.community_id === communityId);
 
-  const handleJoinCommunity = () => {
+  const [joiningCommunity, setJoiningCommunity] = useState(false);
+  const [localMemberCount, setLocalMemberCount] = useState<number>(
+    community.member_count ?? community.memberCount ?? 0
+  );
+
+  const handleJoinCommunity = async () => {
     if (community.type === 'invite') {
       alert('This is an invite-only group. You need an invitation to join.');
       return;
@@ -253,7 +258,18 @@ export function CommunityDetail() {
       alert('Join request sent! You will be notified when approved.');
       return;
     }
-    setIsMember(true);
+    if (!currentUser?.id || joiningCommunity) return;
+    setJoiningCommunity(true);
+    try {
+      await groupsAPI.join(currentUser.id, communityId!);
+      setIsMember(true);
+      setLocalMemberCount(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to join group:', err);
+      alert('Failed to join group. Please try again.');
+    } finally {
+      setJoiningCommunity(false);
+    }
   };
 
   const getTypeLabel = () => {
@@ -296,7 +312,7 @@ export function CommunityDetail() {
         {/* Community Info */}
         <div className="px-4 py-6 bg-card border-b border-border">
           <div className="flex items-start gap-4 mb-4">
-            <div className="relative flex-shrink-0">
+            <div className="flex-shrink-0">
               <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center text-accent overflow-hidden">
                 {groupImageUrl ? (
                   <img src={groupImageUrl} alt={community.name} className="w-full h-full object-cover" />
@@ -309,10 +325,13 @@ export function CommunityDetail() {
                   <button
                     onClick={() => imageInputRef.current?.click()}
                     disabled={uploadingImage}
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors"
-                    title="Change group image"
+                    className="mt-1.5 text-xs text-accent hover:text-accent/80 transition-colors flex items-center gap-1 disabled:opacity-50"
                   >
-                    {uploadingImage ? <Loader2 className="w-3 h-3 text-white animate-spin" /> : <Camera className="w-3 h-3 text-white" />}
+                    {uploadingImage ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Uploading…</>
+                    ) : (
+                      <>{groupImageUrl ? 'Change photo' : 'Add photo'}</>
+                    )}
                   </button>
                   <input
                     ref={imageInputRef}
@@ -368,7 +387,7 @@ export function CommunityDetail() {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
           >
             <Users className="w-4 h-4" />
-            <span>{(community.member_count ?? community.memberCount ?? 0).toLocaleString()} members</span>
+            <span>{localMemberCount.toLocaleString()} members</span>
           </button>
 
           <p className="text-muted-foreground mb-4">{community.description}</p>
@@ -381,9 +400,14 @@ export function CommunityDetail() {
             ) : community.type !== 'invite' ? (
               <button
                 onClick={handleJoinCommunity}
-                className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium flex items-center gap-2"
+                disabled={joiningCommunity}
+                className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium flex items-center gap-2 disabled:opacity-60"
               >
-                <UserPlus className="w-4 h-4" />
+                {joiningCommunity ? (
+                  <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
                 {community.type === 'request' ? 'Request to Join' : 'Join Group'}
               </button>
             ) : null}
@@ -648,6 +672,7 @@ export function CommunityDetail() {
                   placeholder="Search by username or display name…"
                   value={inviteSearch}
                   onChange={e => setInviteSearch(e.target.value)}
+                  style={{ fontSize: '16px' }}
                   className="w-full pl-9 pr-3 py-2.5 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                   autoFocus
                 />

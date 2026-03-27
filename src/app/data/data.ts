@@ -40,6 +40,7 @@ export type GameListType =
   | 'library'
   | 'favorite'
   | 'wishlist'
+  | 'completed'
   | 'custom'
   | 'lfg';
 

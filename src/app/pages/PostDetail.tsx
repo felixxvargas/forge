@@ -281,6 +281,7 @@ export function PostDetail() {
                     value={newComment}
                     onChange={handleCommentChange}
                     placeholder="Write a comment… Use @ to mention"
+                    style={{ fontSize: '16px' }}
                     className="w-full px-4 py-2 bg-secondary rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                   />
                   {/* Mention dropdown */}

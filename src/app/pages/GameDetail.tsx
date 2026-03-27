@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -16,7 +16,7 @@ type PostSort = 'latest' | 'top';
 export function GameDetail() {
   const navigate = useNavigate();
   const { gameId } = useParams();
-  const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeed, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost } = useAppData();
+  const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeed, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
 
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -41,6 +41,7 @@ export function GameDetail() {
   const [listCount, setListCount] = useState<number | null>(null);
 
   const [gameRank, setGameRank] = useState<number | null>(null);
+  const [showAddToListTray, setShowAddToListTray] = useState(false);
 
   // Load trending rank (non-blocking)
   useEffect(() => {
@@ -159,6 +160,9 @@ export function GameDetail() {
         setIsOwned(false);
         setPlayers(prev => prev.map(p => p.id === session.user.id ? { ...p, owned: false } : p)
           .filter(p => p.id !== session.user.id || p.played || p.owned));
+        // Sync library list
+        const library: any[] = currentUser?.game_lists?.library ?? [];
+        await updateGameList('library', library.filter((g: any) => String(g.id) !== String(gameId)));
       } else {
         await userGamesAPI.add(session.user.id, gameId, 'owned');
         setIsOwned(true);
@@ -168,6 +172,11 @@ export function GameDetail() {
             if (ex) return prev.map(p => p.id === currentUser.id ? { ...p, owned: true } : p);
             return [...prev, { ...currentUser, played: isPlayed, owned: true }];
           });
+          // Sync library list — prepend game if not already present
+          const library: any[] = currentUser?.game_lists?.library ?? [];
+          if (!library.some((g: any) => String(g.id) === String(gameId))) {
+            await updateGameList('library', [game, ...library]);
+          }
         }
       }
     } catch { /* ignore */ } finally { setTogglingOwned(false); }
@@ -238,6 +247,26 @@ export function GameDetail() {
     repostedPosts.has(postId) ? unrepostPost(postId) : repostPost(postId);
   };
 
+  // Add-to-list tray helpers
+  const addToListOptions: { listType: 'favorite' | 'wishlist' | 'completed'; label: string; key: string }[] = [
+    { listType: 'favorite', label: 'Favorite Games', key: 'favorites' },
+    { listType: 'wishlist', label: 'Wishlist', key: 'wishlist' },
+    { listType: 'completed', label: 'Completed Games', key: 'completed' },
+  ];
+  const isGameInList = (key: string) => {
+    const list: any[] = currentUser?.game_lists?.[key] ?? [];
+    return list.some((g: any) => String(g.id) === String(gameId));
+  };
+  const handleToggleInList = async (listType: 'favorite' | 'wishlist' | 'completed', key: string) => {
+    if (!session?.user || !game) return;
+    const list: any[] = currentUser?.game_lists?.[key] ?? [];
+    if (isGameInList(key)) {
+      await updateGameList(listType, list.filter((g: any) => String(g.id) !== String(gameId)));
+    } else {
+      await updateGameList(listType, [game, ...list]);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-20 bg-background">
       <Header />
@@ -288,8 +317,8 @@ export function GameDetail() {
             )}
             {(() => {
               const score = (listCount ?? 0) + taggedPosts.length;
-              if (score === 0) return null;
               const rankInTop = gameRank !== null && gameRank <= 1000;
+              if (score === 0 && !rankInTop) return null;
               return (
                 <button
                   onClick={() => navigate('/trending-games')}
@@ -345,52 +374,38 @@ export function GameDetail() {
           </div>
         )}
 
-        {/* Platform pills */}
-        {platforms.length > 0 && (
-          <div className="mb-5">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Platforms</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {platforms.map((p: string) => (
-                <span key={p} className="px-3 py-1 text-sm bg-secondary text-foreground rounded-full">{p}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Store links */}
-        {(() => {
-          const title = encodeURIComponent(game.title);
-          const p = platforms.map((s: string) => s.toLowerCase()).join(' ');
-          const links: { label: string; url: string; color: string }[] = [];
-          if (p.includes('pc') || p.includes('windows') || p.includes('steam')) {
-            links.push({ label: 'Steam', url: `https://store.steampowered.com/search/?term=${title}`, color: 'text-[#1b2838]' });
-          }
-          if (p.includes('playstation')) {
-            links.push({ label: 'PlayStation Store', url: `https://store.playstation.com/search/${title}`, color: 'text-[#003087]' });
-          }
-          if (p.includes('xbox')) {
-            links.push({ label: 'Xbox', url: `https://www.xbox.com/en-US/search?q=${title}`, color: 'text-[#107C10]' });
-          }
-          if (p.includes('nintendo switch') || p.includes('switch')) {
-            links.push({ label: 'Nintendo eShop', url: `https://www.nintendo.com/search/?q=${title}&p=1&cat=gm&sort=score`, color: 'text-[#E60012]' });
-          }
-          if (links.length === 0) return null;
+        {/* Platforms — each pill links to store if applicable */}
+        {platforms.length > 0 && (() => {
+          const encodedTitle = encodeURIComponent(game.title);
+          const storeUrl = (platform: string): string | null => {
+            const p = platform.toLowerCase();
+            if (p.includes('pc') || p.includes('windows') || p === 'steam') return `https://store.steampowered.com/search/?term=${encodedTitle}`;
+            if (p.includes('playstation') || p === 'ps4' || p === 'ps5' || p === 'ps3' || p === 'ps2') return `https://store.playstation.com/search/${encodedTitle}`;
+            if (p.includes('xbox')) return `https://www.xbox.com/en-US/search?q=${encodedTitle}`;
+            if (p.includes('nintendo switch') || p === 'switch') return `https://www.nintendo.com/search/?q=${encodedTitle}&p=1&cat=gm&sort=score`;
+            return null;
+          };
           return (
             <div className="mb-5">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Buy / Find On</h3>
-              <div className="flex flex-wrap gap-2">
-                {links.map(link => (
-                  <a
-                    key={link.label}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-full text-sm font-medium transition-colors"
-                  >
-                    {link.label}
-                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                  </a>
-                ))}
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Platforms</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {platforms.map((platform: string) => {
+                  const url = storeUrl(platform);
+                  return url ? (
+                    <a
+                      key={platform}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 text-foreground rounded-full transition-colors"
+                    >
+                      {platform}
+                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    </a>
+                  ) : (
+                    <span key={platform} className="px-3 py-1 text-sm bg-secondary text-foreground rounded-full">{platform}</span>
+                  );
+                })}
               </div>
             </div>
           );
@@ -430,19 +445,28 @@ export function GameDetail() {
               disabled={togglingFollowed}
               className={`w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-semibold text-sm transition-all ${
                 isFollowed
-                  ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/80'
                   : 'bg-secondary border-2 border-border text-foreground hover:bg-secondary/80'
               }`}
             >
               {togglingFollowed ? (
                 <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
               ) : isFollowed ? (
-                <Bell className="w-4 h-4" />
+                <Check className="w-4 h-4" />
               ) : (
-                <Bell className="w-4 h-4" />
+                <Plus className="w-4 h-4" />
               )}
-              {isFollowed ? '✓ Following — Posts appear in your feed' : 'Follow Game'}
+              {isFollowed ? 'Following' : 'Follow Game'}
             </button>
+            {/* Add to List button */}
+            <button
+              onClick={() => setShowAddToListTray(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-medium text-sm bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 transition-all"
+            >
+              <List className="w-4 h-4" />
+              Add to List
+            </button>
+
             {/* LFG / LFM buttons — fire flare branding */}
             <div className="flex gap-3 mb-6">
               {myFlare ? (
@@ -476,6 +500,37 @@ export function GameDetail() {
               )}
             </div>
           </>
+        )}
+
+        {/* Friends preview — shown at the top, before stats */}
+        {!loadingPlayers && friends.length > 0 && (
+          <button
+            onClick={() => navigate(`/game/${gameId}/players`)}
+            className="w-full bg-card rounded-2xl p-4 mb-4 flex items-center gap-3 hover:bg-card/80 transition-colors text-left"
+          >
+            <div className="flex -space-x-2 shrink-0">
+              {friends.slice(0, 5).map((user: any) => (
+                <ProfileAvatar
+                  key={user.id}
+                  username={user.display_name || user.handle || '?'}
+                  profilePicture={user.profile_picture ?? null}
+                  size="sm"
+                  userId={user.id}
+                  className="border-2 border-card"
+                />
+              ))}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">
+                {friends.slice(0, 2).map((u: any) => u.display_name || u.handle).join(', ')}
+                {friends.length > 2 && ` and ${friends.length - 2} more`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {friends.length} friend{friends.length !== 1 ? 's' : ''} {friends.length === 1 ? 'plays' : 'play'} this game
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
         )}
 
         {/* Stats row */}
@@ -518,37 +573,6 @@ export function GameDetail() {
             </div>
           </div>
         </div>
-
-        {/* Friends preview row */}
-        {!loadingPlayers && friends.length > 0 && (
-          <button
-            onClick={() => navigate(`/game/${gameId}/players`)}
-            className="w-full bg-card rounded-2xl p-4 mb-6 flex items-center gap-3 hover:bg-card/80 transition-colors text-left"
-          >
-            <div className="flex -space-x-2 shrink-0">
-              {friends.slice(0, 5).map((user: any) => (
-                <ProfileAvatar
-                  key={user.id}
-                  username={user.display_name || user.handle || '?'}
-                  profilePicture={user.profile_picture ?? null}
-                  size="sm"
-                  userId={user.id}
-                  className="border-2 border-card"
-                />
-              ))}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">
-                {friends.slice(0, 2).map((u: any) => u.display_name || u.handle).join(', ')}
-                {friends.length > 2 && ` and ${friends.length - 2} more`}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {friends.length} friend{friends.length !== 1 ? 's' : ''} play this game
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-          </button>
-        )}
 
         {/* Group Finder — LFG/LFM flares for this game */}
         {(loadingFlares || gameFlares.length > 0) && (
@@ -683,6 +707,41 @@ export function GameDetail() {
           </div>
         )}
       </div>
+
+      {/* Add to List tray */}
+      {showAddToListTray && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowAddToListTray(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl pb-safe"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-4" />
+            <p className="text-center font-semibold mb-3 px-4">Add to List</p>
+            <div className="divide-y divide-border border-t border-border">
+              {addToListOptions.map(({ listType, label, key }) => {
+                const inList = isGameInList(key);
+                return (
+                  <button
+                    key={listType}
+                    onClick={() => handleToggleInList(listType, key)}
+                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-secondary transition-colors text-left"
+                  >
+                    <span className="font-medium">{label}</span>
+                    {inList && <Check className="w-5 h-5 text-accent shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowAddToListTray(false)}
+              className="w-full py-4 text-center text-sm text-muted-foreground border-t border-border"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* LFG Flare Modal */}
       {game && (

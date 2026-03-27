@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
@@ -11,7 +11,7 @@ import type { User } from '../data/data';
 export function NewPost() {
   const navigate = useNavigate();
   const { createPost, currentUser, users } = useAppData();
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(() => sessionStorage.getItem('forge-post-draft') ?? '');
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -22,6 +22,20 @@ export function NewPost() {
   const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  // Track visual viewport to position mention dropdown above the OSK on mobile
+  const [viewportBottom, setViewportBottom] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      // Distance from the bottom of the visual viewport to the bottom of the layout viewport
+      const keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
+      setViewportBottom(Math.max(0, keyboardHeight));
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+  }, []);
   const [error, setError] = useState('');
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
   const [atGameResults, setAtGameResults] = useState<any[]>([]);
@@ -47,6 +61,11 @@ export function NewPost() {
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
+    if (newContent) {
+      sessionStorage.setItem('forge-post-draft', newContent);
+    } else {
+      sessionStorage.removeItem('forge-post-draft');
+    }
 
     const cursorPos = e.target.selectionStart ?? newContent.length;
     const before = newContent.slice(0, cursorPos);
@@ -223,6 +242,7 @@ export function NewPost() {
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
       await createPost(content, images, linkUrl || undefined, undefined, undefined, gameIds[0], gameTitles[0], gameIds, gameTitles);
+      sessionStorage.removeItem('forge-post-draft');
       navigate(-1);
     } catch (err: any) {
       setError(err.message || 'Failed to create post. Please try again.');
@@ -296,9 +316,12 @@ export function NewPost() {
           />
         </div>
 
-        {/* @Mention + @Game suggestions */}
+        {/* @Mention + @Game suggestions — fixed above the OSK */}
         {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0) && (
-          <div className="absolute left-4 right-4 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          <div
+            className="fixed left-2 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+            style={{ bottom: viewportBottom + 4 }}
+          >
             {mentionSuggestions.length > 0 && (
               <>
                 <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">People</div>
@@ -347,9 +370,12 @@ export function NewPost() {
           </div>
         )}
 
-        {/* #Game hash suggestions */}
+        {/* #Game hash suggestions — fixed above the OSK */}
         {showHashGames && hashGameResults.length > 0 && (
-          <div className="absolute left-4 right-4 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+          <div
+            className="fixed left-2 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+            style={{ bottom: viewportBottom + 4 }}
+          >
             {hashGameResults.map((game: any, i) => (
               <button
                 key={game.id ?? i}

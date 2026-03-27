@@ -7,7 +7,7 @@ import { GroupIcon } from '../components/GroupIcon';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { type User, type Group } from '../data/data';
-import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, supabase } from '../utils/supabase';
+import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, groups as groupsAPI, supabase } from '../utils/supabase';
 import { fetchAllGamingMediaPosts } from '../utils/bluesky';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
@@ -838,13 +838,31 @@ interface GroupCardProps {
 function GroupCard({ group, gameTitles }: GroupCardProps) {
   const { currentUser } = useAppData();
   const navigate = useNavigate();
-
-  const isMember = currentUser?.communities?.some(
-    membership => membership.community_id === group.id
+  const [joining, setJoining] = useState(false);
+  const [joined, setJoined] = useState(
+    currentUser?.communities?.some(m => m.community_id === group.id) ?? false
+  );
+  const [localMemberCount, setLocalMemberCount] = useState<number>(
+    group.member_count ?? group.memberCount ?? 0
   );
 
-  const handleJoinClick = (e: React.MouseEvent) => {
+  const handleJoinClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser?.id || joining) return;
+    if (group.type === 'request') {
+      navigate(`/group/${group.id}`);
+      return;
+    }
+    setJoining(true);
+    try {
+      await groupsAPI.join(currentUser.id, group.id);
+      setJoined(true);
+      setLocalMemberCount(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to join group:', err);
+    } finally {
+      setJoining(false);
+    }
   };
 
 
@@ -877,7 +895,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
           </div>
           <p className="text-sm text-gray-400 line-clamp-2 mb-2">{group.description}</p>
           <p className="text-xs text-gray-500">
-            {(group.member_count ?? group.memberCount ?? 0).toLocaleString()} members
+            {localMemberCount.toLocaleString()} members
           </p>
           {(() => {
             const gameIds: string[] = (group as any).game_ids ?? [];
@@ -892,14 +910,24 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
             );
           })()}
         </div>
-        {!isMember && (group.type?.trim() === 'open' || group.type?.trim() === 'request') && (
+        {!joined && (group.type?.trim() === 'open' || group.type?.trim() === 'request') && (
           <button
             onClick={handleJoinClick}
-            className="px-4 py-2 bg-purple-600 text-white rounded-full text-sm font-medium hover:bg-purple-700 transition-colors flex-shrink-0"
+            disabled={joining}
+            className="px-4 py-2 bg-purple-600 text-white rounded-full text-sm font-medium hover:bg-purple-700 transition-colors flex-shrink-0 disabled:opacity-60"
           >
-            <UserPlus className="w-4 h-4 inline-block mr-1" />
+            {joining ? (
+              <span className="w-4 h-4 inline-block border-2 border-white border-t-transparent rounded-full animate-spin align-middle mr-1" />
+            ) : (
+              <UserPlus className="w-4 h-4 inline-block mr-1" />
+            )}
             {group.type === 'request' ? 'Request' : 'Join'}
           </button>
+        )}
+        {joined && (
+          <span className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded-full text-xs font-medium flex-shrink-0">
+            Joined ✓
+          </span>
         )}
       </div>
     </div>
