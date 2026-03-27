@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Check, X } from 'lucide-react';
 import { userAPI } from '../../utils/api';
@@ -8,10 +8,16 @@ interface UsernameScreenProps {
 }
 
 export function UsernameScreen({ onComplete }: UsernameScreenProps) {
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [pronouns, setPronouns] = useState('');
+  const [username, setUsername] = useState(() => sessionStorage.getItem('forge-onboarding-username') ?? '');
+  const [displayName, setDisplayName] = useState(() => sessionStorage.getItem('forge-onboarding-display-name') ?? '');
+  const [pronouns, setPronouns] = useState(() => sessionStorage.getItem('forge-onboarding-pronouns') ?? '');
   const [feedback, setFeedback] = useState<'available' | 'taken' | 'invalid' | 'checking' | null>(null);
+
+  // Restore username validation state on mount if a username was drafted
+  useEffect(() => {
+    const saved = sessionStorage.getItem('forge-onboarding-username');
+    if (saved) validateUsername(saved);
+  }, []);
   const [checkTimeout, setCheckTimeout] = useState<any>(null);
 
   const validateUsername = async (value: string) => {
@@ -56,6 +62,7 @@ export function UsernameScreen({ onComplete }: UsernameScreenProps) {
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setUsername(value);
+    sessionStorage.setItem('forge-onboarding-username', value);
     
     // Clear existing timeout
     if (checkTimeout) {
@@ -73,6 +80,9 @@ export function UsernameScreen({ onComplete }: UsernameScreenProps) {
 
   const handleSubmit = () => {
     if (feedback === 'available' && displayName.trim()) {
+      sessionStorage.removeItem('forge-onboarding-username');
+      sessionStorage.removeItem('forge-onboarding-display-name');
+      sessionStorage.removeItem('forge-onboarding-pronouns');
       onComplete(username, displayName.trim(), pronouns.trim());
     }
   };
@@ -121,7 +131,7 @@ export function UsernameScreen({ onComplete }: UsernameScreenProps) {
             id="displayName"
             type="text"
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            onChange={(e) => { setDisplayName(e.target.value); sessionStorage.setItem('forge-onboarding-display-name', e.target.value); }}
             onKeyPress={handleKeyPress}
             placeholder="John Doe"
             className="w-full px-4 py-3 bg-secondary rounded-lg border-2 border-transparent focus:border-accent focus:outline-none transition-colors"
@@ -203,7 +213,7 @@ export function UsernameScreen({ onComplete }: UsernameScreenProps) {
             id="pronouns"
             type="text"
             value={pronouns}
-            onChange={(e) => setPronouns(e.target.value)}
+            onChange={(e) => { setPronouns(e.target.value); sessionStorage.setItem('forge-onboarding-pronouns', e.target.value); }}
             onKeyPress={handleKeyPress}
             placeholder="e.g., she/her, he/him, they/them"
             className="w-full px-4 py-3 bg-secondary rounded-lg border-2 border-transparent focus:border-accent focus:outline-none transition-colors"

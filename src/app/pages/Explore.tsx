@@ -24,6 +24,11 @@ export function Explore() {
 
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem('explore-search-query') ?? '');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('forge-search-history') || '[]'); } catch { return []; }
+  });
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [topicPosts, setTopicPosts] = useState<any[]>([]);
   const [livePosts, setLivePosts] = useState<any[]>([]);
   const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
@@ -214,6 +219,15 @@ export function Explore() {
         setSearchGames(gamesRes.status === 'fulfilled'
           ? (Array.isArray(gamesRes.value) ? gamesRes.value : (gamesRes.value as any)?.games ?? [])
           : []);
+        const trimmed = searchQuery.trim();
+        if (trimmed) {
+          setSearchHistory(prev => {
+            const filtered = prev.filter(h => h.toLowerCase() !== trimmed.toLowerCase());
+            const updated = [trimmed, ...filtered].slice(0, 10);
+            localStorage.setItem('forge-search-history', JSON.stringify(updated));
+            return updated;
+          });
+        }
       } finally {
         setSearchLoading(false);
       }
@@ -250,6 +264,8 @@ export function Explore() {
 
   const handleClearSearch = () => {
     setSearchQuery('');
+    setShowSearchHistory(true);
+    searchInputRef.current?.focus();
   };
 
   const goToTab = (tab: ExploreTab, keepSearch = false) => {
@@ -340,12 +356,13 @@ export function Explore() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search users, games, posts, groups..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
+              onChange={(e) => { setSearchQuery(e.target.value); setShowSearchHistory(!e.target.value); }}
+              onFocus={() => { setIsSearchFocused(true); if (!searchQuery) setShowSearchHistory(true); }}
+              onBlur={() => { setIsSearchFocused(false); setTimeout(() => setShowSearchHistory(false), 150); }}
               className="w-full pl-10 pr-10 py-3 bg-gray-900 border border-gray-800 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-purple-600"
             />
             {searchQuery && (
@@ -355,6 +372,49 @@ export function Explore() {
               >
                 <X className="w-5 h-5" />
               </button>
+            )}
+            {showSearchHistory && searchHistory.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden z-30 shadow-2xl">
+                <div className="px-4 py-2 flex items-center justify-between border-b border-gray-800">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Recent searches</p>
+                  <button
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      setSearchHistory([]);
+                      localStorage.removeItem('forge-search-history');
+                    }}
+                    className="text-xs text-gray-500 hover:text-white transition-colors"
+                  >
+                    Clear all
+                  </button>
+                </div>
+                {searchHistory.map((item, i) => (
+                  <div key={i} className="flex items-center border-b border-gray-800/50 last:border-0">
+                    <button
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        setSearchQuery(item);
+                        setShowSearchHistory(false);
+                      }}
+                      className="flex-1 px-4 py-3 flex items-center gap-3 hover:bg-gray-800 transition-colors text-left"
+                    >
+                      <Search className="w-4 h-4 text-gray-600 shrink-0" />
+                      <span className="text-sm">{item}</span>
+                    </button>
+                    <button
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        const updated = searchHistory.filter((_, idx) => idx !== i);
+                        setSearchHistory(updated);
+                        localStorage.setItem('forge-search-history', JSON.stringify(updated));
+                      }}
+                      className="px-3 py-3 text-gray-600 hover:text-gray-300 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

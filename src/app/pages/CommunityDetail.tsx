@@ -632,8 +632,8 @@ export function CommunityDetail() {
 
       {/* Invite Users Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-lg rounded-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden">
             <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Invite Users</h2>
               <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
@@ -704,8 +704,8 @@ export function CommunityDetail() {
 
       {/* Game Picker Modal */}
       {showGamePicker && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-lg rounded-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden">
             <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Add Game ({communityGames.length}/10)</h2>
               <button onClick={() => setShowGamePicker(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">

@@ -41,6 +41,11 @@ export function EditGameListsModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [gameSearchHistory, setGameSearchHistory] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('forge-game-search-history') || '[]'); } catch { return []; }
+  });
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pointer-based drag state (works on desktop and mobile touch)
@@ -83,6 +88,15 @@ export function EditGameListsModal({
         const serverTitles = new Set(serverGames.map((g: AnyGame) => normalise(g.title)));
         const merged = [...serverGames, ...rawgGames.filter((g: AnyGame) => !serverTitles.has(normalise(g.title)))];
         setSearchResults(merged);
+        const trimmed = searchQuery.trim();
+        if (trimmed) {
+          setGameSearchHistory(prev => {
+            const filtered = prev.filter(h => h.toLowerCase() !== trimmed.toLowerCase());
+            const updated = [trimmed, ...filtered].slice(0, 10);
+            localStorage.setItem('forge-game-search-history', JSON.stringify(updated));
+            return updated;
+          });
+        }
       } catch {
         setSearchResults([]);
       } finally {
@@ -92,16 +106,24 @@ export function EditGameListsModal({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
-  // Reset state when opened
+  // Restore/reset state when opened
   useEffect(() => {
     if (isOpen) {
       setSelectedGames(currentGames);
-      setSearchQuery('');
-      setSearchResults([]);
+      const savedQuery = localStorage.getItem(`forge-game-list-search-${listType}`) || '';
+      setSearchQuery(savedQuery);
+      if (!savedQuery) setSearchResults([]);
       setDragIdx(null);
       setDragOverIdx(null);
     }
   }, [isOpen]);
+
+  // Persist search query per list type
+  useEffect(() => {
+    if (isOpen) {
+      localStorage.setItem(`forge-game-list-search-${listType}`, searchQuery);
+    }
+  }, [searchQuery, isOpen, listType]);
 
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
@@ -166,7 +188,7 @@ export function EditGameListsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+    <div className="fixed inset-0 bg-background z-[60] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-20">
         <div className="flex items-center gap-3">
@@ -188,10 +210,13 @@ export function EditGameListsModal({
         <div className="relative max-w-2xl mx-auto w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search games to add…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setShowSearchHistory(!e.target.value); }}
+            onFocus={() => { if (!searchQuery) setShowSearchHistory(true); }}
+            onBlur={() => { setTimeout(() => setShowSearchHistory(false), 150); }}
             className="w-full pl-9 pr-9 py-2.5 bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
             style={{ fontSize: '16px' }}
           />
@@ -199,18 +224,61 @@ export function EditGameListsModal({
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
           ) : searchQuery ? (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => { setSearchQuery(''); setShowSearchHistory(true); searchInputRef.current?.focus(); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           ) : null}
+          {showSearchHistory && gameSearchHistory.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl overflow-hidden z-30 shadow-2xl">
+              <div className="px-3 py-2 flex items-center justify-between border-b border-border">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Recent searches</p>
+                <button
+                  onMouseDown={e => {
+                    e.preventDefault();
+                    setGameSearchHistory([]);
+                    localStorage.removeItem('forge-game-search-history');
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear all
+                </button>
+              </div>
+              {gameSearchHistory.map((item, i) => (
+                <div key={i} className="flex items-center border-b border-border/50 last:border-0">
+                  <button
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      setSearchQuery(item);
+                      setShowSearchHistory(false);
+                    }}
+                    className="flex-1 px-3 py-2.5 flex items-center gap-2 hover:bg-secondary transition-colors text-left"
+                  >
+                    <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm">{item}</span>
+                  </button>
+                  <button
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      const updated = gameSearchHistory.filter((_, idx) => idx !== i);
+                      setGameSearchHistory(updated);
+                      localStorage.setItem('forge-game-search-history', JSON.stringify(updated));
+                    }}
+                    className="px-2.5 py-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="p-4 space-y-4 max-w-2xl mx-auto w-full">
+        <div className="p-4 pb-24 space-y-4 max-w-2xl mx-auto w-full">
 
           {/* Search Results */}
           {searchQuery.trim() && (

@@ -322,9 +322,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Topic account IDs are local synthetic IDs (e.g. 'user-koop') not in the Supabase profiles table.
+  // Topic account IDs are synthetic slugs (e.g. 'user-koop', 'studio-koopmode'), not real Supabase UUIDs.
   // They can't use the follows table (FK constraint). We persist them in game_lists._topicFollows instead.
-  const isTopicId = (id: string) => id.startsWith('user-');
+  // Any ID that isn't a UUID format is treated as a topic/synthetic account.
+  const isTopicId = (id: string) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
   const followUser = async (userId: string) => {
     if (!session?.user) return;
@@ -338,8 +339,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
     } else {
       await profiles.follow(session.user.id, userId);
-      // Create follow notification (DB trigger also does this, code is a fallback)
-      notificationsAPI.create('follow', userId, session.user.id).catch(() => {});
     }
     setFollowingIds(prev => new Set([...prev, userId]));
     setUsers(prev => prev.map(u =>

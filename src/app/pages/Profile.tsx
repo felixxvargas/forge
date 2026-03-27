@@ -84,7 +84,10 @@ export function Profile() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(() => {
+    const id = userId || '';
+    return id ? followingIds.has(id) : false;
+  });
   const [profileUserPosts, setProfileUserPosts] = useState<any[]>([]);
   const [profileLikedPosts, setProfileLikedPosts] = useState<any[]>([]);
   const [likesLoading, setLikesLoading] = useState(false);
@@ -120,11 +123,13 @@ export function Profile() {
   const isTopicAccount = ((profileUser || currentUser) as any)?.account_type === 'topic';
   const profilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || profileUser?.profile_picture || undefined;
 
-  // Check persistent follow state from DB when viewing another user
+  // Sync follow state from followingIds — covers both regular follows (follows table) and topic
+  // account follows stored in game_lists._topicFollows. This ensures Koop and other topic accounts
+  // show the correct following state without querying the follows table directly.
   useEffect(() => {
-    if (isOwnProfile || !currentUser?.id || !profileUser?.id) return;
-    profilesAPI.isFollowing(currentUser.id, profileUser.id).then(setIsFollowing);
-  }, [isOwnProfile, currentUser?.id, profileUser?.id]);
+    if (isOwnProfile || !profileUser?.id) return;
+    setIsFollowing(followingIds.has(profileUser.id));
+  }, [isOwnProfile, profileUser?.id, followingIds]);
 
   // Fetch fresh follower/following counts from the follows table (source of truth — avoids stale counters)
   useEffect(() => {

@@ -1,17 +1,31 @@
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle, QrCode, X, Download, Copy, Check, Bug, Lightbulb } from 'lucide-react';
+import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FeedbackModal } from '../components/FeedbackModal';
+import { supabase } from '../utils/supabase';
+
+interface LinkedAccount {
+  id: string;
+  handle: string;
+  display_name: string;
+  profile_picture: string | null;
+  access_token: string;
+  refresh_token: string;
+}
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
   const { currentUser, session, updateCurrentUser } = useAppData();
   const navigate = useNavigate();
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>(() => {
+    try { return JSON.parse(localStorage.getItem('forge-linked-accounts') || '[]'); } catch { return []; }
+  });
+  const [showManageAccounts, setShowManageAccounts] = useState(false);
   const [toastNotificationsEnabled, setToastNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('forge-toast-notifications');
     return saved !== 'false'; // Default to true
@@ -29,6 +43,85 @@ export function Settings() {
   useEffect(() => {
     localStorage.setItem('forge-toast-notifications', String(toastNotificationsEnabled));
   }, [toastNotificationsEnabled]);
+
+  // After returning from link-account flow, save the newly signed-in account
+  useEffect(() => {
+    const shouldSave = localStorage.getItem('forge-save-linked-account') === 'true';
+    if (shouldSave && currentUser && session) {
+      localStorage.removeItem('forge-save-linked-account');
+      setLinkedAccounts(prev => {
+        if (prev.find(a => a.id === currentUser.id)) return prev;
+        const newAccount: LinkedAccount = {
+          id: currentUser.id,
+          handle: currentUser.handle,
+          display_name: currentUser.display_name,
+          profile_picture: currentUser.profile_picture,
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        };
+        const updated = [...prev, newAccount];
+        localStorage.setItem('forge-linked-accounts', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [currentUser, session]);
+
+  const handleLinkAccount = () => {
+    if (!currentUser || !session) return;
+    const linked: LinkedAccount[] = JSON.parse(localStorage.getItem('forge-linked-accounts') || '[]');
+    if (!linked.find(a => a.id === currentUser.id)) {
+      linked.push({
+        id: currentUser.id,
+        handle: currentUser.handle,
+        display_name: currentUser.display_name,
+        profile_picture: currentUser.profile_picture,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+      localStorage.setItem('forge-linked-accounts', JSON.stringify(linked));
+    }
+    localStorage.setItem('forge-linking-account', 'true');
+    navigate('/login');
+  };
+
+  const handleSwitchAccount = async (account: LinkedAccount) => {
+    if (!currentUser || !session) return;
+    // Refresh current account's tokens in linked list before switching
+    const linked: LinkedAccount[] = JSON.parse(localStorage.getItem('forge-linked-accounts') || '[]');
+    const currentData: LinkedAccount = {
+      id: currentUser.id,
+      handle: currentUser.handle,
+      display_name: currentUser.display_name,
+      profile_picture: currentUser.profile_picture,
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    };
+    const idx = linked.findIndex(a => a.id === currentUser.id);
+    if (idx >= 0) linked[idx] = currentData; else linked.push(currentData);
+    localStorage.setItem('forge-linked-accounts', JSON.stringify(linked));
+
+    const { error } = await supabase.auth.setSession({
+      access_token: account.access_token,
+      refresh_token: account.refresh_token,
+    });
+    if (error) {
+      // Token expired — remove bad account from list and prompt re-login
+      const updated = linked.filter(a => a.id !== account.id);
+      setLinkedAccounts(updated.filter(a => a.id !== currentUser.id));
+      localStorage.setItem('forge-linked-accounts', JSON.stringify(updated.filter(a => a.id !== currentUser.id)));
+      alert('Session expired for that account. Please sign in again to relink it.');
+      return;
+    }
+    navigate('/feed');
+  };
+
+  const handleRemoveLinkedAccount = (accountId: string) => {
+    setLinkedAccounts(prev => {
+      const updated = prev.filter(a => a.id !== accountId);
+      localStorage.setItem('forge-linked-accounts', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const handleToggleAllowDMs = async () => {
     const next = !allowDMs;
@@ -111,6 +204,72 @@ export function Settings() {
       <Header showSettings={false} />
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+
+        {/* Accounts Section */}
+        <div className="mb-8">
+          {/* Active account card */}
+          <div className="bg-card rounded-xl p-4 mb-3 flex items-center gap-3">
+            {currentUser?.profile_picture ? (
+              <img src={currentUser.profile_picture} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <User className="w-7 h-7 text-accent" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{currentUser?.display_name || currentUser?.handle || 'You'}</p>
+              <p className="text-sm text-muted-foreground">@{(currentUser?.handle || '').replace(/^@/, '')}</p>
+            </div>
+            <span className="text-xs text-accent bg-accent/10 px-2.5 py-1 rounded-full font-medium shrink-0">Active</span>
+          </div>
+
+          {/* Linked accounts list */}
+          {linkedAccounts.filter(a => a.id !== currentUser?.id).length > 0 && (
+            <div className="bg-card rounded-xl overflow-hidden divide-y divide-border mb-3">
+              {linkedAccounts.filter(a => a.id !== currentUser?.id).map(account => (
+                <button
+                  key={account.id}
+                  onClick={() => handleSwitchAccount(account)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors"
+                >
+                  {account.profile_picture ? (
+                    <img src={account.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-medium truncate">{account.display_name || account.handle}</p>
+                    <p className="text-xs text-muted-foreground">@{(account.handle || '').replace(/^@/, '')}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground mr-1">Switch</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Link / manage buttons */}
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <button
+              onClick={handleLinkAccount}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <UserPlus className="w-5 h-5 text-muted-foreground" />
+              <span className="font-medium">Link another account</span>
+            </button>
+            {linkedAccounts.filter(a => a.id !== currentUser?.id).length > 0 && (
+              <button
+                onClick={() => setShowManageAccounts(true)}
+                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-secondary transition-colors"
+              >
+                <Users className="w-5 h-5 text-muted-foreground" />
+                <span className="font-medium">Manage linked accounts</span>
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Appearance Section */}
         <div className="mb-8">
@@ -496,6 +655,44 @@ export function Settings() {
       )}
 
       {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
+
+      {/* Manage Linked Accounts Modal */}
+      {showManageAccounts && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowManageAccounts(false)}>
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Linked Accounts</h2>
+              <button onClick={() => setShowManageAccounts(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {linkedAccounts.filter(a => a.id !== currentUser?.id).map(account => (
+                <div key={account.id} className="flex items-center gap-3 p-3 bg-secondary rounded-xl">
+                  {account.profile_picture ? (
+                    <img src={account.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{account.display_name || account.handle}</p>
+                    <p className="text-xs text-muted-foreground">@{(account.handle || '').replace(/^@/, '')}</p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveLinkedAccount(account.id)}
+                    className="p-2 hover:bg-destructive/20 rounded-lg transition-colors text-destructive"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground text-center">Removing an account from this list won't sign it out</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

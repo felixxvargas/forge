@@ -47,23 +47,25 @@ export function ProfilePictureLightbox({ isOpen, onClose, profilePicture, userna
       </button>
 
       {/* Profile picture - prevent click from closing */}
-      <div 
-        className="relative max-w-2xl max-h-[80vh] flex items-center justify-center"
+      <div
+        className="relative flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
         {profilePicture ? (
-          <img 
-            src={profilePicture} 
-            alt={`${username}'s profile picture`}
-            className="max-w-full max-h-[80vh] rounded-lg object-contain"
-          />
+          <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full overflow-hidden shadow-2xl ring-4 ring-white/10">
+            <img
+              src={profilePicture}
+              alt={`${username}'s profile picture`}
+              className="w-full h-full object-cover"
+            />
+          </div>
         ) : (
-          <div className="w-96 h-96 flex items-center justify-center">
-            <ProfileAvatar 
+          <div className="w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center">
+            <ProfileAvatar
               username={username}
               profilePicture={profilePicture}
               size="xl"
-              className="!w-96 !h-96 !text-9xl"
+              className="!w-72 !h-72 sm:!w-96 sm:!h-96 !text-9xl"
             />
           </div>
         )}

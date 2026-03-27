@@ -30,8 +30,15 @@ export function Login() {
     setIsLoading(true);
     try {
       await signIn(email, password);
-      toast.success('Welcome back!');
-      navigate('/feed');
+      const isLinking = localStorage.getItem('forge-linking-account') === 'true';
+      if (isLinking) {
+        localStorage.removeItem('forge-linking-account');
+        localStorage.setItem('forge-save-linked-account', 'true');
+        navigate('/settings');
+      } else {
+        toast.success('Welcome back!');
+        navigate('/feed');
+      }
     } catch (err: any) {
       setError(err.message || 'Sign in failed. Check your email and password.');
     } finally {

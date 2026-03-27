@@ -25,6 +25,14 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Prevent iOS Safari from zooming in when focusing text inputs.
+   iOS zooms when font-size < 16px; this ensures we never go below that. */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
+
 /* Desktop layout: Full width with centered content areas */
 @media (min-width: 768px) {
   #root {
