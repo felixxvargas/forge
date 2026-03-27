@@ -38,18 +38,22 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           <ZapIcon className="w-24 h-24 text-accent fill-current" strokeWidth={1.5} />
         </motion.div>
         
-        <motion.h1
-          className="text-5xl font-bold text-foreground font-sora"
+        <motion.div
+          className="flex items-center gap-3"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ 
-            delay: 0.5, 
-            duration: 0.6,
-            ease: "easeOut" 
-          }}
+          transition={{ delay: 0.5, duration: 0.6, ease: "easeOut" }}
         >
-          Forge
-        </motion.h1>
+          <h1 className="text-5xl font-bold text-foreground font-sora">Forge</h1>
+          <motion.span
+            className="text-xs font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-accent/15 text-accent self-center mt-1"
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.9, duration: 0.4, ease: "easeOut" }}
+          >
+            Beta
+          </motion.span>
+        </motion.div>
         
         <motion.p
           className="text-muted-foreground text-lg"

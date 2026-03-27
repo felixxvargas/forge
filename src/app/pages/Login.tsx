@@ -50,9 +50,10 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-3 flex items-center justify-center">
             <Zap className="w-16 h-16 fill-current text-accent" />
           </div>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-3">Beta</span>
           <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
           <p className="text-muted-foreground">Your gaming social network awaits</p>
         </div>
