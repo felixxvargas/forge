@@ -317,7 +317,7 @@ export const mockUsers: User[] = [
     displayName: 'Forge',
     bio: 'The gaming social network for everyone. Share your gaming adventures across all platforms. 🎮⚡',
     email: 'admin@forge.com',
-    profilePicture: '', // Will use custom logo
+    profilePicture: '/forge-avatar.png',
     platforms: [],
     socialPlatforms: ['x', 'bluesky', 'threads'],
     gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
