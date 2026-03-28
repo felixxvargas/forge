@@ -42,14 +42,22 @@ export function SignUp() {
       setIsLoading(true);
       setError('');
       const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
+      // Mark this as a sign-up intent so AuthCallback can detect existing accounts
+      localStorage.setItem('forge-oauth-intent', 'signup');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          // Force account picker so user can choose a different Google account
+          queryParams: { prompt: 'select_account' },
+        },
       });
       if (error) {
+        localStorage.removeItem('forge-oauth-intent');
         setError(`Google sign-up failed: ${error.message}`);
       }
     } catch (err: any) {
+      localStorage.removeItem('forge-oauth-intent');
       setError(err.message || 'Google sign-up failed');
     } finally {
       setIsLoading(false);

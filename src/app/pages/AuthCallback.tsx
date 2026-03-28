@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '../utils/supabase';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { toast } from 'sonner';
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -34,7 +35,16 @@ export function AuthCallback() {
           .eq('id', session.user.id)
           .maybeSingle();
 
-        navigate(profile?.handle ? '/feed' : '/onboarding');
+        const oauthIntent = localStorage.getItem('forge-oauth-intent');
+        localStorage.removeItem('forge-oauth-intent');
+
+        if (oauthIntent === 'signup' && profile?.handle) {
+          // User tried to sign up but already has a Forge account — log them in and inform them
+          toast.info('You already have a Forge account. Welcome back!');
+          navigate('/feed');
+        } else {
+          navigate(profile?.handle ? '/feed' : '/onboarding');
+        }
       } else {
         navigate('/login');
       }

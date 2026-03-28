@@ -593,39 +593,57 @@ export function Profile() {
           )}
         </div>
 
-        {/* Active LFG Flares */}
+        {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
           <div className="px-4 mb-3 space-y-2">
-            {activeFlares.map(flare => (
-              <div key={flare.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 rounded-xl">
-                <Flame className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className="text-xs font-bold uppercase tracking-wide text-orange-400">
-                      {flare.flare_type === 'lfg' ? 'LFG' : 'LFM'}
-                    </span>
-                    <span className="text-sm font-semibold truncate">{flare.game_title}</span>
+            {/* Preview: show only the first flare */}
+            {(() => {
+              const flare = activeFlares[0];
+              return (
+                <div
+                  key={flare.id}
+                  onClick={() => navigate(`/flare/${flare.id}`)}
+                  className="flex items-start gap-3 p-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 rounded-xl cursor-pointer hover:border-orange-400/80 transition-all"
+                >
+                  <Flame className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <span className="text-xs font-bold uppercase tracking-wide text-orange-400">
+                        {flare.flare_type === 'lfg' ? 'LFG' : 'LFM'}
+                      </span>
+                      <span className="text-sm font-semibold truncate">{flare.game_title}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
+                      {flare.game_mode ? ` · ${flare.game_mode}` : ''}
+                      {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </p>
+                    <p className="text-xs text-orange-400/50 mt-0.5">
+                      Expires {new Date(flare.expires_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
-                    {flare.game_mode ? ` · ${flare.game_mode}` : ''}
-                    {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
-                  </p>
-                  <p className="text-xs text-orange-400/50 mt-0.5">
-                    Expires {new Date(flare.expires_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  {isOwnProfile && (
+                    <button
+                      onClick={e => { e.stopPropagation(); lfgFlaresAPI.remove(flare.id).then(() => setActiveFlares(prev => prev.filter(f => f.id !== flare.id))); }}
+                      className="p-1.5 hover:bg-destructive/20 rounded-lg transition-colors shrink-0"
+                      title="Remove flare"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
+                  )}
                 </div>
-                {isOwnProfile && (
-                  <button
-                    onClick={() => lfgFlaresAPI.remove(flare.id).then(() => setActiveFlares(prev => prev.filter(f => f.id !== flare.id)))}
-                    className="p-1.5 hover:bg-destructive/20 rounded-lg transition-colors shrink-0"
-                    title="Remove flare"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })()}
+            {/* View all link when there are multiple flares */}
+            {activeFlares.length > 1 && (
+              <button
+                onClick={() => navigate(`/flares/${profileUser.id}`)}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-orange-400 hover:text-orange-300 transition-colors"
+              >
+                <Flame className="w-3.5 h-3.5" />
+                View all {activeFlares.length} active LFG flares
+              </button>
+            )}
           </div>
         )}
 
