@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ArrowRight, UserPlus, UserCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ProfileAvatar } from '../ProfileAvatar';
 import { formatNumber } from '../../utils/formatNumber';
@@ -14,12 +13,9 @@ export function FollowScreen({ users, onComplete }: FollowScreenProps) {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   const toggleUser = (userId: string) => {
-    setSelectedUsers(prev => {
-      if (prev.includes(userId)) {
-        return prev.filter(id => id !== userId);
-      }
-      return [...prev, userId];
-    });
+    setSelectedUsers(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
   };
 
   const isSelected = (userId: string) => selectedUsers.includes(userId);
@@ -47,37 +43,44 @@ export function FollowScreen({ users, onComplete }: FollowScreenProps) {
               >
                 <button
                   onClick={() => toggleUser(user.id)}
-                  className="w-full bg-card p-4 rounded-xl hover:bg-secondary transition-all flex items-center gap-4"
+                  className={`w-full p-4 rounded-xl transition-all flex items-center gap-4 border-2 ${
+                    isSelected(user.id)
+                      ? 'bg-accent/20 border-accent text-accent'
+                      : 'bg-card border-transparent hover:bg-secondary'
+                  }`}
                 >
-                  <div className="relative">
-                    <ProfileAvatar 
-                      username={user.displayName}
-                      profilePicture={user.profilePicture}
-                      size="lg"
-                    />
-                    {isSelected(user.id) && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-6 h-6 bg-accent rounded-full flex items-center justify-center"
-                      >
-                        <UserCheck className="w-4 h-4 text-accent-foreground" strokeWidth={3} />
-                      </motion.div>
+                  <ProfileAvatar
+                    username={user.displayName}
+                    profilePicture={user.profilePicture}
+                    size="lg"
+                    userId={user.id}
+                  />
+
+                  <div className="flex-1 text-left">
+                    <p className={`font-semibold ${isSelected(user.id) ? 'text-accent' : ''}`}>
+                      {user.displayName}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{user.handle}</p>
+                    {user.bio && (
+                      <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                        {user.bio}
+                      </p>
                     )}
                   </div>
-                  
-                  <div className="flex-1 text-left">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">{user.displayName}</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{user.handle}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
-                      {user.bio}
-                    </p>
-                  </div>
 
-                  <div className="text-sm text-muted-foreground">
-                    {formatNumber(user.followerCount)} followers
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-xs text-muted-foreground">
+                      {formatNumber(user.followerCount)} followers
+                    </span>
+                    {isSelected(user.id) && (
+                      <motion.span
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="text-xs font-bold text-accent"
+                      >
+                        Following ✓
+                      </motion.span>
+                    )}
                   </div>
                 </button>
               </motion.div>
@@ -97,10 +100,9 @@ export function FollowScreen({ users, onComplete }: FollowScreenProps) {
               : 'bg-accent text-accent-foreground hover:opacity-90'
           }`}
         >
-          {selectedUsers.length === 0 
+          {selectedUsers.length === 0
             ? 'Select at least one'
-            : `Follow ${selectedUsers.length} ${selectedUsers.length === 1 ? 'user' : 'users'}`
-          }
+            : `Follow ${selectedUsers.length} ${selectedUsers.length === 1 ? 'user' : 'users'}`}
         </button>
       </div>
     </div>

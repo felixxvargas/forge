@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal } from 'lucide-react';
+import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
@@ -53,8 +53,10 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
 
   if (games.length === 0 && !onEdit) return null;
 
+  const isLFG = listType === 'lfg';
+
   return (
-    <div className="mb-6">
+    <div className={`mb-6 ${isLFG ? 'rounded-xl border-2 border-orange-400/40 bg-gradient-to-r from-orange-500/8 to-red-500/8 p-3' : ''}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {dragHandle && (
@@ -66,7 +68,8 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
               onPointerCancel={onGripPointerCancel}
             />
           )}
-          <h3 className="font-medium">{title}</h3>
+          {isLFG && <Flame className="w-4 h-4 text-orange-400 shrink-0" />}
+          <h3 className={`font-medium ${isLFG ? 'text-orange-300' : ''}`}>{title}</h3>
           {badges && badges.map((badge) => (
             <span
               key={badge}

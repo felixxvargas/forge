@@ -1,24 +1,35 @@
 {
-  "name": "Forge",
+  "name": "Forge — Gaming Social Network",
   "short_name": "Forge",
-  "description": "Connect with gamers across all platforms",
+  "description": "Connect with gamers across every platform. Share your gaming moments, find groups with LFG flares, and join communities.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1c1228",
-  "theme_color": "#B8D84E",
+  "theme_color": "#1c1228",
   "orientation": "portrait-primary",
+  "categories": ["social", "games", "entertainment"],
+  "lang": "en",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "Forge — Gaming Social Network"
     }
   ]
 }

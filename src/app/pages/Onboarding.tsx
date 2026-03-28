@@ -37,36 +37,52 @@ export function Onboarding() {
     });
   }, [startStep]);
 
-  // Load suggested users from Supabase topic accounts
+  // Load suggested users: @forge pinned first, then top users by follower count
   useEffect(() => {
     if (step !== 'follow') return;
     async function loadSuggestedUsers() {
+      const normalize = (u: any) => ({
+        ...u,
+        displayName: u.display_name || u.handle || 'User',
+        handle: u.handle || '',
+        profilePicture: u.profile_picture ?? null,
+        followerCount: u.follower_count ?? 0,
+        bio: u.bio || '',
+      });
+
       try {
-        const { data } = await supabase
+        // Fetch the @forge account first (pinned at top)
+        const { data: forgeData } = await supabase
           .from('profiles')
           .select('*')
-          .eq('account_type', 'topic')
-          .limit(10);
-        if (data && data.length > 0) {
-          // Normalize snake_case Supabase fields → camelCase User type
-          setSuggestedUsers(data.map((u: any) => ({
-            ...u,
-            displayName: u.display_name || u.handle || 'User',
-            handle: u.handle || '',
-            profilePicture: u.profile_picture ?? null,
-            followerCount: u.follower_count ?? 0,
-            bio: u.bio || '',
-          })));
+          .eq('handle', 'forge')
+          .maybeSingle();
+
+        // Fetch top users by follower count, excluding @forge
+        const { data: topData } = await supabase
+          .from('profiles')
+          .select('*')
+          .neq('handle', 'forge')
+          .order('follower_count', { ascending: false })
+          .limit(19);
+
+        const forgeUser = forgeData ? normalize(forgeData) : null;
+        const topUsers = (topData || []).map(normalize);
+
+        const list = forgeUser ? [forgeUser, ...topUsers] : topUsers;
+
+        if (list.length > 0) {
+          setSuggestedUsers(list);
         } else {
           // Fallback to static list
-          const forgeAccount = topicAccounts.find(u => u.id === 'user-forge');
+          const staticForge = topicAccounts.find(u => u.id === 'user-forge');
           const others = topicAccounts.filter(u => u.id !== 'user-forge' && u.id !== 'current-user');
-          setSuggestedUsers(forgeAccount ? [forgeAccount, ...others.slice(0, 9)] : others.slice(0, 10));
+          setSuggestedUsers(staticForge ? [staticForge, ...others.slice(0, 19)] : others.slice(0, 20));
         }
       } catch {
-        const forgeAccount = topicAccounts.find(u => u.id === 'user-forge');
+        const staticForge = topicAccounts.find(u => u.id === 'user-forge');
         const others = topicAccounts.filter(u => u.id !== 'user-forge' && u.id !== 'current-user');
-        setSuggestedUsers(forgeAccount ? [forgeAccount, ...others.slice(0, 9)] : others.slice(0, 10));
+        setSuggestedUsers(staticForge ? [staticForge, ...others.slice(0, 19)] : others.slice(0, 20));
       }
     }
     loadSuggestedUsers();
