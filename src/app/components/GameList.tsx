@@ -36,7 +36,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
       )
     : games;
 
-  const PREVIEW_LIMIT = 5;
+  const PREVIEW_LIMIT = 10;
   const displayGames = showFirstOnly ? sortedGames.slice(0, PREVIEW_LIMIT) : sortedGames;
   const overflowCount = showFirstOnly ? Math.max(0, sortedGames.length - PREVIEW_LIMIT) : 0;
 

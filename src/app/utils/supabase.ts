@@ -605,6 +605,26 @@ export const posts = {
     return (data ?? []).map((r: any) => r.post_id);
   },
 
+  async getPostLikers(postId: string) {
+    const { data, error } = await supabase
+      .from('likes')
+      .select(`user_id, created_at, user:profiles!user_id(id, handle, display_name, profile_picture, bio)`)
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r: any) => r.user).filter(Boolean);
+  },
+
+  async getPostReposters(postId: string) {
+    const { data, error } = await supabase
+      .from('reposts')
+      .select(`user_id, created_at, user:profiles!user_id(id, handle, display_name, profile_picture, bio)`)
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r: any) => r.user).filter(Boolean);
+  },
+
   async getRepostsByUser(userId: string) {
     const { data, error } = await supabase
       .from('reposts')

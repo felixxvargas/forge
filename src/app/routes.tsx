@@ -36,6 +36,7 @@ import { NotFound } from './pages/NotFound';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Admin from './pages/Admin';
 import { FlareDetail } from './pages/FlareDetail';
+import { PostInteractions } from './pages/PostInteractions';
 
 export const router = createBrowserRouter([
   { path: '/login',         element: <Login />,       errorElement: <ErrorBoundary /> },
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'settings',               element: <Settings />,                errorElement: <ErrorBoundary /> },
       { path: 'notifications',          element: <Notifications />,           errorElement: <ErrorBoundary /> },
       { path: 'post/:postId',           element: <PostDetail />,              errorElement: <ErrorBoundary /> },
+      { path: 'post/:postId/interactions', element: <PostInteractions />,     errorElement: <ErrorBoundary /> },
       { path: 'gaming-platforms',       element: <GamingPlatforms />,         errorElement: <ErrorBoundary /> },
       { path: 'social-integrations',    element: <SocialMediaIntegrations />, errorElement: <ErrorBoundary /> },
       { path: 'social-filtering',       element: <SocialMediaFiltering />,    errorElement: <ErrorBoundary /> },
