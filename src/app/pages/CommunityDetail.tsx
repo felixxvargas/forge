@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame } from 'lucide-react';
+import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, PenSquare } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -412,6 +412,17 @@ export function CommunityDetail() {
               </button>
             ) : null}
 
+            {/* Post to Group — visible to all members */}
+            {isMember && (
+              <button
+                onClick={() => navigate('/new-post', { state: { groupId: communityId, groupName: community.name } })}
+                className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium flex items-center gap-2"
+              >
+                <PenSquare className="w-4 h-4" />
+                Post
+              </button>
+            )}
+
             {/* Message Admin — invite-only groups only; respects admin's DM setting (on by default) */}
             {community.type === 'invite' && !isAdmin && adminUser && (adminUser as any).allow_dms !== false && (
               <button
@@ -656,8 +667,8 @@ export function CommunityDetail() {
 
       {/* Invite Users Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-lg rounded-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 overflow-y-auto">
+          <div className="bg-card w-full max-w-lg rounded-2xl max-h-[calc(100dvh-5rem)] flex flex-col overflow-hidden">
             <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Invite Users</h2>
               <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">

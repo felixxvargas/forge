@@ -290,16 +290,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const likePost = async (postId: string) => {
     if (!session?.user) return;
-    await postsAPI.like(session.user.id, postId);
+    // Optimistic: update UI immediately so count responds on tap
     setLikedPosts(prev => new Set([...prev, postId]));
     setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: (p.like_count ?? 0) + 1 } : p));
+    try {
+      await postsAPI.like(session.user.id, postId);
+    } catch {
+      // Rollback on error
+      setLikedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
+      setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: Math.max(0, (p.like_count ?? 0) - 1) } : p));
+    }
   };
 
   const unlikePost = async (postId: string) => {
     if (!session?.user) return;
-    await postsAPI.unlike(session.user.id, postId);
+    // Optimistic: update UI immediately
     setLikedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
     setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: Math.max(0, (p.like_count ?? 0) - 1) } : p));
+    try {
+      await postsAPI.unlike(session.user.id, postId);
+    } catch {
+      // Rollback on error
+      setLikedPosts(prev => new Set([...prev, postId]));
+      setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: (p.like_count ?? 0) + 1 } : p));
+    }
   };
 
   const repostPost = async (postId: string) => {

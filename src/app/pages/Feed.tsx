@@ -18,13 +18,22 @@ export function Feed() {
   const [dynamicLoading, setDynamicLoading] = useState(false);
 
   const handleLikeToggle = (postId: string) => {
-    if (likedPosts.has(postId)) unlikePost(postId);
+    const isLiked = likedPosts.has(postId);
+    if (isLiked) unlikePost(postId);
     else likePost(postId);
+    // Sync dynamicPosts (trending/for-you/game feeds) which aren't in contextPosts
+    setDynamicPosts(prev => prev === null ? null : prev.map(p =>
+      p.id === postId ? { ...p, like_count: isLiked ? Math.max(0, (p.like_count ?? 0) - 1) : (p.like_count ?? 0) + 1 } : p
+    ));
   };
 
   const handleRepost = (postId: string) => {
-    if (repostedPosts.has(postId)) unrepostPost(postId);
+    const isReposted = repostedPosts.has(postId);
+    if (isReposted) unrepostPost(postId);
     else repostPost(postId);
+    setDynamicPosts(prev => prev === null ? null : prev.map(p =>
+      p.id === postId && !p.repostedBy ? { ...p, repost_count: isReposted ? Math.max(0, (p.repost_count ?? 0) - 1) : (p.repost_count ?? 0) + 1 } : p
+    ));
   };
 
   const handleShowMutedPost = (postId: string) => {

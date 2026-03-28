@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, ChevronDown, Check, Users } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -10,7 +10,19 @@ import type { User } from '../data/data';
 
 export function NewPost() {
   const navigate = useNavigate();
-  const { createPost, currentUser, users } = useAppData();
+  const location = useLocation();
+  const { createPost, currentUser, users, groups } = useAppData();
+
+  // Pre-select a group if navigated here from a group page
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(() => {
+    const s = location.state as any;
+    return s?.groupId ? { id: s.groupId, name: s.groupName ?? 'Group' } : null;
+  });
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+
+  const userGroups = (currentUser?.communities ?? [])
+    .map((m: any) => groups.find((g: any) => g.id === m.community_id))
+    .filter(Boolean) as any[];
   const [content, setContent] = useState(() => sessionStorage.getItem('forge-post-draft') ?? '');
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
@@ -241,7 +253,7 @@ export function NewPost() {
       const images = imageUrl ? [imageUrl] : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
-      await createPost(content, images, linkUrl || undefined, undefined, undefined, gameIds[0], gameTitles[0], gameIds, gameTitles);
+      await createPost(content, images, linkUrl || undefined, undefined, selectedGroup?.id, gameIds[0], gameTitles[0], gameIds, gameTitles);
       sessionStorage.removeItem('forge-post-draft');
       navigate(-1);
     } catch (err: any) {
@@ -270,6 +282,45 @@ export function NewPost() {
           >
             {isPosting ? 'Posting...' : 'Post'}
           </button>
+        </div>
+
+        {/* Posting destination selector */}
+        <div className="px-4 pb-3 relative">
+          <button
+            onClick={() => setShowGroupPicker(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors"
+          >
+            {selectedGroup ? (
+              <><Users className="w-3.5 h-3.5 shrink-0" /><span className="max-w-[160px] truncate">{selectedGroup.name}</span></>
+            ) : (
+              <span>Feed</span>
+            )}
+            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+          </button>
+          {showGroupPicker && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowGroupPicker(false)} />
+              <div className="absolute top-full left-4 mt-1 bg-card border border-border rounded-xl shadow-xl z-20 min-w-[200px] overflow-hidden">
+                <button
+                  onClick={() => { setSelectedGroup(null); setShowGroupPicker(false); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-sm text-left"
+                >
+                  {!selectedGroup ? <Check className="w-4 h-4 text-accent shrink-0" /> : <span className="w-4 shrink-0" />}
+                  Feed
+                </button>
+                {userGroups.map((g: any) => (
+                  <button
+                    key={g.id}
+                    onClick={() => { setSelectedGroup({ id: g.id, name: g.name }); setShowGroupPicker(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-sm text-left border-t border-border/50"
+                  >
+                    {selectedGroup?.id === g.id ? <Check className="w-4 h-4 text-accent shrink-0" /> : <span className="w-4 shrink-0" />}
+                    <span className="truncate">{g.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
