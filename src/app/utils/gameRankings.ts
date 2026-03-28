@@ -2,6 +2,9 @@
  * Module-level ranking cache for top-1000 games on Forge.
  * Rankings are based on: post tags + unique list adds per game.
  * Fetched once and cached for 5 minutes.
+ *
+ * Scores are derived directly from Supabase activity tables so every game
+ * with any activity gets a rank — regardless of paginated listGames limits.
  */
 import { supabase } from './supabase';
 import { gamesAPI } from './api';
@@ -30,20 +33,16 @@ export async function loadTrendingRankings(): Promise<RankedGame[]> {
 
   loadPromise = (async () => {
     try {
-      const [gamesRes, postRes, listRes] = await Promise.all([
-        gamesAPI.listGames(1000, 0),
+      const [postRes, listRes] = await Promise.all([
         supabase.from('posts').select('game_id').not('game_id', 'is', null),
         supabase.from('user_games').select('game_id, user_id'),
       ]);
 
-      const games: any[] = Array.isArray(gamesRes) ? gamesRes : (gamesRes as any)?.games ?? [];
-
-      const postCounts: Record<string, number> = {};
+      // Compute scores per game from activity data
+      const scoredMap: Record<string, number> = {};
       for (const row of postRes.data ?? []) {
-        if (row.game_id) postCounts[row.game_id] = (postCounts[row.game_id] ?? 0) + 1;
+        if (row.game_id) scoredMap[row.game_id] = (scoredMap[row.game_id] ?? 0) + 1;
       }
-
-      const listCounts: Record<string, number> = {};
       const byGame: Record<string, Set<string>> = {};
       for (const row of listRes.data ?? []) {
         if (!row.game_id) continue;
@@ -51,25 +50,49 @@ export async function loadTrendingRankings(): Promise<RankedGame[]> {
         byGame[row.game_id].add(row.user_id);
       }
       for (const [gId, users] of Object.entries(byGame)) {
-        listCounts[gId] = users.size;
+        scoredMap[gId] = (scoredMap[gId] ?? 0) + users.size;
       }
 
-      const scored = games.map((g: any) => ({
-        id: String(g.id),
-        title: g.title,
-        year: g.year,
-        score: (postCounts[String(g.id)] ?? 0) + (listCounts[String(g.id)] ?? 0),
-        cover: g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
-          ?? g.artwork?.[0]?.url
-          ?? g.coverArt
-          ?? null,
-      }));
+      // Sort all active game IDs by score descending, take top 1000
+      const sorted = Object.entries(scoredMap)
+        .filter(([, s]) => s > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 1000);
 
-      scored.sort((a, b) => b.score - a.score || (b.year ?? 0) - (a.year ?? 0));
-
-      rankedGames = scored.slice(0, 1000).map((g, i) => ({ ...g, rank: i + 1 }));
+      // Build rank map immediately so getGameRank() is available before game detail fetch
       rankMap.clear();
-      for (const g of rankedGames) rankMap.set(g.id, g.rank);
+      sorted.forEach(([id], i) => rankMap.set(id, i + 1));
+
+      // Batch-fetch game details for TrendingGames display (top 100 at most)
+      const top100Ids = sorted.slice(0, 100).map(([id]) => id);
+      let gamesData: Record<string, any> = {};
+      if (top100Ids.length > 0) {
+        try {
+          const batch: any = await gamesAPI.getGames(top100Ids);
+          const list: any[] = Array.isArray(batch) ? batch : batch?.games ?? [];
+          for (const g of list) {
+            if (g?.id != null) gamesData[String(g.id)] = g;
+          }
+        } catch {
+          // Details unavailable — ranks still work, display will show IDs
+        }
+      }
+
+      rankedGames = sorted.map(([id, score], i) => {
+        const g = gamesData[id];
+        return {
+          id,
+          title: g?.title ?? '',
+          year: g?.year ?? g?.release_year,
+          score,
+          rank: i + 1,
+          cover: g?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+            ?? g?.artwork?.[0]?.url
+            ?? g?.coverArt
+            ?? null,
+        };
+      });
+
       lastFetched = Date.now();
       return rankedGames;
     } finally {

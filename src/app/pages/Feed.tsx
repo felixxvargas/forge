@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Check, ChevronDown, Gamepad2, Flame, Users } from 'lucide-react';
+import { Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { WritePostButton } from '../components/WritePostButton';
@@ -145,8 +145,8 @@ export function Feed() {
                 <div className="px-3 pt-3 pb-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">Feeds</div>
                 {([
                   { mode: 'following' as FeedMode, label: 'Following', icon: <Users className="w-4 h-4 text-muted-foreground" /> },
-                  { mode: 'for-you' as FeedMode, label: 'For You', icon: <Flame className="w-4 h-4 text-orange-400" /> },
-                  { mode: 'trending' as FeedMode, label: 'Trending', icon: <Flame className="w-4 h-4 text-red-400" /> },
+                  { mode: 'for-you' as FeedMode, label: 'For You', icon: <Sparkles className="w-4 h-4 text-purple-400" /> },
+                  { mode: 'trending' as FeedMode, label: 'Trending', icon: <TrendingUp className="w-4 h-4 text-green-400" /> },
                 ] as const).map(({ mode, label, icon }) => (
                   <button
                     key={label}
