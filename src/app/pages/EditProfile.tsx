@@ -5,6 +5,7 @@ import type { Platform, SocialPlatform } from '../data/data';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
+import { GroupIcon } from '../components/GroupIcon';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { PlatformIcon } from '../components/PlatformIcon';
 
@@ -39,7 +40,7 @@ export function EditProfile() {
     socialPlatforms: currentUser.social_platforms || currentUser.socialPlatforms || [],
     socialHandles: currentUser.social_handles || currentUser.socialHandles || {} as Record<string, string>,
     showSocialHandles: currentUser.show_social_handles || currentUser.showSocialHandles || {} as Record<string, boolean>,
-    displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 3).map((m: any) => m.community_id || m.communityId)
+    displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 4).map((m: any) => m.community_id || m.communityId)
   });
 
   // Ref so handleSave always reads the latest uploaded URL regardless of
@@ -152,8 +153,8 @@ export function EditProfile() {
           displayedCommunities: current.filter(id => id !== communityId)
         };
       } else {
-        // Add community (max 3)
-        if (current.length >= 3) {
+        // Add community (max 4)
+        if (current.length >= 4) {
           return prev; // Don't add if already at max
         }
         return {
@@ -514,9 +515,9 @@ export function EditProfile() {
         {/* Groups to Display */}
         {currentUser.communities && currentUser.communities.length > 0 && (
           <div>
-            <label className="block text-sm mb-2">Groups to Display (Max 3)</label>
+            <label className="block text-sm mb-2">Groups to Display (Max 4)</label>
             <p className="text-xs text-muted-foreground mb-3">
-              Select up to 3 groups to show on your profile
+              Select up to 4 groups to show on your profile
             </p>
             <div className="space-y-2">
               {currentUser.communities.map((membership: any) => {
@@ -525,7 +526,7 @@ export function EditProfile() {
                 if (!community) return null;
 
                 const isSelected = (formData.displayedCommunities || []).includes(communityId);
-                const canSelect = !isSelected && (formData.displayedCommunities || []).length < 3;
+                const canSelect = !isSelected && (formData.displayedCommunities || []).length < 4;
 
                 return (
                   <button
@@ -542,7 +543,7 @@ export function EditProfile() {
                   >
                     {community.profile_picture
                       ? <img src={community.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
-                      : <span className="text-2xl">{community.icon}</span>
+                      : <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0"><GroupIcon iconKey={community.icon} className="w-5 h-5" /></div>
                     }
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">

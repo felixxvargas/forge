@@ -612,25 +612,22 @@ export function CommunityDetail() {
             </div>
             <div className="p-4 space-y-4">
               {/* Profile picture */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative">
-                  {groupImageUrl ? (
-                    <img src={groupImageUrl} alt="" className="w-20 h-20 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center text-3xl">
-                      {community.icon}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={uploadingImage}
-                    className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent rounded-full flex items-center justify-center shadow-lg hover:bg-accent/90 transition-colors"
-                    title="Change group image"
-                  >
-                    {uploadingImage ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Camera className="w-3.5 h-3.5 text-white" />}
-                  </button>
-                </div>
-                <span className="text-xs text-muted-foreground">Tap to change photo</span>
+              <div className="flex flex-col items-center gap-3">
+                {groupImageUrl ? (
+                  <img src={groupImageUrl} alt="" className="w-20 h-20 rounded-full object-cover" />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
+                    <GroupIcon iconKey={community.icon} className="w-9 h-9" />
+                  </div>
+                )}
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  {uploadingImage ? 'Uploading…' : 'Change Photo'}
+                </button>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Group Name</label>
