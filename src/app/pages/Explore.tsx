@@ -42,6 +42,7 @@ export function Explore() {
   const [loadingLfg, setLoadingLfg] = useState(false);
   const [groupGameTitles, setGroupGameTitles] = useState<Record<string, string>>({});
   const [postSort, setPostSort] = useState<'latest' | 'top'>('latest');
+  const [realFollowerCounts, setRealFollowerCounts] = useState<Record<string, number>>({});
 
   // Global search state
   const [searchPosts, setSearchPosts] = useState<any[]>([]);
@@ -52,6 +53,11 @@ export function Explore() {
   const fetchedExtraGameIds = useRef<Set<string>>(new Set());
 
   const navigate = useNavigate();
+
+  // Scroll to top on initial mount (prevents viewport offset when navigating from Profile)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('explore-active-tab', activeTab);
@@ -77,6 +83,26 @@ export function Explore() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeTab]);
+
+  // Fetch real follower counts from the follows table to replace stale cached counts
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    const ids = users.filter(u => u.id !== currentUser?.id).map(u => u.id);
+    if (ids.length === 0) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('follows')
+          .select('following_id')
+          .in('following_id', ids);
+        const counts: Record<string, number> = {};
+        for (const row of data ?? []) {
+          counts[row.following_id] = (counts[row.following_id] ?? 0) + 1;
+        }
+        setRealFollowerCounts(counts);
+      } catch {}
+    })();
+  }, [activeTab, users.length]);
 
   useEffect(() => {
     if (activeTab !== 'groups') return;
@@ -476,7 +502,7 @@ export function Explore() {
                 </div>
                 <div className="space-y-2">
                   {searchUsers.map(user => (
-                    <UserCard key={user.id} user={user} />
+                    <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
                   ))}
                 </div>
               </section>
@@ -677,7 +703,7 @@ export function Explore() {
                   </div>
                 ) : (
                   filteredUsers.map(user => (
-                    <UserCard key={user.id} user={user} />
+                    <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
                   ))
                 )}
               </div>

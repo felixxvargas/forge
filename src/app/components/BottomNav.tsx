@@ -18,7 +18,7 @@ export function BottomNav() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
       <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
         <Link
           to="/feed"
@@ -66,6 +66,8 @@ export function BottomNav() {
           )}
         </Link>
       </div>
+      {/* Fills safe-area gap on iOS and extends bg-card to screen edge on all devices */}
+      <div className="bg-card" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
     </nav>
   );
 }

@@ -24,7 +24,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh bg-background">
-      <div className="pb-[calc(4rem+env(safe-area-inset-bottom))]">
+      <div className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)]">
         <Outlet />
       </div>
       <BottomNav />

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { X, Upload, Settings, Crown, Shield, Check, Trash2 } from 'lucide-react';
+import { X, Upload, Settings, Crown, Shield, Check, Trash2, Plus, Link2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Platform, SocialPlatform } from '../data/data';
 import { useAppData } from '../context/AppDataContext';
@@ -40,7 +40,8 @@ export function EditProfile() {
     socialPlatforms: currentUser.social_platforms || currentUser.socialPlatforms || [],
     socialHandles: currentUser.social_handles || currentUser.socialHandles || {} as Record<string, string>,
     showSocialHandles: currentUser.show_social_handles || currentUser.showSocialHandles || {} as Record<string, boolean>,
-    displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 4).map((m: any) => m.community_id || m.communityId)
+    displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 4).map((m: any) => m.community_id || m.communityId),
+    profileLinks: (currentUser.profile_links || []) as { url: string; title: string }[]
   });
 
   // Ref so handleSave always reads the latest uploaded URL regardless of
@@ -53,6 +54,8 @@ export function EditProfile() {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [handleError, setHandleError] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkTitle, setNewLinkTitle] = useState('');
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
   const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
@@ -90,6 +93,7 @@ export function EditProfile() {
         social_handles: formData.socialHandles,
         show_social_handles: formData.showSocialHandles,
         displayed_communities: formData.displayedCommunities,
+        profile_links: formData.profileLinks,
       };
       if (handleChanged) {
         updates.handle = trimmedHandle;
@@ -141,6 +145,26 @@ export function EditProfile() {
           : [...socialPlatforms, social]
       };
     });
+  };
+
+  const addLink = () => {
+    const rawUrl = newLinkUrl.trim();
+    if (!rawUrl) return;
+    const url = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') ? rawUrl : `https://${rawUrl}`;
+    const title = newLinkTitle.trim();
+    setFormData(prev => ({
+      ...prev,
+      profileLinks: [...(prev.profileLinks || []), { url, title }].slice(0, 10),
+    }));
+    setNewLinkUrl('');
+    setNewLinkTitle('');
+  };
+
+  const removeLink = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      profileLinks: (prev.profileLinks || []).filter((_, i) => i !== index),
+    }));
   };
 
   const toggleCommunity = (communityId: string) => {
@@ -416,6 +440,61 @@ export function EditProfile() {
             placeholder="Write a longer description about yourself, your gaming interests, and anything else you'd like others to know..."
             className="w-full px-4 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
           />
+        </div>
+
+        {/* Links — up to 10 custom URLs */}
+        <div>
+          <label className="block text-sm mb-2">Links <span className="text-muted-foreground font-normal text-xs">(up to 10)</span></label>
+
+          {/* Existing links */}
+          {(formData.profileLinks || []).length > 0 && (
+            <div className="space-y-2 mb-3">
+              {(formData.profileLinks || []).map((link, i) => (
+                <div key={i} className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg">
+                  <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{link.title || (() => { try { return new URL(link.url).hostname.replace('www.', ''); } catch { return link.url; } })()}</p>
+                    <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+                  </div>
+                  <button onClick={() => removeLink(i)} className="p-1 hover:bg-destructive/20 rounded transition-colors shrink-0">
+                    <X className="w-4 h-4 text-destructive" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new link */}
+          {(formData.profileLinks || []).length < 10 && (
+            <div className="space-y-2">
+              <input
+                type="url"
+                value={newLinkUrl}
+                onChange={e => setNewLinkUrl(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addLink()}
+                placeholder="https://yoursite.com"
+                className="w-full px-3 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newLinkTitle}
+                  onChange={e => setNewLinkTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addLink()}
+                  placeholder="Display name (optional)"
+                  className="flex-1 px-3 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+                <button
+                  onClick={addLink}
+                  disabled={!newLinkUrl.trim()}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium disabled:opacity-40 transition-colors hover:bg-accent/90"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Gaming Platforms */}

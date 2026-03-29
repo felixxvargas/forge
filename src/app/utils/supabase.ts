@@ -528,12 +528,12 @@ export const posts = {
       .from('likes')
       .insert({ user_id: userId, post_id: postId });
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Increment like_count atomically via rpc; fall back to read-modify-write
-    Promise.resolve(supabase.rpc('increment_like_count', { post_id: postId })).catch(() =>
-      supabase.from('posts').select('like_count').eq('id', postId).single().then(({ data }) =>
-        supabase.from('posts').update({ like_count: (data?.like_count ?? 0) + 1 }).eq('id', postId)
-      )
-    );
+    // Try RPC first; if it errors (doesn't exist or fails), fall back to read-modify-write
+    const { error: rpcError } = await supabase.rpc('increment_like_count', { post_id: postId });
+    if (rpcError) {
+      const { data } = await supabase.from('posts').select('like_count').eq('id', postId).single();
+      await supabase.from('posts').update({ like_count: (data?.like_count ?? 0) + 1 }).eq('id', postId);
+    }
   },
 
   async unlike(userId: string, postId: string) {
@@ -543,12 +543,12 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
-    // Decrement like_count atomically via rpc; fall back to read-modify-write
-    Promise.resolve(supabase.rpc('decrement_like_count', { post_id: postId })).catch(() =>
-      supabase.from('posts').select('like_count').eq('id', postId).single().then(({ data }) =>
-        supabase.from('posts').update({ like_count: Math.max(0, (data?.like_count ?? 0) - 1) }).eq('id', postId)
-      )
-    );
+    // Try RPC first; if it errors (doesn't exist or fails), fall back to read-modify-write
+    const { error: rpcError } = await supabase.rpc('decrement_like_count', { post_id: postId });
+    if (rpcError) {
+      const { data } = await supabase.from('posts').select('like_count').eq('id', postId).single();
+      await supabase.from('posts').update({ like_count: Math.max(0, (data?.like_count ?? 0) - 1) }).eq('id', postId);
+    }
   },
 
   async getLikedIds(userId: string) {

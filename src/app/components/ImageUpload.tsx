@@ -136,7 +136,7 @@ export function ImageUpload({
             <>
               <Upload className="w-8 h-8 text-muted-foreground" />
               <span className="text-sm font-medium">
-                Click to upload {accept === 'image/*' ? 'image' : 'image or video'}
+                Upload {accept === 'image/*' ? 'Image' : 'Image or Video'}
               </span>
               <span className="text-xs text-muted-foreground">Max {maxSizeMB}MB</span>
             </>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
@@ -455,9 +455,31 @@ export function Profile() {
           </div>
 
           {/* Bio */}
-          <p className="mb-4 text-[0.9375rem]">
+          <p className="mb-3 text-[0.9375rem]">
             <LinkifyMentions text={profileUser.bio} />
           </p>
+
+          {/* First link preview */}
+          {(() => {
+            const links: { url: string; title: string }[] = profileUser.profile_links ?? (profileUser as any).profileLinks ?? [];
+            const first = links[0];
+            if (!first) return null;
+            let domain = first.url;
+            try { domain = new URL(first.url).hostname.replace('www.', ''); } catch {}
+            const label = first.title || domain;
+            return (
+              <a
+                href={first.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 mb-3 text-sm text-accent hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate max-w-[220px]">{label}</span>
+              </a>
+            );
+          })()}
 
           {/* Stats and Share Button */}
           <div className="flex items-center justify-between mb-4">
@@ -823,7 +845,7 @@ export function Profile() {
                   })}
 
                   {/* Single "Create list" button for own profile */}
-                  {isOwnProfile && (ALL_LISTS.some(({ key }) => (gameLists[key] ?? []).length === 0) || true) && (
+                  {isOwnProfile && (
                     <div>
                       {showListTypeSelector ? (
                         <div className="bg-card/50 border border-border rounded-xl p-4">
@@ -838,7 +860,17 @@ export function Profile() {
                                 <span>{label}</span>
                               </button>
                             ))}
-                            {/* Custom list — always shown, gated by premium */}
+                            {/* LFG — only show if no LFG games yet */}
+                            {((gameLists as any).lfg ?? []).length === 0 && (
+                              <button
+                                onClick={() => { setShowListTypeSelector(false); handleOpenGameListEdit('lfg'); }}
+                                className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-400/30 rounded-lg hover:border-orange-400/60 transition-colors text-sm text-left"
+                              >
+                                <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                <span className="text-orange-300">Looking for Group</span>
+                              </button>
+                            )}
+                            {/* Custom list */}
                             {(() => {
                               const isPremium = (currentUser as any)?.is_premium;
                               return (
@@ -869,27 +901,15 @@ export function Profile() {
                           </button>
                         </div>
                       ) : (
-                        ALL_LISTS.some(({ key }) => (gameLists[key] ?? []).length === 0) ? (
-                          <button
-                            onClick={() => setShowListTypeSelector(true)}
-                            className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
-                          >
-                            <div>
-                              <p className="font-medium text-sm">Create a list</p>
-                              <p className="text-xs text-muted-foreground">+ Add games to a new list</p>
-                            </div>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setShowListTypeSelector(true)}
-                            className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
-                          >
-                            <div>
-                              <p className="font-medium text-sm">Create a custom list</p>
-                              <p className="text-xs text-muted-foreground">+ Add a custom named list</p>
-                            </div>
-                          </button>
-                        )
+                        <button
+                          onClick={() => setShowListTypeSelector(true)}
+                          className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
+                        >
+                          <div>
+                            <p className="font-medium text-sm">Create a game list</p>
+                            <p className="text-xs text-muted-foreground">+ Add games to a new list</p>
+                          </div>
+                        </button>
                       )}
                     </div>
                   )}
@@ -929,83 +949,29 @@ export function Profile() {
                     </div>
                   )}
 
-                  {/* LFG List */}
-                  {(() => {
-                    const lfgGames = (gameLists as any).lfg ?? [];
-                    if (lfgGames.length > 0) {
-                      return (
-                        <GameList
-                          key="lfg"
-                          listType="lfg"
-                          title="Looking for Group"
-                          games={lfgGames}
-                          onEdit={isOwnProfile ? () => handleOpenGameListEdit('lfg') : undefined}
-                          onDelete={isOwnProfile ? () => updateGameList('lfg', []) : undefined}
-                        />
-                      );
-                    }
-                    if (isOwnProfile) {
-                      return (
-                        <button
-                          onClick={() => handleOpenGameListEdit('lfg')}
-                          className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-orange-400/40 rounded-xl bg-gradient-to-r from-orange-500/8 to-red-500/8 hover:border-orange-400/70 hover:from-orange-500/12 hover:to-red-500/12 transition-all text-left"
-                        >
-                          <Flame className="w-5 h-5 text-orange-400 shrink-0" />
-                          <div className="flex-1">
-                            <p className="font-medium text-sm text-orange-300">Looking for Group</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">+ Add games you want to find a group for</p>
-                          </div>
-                        </button>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {/* LFG List — only render when there are games */}
+                  {((gameLists as any).lfg ?? []).length > 0 && (
+                    <GameList
+                      key="lfg"
+                      listType="lfg"
+                      title="Looking for Group"
+                      games={(gameLists as any).lfg}
+                      onEdit={isOwnProfile ? () => handleOpenGameListEdit('lfg') : undefined}
+                      onDelete={isOwnProfile ? () => updateGameList('lfg', []) : undefined}
+                    />
+                  )}
 
-                  {/* Custom Lists */}
-                  {(() => {
-                    const customLists = (gameLists as any).customLists ?? [];
-                    const isPremium = (profileUser as any).is_premium;
-                    if (customLists.length > 0) {
-                      return customLists.map((list: any) => (
-                        <GameList
-                          key={list.id}
-                          title={list.name}
-                          games={list.games ?? []}
-                          showFirstOnly={true}
-                        />
-                      ));
-                    }
-                    if (isOwnProfile) {
-                      // Always show custom list button; non-premium redirects to /premium
-                      return (
-                        <button
-                          onClick={() => navigate(isPremium ? '/create-custom-list' : '/premium')}
-                          className={`w-full flex items-center gap-4 p-4 border-2 border-dashed rounded-xl transition-colors text-left ${
-                            isPremium
-                              ? 'bg-card/50 border-muted hover:border-accent/50 hover:bg-card'
-                              : 'bg-gradient-to-r from-accent/5 to-accent/10 border-accent/30 hover:border-accent/60 hover:bg-accent/10'
-                          }`}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="font-medium text-sm">Custom List</p>
-                              {!isPremium && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/20 text-accent rounded-full text-xs font-semibold">
-                                  <Crown className="w-3 h-3" />
-                                  Premium
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {isPremium ? '+ Create a custom list' : 'Unlock custom lists with Forge Premium'}
-                            </p>
-                          </div>
-                          {!isPremium && <Crown className="w-5 h-5 text-accent/70 shrink-0" />}
-                        </button>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {/* Custom Lists — only render when lists exist */}
+                  {((gameLists as any).customLists ?? []).length > 0 && (
+                    (gameLists as any).customLists.map((list: any) => (
+                      <GameList
+                        key={list.id}
+                        title={list.name}
+                        games={list.games ?? []}
+                        showFirstOnly={true}
+                      />
+                    ))
+                  )}
                 </>
               );
             })()}
@@ -1221,6 +1187,42 @@ export function Profile() {
                         <span className="text-sm text-accent text-xs">View profile →</span>
                       </a>
                     ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Links */}
+            {(() => {
+              const links: { url: string; title: string }[] = profileUser.profile_links ?? (profileUser as any).profileLinks ?? [];
+              if (links.length === 0) return null;
+              return (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {links.slice(0, 10).map((link, i) => {
+                      let domain = link.url;
+                      try { domain = new URL(link.url).hostname.replace('www.', ''); } catch {}
+                      const label = link.title || domain;
+                      return (
+                        <a
+                          key={i}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors group"
+                        >
+                          <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-accent shrink-0 transition-colors" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-accent transition-colors">{label}</p>
+                            {link.title && <p className="text-xs text-muted-foreground truncate">{domain}</p>}
+                          </div>
+                        </a>
+                      );
+                    })}
                   </div>
                 </div>
               );
