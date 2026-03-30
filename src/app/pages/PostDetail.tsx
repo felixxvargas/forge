@@ -33,6 +33,9 @@ export function PostDetail() {
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
 
+  // Always start at the top when entering a post detail view
+  useEffect(() => { window.scrollTo(0, 0); }, [postId]);
+
   // If the postId looks like a Bluesky AT-URI and wasn't found in context, fetch it live
   useEffect(() => {
     if (!postId?.startsWith('at://') || post) return;

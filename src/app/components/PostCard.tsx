@@ -455,7 +455,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           <span>{formatNumber(post.like_count ?? post.likes ?? 0)}</span>
         </button>
 
-        {onRepost && (
+        {onRepost && !post.reposts_disabled && (
           <button
             onClick={handleRepost}
             className={`flex items-center gap-2 text-sm transition-colors ${
@@ -467,20 +467,22 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           </button>
         )}
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isDetailView) {
-              onComment?.(post.id);
-            } else {
-              navigate(`/post/${post.id}#comments`);
-            }
-          }}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <MessageCircle className="w-5 h-5" />
-          <span>{formatNumber(post.comment_count ?? post.comments ?? 0)}</span>
-        </button>
+        {!post.comments_disabled && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isDetailView) {
+                onComment?.(post.id);
+              } else {
+                navigate(`/post/${post.id}#comments`);
+              }
+            }}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <MessageCircle className="w-5 h-5" />
+            <span>{formatNumber(post.comment_count ?? post.comments ?? 0)}</span>
+          </button>
+        )}
         
         <button 
           onClick={(e) => {

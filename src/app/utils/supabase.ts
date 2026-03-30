@@ -485,6 +485,8 @@ export const posts = {
     gameTitles?: string[];
     platform?: string;
     flareId?: string;
+    commentsDisabled?: boolean;
+    repostsDisabled?: boolean;
   } = {}) {
     // Support multi-game tagging: game_ids/game_titles arrays are the source of truth.
     // game_id/game_title kept for backward compat (first entry mirrors the array).
@@ -505,6 +507,8 @@ export const posts = {
         game_titles: gameTitles,
         ...(options.platform ? { platform: options.platform } : {}),
         ...(options.flareId ? { flare_id: options.flareId } : {}),
+        ...(options.commentsDisabled ? { comments_disabled: true } : {}),
+        ...(options.repostsDisabled ? { reposts_disabled: true } : {}),
       })
       .select(`
         *,
@@ -671,9 +675,10 @@ export const posts = {
       `)
       .eq('game_id', gameId)
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(50);
     if (error) throw new Error(error.message);
-    return data ?? [];
+    // Only show posts tagged with exactly one game (not multi-game posts)
+    return (data ?? []).filter((p: any) => !p.game_ids || p.game_ids.length <= 1);
   }
 };
 

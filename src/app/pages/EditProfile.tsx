@@ -55,7 +55,6 @@ export function EditProfile() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [handleError, setHandleError] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
-  const [newLinkTitle, setNewLinkTitle] = useState('');
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
   const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
@@ -151,13 +150,11 @@ export function EditProfile() {
     const rawUrl = newLinkUrl.trim();
     if (!rawUrl) return;
     const url = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') ? rawUrl : `https://${rawUrl}`;
-    const title = newLinkTitle.trim();
     setFormData(prev => ({
       ...prev,
-      profileLinks: [...(prev.profileLinks || []), { url, title }].slice(0, 10),
+      profileLinks: [...(prev.profileLinks || []), { url, title: '' }].slice(0, 4),
     }));
     setNewLinkUrl('');
-    setNewLinkTitle('');
   };
 
   const removeLink = (index: number) => {
@@ -337,11 +334,17 @@ export function EditProfile() {
 
         {/* Display Name */}
         <div>
-          <label className="block text-sm mb-2">Display Name</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm">Display Name</label>
+            <span className={`text-xs ${formData.displayName.length >= 50 ? 'text-red-500' : 'text-muted-foreground'}`}>
+              {formData.displayName.length}/50
+            </span>
+          </div>
           <input
             type="text"
             value={formData.displayName}
             onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+            maxLength={50}
             style={{ fontSize: '16px' }}
             className="w-full px-4 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
           />
@@ -364,8 +367,11 @@ export function EditProfile() {
                   placeholder="your_handle"
                   maxLength={20}
                   style={{ fontSize: '16px' }}
-                  className="flex-1 pr-4 py-2 bg-transparent focus:outline-none"
+                  className="flex-1 py-2 bg-transparent focus:outline-none"
                 />
+                <span className={`pr-3 text-xs ${formData.handle.length >= 20 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {formData.handle.length}/20
+                </span>
               </div>
               {handleError ? (
                 <p className="text-xs text-destructive mt-1">{handleError}</p>
@@ -442,9 +448,9 @@ export function EditProfile() {
           />
         </div>
 
-        {/* Links — up to 10 custom URLs */}
+        {/* Links — up to 4 custom URLs */}
         <div>
-          <label className="block text-sm mb-2">Links <span className="text-muted-foreground font-normal text-xs">(up to 10)</span></label>
+          <label className="block text-sm mb-2">Links <span className="text-muted-foreground font-normal text-xs">(up to 4)</span></label>
 
           {/* Existing links */}
           {(formData.profileLinks || []).length > 0 && (
@@ -465,34 +471,24 @@ export function EditProfile() {
           )}
 
           {/* Add new link */}
-          {(formData.profileLinks || []).length < 10 && (
-            <div className="space-y-2">
+          {(formData.profileLinks || []).length < 4 && (
+            <div className="flex gap-2">
               <input
                 type="url"
                 value={newLinkUrl}
                 onChange={e => setNewLinkUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addLink()}
                 placeholder="https://yoursite.com"
-                className="w-full px-3 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                className="flex-1 px-3 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
               />
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newLinkTitle}
-                  onChange={e => setNewLinkTitle(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addLink()}
-                  placeholder="Display name (optional)"
-                  className="flex-1 px-3 py-2 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                />
-                <button
-                  onClick={addLink}
-                  disabled={!newLinkUrl.trim()}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium disabled:opacity-40 transition-colors hover:bg-accent/90"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add
-                </button>
-              </div>
+              <button
+                onClick={addLink}
+                disabled={!newLinkUrl.trim()}
+                className="flex items-center gap-1.5 px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium disabled:opacity-40 transition-colors hover:bg-accent/90"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
             </div>
           )}
         </div>

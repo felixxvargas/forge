@@ -19,7 +19,7 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string) => Promise<string | undefined>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean) => Promise<string | undefined>;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
   unlikePost: (postId: string) => Promise<void>;
@@ -265,9 +265,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string): Promise<string | undefined> => {
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean): Promise<string | undefined> => {
     if (!session?.user) return undefined;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId });
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled });
     setPostList(prev => [post, ...prev]);
     // Send notifications for @mentions
     const mentionMatches = content.match(/@(\w+)/g) ?? [];

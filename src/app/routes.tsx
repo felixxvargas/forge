@@ -38,11 +38,15 @@ import Admin from './pages/Admin';
 import { FlareDetail } from './pages/FlareDetail';
 import { UserFlares } from './pages/UserFlares';
 import { PostInteractions } from './pages/PostInteractions';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
 
 export const router = createBrowserRouter([
-  { path: '/login',         element: <Login />,       errorElement: <ErrorBoundary /> },
-  { path: '/signup',        element: <SignUp />,       errorElement: <ErrorBoundary /> },
-  { path: '/auth/callback', element: <AuthCallback />, errorElement: <ErrorBoundary /> },
+  { path: '/login',         element: <Login />,         errorElement: <ErrorBoundary /> },
+  { path: '/signup',        element: <SignUp />,         errorElement: <ErrorBoundary /> },
+  { path: '/auth/callback', element: <AuthCallback />,  errorElement: <ErrorBoundary /> },
+  { path: '/privacy',       element: <PrivacyPolicy />,  errorElement: <ErrorBoundary /> },
+  { path: '/terms',         element: <TermsOfService />, errorElement: <ErrorBoundary /> },
   { path: '/splash',        element: <Onboarding />,   errorElement: <ErrorBoundary /> },
   { path: '/onboarding',    element: <Onboarding />,   errorElement: <ErrorBoundary /> },
   { path: '/admin',         element: <Admin />,        errorElement: <ErrorBoundary /> },
@@ -85,6 +89,9 @@ export const router = createBrowserRouter([
       { path: 'trending-games',        element: <TrendingGames />,           errorElement: <ErrorBoundary /> },
       { path: 'flare/:flareId',        element: <FlareDetail />,             errorElement: <ErrorBoundary /> },
       { path: 'flares/:userId',        element: <UserFlares />,              errorElement: <ErrorBoundary /> },
+      { path: 'privacy',              element: <PrivacyPolicy />,            errorElement: <ErrorBoundary /> },
+      { path: 'terms',                element: <TermsOfService />,           errorElement: <ErrorBoundary /> },
+      { path: ':handle',               element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },
     ],
   },

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight } from 'lucide-react';
+import { Moon, Sun, Bell, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, Mail, KeyRound, MessageCircle, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Repeat2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect, useRef } from 'react';
@@ -34,6 +34,13 @@ export function Settings() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [defaultCommentsDisabled, setDefaultCommentsDisabled] = useState(() => localStorage.getItem('forge-default-comments-disabled') === 'true');
+  const [defaultRepostsDisabled, setDefaultRepostsDisabled] = useState(() => localStorage.getItem('forge-default-reposts-disabled') === 'true');
+  const [emailNotifications, setEmailNotifications] = useState<'off' | 'weekly' | 'all'>(() => {
+    const saved = currentUser?.email_notifications;
+    if (saved === 'off' || saved === 'all') return saved;
+    return 'weekly';
+  });
   const qrRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -121,6 +128,27 @@ export function Settings() {
       localStorage.setItem('forge-linked-accounts', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  const handleToggleDefaultComments = () => {
+    const next = !defaultCommentsDisabled;
+    setDefaultCommentsDisabled(next);
+    localStorage.setItem('forge-default-comments-disabled', String(next));
+  };
+
+  const handleToggleDefaultReposts = () => {
+    const next = !defaultRepostsDisabled;
+    setDefaultRepostsDisabled(next);
+    localStorage.setItem('forge-default-reposts-disabled', String(next));
+  };
+
+  const handleEmailNotificationsChange = async (value: 'off' | 'weekly' | 'all') => {
+    setEmailNotifications(value);
+    try {
+      await updateCurrentUser({ email_notifications: value });
+    } catch {
+      // non-critical — setting saved optimistically
+    }
   };
 
   const handleToggleAllowDMs = async () => {
@@ -401,6 +429,71 @@ export function Settings() {
           </div>
         </div>
 
+        {/* Post Defaults Section */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            Post Defaults
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3 -mt-2">Applied to all new posts. Can be changed per-post when composing.</p>
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <button
+              onClick={handleToggleDefaultComments}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <MessageCircle className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Allow Comments</p>
+                <p className="text-sm text-muted-foreground">{defaultCommentsDisabled ? 'Off by default' : 'On by default'}</p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${!defaultCommentsDisabled ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${!defaultCommentsDisabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+            <button
+              onClick={handleToggleDefaultReposts}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Repeat2 className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Allow Reposts</p>
+                <p className="text-sm text-muted-foreground">{defaultRepostsDisabled ? 'Off by default' : 'On by default'}</p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${!defaultRepostsDisabled ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${!defaultRepostsDisabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Email Notifications Section */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            Email Notifications
+          </h2>
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            {(['all', 'weekly', 'off'] as const).map((option) => {
+              const labels = { all: 'Every notification', weekly: 'Weekly digest', off: 'Off' };
+              const descs = { all: 'Get an email for each new notification', weekly: 'One summary email per week', off: 'No notification emails' };
+              return (
+                <button
+                  key={option}
+                  onClick={() => handleEmailNotificationsChange(option)}
+                  className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+                >
+                  <Mail className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <div className="text-left flex-1">
+                    <p className="font-medium">{labels[option]}</p>
+                    <p className="text-sm text-muted-foreground">{descs[option]}</p>
+                  </div>
+                  {emailNotifications === option && (
+                    <Check className="w-4 h-4 text-accent shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Preferences Section */}
         <div className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
@@ -508,6 +601,20 @@ export function Settings() {
                 <p className="font-medium">About Forge</p>
                 <p className="text-sm text-muted-foreground">Version 1.0.0</p>
               </div>
+            </button>
+            <button onClick={() => navigate('/privacy')} className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
+              <Lock className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Privacy Policy</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button onClick={() => navigate('/terms')} className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
+              <Info className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Terms of Service</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>

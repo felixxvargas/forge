@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, ChevronDown, Check, Users } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2 } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -8,21 +8,11 @@ import { gamesAPI } from '../utils/api';
 import { gameSearchCache, buildHighlightedHtml, gameCoverCache } from '../utils/mentionHighlight';
 import type { User } from '../data/data';
 
+const POST_MAX_LENGTH = 600;
+
 export function NewPost() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { createPost, currentUser, users, groups } = useAppData();
-
-  // Pre-select a group if navigated here from a group page
-  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(() => {
-    const s = location.state as any;
-    return s?.groupId ? { id: s.groupId, name: s.groupName ?? 'Group' } : null;
-  });
-  const [showGroupPicker, setShowGroupPicker] = useState(false);
-
-  const userGroups = (currentUser?.communities ?? [])
-    .map((m: any) => groups.find((g: any) => g.id === m.community_id))
-    .filter(Boolean) as any[];
+  const { createPost, currentUser, users } = useAppData();
   const [content, setContent] = useState(() => sessionStorage.getItem('forge-post-draft') ?? '');
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
@@ -34,6 +24,8 @@ export function NewPost() {
   const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [disableComments, setDisableComments] = useState(() => localStorage.getItem('forge-default-comments-disabled') === 'true');
+  const [disableReposts, setDisableReposts] = useState(() => localStorage.getItem('forge-default-reposts-disabled') === 'true');
   // Track visual viewport to position mention dropdown above the OSK on mobile
   const [viewportBottom, setViewportBottom] = useState(0);
   useEffect(() => {
@@ -71,7 +63,7 @@ export function NewPost() {
   }, [content]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
+    const newContent = e.target.value.slice(0, POST_MAX_LENGTH);
     setContent(newContent);
     if (newContent) {
       sessionStorage.setItem('forge-post-draft', newContent);
@@ -173,6 +165,15 @@ export function NewPost() {
     mentionStartRef.current = -1;
   };
 
+  const placeCursor = (pos: number) => {
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
   const handleMentionSelect = (user: User) => {
     const startIdx = mentionStartRef.current;
     if (startIdx < 0) { setShowMentions(false); return; }
@@ -184,13 +185,13 @@ export function NewPost() {
     setShowMentions(false);
     setMentionSuggestions([]);
     setAtGameResults([]);
+    placeCursor(startIdx + handle.length + 1);
   };
 
   const handleAtGameSelect = (game: any) => {
     const startIdx = mentionStartRef.current;
     if (startIdx < 0) { setShowMentions(false); setAtGameResults([]); return; }
     const curPos = textareaRef.current?.selectionStart ?? content.length;
-    // Insert bare title (no @) — game is identified by the selected game chip
     const newContent = content.slice(0, startIdx) + game.title + ' ' + content.slice(curPos);
     setContent(newContent);
     const gameId = String(game.id ?? game.game_id ?? '');
@@ -201,6 +202,7 @@ export function NewPost() {
     setShowMentions(false);
     setMentionSuggestions([]);
     setAtGameResults([]);
+    placeCursor(startIdx + game.title.length + 1);
   };
 
   const handleHashGameSelect = (game: any) => {
@@ -216,6 +218,7 @@ export function NewPost() {
     hashTriggerIndex.current = -1;
     setShowHashGames(false);
     setHashGameResults([]);
+    placeCursor(startIdx);
   };
 
   const handleGameSearch = (q: string) => {
@@ -253,7 +256,7 @@ export function NewPost() {
       const images = imageUrl ? [imageUrl] : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
-      await createPost(content, images, linkUrl || undefined, undefined, selectedGroup?.id, gameIds[0], gameTitles[0], gameIds, gameTitles);
+      await createPost(content, images, linkUrl || undefined, undefined, undefined, gameIds[0], gameTitles[0], gameIds, gameTitles, undefined, disableComments, disableReposts);
       sessionStorage.removeItem('forge-post-draft');
       navigate(-1);
     } catch (err: any) {
@@ -277,51 +280,13 @@ export function NewPost() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!content.trim() || isPosting}
+            disabled={!content.trim() || isPosting || content.length > POST_MAX_LENGTH}
             className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {isPosting ? 'Posting...' : 'Post'}
           </button>
         </div>
 
-        {/* Posting destination selector */}
-        <div className="px-4 pb-3 relative">
-          <button
-            onClick={() => setShowGroupPicker(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors"
-          >
-            {selectedGroup ? (
-              <><Users className="w-3.5 h-3.5 shrink-0" /><span className="max-w-[160px] truncate">{selectedGroup.name}</span></>
-            ) : (
-              <span>Feed</span>
-            )}
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
-          </button>
-          {showGroupPicker && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowGroupPicker(false)} />
-              <div className="absolute top-full left-4 mt-1 bg-card border border-border rounded-xl shadow-xl z-20 min-w-[200px] overflow-hidden">
-                <button
-                  onClick={() => { setSelectedGroup(null); setShowGroupPicker(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-sm text-left"
-                >
-                  {!selectedGroup ? <Check className="w-4 h-4 text-accent shrink-0" /> : <span className="w-4 shrink-0" />}
-                  Feed
-                </button>
-                {userGroups.map((g: any) => (
-                  <button
-                    key={g.id}
-                    onClick={() => { setSelectedGroup({ id: g.id, name: g.name }); setShowGroupPicker(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-sm text-left border-t border-border/50"
-                  >
-                    {selectedGroup?.id === g.id ? <Check className="w-4 h-4 text-accent shrink-0" /> : <span className="w-4 shrink-0" />}
-                    <span className="truncate">{g.name}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       {/* Error */}
@@ -467,6 +432,27 @@ export function NewPost() {
           >
             <Gamepad2 className="w-5 h-5" />
           </button>
+          <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+            {content.length}/{POST_MAX_LENGTH}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setDisableComments(v => !v)}
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${disableComments ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-secondary'}`}
+              title={disableComments ? 'Comments off' : 'Comments on'}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{disableComments ? 'Off' : 'On'}</span>
+            </button>
+            <button
+              onClick={() => setDisableReposts(v => !v)}
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${disableReposts ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-secondary'}`}
+              title={disableReposts ? 'Reposts off' : 'Reposts on'}
+            >
+              <Repeat2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{disableReposts ? 'Off' : 'On'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Image upload */}

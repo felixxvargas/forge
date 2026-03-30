@@ -59,8 +59,9 @@ const BIO_MAX_LENGTH = 150;
 
 export function Profile() {
   const navigate = useNavigate();
-  const { userId } = useParams();
-  const { currentUser, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
+  const { userId, handle } = useParams();
+  const { currentUser, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
+  const [handleFetchedUser, setHandleFetchedUser] = useState<any>(null);
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
@@ -110,11 +111,26 @@ export function Profile() {
   // Always scroll to top when the profile page loads or the target user changes
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [userId]);
+    setHandleFetchedUser(null);
+  }, [userId, handle]);
+
+  // When routed via /handle/:handle, resolve the user (cache first, then DB)
+  useEffect(() => {
+    if (!handle) return;
+    const cached = getUserByHandle(handle);
+    if (cached) { setHandleFetchedUser(cached); return; }
+    profiles.getByHandle(handle).then(u => setHandleFetchedUser(u ?? null)).catch(() => {});
+  }, [handle]);
 
   // Determine which user profile to show
-  const isOwnProfile = !userId || userId === currentUser?.id;
-  const profileUser = isOwnProfile ? currentUser : getUserById(userId || '');
+  const isOwnProfile = handle
+    ? handle.replace(/^@/, '').toLowerCase() === (currentUser?.handle || '').replace(/^@/, '').toLowerCase()
+    : !userId || userId === currentUser?.id;
+  const profileUser = isOwnProfile
+    ? currentUser
+    : handle
+      ? handleFetchedUser
+      : getUserById(userId || '');
 
   // Sync pinned post id from profile data
   useEffect(() => {
@@ -435,7 +451,7 @@ export function Profile() {
                 />
               </button>
               <div>
-                <h1 className="text-xl font-semibold">{profileUser.display_name || profileUser.handle}</h1>
+                <h1 className="text-xl font-semibold line-clamp-2 break-words">{profileUser.display_name || profileUser.handle}</h1>
                 <p className="text-muted-foreground">@{(profileUser.handle || '').replace(/^@/, '')}</p>
                 {profileUser.pronouns && (
                   <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-accent/20 text-accent">
@@ -1203,7 +1219,7 @@ export function Profile() {
                     <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h3>
                   </div>
                   <div className="space-y-2">
-                    {links.slice(0, 10).map((link, i) => {
+                    {links.slice(1, 4).map((link, i) => {
                       let domain = link.url;
                       try { domain = new URL(link.url).hostname.replace('www.', ''); } catch {}
                       const label = link.title || domain;

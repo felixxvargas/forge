@@ -242,8 +242,11 @@ export function SignUp() {
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          By signing up you agree to Forge's Terms of Service and Privacy Policy.
+        <p className="mt-6 text-center text-xs text-muted-foreground/60">
+          By signing up you agree to our{' '}
+          <Link to="/terms" className="underline hover:text-muted-foreground">Terms of Service</Link>
+          {' '}and{' '}
+          <Link to="/privacy" className="underline hover:text-muted-foreground">Privacy Policy</Link>
         </p>
       </div>
     </div>

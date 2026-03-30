@@ -58,8 +58,8 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-card rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]" onClick={onClose}>
+      <div className="bg-card rounded-2xl w-full max-w-md flex flex-col max-h-[90dvh]" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">Send Feedback</h2>
