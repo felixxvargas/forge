@@ -19,7 +19,7 @@ interface LinkedAccount {
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const { currentUser, session, updateCurrentUser } = useAppData();
+  const { currentUser, session, updateCurrentUser, signOut } = useAppData();
   const navigate = useNavigate();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>(() => {
@@ -41,6 +41,15 @@ export function Settings() {
     if (saved === 'off' || saved === 'all') return saved;
     return 'weekly';
   });
+  const [profilePublic, setProfilePublic] = useState<boolean>(currentUser?.profile_public !== false);
+  const [listsPublic, setListsPublic] = useState<boolean>(currentUser?.lists_public !== false);
+  const [postsPublic, setPostsPublic] = useState<boolean>(currentUser?.posts_public !== false);
+
+  // Delete / suspend account dialogs
+  type AccountActionStep = 'none' | 'suspend-confirm1' | 'suspend-confirm2' | 'delete-confirm1' | 'delete-confirm2' | 'delete-confirm3';
+  const [accountActionStep, setAccountActionStep] = useState<AccountActionStep>('none');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
   const qrRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -161,6 +170,20 @@ export function Settings() {
     }
   };
 
+  const handleToggleVisibility = async (
+    field: 'profile_public' | 'lists_public' | 'posts_public',
+    setter: (v: boolean) => void,
+    current: boolean,
+  ) => {
+    const next = !current;
+    setter(next);
+    try {
+      await updateCurrentUser({ [field]: next });
+    } catch {
+      setter(current);
+    }
+  };
+
   const profileUrl = currentUser
     ? `https://forge-social.app/profile/${currentUser.id}`
     : 'https://forge-social.app';
@@ -201,6 +224,31 @@ export function Settings() {
     localStorage.removeItem('forge-logged-in');
     localStorage.removeItem('forge-access-token');
     navigate('/login');
+  };
+
+  const handleSuspendAccount = async () => {
+    if (!currentUser?.id) return;
+    setAccountActionLoading(true);
+    try {
+      await updateCurrentUser({ suspended: true });
+      await signOut();
+      navigate('/feed');
+    } catch {
+      setAccountActionLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser?.id || deleteConfirmText !== 'DELETE') return;
+    setAccountActionLoading(true);
+    try {
+      // Delete the user's auth account via Supabase (triggers cascade deletes via DB)
+      await supabase.rpc('delete_user_account');
+      await signOut();
+      navigate('/feed');
+    } catch {
+      setAccountActionLoading(false);
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -420,10 +468,60 @@ export function Settings() {
                 </p>
               </div>
             </button>
-            <button className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
+            <button onClick={() => navigate('/privacy-security')} className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
               <Lock className="w-5 h-5 text-muted-foreground" />
               <div className="text-left flex-1">
                 <p className="font-medium">Privacy & Security</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+
+        {/* Visibility Section */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            Visibility
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3 -mt-2">Control what people can see without a Forge account.</p>
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <button
+              onClick={() => handleToggleVisibility('profile_public', setProfilePublic, profilePublic)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <User className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Public Profile</p>
+                <p className="text-sm text-muted-foreground">{profilePublic ? 'Visible to everyone' : 'Forge members only'}</p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${profilePublic ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profilePublic ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+            <button
+              onClick={() => handleToggleVisibility('lists_public', setListsPublic, listsPublic)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Filter className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Public Game Lists</p>
+                <p className="text-sm text-muted-foreground">{listsPublic ? 'Visible to everyone' : 'Forge members only'}</p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${listsPublic ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${listsPublic ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+            <button
+              onClick={() => handleToggleVisibility('posts_public', setPostsPublic, postsPublic)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Share2 className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Public Posts</p>
+                <p className="text-sm text-muted-foreground">{postsPublic ? 'Visible to everyone' : 'Forge members only'}</p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${postsPublic ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${postsPublic ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
             </button>
           </div>
@@ -602,31 +700,31 @@ export function Settings() {
                 <p className="text-sm text-muted-foreground">Version 1.0.0</p>
               </div>
             </button>
-            <button onClick={() => navigate('/privacy')} className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
-              <Lock className="w-5 h-5 text-muted-foreground" />
-              <div className="text-left flex-1">
-                <p className="font-medium">Privacy Policy</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <button onClick={() => navigate('/terms')} className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
-              <Info className="w-5 h-5 text-muted-foreground" />
-              <div className="text-left flex-1">
-                <p className="font-medium">Terms of Service</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
           </div>
         </div>
 
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="w-full px-4 py-4 flex items-center justify-center gap-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="font-medium">Log Out</span>
-        </button>
+        {/* Account Actions */}
+        <div className="mb-8 space-y-3">
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-4 flex items-center justify-center gap-3 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Log Out</span>
+          </button>
+          <button
+            onClick={() => setAccountActionStep('suspend-confirm1')}
+            className="w-full px-4 py-4 flex items-center justify-center gap-3 bg-secondary text-muted-foreground rounded-xl hover:bg-secondary/80 transition-colors"
+          >
+            <span className="font-medium text-sm">Suspend Account</span>
+          </button>
+          <button
+            onClick={() => setAccountActionStep('delete-confirm1')}
+            className="w-full px-4 py-4 flex items-center justify-center gap-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
+          >
+            <span className="font-medium text-sm">Delete Account</span>
+          </button>
+        </div>
       </div>
 
       {/* QR Code Modal */}
@@ -797,6 +895,105 @@ export function Settings() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground text-center">Removing an account from this list won't sign it out</p>
+          </div>
+        </div>
+      )}
+
+      {/* Suspend Account — Step 1 */}
+      {accountActionStep === 'suspend-confirm1' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Suspend your account?</h2>
+            <p className="text-sm text-muted-foreground">
+              Your profile, posts, and lists will be hidden. You can unsuspend at any time by signing back in and turning suspension off in Settings.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setAccountActionStep('none')} className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm">Cancel</button>
+              <button onClick={() => setAccountActionStep('suspend-confirm2')} className="flex-1 px-4 py-2 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors text-sm font-medium">Continue</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suspend Account — Step 2 */}
+      {accountActionStep === 'suspend-confirm2' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Are you sure?</h2>
+            <p className="text-sm text-muted-foreground">
+              You'll be signed out and your account will be suspended until you log back in and re-enable it.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setAccountActionStep('none')} className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm">Cancel</button>
+              <button
+                onClick={handleSuspendAccount}
+                disabled={accountActionLoading}
+                className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                {accountActionLoading ? 'Suspending…' : 'Suspend Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account — Step 1 */}
+      {accountActionStep === 'delete-confirm1' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-destructive">Delete your account?</h2>
+            <p className="text-sm text-muted-foreground">
+              This will permanently delete your profile, posts, game lists, and all activity. <strong>This cannot be undone.</strong>
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setAccountActionStep('none')} className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm">Cancel</button>
+              <button onClick={() => setAccountActionStep('delete-confirm2')} className="flex-1 px-4 py-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors text-sm font-medium">I understand</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account — Step 2 */}
+      {accountActionStep === 'delete-confirm2' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-destructive">Final warning</h2>
+            <p className="text-sm text-muted-foreground">
+              Every post, list, follower, and piece of activity tied to your account will be gone forever. There is no recovery option.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setAccountActionStep('none')} className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm">Cancel</button>
+              <button onClick={() => { setDeleteConfirmText(''); setAccountActionStep('delete-confirm3'); }} className="flex-1 px-4 py-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors text-sm font-medium">Yes, delete it</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account — Step 3: type DELETE */}
+      {accountActionStep === 'delete-confirm3' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-destructive">Confirm deletion</h2>
+            <p className="text-sm text-muted-foreground">
+              Type <strong>DELETE</strong> below to permanently delete your account.
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              placeholder="Type DELETE"
+              className="w-full px-4 py-2.5 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-destructive text-sm"
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setAccountActionStep('none')} className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm">Cancel</button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || accountActionLoading}
+                className="flex-1 px-4 py-2 bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors text-sm font-medium disabled:opacity-40"
+              >
+                {accountActionLoading ? 'Deleting…' : 'Delete Forever'}
+              </button>
+            </div>
           </div>
         </div>
       )}

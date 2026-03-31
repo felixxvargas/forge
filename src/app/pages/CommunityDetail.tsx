@@ -20,7 +20,7 @@ export function CommunityDetail() {
   const { groupId } = useParams();
   const communityId = groupId; // alias for DB queries that still use communityId
   const navigate = useNavigate();
-  const { currentUser, posts, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, users, groups } = useAppData();
+  const { currentUser, posts, getUserById, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, users, groups, refreshGroups } = useAppData();
 
   const community = groups.find((c: any) => c.id === groupId);
   const [isMember, setIsMember] = useState(
@@ -155,6 +155,7 @@ export function CommunityDetail() {
     try {
       const url = await groupsAPI.updateGroupImage(communityId, file);
       setGroupImageUrl(url);
+      await refreshGroups();
     } catch (err: any) {
       alert(err.message || 'Failed to upload image.');
     } finally {

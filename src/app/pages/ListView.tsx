@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Edit2, Users } from 'lucide-react';
+import { ArrowLeft, Edit2, Users, Share2, Copy, Check, X } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
@@ -35,6 +35,8 @@ export function ListView() {
 
   const [sortOrder, setSortOrder] = useState<'default' | 'a-z' | 'z-a'>('default');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showShareTray, setShowShareTray] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const listKey = LIST_KEY_MAP[listType];
 
@@ -61,12 +63,39 @@ export function ListView() {
     updateGameList(listType, updatedGames);
   };
 
-  // Other users who have games in this list type
+  // Other users who have games in this list type (only public lists)
   const usersWithList = users.filter(u => {
     if (u.id === currentUser?.id) return false;
+    if (u.lists_public === false) return false;
     const ul = u.game_lists ?? u.gameLists ?? {};
     return (ul[listKey] ?? []).length > 0;
   });
+
+  // Share helpers
+  const getShareUrl = () => {
+    const base = window.location.origin;
+    const uid = viewUserId ?? currentUser?.id ?? '';
+    return `${base}/list?type=${listType}&userId=${uid}`;
+  };
+
+  const handleShare = async () => {
+    const url = getShareUrl();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${title} — Forge`, url });
+        return;
+      } catch {}
+    }
+    setShowShareTray(true);
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
 
   const title = LIST_LABELS[listType] ?? 'Games';
 
@@ -173,6 +202,13 @@ export function ListView() {
               >
                 {sortLabel}
               </button>
+              <button
+                onClick={handleShare}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                title="Share list"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
               {!viewUser && (
                 <button
                   onClick={() => setIsEditModalOpen(true)}
@@ -274,6 +310,30 @@ export function ListView() {
           </div>
         )}
       </div>
+
+      {/* Share Tray */}
+      {showShareTray && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4">
+          <div className="w-full sm:max-w-sm bg-card rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Share List</h3>
+              <button onClick={() => setShowShareTray(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">
+              <span className="text-sm text-muted-foreground truncate flex-1">{getShareUrl()}</span>
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copied!' : 'Copy Link'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Game Lists Modal */}
       <EditGameListsModal

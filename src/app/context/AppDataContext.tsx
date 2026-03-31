@@ -19,7 +19,8 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean) => Promise<string | undefined>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string) => Promise<string | undefined>;
+  addPosts: (newPosts: any[]) => void;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
   unlikePost: (postId: string) => Promise<void>;
@@ -39,6 +40,7 @@ interface AppDataContextType {
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
   createGroup: (name: string, description: string, icon: string, type: string) => Promise<any>;
   refreshFeed: () => Promise<void>;
+  refreshGroups: () => Promise<void>;
   markNotificationsAsRead: () => void;
   followGame: (gameId: string) => Promise<void>;
   unfollowGame: (gameId: string) => Promise<void>;
@@ -157,6 +159,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setFollowedGameIds(new Set(next));
   }, []);
 
+  const refreshGroups = useCallback(async () => {
+    try {
+      const allGroups = await groupsAPI.getAll();
+      setGroupsList(allGroups);
+    } catch (e) {
+      console.error('[AppData] Error refreshing groups:', e);
+    }
+  }, []);
+
   const refreshFeed = useCallback(async () => {
     try {
       const userId = sessionRef.current?.user?.id;
@@ -265,10 +276,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean): Promise<string | undefined> => {
+  const addPosts = (newPosts: any[]) => {
+    setPostList(prev => {
+      const existingIds = new Set(prev.map((p: any) => p.id));
+      const toAdd = newPosts.filter(p => !existingIds.has(p.id));
+      return toAdd.length === 0 ? prev : [...prev, ...toAdd];
+    });
+  };
+
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string): Promise<string | undefined> => {
     if (!session?.user) return undefined;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled });
-    setPostList(prev => [post, ...prev]);
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled, replyTo });
+    if (!replyTo) setPostList(prev => [post, ...prev]);
     // Send notifications for @mentions
     const mentionMatches = content.match(/@(\w+)/g) ?? [];
     for (const mention of mentionMatches) {
@@ -469,6 +488,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       signOut,
       updateCurrentUser,
       createPost,
+      addPosts,
       deletePost,
       likePost,
       unlikePost,
@@ -490,6 +510,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateGameList,
       createGroup,
       refreshFeed,
+      refreshGroups,
       markNotificationsAsRead,
     }}>
       {children}

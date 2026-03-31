@@ -1,73 +1,105 @@
-import { Home, Search, MessageCircle, User, ZapIcon } from 'lucide-react';
-import { useLocation, Link } from 'react-router';
+import { useState } from 'react';
+import { Home, Search, MessageCircle, User, X } from 'lucide-react';
+import { useLocation, Link, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
+import { LoginModule } from './LoginModule';
 
 export function BottomNav() {
   const location = useLocation();
-  const { currentUser } = useAppData(); // Must call hooks before any conditional returns
-  
+  const navigate = useNavigate();
+  const { currentUser, isAuthenticated } = useAppData();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   // Hide bottom nav on certain pages
-  if (location.pathname === '/list' || 
-      location.pathname === '/login' || 
-      location.pathname === '/onboarding' ||
-      location.pathname === '/admin') {
+  if (
+    location.pathname === '/list' ||
+    location.pathname === '/login' ||
+    location.pathname === '/onboarding'
+  ) {
     return null;
   }
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + '/');
+
+  const handleProtected = (path: string) => {
+    if (isAuthenticated) {
+      navigate(path);
+    } else {
+      setShowAuthModal(true);
+    }
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-      <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
-        <Link
-          to="/feed"
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/feed') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Home className="w-6 h-6" />
-        </Link>
-        
-        <Link
-          to="/explore"
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/explore') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Search className="w-6 h-6" />
-        </Link>
+    <>
+      {/* Auth modal for guests */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 px-0 sm:px-4">
+          <div className="relative w-full sm:max-w-md sm:rounded-2xl overflow-auto max-h-screen bg-background">
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <LoginModule variant="page" onSuccess={() => setShowAuthModal(false)} />
+          </div>
+        </div>
+      )}
 
-        <Link
-          to="/messages"
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/messages') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <MessageCircle className="w-6 h-6" />
-        </Link>
-        
-        <Link
-          to="/profile"
-          onClick={() => { if (isActive('/profile')) window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/profile') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {currentUser ? (
-            <ProfileAvatar
-              username={currentUser.display_name || currentUser.handle || '?'}
-              profilePicture={currentUser.profile_picture}
-              size="sm"
-              userId={currentUser.id}
-            />
-          ) : (
-            <User className="w-6 h-6" />
-          )}
-        </Link>
-      </div>
-      {/* Fills safe-area gap on iOS and extends bg-card to screen edge on all devices */}
-      <div className="bg-card" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
-    </nav>
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+        <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
+          <Link
+            to="/feed"
+            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+              isActive('/feed') || location.pathname === '/'
+                ? 'text-accent'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Home className="w-6 h-6" />
+          </Link>
+
+          <Link
+            to="/explore"
+            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+              isActive('/explore') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Search className="w-6 h-6" />
+          </Link>
+
+          <button
+            onClick={() => handleProtected('/messages')}
+            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+              isActive('/messages') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <MessageCircle className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => handleProtected('/profile')}
+            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+              isActive('/profile') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {currentUser ? (
+              <ProfileAvatar
+                username={currentUser.display_name || currentUser.handle || '?'}
+                profilePicture={currentUser.profile_picture}
+                size="sm"
+                userId={currentUser.id}
+              />
+            ) : (
+              <User className="w-6 h-6" />
+            )}
+          </button>
+        </div>
+        {/* Safe-area extension */}
+        <div className="bg-card" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
+      </nav>
+    </>
   );
 }

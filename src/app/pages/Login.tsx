@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Mail, Eye, EyeOff } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -6,7 +6,11 @@ import { toast } from 'sonner';
 
 export function Login() {
   const navigate = useNavigate();
-  const { signIn, signInWithGoogle } = useAppData();
+  const { signIn, signInWithGoogle, isAuthenticated } = useAppData();
+
+  useEffect(() => {
+    if (isAuthenticated) navigate('/feed', { replace: true });
+  }, [isAuthenticated]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -56,8 +60,8 @@ export function Login() {
             </svg>
           </div>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-3">Beta</span>
-          <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
-          <p className="text-muted-foreground">Your gaming social network awaits</p>
+          <h1 className="text-4xl font-black tracking-tight text-accent mb-1">Forge</h1>
+          <p className="text-muted-foreground">Your gaming social network</p>
         </div>
 
         <div className="bg-card rounded-2xl p-8 shadow-xl">
@@ -142,12 +146,12 @@ export function Login() {
             href="https://play.google.com/store/apps/details?id=app.forge.social"
             target="_blank"
             rel="noopener noreferrer"
-            className="transition-opacity hover:opacity-80"
+            className="transition-transform hover:scale-105"
           >
             <img
               src="/google-play-badge.png"
               alt="Get it on Google Play"
-              className="h-12"
+              className="h-10"
             />
           </a>
 
@@ -156,7 +160,7 @@ export function Login() {
             <img
               src="/apple-store-badge.svg"
               alt="Download on the App Store"
-              className="h-12 grayscale"
+              className="h-10 grayscale"
             />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">
               Coming Soon

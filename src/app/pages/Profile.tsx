@@ -13,6 +13,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
 import { useAppData } from '../context/AppDataContext';
+import { LoginModule } from '../components/LoginModule';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
@@ -60,7 +61,7 @@ const BIO_MAX_LENGTH = 150;
 export function Profile() {
   const navigate = useNavigate();
   const { userId, handle } = useParams();
-  const { currentUser, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
+  const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
   const [handleFetchedUser, setHandleFetchedUser] = useState<any>(null);
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
@@ -203,6 +204,11 @@ export function Profile() {
       .finally(() => setLikesLoading(false));
   }, [activeTab, profileUser?.id]);
 
+  // Guest trying to view their own profile — show login module
+  if (!isAuthenticated && isOwnProfile) {
+    return <LoginModule variant="page" />;
+  }
+
   // If own profile but currentUser hasn't loaded, wait
   if (!profileUser) {
     return (
@@ -210,6 +216,25 @@ export function Profile() {
         <Header />
         <div className="w-full max-w-2xl mx-auto px-4 py-12 text-center">
           <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Suspended account — show limited view for anyone viewing it
+  if (!isOwnProfile && profileUser?.suspended) {
+    return (
+      <div className="min-h-screen pb-20 bg-background">
+        <Header />
+        <div className="w-full max-w-2xl mx-auto px-4 pt-8 flex flex-col items-center text-center">
+          <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-4">
+            <span className="text-3xl text-muted-foreground">👤</span>
+          </div>
+          <h1 className="text-xl font-semibold">{profileUser.display_name || profileUser.handle}</h1>
+          <p className="text-muted-foreground text-sm">@{(profileUser.handle || '').replace(/^@/, '')}</p>
+          <div className="mt-6 px-6 py-4 bg-secondary rounded-xl max-w-xs">
+            <p className="text-sm text-muted-foreground">This account isn't available right now.</p>
+          </div>
         </div>
       </div>
     );
@@ -525,7 +550,7 @@ export function Profile() {
           </div>
 
           {/* Social proof: mutual followers */}
-          {!isOwnProfile && mutualFollowers.length > 0 && (
+          {!isOwnProfile && (isFollowing || mutualFollowers.length > 0) && (
             <button
               onClick={() => navigate(`/followers/${profileUser.id}?highlight=following`)}
               className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity text-left w-full"
@@ -543,12 +568,30 @@ export function Profile() {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                Followed by{' '}
-                <span className="text-foreground font-medium">
-                  {mutualFollowers.slice(0, 2).map((u: any) => u.display_name || u.handle).join(', ')}
-                </span>
-                {mutualFollowers.length > 2 && ` and ${mutualFollowers.length - 2} others`}
-                {' '}you follow
+                {(() => {
+                  const n = mutualFollowers.slice(0, 2).map((u: any) => u.display_name || u.handle);
+                  let label = '';
+                  if (isFollowing) {
+                    if (mutualFollowers.length === 0) {
+                      label = 'you';
+                    } else if (mutualFollowers.length === 1) {
+                      label = `you and ${n[0]}`;
+                    } else if (mutualFollowers.length === 2) {
+                      label = `you, ${n[0]}, and ${n[1]}`;
+                    } else {
+                      label = `you, ${n[0]}, & ${mutualFollowers.length - 1} others`;
+                    }
+                  } else {
+                    if (mutualFollowers.length === 1) {
+                      label = n[0];
+                    } else if (mutualFollowers.length === 2) {
+                      label = `${n[0]} and ${n[1]}`;
+                    } else {
+                      label = `${n[0]}, ${n[1]}, and ${mutualFollowers.length - 2} others`;
+                    }
+                  }
+                  return <>Followed by <span className="text-foreground font-medium">{label}</span></>;
+                })()}
               </p>
             </button>
           )}
@@ -1084,14 +1127,14 @@ export function Profile() {
                   {playstyleInterests.length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center gap-2 mb-3">
-                        <Trophy className="w-4 h-4 text-accent" />
+                        <Trophy className="w-4 h-4 text-muted-foreground" />
                         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Playstyle</h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {playstyleInterests.map(interest => (
                           <span
                             key={interest.id}
-                            className="px-3 py-1.5 bg-accent/15 text-accent border border-accent/30 rounded-full text-sm font-medium"
+                            className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium"
                           >
                             {interest.label}
                           </span>
@@ -1111,7 +1154,7 @@ export function Profile() {
                         {genreInterests.map(interest => (
                           <span
                             key={interest.id}
-                            className="px-3 py-1.5 bg-secondary rounded-full text-sm"
+                            className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium"
                           >
                             {interest.label}
                           </span>
@@ -1131,7 +1174,7 @@ export function Profile() {
                         {platformInterests.map(interest => (
                           <span
                             key={interest.id}
-                            className="px-3 py-1.5 bg-secondary rounded-full text-sm"
+                            className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium"
                           >
                             {interest.label}
                           </span>

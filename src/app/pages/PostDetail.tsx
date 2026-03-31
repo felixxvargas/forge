@@ -1,42 +1,50 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Send, Heart, Repeat2, Trash2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Repeat2 } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
-import { commentsAPI } from '../utils/supabase';
-import { formatTimeAgo } from '../utils/formatTimeAgo';
+import { posts as postsAPI } from '../utils/supabase';
 
 export function PostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { posts, getUserById, users, currentUser, likePost, unlikePost, likedPosts, createPost, deletePost, session } = useAppData();
-  const commentsRef = useRef<HTMLDivElement>(null);
-  const commentInputRef = useRef<HTMLInputElement>(null);
+  const {
+    posts, getUserById, users, currentUser,
+    likePost, unlikePost, likedPosts,
+    repostPost, unrepostPost, repostedPosts,
+    createPost, deletePost, addPosts, session,
+  } = useAppData();
 
-  const [comments, setComments] = useState<any[]>([]);
-  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const [repostedComments, setRepostedComments] = useState<Set<string>>(new Set());
-  const [newComment, setNewComment] = useState('');
+  const repliesRef = useRef<HTMLDivElement>(null);
+
+  const [replies, setReplies] = useState<any[]>([]);
+  const [reposters, setReposters] = useState<any[]>([]);
+  const [newReply, setNewReply] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [isLoadingReplies, setIsLoadingReplies] = useState(true);
   const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [standalonePost, setStandalonePost] = useState<any>(null);
   const mentionTriggerIndex = useRef<number>(-1);
 
-  // Bluesky fallback — used when the postId is an AT-URI and not in the Supabase feed
+  // Bluesky fallback
   const [blueskyPost, setBlueskyPost] = useState<any>(null);
   const [loadingBluesky, setLoadingBluesky] = useState(false);
 
-  // Find original post (prefer one without repostedBy for detail view)
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
 
-  // Always start at the top when entering a post detail view
   useEffect(() => { window.scrollTo(0, 0); }, [postId]);
 
-  // If the postId looks like a Bluesky AT-URI and wasn't found in context, fetch it live
+  // Fetch post by ID if not in context (e.g. navigating directly to a reply post)
+  useEffect(() => {
+    if (post || postId?.startsWith('at://') || !postId) return;
+    postsAPI.getById(postId).then(p => setStandalonePost(p)).catch(() => {});
+  }, [postId, post]);
+
+  // Bluesky fallback
   useEffect(() => {
     if (!postId?.startsWith('at://') || post) return;
     setLoadingBluesky(true);
@@ -69,45 +77,40 @@ export function PostDetail() {
       .finally(() => setLoadingBluesky(false));
   }, [postId, post]);
 
-  const activePost = post ?? blueskyPost;
-  const activeUser = postUser ?? blueskyPost?.author;
+  const activePost = post ?? standalonePost ?? blueskyPost;
+  const activeUser = postUser ?? standalonePost?.author ?? blueskyPost?.author;
 
-  // Load comments
+  // Load replies (posts with reply_to = postId)
   useEffect(() => {
-    if (!postId) return;
-    setIsLoadingComments(true);
-    commentsAPI.getByPostId(postId)
-      .then(data => setComments(data))
-      .catch(() => setComments([]))
-      .finally(() => setIsLoadingComments(false));
+    if (!postId || postId.startsWith('at://')) return;
+    setIsLoadingReplies(true);
+    postsAPI.getByReplyTo(postId)
+      .then(data => {
+        setReplies(data);
+        if (data.length > 0) addPosts(data);
+      })
+      .catch(() => setReplies([]))
+      .finally(() => setIsLoadingReplies(false));
   }, [postId]);
 
-  // Load liked comment IDs
+  // Load reposters
   useEffect(() => {
-    if (!session?.user || !postId) return;
-    commentsAPI.getLikedCommentIds(session.user.id, postId)
-      .then(ids => setLikedComments(ids))
+    if (!postId || postId.startsWith('at://')) return;
+    postsAPI.getPostReposters(postId)
+      .then(data => setReposters(data))
       .catch(() => {});
-  }, [session?.user?.id, postId]);
+  }, [postId]);
 
-  // Scroll to comments if navigated with #comments hash
+  // Scroll to replies if navigated with #comments hash
   useEffect(() => {
-    if (window.location.hash === '#comments' && commentsRef.current && !isLoadingComments) {
-      setTimeout(() => commentsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    if (window.location.hash === '#comments' && repliesRef.current && !isLoadingReplies) {
+      setTimeout(() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     }
-  }, [isLoadingComments]);
+  }, [isLoadingReplies]);
 
-  const handleLikeToggle = (id: string) => {
-    if (likedPosts.has(id)) {
-      unlikePost(id);
-    } else {
-      likePost(id);
-    }
-  };
-
-  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReplyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    setNewComment(val);
+    setNewReply(val);
     const cursorPos = e.target.selectionStart ?? val.length;
     const before = val.slice(0, cursorPos);
     const mentionMatch = before.match(/@(\w*)$/);
@@ -132,88 +135,49 @@ export function PostDetail() {
     const startIdx = mentionTriggerIndex.current;
     if (startIdx < 0) { setShowMentions(false); return; }
     const handle = (user.handle || '').startsWith('@') ? user.handle : `@${user.handle}`;
-    const afterAt = newComment.slice(startIdx + 1);
+    const afterAt = newReply.slice(startIdx + 1);
     const wordEnd = afterAt.search(/[^\w]/);
-    const tokenEnd = wordEnd === -1 ? newComment.length : startIdx + 1 + wordEnd;
-    setNewComment(newComment.slice(0, startIdx) + handle + ' ' + newComment.slice(tokenEnd));
+    const tokenEnd = wordEnd === -1 ? newReply.length : startIdx + 1 + wordEnd;
+    setNewReply(newReply.slice(0, startIdx) + handle + ' ' + newReply.slice(tokenEnd));
     mentionTriggerIndex.current = -1;
     setShowMentions(false);
     setMentionSuggestions([]);
   };
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
+  const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !session?.user || !postId) return;
+    if (!newReply.trim() || !session?.user || !postId) return;
     setIsSubmitting(true);
     try {
-      const comment = await commentsAPI.create(session.user.id, postId, newComment.trim());
-      setComments(prev => [...prev, comment]);
-      setNewComment('');
+      const replyId = await createPost(
+        newReply.trim(),
+        undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined,
+        postId,
+      );
+      if (replyId) {
+        try {
+          const replyPost = await postsAPI.getById(replyId);
+          setReplies(prev => [...prev, replyPost]);
+          addPosts([replyPost]);
+        } catch {}
+      }
+      setNewReply('');
     } catch (err) {
-      console.error('Failed to post comment:', err);
+      console.error('Failed to post reply:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!session?.user) return;
+  const handleDeleteReply = async (replyId: string) => {
     try {
-      await commentsAPI.delete(session.user.id, commentId);
-      setComments(prev => prev.filter(c => c.id !== commentId));
+      await deletePost(replyId);
+      setReplies(prev => prev.filter(r => r.id !== replyId));
       setDeleteConfirmId(null);
     } catch (err) {
-      console.error('Failed to delete comment:', err);
-    }
-  };
-
-  const handleRepostComment = async (comment: any) => {
-    if (!session?.user) return;
-    if (repostedComments.has(comment.id)) return; // already reposted
-    const commentUser = comment.author ?? getUserById(comment.user_id);
-    const handle = commentUser ? `@${(commentUser.handle || '').replace(/^@/, '')}` : '';
-    const content = `${handle}: "${comment.content}"`;
-    try {
-      await createPost(content);
-      setRepostedComments(prev => new Set([...prev, comment.id]));
-    } catch (err) {
-      console.error('Failed to repost comment:', err);
-    }
-  };
-
-  const handleLikeComment = async (commentId: string) => {
-    if (!session?.user) return;
-    const isLiked = likedComments.has(commentId);
-    setLikedComments(prev => {
-      const next = new Set(prev);
-      isLiked ? next.delete(commentId) : next.add(commentId);
-      return next;
-    });
-    setComments(prev =>
-      prev.map(c => c.id === commentId
-        ? { ...c, like_count: Math.max(0, (c.like_count ?? 0) + (isLiked ? -1 : 1)) }
-        : c
-      )
-    );
-    try {
-      if (isLiked) {
-        await commentsAPI.unlike(session.user.id, commentId);
-      } else {
-        await commentsAPI.like(session.user.id, commentId);
-      }
-    } catch {
-      // Revert
-      setLikedComments(prev => {
-        const next = new Set(prev);
-        isLiked ? next.add(commentId) : next.delete(commentId);
-        return next;
-      });
-      setComments(prev =>
-        prev.map(c => c.id === commentId
-          ? { ...c, like_count: Math.max(0, (c.like_count ?? 0) + (isLiked ? 1 : -1)) }
-          : c
-        )
-      );
+      console.error('Failed to delete reply:', err);
     }
   };
 
@@ -233,7 +197,6 @@ export function PostDetail() {
     );
   }
 
-  // Strip repostedBy so the reposter header is hidden in detail view
   const detailPost = { ...activePost, repostedBy: undefined };
 
   return (
@@ -257,20 +220,62 @@ export function PostDetail() {
           <PostCard
             post={detailPost}
             user={activeUser}
-            onLike={handleLikeToggle}
-            onComment={() => commentsRef.current?.scrollIntoView({ behavior: 'smooth' })}
-            onDelete={currentUser && activePost.user_id === currentUser.id ? async (id) => { await deletePost(id); navigate(-1); } : undefined}
+            onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+            onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            onDelete={currentUser && activePost.user_id === currentUser.id
+              ? async (id) => { await deletePost(id); navigate(-1); }
+              : undefined}
             isDetailView={true}
           />
         </div>
 
-        {/* Comments Section */}
-        <div className="px-4 py-6" ref={commentsRef} id="comments">
-          <h2 className="text-lg font-semibold mb-4">Comments</h2>
+        {/* Reposters */}
+        {reposters.length > 0 && (
+          <div className="px-4 py-3 border-b border-border flex items-center gap-2 flex-wrap">
+            <Repeat2 className="w-4 h-4 text-green-500 shrink-0" />
+            <div className="flex -space-x-1">
+              {reposters.slice(0, 6).map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => navigate(`/${(u.handle || '').replace(/^@/, '')}`)}
+                  title={u.display_name || u.handle}
+                  className="ring-2 ring-card rounded-full"
+                >
+                  <ProfileAvatar
+                    username={u.display_name || u.handle || '?'}
+                    profilePicture={u.profile_picture}
+                    userId={u.id}
+                    size="sm"
+                  />
+                </button>
+              ))}
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {reposters.length === 1 ? (
+                <>
+                  <button
+                    onClick={() => navigate(`/${(reposters[0].handle || '').replace(/^@/, '')}`)}
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    {reposters[0].display_name || reposters[0].handle}
+                  </button>{' '}reposted
+                </>
+              ) : (
+                <>{reposters.length} reposts</>
+              )}
+            </span>
+          </div>
+        )}
 
-          {/* Comment Input */}
-          {currentUser && (
-            <form onSubmit={handleSubmitComment} className="mb-6">
+        {/* Replies Section */}
+        <div ref={repliesRef} id="comments">
+          <div className="px-4 pt-6 pb-2">
+            <h2 className="text-lg font-semibold">Replies</h2>
+          </div>
+
+          {/* Reply Input */}
+          {currentUser && !activePost.comments_disabled && (
+            <form onSubmit={handleSubmitReply} className="px-4 pb-4 border-b border-border">
               <div className="flex gap-3 items-start">
                 <ProfileAvatar
                   username={currentUser.display_name || currentUser.handle || '?'}
@@ -278,16 +283,14 @@ export function PostDetail() {
                   size="md"
                 />
                 <div className="flex-1 relative">
-                  <input
-                    ref={commentInputRef}
-                    type="text"
-                    value={newComment}
-                    onChange={handleCommentChange}
-                    placeholder="Write a comment… Use @ to mention"
+                  <textarea
+                    value={newReply}
+                    onChange={handleReplyChange}
+                    placeholder="Post a reply… Use @ to mention"
+                    rows={2}
                     style={{ fontSize: '16px' }}
-                    className="w-full px-4 py-2 bg-secondary rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                    className="w-full px-4 py-2 bg-secondary rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm resize-none"
                   />
-                  {/* Mention dropdown */}
                   {showMentions && mentionSuggestions.length > 0 && (
                     <div className="absolute bottom-full mb-2 left-0 right-0 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                       {mentionSuggestions.map(u => (
@@ -314,10 +317,10 @@ export function PostDetail() {
                   <div className="mt-2 flex justify-end">
                     <button
                       type="submit"
-                      disabled={!newComment.trim() || isSubmitting}
+                      disabled={!newReply.trim() || isSubmitting}
                       className="px-4 py-1.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isSubmitting ? 'Posting…' : 'Post'}
+                      {isSubmitting ? 'Posting…' : 'Reply'}
                     </button>
                   </div>
                 </div>
@@ -325,85 +328,37 @@ export function PostDetail() {
             </form>
           )}
 
-          {/* Comments List */}
-          {isLoadingComments ? (
+          {/* Replies List */}
+          {isLoadingReplies ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent" />
             </div>
-          ) : comments.length === 0 ? (
+          ) : replies.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No comments yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Be the first to comment!</p>
+              <p className="text-muted-foreground">No replies yet</p>
+              {!activePost.comments_disabled && (
+                <p className="text-sm text-muted-foreground mt-1">Be the first to reply!</p>
+              )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {comments.map((comment) => {
-                const commentUser = comment.author ?? getUserById(comment.user_id);
-                if (!commentUser) return null;
-                const isLiked = likedComments.has(comment.id);
-
+            <div className="divide-y divide-border">
+              {replies.map((reply) => {
+                const replyUser = reply.author ?? getUserById(reply.user_id);
+                if (!replyUser) return null;
                 return (
-                  <div key={comment.id} className="flex gap-3">
-                    <div
-                      className="cursor-pointer shrink-0"
-                      onClick={() => navigate(`/profile/${commentUser.id}`)}
-                    >
-                      <ProfileAvatar
-                        username={commentUser.display_name || commentUser.handle || '?'}
-                        profilePicture={commentUser.profile_picture}
-                        size="md"
-                        userId={commentUser.id}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="bg-secondary rounded-2xl px-4 py-3">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <button
-                            onClick={() => navigate(`/profile/${commentUser.id}`)}
-                            className="font-semibold text-sm hover:underline"
-                          >
-                            {commentUser.display_name || commentUser.handle}
-                          </button>
-                          <span className="text-xs text-muted-foreground">{commentUser.handle}</span>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatTimeAgo(comment.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-sm break-words">{comment.content}</p>
-                      </div>
-                      <div className="flex items-center gap-4 mt-1.5 px-2">
-                        <button
-                          onClick={() => handleLikeComment(comment.id)}
-                          className={`flex items-center gap-1.5 text-xs transition-colors ${
-                            isLiked ? 'text-pink-500' : 'text-muted-foreground hover:text-pink-500'
-                          }`}
-                        >
-                          <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
-                          <span>{comment.like_count ?? 0}</span>
-                        </button>
-                        <button
-                          onClick={() => handleRepostComment(comment)}
-                          disabled={repostedComments.has(comment.id)}
-                          className={`flex items-center gap-1.5 text-xs transition-colors ${
-                            repostedComments.has(comment.id) ? 'text-green-500' : 'text-muted-foreground hover:text-green-500'
-                          }`}
-                          title={repostedComments.has(comment.id) ? 'Reposted' : 'Repost as post'}
-                        >
-                          <Repeat2 className="w-3.5 h-3.5" />
-                        </button>
-                        {currentUser && comment.user_id === currentUser.id && (
-                          <button
-                            onClick={() => setDeleteConfirmId(comment.id)}
-                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors"
-                            title="Delete comment"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <PostCard
+                    key={reply.id}
+                    post={reply}
+                    user={replyUser}
+                    onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                    onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                    onComment={() => navigate(`/post/${reply.id}#comments`)}
+                    onDelete={currentUser && reply.user_id === currentUser.id
+                      ? async (id) => setDeleteConfirmId(id)
+                      : undefined}
+                    isLiked={likedPosts.has(reply.id)}
+                    isReposted={repostedPosts.has(reply.id)}
+                  />
                 );
               })}
             </div>
@@ -411,13 +366,13 @@ export function PostDetail() {
         </div>
       </div>
 
-      {/* Delete Comment Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-              <h2 className="text-lg font-semibold">Delete comment?</h2>
+              <h2 className="text-lg font-semibold">Delete reply?</h2>
             </div>
             <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
             <div className="flex gap-3">
@@ -428,7 +383,7 @@ export function PostDetail() {
                 Cancel
               </button>
               <button
-                onClick={() => handleDeleteComment(deleteConfirmId)}
+                onClick={() => handleDeleteReply(deleteConfirmId)}
                 className="flex-1 px-4 py-2 bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors text-sm font-medium"
               >
                 Delete

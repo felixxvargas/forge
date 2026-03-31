@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -12,6 +12,8 @@ const POST_MAX_LENGTH = 600;
 
 export function NewPost() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const replyTo = searchParams.get('replyTo') ?? undefined;
   const { createPost, currentUser, users } = useAppData();
   const [content, setContent] = useState(() => sessionStorage.getItem('forge-post-draft') ?? '');
   const [imageUrl, setImageUrl] = useState('');
@@ -26,6 +28,7 @@ export function NewPost() {
   const [isPosting, setIsPosting] = useState(false);
   const [disableComments, setDisableComments] = useState(() => localStorage.getItem('forge-default-comments-disabled') === 'true');
   const [disableReposts, setDisableReposts] = useState(() => localStorage.getItem('forge-default-reposts-disabled') === 'true');
+  const [threadPosts, setThreadPosts] = useState<string[]>([]);
   // Track visual viewport to position mention dropdown above the OSK on mobile
   const [viewportBottom, setViewportBottom] = useState(0);
   useEffect(() => {
@@ -256,7 +259,20 @@ export function NewPost() {
       const images = imageUrl ? [imageUrl] : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
-      await createPost(content, images, linkUrl || undefined, undefined, undefined, gameIds[0], gameTitles[0], gameIds, gameTitles, undefined, disableComments, disableReposts);
+      let lastPostId = await createPost(
+        content, images, linkUrl || undefined, undefined, undefined,
+        gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
+        disableComments, disableReposts, replyTo,
+      );
+      // Chain thread continuation posts as replies to the previous post
+      for (const threadContent of threadPosts.filter(p => p.trim())) {
+        if (!lastPostId) break;
+        lastPostId = await createPost(
+          threadContent, undefined, undefined, undefined, undefined,
+          undefined, undefined, undefined, undefined, undefined,
+          undefined, undefined, lastPostId,
+        );
+      }
       sessionStorage.removeItem('forge-post-draft');
       navigate(-1);
     } catch (err: any) {
@@ -560,6 +576,63 @@ export function NewPost() {
           </div>
         )}
       </div>
+
+      {/* Thread continuation posts */}
+      {threadPosts.map((threadContent, index) => (
+        <div key={index} className="border-t border-border">
+          <div className="flex gap-3 p-4">
+            <div className="flex flex-col items-center gap-1">
+              <ProfileAvatar
+                username={currentUser?.display_name || currentUser?.handle || '?'}
+                profilePicture={currentUser?.profile_picture}
+                size="md"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium mb-1">{currentUser?.display_name || currentUser?.handle}</p>
+              <textarea
+                value={threadContent}
+                onChange={(e) => {
+                  const val = e.target.value.slice(0, POST_MAX_LENGTH);
+                  setThreadPosts(prev => prev.map((p, i) => i === index ? val : p));
+                }}
+                placeholder="Continue thread…"
+                rows={3}
+                className="w-full bg-transparent resize-none outline-none text-base"
+                style={{ fontSize: '16px' }}
+                autoFocus
+              />
+              <div className="flex items-center justify-between pt-1">
+                <span className={`text-xs tabular-nums ${threadContent.length >= POST_MAX_LENGTH ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {threadContent.length}/{POST_MAX_LENGTH}
+                </span>
+                <button
+                  onClick={() => setThreadPosts(prev => prev.filter((_, i) => i !== index))}
+                  className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* Add to thread button */}
+      {!replyTo && (
+        <div className="border-t border-border px-4 py-3 flex items-center gap-2">
+          <div className="w-8 h-8 flex items-center justify-center">
+            <div className="w-px h-full bg-border" />
+          </div>
+          <button
+            onClick={() => setThreadPosts(prev => [...prev, ''])}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-accent transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add to thread
+          </button>
+        </div>
+      )}
     </div>
   );
 }

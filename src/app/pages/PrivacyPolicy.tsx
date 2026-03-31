@@ -139,7 +139,7 @@ export function PrivacyPolicy() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-8">
+    <section className="mb-8 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:leading-relaxed">
       <h2 className="text-lg font-semibold mb-3 text-foreground">{title}</h2>
       <div className="text-muted-foreground leading-relaxed space-y-3">{children}</div>
     </section>

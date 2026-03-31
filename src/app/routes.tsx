@@ -34,12 +34,12 @@ import { TrendingGames } from './pages/TrendingGames';
 import { Layout } from './components/Layout';
 import { NotFound } from './pages/NotFound';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import Admin from './pages/Admin';
 import { FlareDetail } from './pages/FlareDetail';
 import { UserFlares } from './pages/UserFlares';
 import { PostInteractions } from './pages/PostInteractions';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
+import { PrivacySettings } from './pages/PrivacySettings';
 
 export const router = createBrowserRouter([
   { path: '/login',         element: <Login />,         errorElement: <ErrorBoundary /> },
@@ -49,7 +49,6 @@ export const router = createBrowserRouter([
   { path: '/terms',         element: <TermsOfService />, errorElement: <ErrorBoundary /> },
   { path: '/splash',        element: <Onboarding />,   errorElement: <ErrorBoundary /> },
   { path: '/onboarding',    element: <Onboarding />,   errorElement: <ErrorBoundary /> },
-  { path: '/admin',         element: <Admin />,        errorElement: <ErrorBoundary /> },
   {
     path: '/',
     element: <Layout />,
@@ -91,6 +90,7 @@ export const router = createBrowserRouter([
       { path: 'flares/:userId',        element: <UserFlares />,              errorElement: <ErrorBoundary /> },
       { path: 'privacy',              element: <PrivacyPolicy />,            errorElement: <ErrorBoundary /> },
       { path: 'terms',                element: <TermsOfService />,           errorElement: <ErrorBoundary /> },
+      { path: 'privacy-security',     element: <PrivacySettings />,          errorElement: <ErrorBoundary /> },
       { path: ':handle',               element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },
     ],

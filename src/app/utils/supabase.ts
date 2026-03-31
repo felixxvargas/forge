@@ -295,7 +295,7 @@ export const posts = {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return (data ?? []).filter((p: any) => !p.reply_to);
   },
 
   async getFollowingFeed(userId: string, limit = 30, offset = 0, followedGameIds: string[] = []) {
@@ -348,6 +348,7 @@ export const posts = {
 
     const seen = new Set<string>();
     const merged = [...(postsData ?? []), ...repostItems, ...gamePostsData].filter((p: any) => {
+      if (p.reply_to) return false;
       const key = p.id + (p.repostedBy || '');
       if (seen.has(key)) return false;
       seen.add(key);
@@ -369,7 +370,7 @@ export const posts = {
       .order('like_count', { ascending: false })
       .limit(limit * 3);
     if (error) throw new Error(error.message);
-    const posts = (data ?? []).filter((p: any) => p.content?.trim());
+    const posts = (data ?? []).filter((p: any) => p.content?.trim() && !p.reply_to);
     // Re-rank by composite engagement score
     posts.sort((a: any, b: any) => {
       const scoreA = (a.like_count ?? 0) + (a.repost_count ?? 0) * 2 + (a.comment_count ?? 0) * 3;
@@ -406,7 +407,7 @@ export const posts = {
 
     const seen = new Set<string>();
     const merged = [...gamePosts, ...trendingPosts].filter((p: any) => {
-      if (!p.content?.trim()) return false;
+      if (!p.content?.trim() || p.reply_to) return false;
       if (seen.has(p.id)) return false;
       seen.add(p.id);
       return true;
@@ -448,6 +449,16 @@ export const posts = {
     return data;
   },
 
+  async getByReplyTo(postId: string) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .eq('reply_to', postId)
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
   async getByUser(userId: string) {
     const { data, error } = await supabase
       .from('posts')
@@ -458,7 +469,7 @@ export const posts = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return (data ?? []).filter((p: any) => !p.reply_to);
   },
 
   async getByCommunity(communityId: string) {
@@ -487,6 +498,7 @@ export const posts = {
     flareId?: string;
     commentsDisabled?: boolean;
     repostsDisabled?: boolean;
+    replyTo?: string;
   } = {}) {
     // Support multi-game tagging: game_ids/game_titles arrays are the source of truth.
     // game_id/game_title kept for backward compat (first entry mirrors the array).
@@ -509,6 +521,7 @@ export const posts = {
         ...(options.flareId ? { flare_id: options.flareId } : {}),
         ...(options.commentsDisabled ? { comments_disabled: true } : {}),
         ...(options.repostsDisabled ? { reposts_disabled: true } : {}),
+        ...(options.replyTo ? { reply_to: options.replyTo } : {}),
       })
       .select(`
         *,
@@ -731,8 +744,9 @@ export const groups = {
       .upload(path, file, { upsert: true });
     if (error) throw new Error(error.message);
     const { data } = supabase.storage.from('forge-avatars').getPublicUrl(path);
-    const url = data.publicUrl;
-    await supabase.from('communities').update({ profile_picture: url }).eq('id', groupId);
+    const url = `${data.publicUrl}?t=${Date.now()}`;
+    const { error: updateError } = await supabase.from('communities').update({ profile_picture: url }).eq('id', groupId);
+    if (updateError) throw new Error(updateError.message);
     return url;
   },
 
