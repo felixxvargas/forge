@@ -220,10 +220,14 @@ export function Settings() {
     navigate('/onboarding?step=interests');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('forge-logged-in');
-    localStorage.removeItem('forge-access-token');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } finally {
+      localStorage.removeItem('forge-logged-in');
+      localStorage.removeItem('forge-access-token');
+      navigate('/feed');
+    }
   };
 
   const handleSuspendAccount = async () => {
