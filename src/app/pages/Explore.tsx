@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { type User, type Group } from '../data/data';
 import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, groups as groupsAPI, supabase } from '../utils/supabase';
-import { fetchAllGamingMediaPosts } from '../utils/bluesky';
+import { fetchAllGamingMediaPosts, searchBlueskyUsers, type ExternalUser } from '../utils/bluesky';
+import { searchMastodonUsers } from '../utils/fediverse';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 
@@ -47,6 +48,7 @@ export function Explore() {
   // Global search state
   const [searchPosts, setSearchPosts] = useState<any[]>([]);
   const [searchGames, setSearchGames] = useState<any[]>([]);
+  const [externalUsers, setExternalUsers] = useState<ExternalUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks extra game IDs fetched to fill engagement gaps — reset on tab change
@@ -230,6 +232,7 @@ export function Explore() {
     if (!searchQuery.trim()) {
       setSearchPosts([]);
       setSearchGames([]);
+      setExternalUsers([]);
       setSearchLoading(false);
       return;
     }
@@ -237,14 +240,25 @@ export function Explore() {
     searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const [postsRes, gamesRes] = await Promise.allSettled([
+        const [postsRes, gamesRes, bskyRes, mastoRes] = await Promise.allSettled([
           postsAPI.search(searchQuery),
           gamesAPI.searchGames(searchQuery, 20),
+          searchBlueskyUsers(searchQuery, 5),
+          searchMastodonUsers(searchQuery, 5),
         ]);
         setSearchPosts(postsRes.status === 'fulfilled' ? postsRes.value : []);
         setSearchGames(gamesRes.status === 'fulfilled'
           ? (Array.isArray(gamesRes.value) ? gamesRes.value : (gamesRes.value as any)?.games ?? [])
           : []);
+        // Merge Bluesky + Mastodon results, deduplicate by externalUrl
+        const bskyUsers = bskyRes.status === 'fulfilled' ? bskyRes.value : [];
+        const mastoUsers = mastoRes.status === 'fulfilled' ? mastoRes.value : [];
+        const seen = new Set<string>();
+        const merged: ExternalUser[] = [];
+        for (const u of [...bskyUsers, ...mastoUsers]) {
+          if (!seen.has(u.externalUrl)) { seen.add(u.externalUrl); merged.push(u); }
+        }
+        setExternalUsers(merged.slice(0, 8));
         const trimmed = searchQuery.trim();
         if (trimmed) {
           setSearchHistory(prev => {
@@ -486,8 +500,8 @@ export function Explore() {
               </div>
             )}
 
-            {/* Users */}
-            {searchUsers.length > 0 && (
+            {/* Users — Forge first, then external */}
+            {(searchUsers.length > 0 || externalUsers.length > 0) && (
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-semibold text-white">Users</h2>
@@ -501,9 +515,57 @@ export function Explore() {
                   )}
                 </div>
                 <div className="space-y-2">
+                  {/* Forge users first */}
                   {searchUsers.map(user => (
                     <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
                   ))}
+                  {/* External users (Bluesky + Mastodon) below, with separator */}
+                  {externalUsers.length > 0 && (
+                    <>
+                      {searchUsers.length > 0 && (
+                        <div className="flex items-center gap-2 py-1">
+                          <div className="flex-1 h-px bg-gray-800" />
+                          <span className="text-xs text-gray-600 font-medium">Also on the web</span>
+                          <div className="flex-1 h-px bg-gray-800" />
+                        </div>
+                      )}
+                      {externalUsers.map(u => (
+                        <a
+                          key={u.id}
+                          href={u.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-900/60 hover:bg-gray-800/80 transition-colors"
+                        >
+                          {u.avatar ? (
+                            <img src={u.avatar} alt={u.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                              <UserIcon className="w-5 h-5 text-gray-500" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-white text-sm truncate">{u.displayName}</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                u.platform === 'bluesky'
+                                  ? 'bg-sky-500/20 text-sky-400'
+                                  : 'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">{u.handle}</p>
+                          </div>
+                          {u.followerCount > 0 && (
+                            <span className="text-xs text-gray-600 shrink-0">
+                              {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
+                            </span>
+                          )}
+                        </a>
+                      ))}
+                    </>
+                  )}
                 </div>
               </section>
             )}
@@ -614,6 +676,7 @@ export function Explore() {
             {/* No results */}
             {!searchLoading &&
               searchUsers.length === 0 &&
+              externalUsers.length === 0 &&
               searchGameResults.length === 0 &&
               searchPostResults.length === 0 &&
               searchGroupResults.length === 0 && (

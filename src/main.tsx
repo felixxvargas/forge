@@ -4,6 +4,13 @@ import { Component, ReactNode } from 'react';
 import * as Sentry from '@sentry/react';
 import { initAnalytics } from './app/utils/analytics';
 
+// Strip OG redirect marker added by middleware loop-breaker (?_r=1)
+if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_r')) {
+  const clean = new URL(window.location.href);
+  clean.searchParams.delete('_r');
+  window.history.replaceState({}, '', clean.pathname + (clean.search || '') + (clean.hash || ''));
+}
+
 // Initialize Google Analytics
 initAnalytics();
 

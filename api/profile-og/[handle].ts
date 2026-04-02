@@ -40,7 +40,8 @@ export default async function handler(req: Request): Promise<Response> {
     ...(avatar ? { avatar } : {}),
   });
   const ogImage = `${siteOrigin}/api/og?${ogImageParams.toString()}`;
-  const profileUrl = `${siteOrigin}/${displayHandle.replace(/^@/, '')}`;
+  // ?_r=1 signals the middleware to pass through (loop breaker)
+  const profileUrl = `${siteOrigin}/${displayHandle.replace(/^@/, '')}?_r=1`;
   const title = `${displayName} (@${displayHandle.replace(/^@/, '')}) · Forge`;
   const description = bio;
 

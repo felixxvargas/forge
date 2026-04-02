@@ -1,4 +1,4 @@
-import { Bell, Settings, ZapIcon } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 

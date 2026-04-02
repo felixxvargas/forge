@@ -19,7 +19,8 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
     if (post) {
       return `${baseUrl}/post/${post.id}`;
     } else if (user) {
-      return `${baseUrl}/profile/${user.id}`;
+      const handle = ((user.handle as string) || '').replace(/^@/, '');
+      return handle ? `${baseUrl}/${handle}` : `${baseUrl}/profile/${user.id}`;
     }
     return baseUrl;
   };

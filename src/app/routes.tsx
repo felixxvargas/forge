@@ -60,6 +60,7 @@ export const router = createBrowserRouter([
       { path: 'explore',                element: <Explore />,                 errorElement: <ErrorBoundary /> },
       { path: 'profile',                element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: 'profile/:userId',        element: <Profile />,                 errorElement: <ErrorBoundary /> },
+      { path: 'profile/handle/:handle', element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: 'edit-profile',           element: <EditProfile />,             errorElement: <ErrorBoundary /> },
       { path: 'new-post',               element: <NewPost />,                 errorElement: <ErrorBoundary /> },
       { path: 'settings',               element: <Settings />,                errorElement: <ErrorBoundary /> },

@@ -13,7 +13,6 @@ import {
   Car,
   Users,
   Sparkles,
-  Zap,
   Globe,
   X as XIcon,
   Instagram,

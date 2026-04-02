@@ -270,3 +270,37 @@ export const topicAccountBlueskyHandles: Record<string, string> = {
 export function getBlueskyHandleForUser(userId: string): string | undefined {
   return topicAccountBlueskyHandles[userId];
 }
+
+export interface ExternalUser {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatar?: string;
+  bio?: string;
+  followerCount: number;
+  platform: 'bluesky' | 'mastodon';
+  externalUrl: string;
+}
+
+export async function searchBlueskyUsers(query: string, limit = 5): Promise<ExternalUser[]> {
+  if (!query.trim()) return [];
+  try {
+    const res = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
+    if (!res.ok) return [];
+    const { actors } = await res.json();
+    return (actors ?? []).map((a: any): ExternalUser => ({
+      id: `bsky-${a.did}`,
+      handle: a.handle,
+      displayName: a.displayName || a.handle,
+      avatar: a.avatar,
+      bio: a.description,
+      followerCount: a.followersCount ?? 0,
+      platform: 'bluesky',
+      externalUrl: `https://bsky.app/profile/${a.handle}`,
+    }));
+  } catch {
+    return [];
+  }
+}

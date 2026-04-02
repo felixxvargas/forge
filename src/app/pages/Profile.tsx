@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
+import { useProfileMeta } from '../hooks/useProfileMeta';
 import { ForgeLogo, getForgeLogoDataURL } from '../components/ForgeLogo';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
@@ -144,6 +145,14 @@ export function Profile() {
   // Only use Bluesky avatar for topic accounts — prevents stale data bleeding into own profile
   const isTopicAccount = ((profileUser || currentUser) as any)?.account_type === 'topic';
   const profilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || profileUser?.profile_picture || undefined;
+
+  // Dynamic OG meta tags for social share previews
+  useProfileMeta({
+    displayName: profileUser?.display_name || '',
+    handle: (profileUser?.handle || handle || ''),
+    bio: profileUser?.bio ?? undefined,
+    profilePicture: profilePicture ?? undefined,
+  });
 
   // Sync follow state from followingIds — covers both regular follows (follows table) and topic
   // account follows stored in game_lists._topicFollows. This ensures Koop and other topic accounts
