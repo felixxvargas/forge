@@ -109,65 +109,6 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
   }
 }
 
-// Fetch posts from MassivelyOP on Mastodon
-async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
-  const cacheKey = 'mastodon-massivelyop';
-  const cached = postsCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-
-  try {
-    // MassivelyOP Mastodon account ID: 109515680214374940
-    const response = await fetch(
-      `https://mastodon.social/api/v1/accounts/109515680214374940/statuses?limit=${limit}&exclude_replies=true`
-    );
-
-    if (!response.ok) return [];
-
-    const statuses = await response.json();
-    const posts: BlueskyPost[] = statuses
-      .filter((s: any) => s.content && !s.reblog) // skip boosts and empty
-      .map((s: any) => {
-        // Strip HTML tags from content
-        const text = s.content
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<\/p>/gi, '\n')
-          .replace(/<[^>]+>/g, '')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .trim();
-
-        const images = s.media_attachments
-          ?.filter((m: any) => m.type === 'image')
-          .map((m: any) => m.url) || undefined;
-
-        return {
-          id: `mastodon-${s.id}`,
-          userId: 'user-massivelyop',
-          content: text,
-          timestamp: new Date(s.created_at),
-          likes: s.favourites_count ?? 0,
-          reposts: s.reblogs_count ?? 0,
-          comments: s.replies_count ?? 0,
-          images: images?.length ? images : undefined,
-          platform: 'mastodon' as const,
-          url: s.card?.url ?? undefined,
-          externalUrl: s.url,
-        };
-      });
-
-    postsCache.set(cacheKey, { data: posts, timestamp: Date.now() });
-    return posts;
-  } catch (error) {
-    console.error('Failed to fetch MassivelyOP Mastodon posts:', error);
-    return [];
-  }
-}
-
 // Fetch posts from MassivelyOP on Mastodon (massivelyop@mastodon.social)
 async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
   const cacheKey = 'mastodon-massivelyop';
