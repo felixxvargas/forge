@@ -4,8 +4,9 @@ import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
 import { GroupIcon } from '../components/GroupIcon';
-import { useNavigate } from 'react-router';
+import { useNavigate, useNavigationType } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
+import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 import { type User, type Group } from '../data/data';
 import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, groups as groupsAPI, supabase } from '../utils/supabase';
 import { fetchAllGamingMediaPosts, searchBlueskyUsers, type ExternalUser } from '../utils/bluesky';
@@ -55,10 +56,22 @@ export function Explore() {
   const fetchedExtraGameIds = useRef<Set<string>>(new Set());
 
   const navigate = useNavigate();
+  const navType = useNavigationType();
 
-  // Scroll to top on initial mount (prevents viewport offset when navigating from Profile)
+  // Pre-populate topic account avatar cache for all users in the list
+  useTopicAccountProfiles(users.map(u => u.id));
+
+  // Scroll restoration: restore position on back-navigation, else reset to top
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (navType === 'POP') {
+      const saved = sessionStorage.getItem('explore-scroll-y');
+      if (saved) window.scrollTo(0, parseInt(saved, 10));
+    } else {
+      window.scrollTo(0, 0);
+    }
+    return () => {
+      sessionStorage.setItem('explore-scroll-y', String(window.scrollY));
+    };
   }, []);
 
   useEffect(() => {

@@ -140,7 +140,9 @@ export function EditGameListsModal({
 
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
-      setSelectedGames(prev => [game, ...prev]);
+      const next = [game, ...selectedGames];
+      setSelectedGames(next);
+      onSave(next);
     }
   };
 
@@ -150,6 +152,7 @@ export function EditGameListsModal({
 
   const handleSave = () => {
     onSave(selectedGames);
+    localStorage.removeItem(`forge-game-list-search-${listType}`);
     onClose();
   };
 

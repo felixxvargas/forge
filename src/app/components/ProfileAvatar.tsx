@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { profileCache } from '../hooks/useTopicAccountProfiles';
 
 interface ProfileAvatarProps {
   username: string;
@@ -8,7 +9,7 @@ interface ProfileAvatarProps {
   userId?: string;
 }
 
-export function ProfileAvatar({ username, profilePicture, size = 'md', className = '' }: ProfileAvatarProps) {
+export function ProfileAvatar({ username, profilePicture, size = 'md', className = '', userId }: ProfileAvatarProps) {
   const [imageError, setImageError] = useState(false);
 
   const sizeClasses = {
@@ -18,11 +19,14 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
     xl: 'w-24 h-24 text-xl',
   };
 
+  // If no direct profile picture, check the topic account cache by userId
+  const resolvedPicture = profilePicture || (userId ? profileCache.get(userId)?.avatar : undefined);
+
   // If there's a profile picture and it hasn't errored, show it
-  if (profilePicture && !imageError) {
+  if (resolvedPicture && !imageError) {
     return (
       <img
-        src={profilePicture}
+        src={resolvedPicture}
         alt={username}
         className={`${sizeClasses[size]} rounded-full object-cover ${className}`}
         onError={() => setImageError(true)}

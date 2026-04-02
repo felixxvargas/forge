@@ -7,8 +7,8 @@ interface TopicAccountProfile {
   banner?: string;
 }
 
-// Cache for topic account profiles
-const profileCache = new Map<string, TopicAccountProfile>();
+// Cache for topic account profiles — exported so ProfileAvatar can do synchronous lookups
+export const profileCache = new Map<string, TopicAccountProfile>();
 
 export function useTopicAccountProfiles(userIds: string[]): Map<string, TopicAccountProfile> {
   const [profiles, setProfiles] = useState<Map<string, TopicAccountProfile>>(new Map());

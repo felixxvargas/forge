@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Edit2, Users, Share2, Copy, Check, X } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
@@ -37,6 +37,25 @@ export function ListView() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showShareTray, setShowShareTray] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const EDIT_MODAL_KEY = `forge-edit-list-open-${listType}`;
+
+  // Restore edit modal open state across page navigations / browser restores
+  useEffect(() => {
+    if (localStorage.getItem(EDIT_MODAL_KEY) === '1') {
+      setIsEditModalOpen(true);
+    }
+  }, []);
+
+  const openEditModal = () => {
+    localStorage.setItem(EDIT_MODAL_KEY, '1');
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    localStorage.removeItem(EDIT_MODAL_KEY);
+    setIsEditModalOpen(false);
+  };
 
   const listKey = LIST_KEY_MAP[listType];
 
@@ -211,7 +230,7 @@ export function ListView() {
               </button>
               {!viewUser && (
                 <button
-                  onClick={() => setIsEditModalOpen(true)}
+                  onClick={openEditModal}
                   className="p-2 hover:bg-secondary rounded-lg transition-colors"
                   title="Edit list"
                 >
@@ -240,7 +259,7 @@ export function ListView() {
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No games in this list yet</p>
             <button
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={openEditModal}
               className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
             >
               Add Games
@@ -338,7 +357,7 @@ export function ListView() {
       {/* Edit Game Lists Modal */}
       <EditGameListsModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={closeEditModal}
         onSave={handleSaveGameList}
         currentGames={games}
         listType={listType}
