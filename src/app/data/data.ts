@@ -282,28 +282,6 @@ export const topicAccounts: User[] = [
     followerCount: 0,
   },
   {
-    id: 'user-rockpapershotgun',
-    handle: '@rockpapershotgun',
-    displayName: 'Rock Paper Shotgun',
-    bio: 'PC gaming news and reviews',
-    profilePicture: '', // Will be loaded from Bluesky
-    platforms: [],
-    socialPlatforms: ['x', 'bluesky'],
-    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
-    followerCount: 0,
-  },
-  {
-    id: 'user-massivelyop',
-    handle: '@massivelyop',
-    displayName: 'MassivelyOP',
-    bio: 'Every gamer wants to be Massively Overpowered! MMORPG news and opinions from the indie team at MOP.',
-    profilePicture: 'https://files.mastodon.social/accounts/avatars/109/515/680/214/374/940/original/f14946fe2da19d10.png',
-    platforms: [],
-    socialPlatforms: ['mastodon'],
-    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
-    followerCount: 1210,
-  },
-  {
     id: 'user-pcgamer',
     handle: '@pcgamer',
     displayName: 'PC Gamer',

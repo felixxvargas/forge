@@ -41,6 +41,10 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { PrivacySettings } from './pages/PrivacySettings';
 import { DataDeletion } from './pages/DataDeletion';
+import { AccountSettings } from './pages/AccountSettings';
+import { NotificationsSettings } from './pages/NotificationsSettings';
+import { FeedbackPage } from './pages/FeedbackPage';
+import { WhatsNewPage } from './pages/WhatsNewPage';
 
 export const router = createBrowserRouter([
   { path: '/login',         element: <Login />,         errorElement: <ErrorBoundary /> },
@@ -94,6 +98,10 @@ export const router = createBrowserRouter([
       { path: 'privacy',              element: <PrivacyPolicy />,            errorElement: <ErrorBoundary /> },
       { path: 'terms',                element: <TermsOfService />,           errorElement: <ErrorBoundary /> },
       { path: 'privacy-security',     element: <PrivacySettings />,          errorElement: <ErrorBoundary /> },
+      { path: 'settings/account',     element: <AccountSettings />,          errorElement: <ErrorBoundary /> },
+      { path: 'settings/notifications', element: <NotificationsSettings />,   errorElement: <ErrorBoundary /> },
+      { path: 'settings/feedback',    element: <FeedbackPage />,             errorElement: <ErrorBoundary /> },
+      { path: 'settings/whats-new',   element: <WhatsNewPage />,             errorElement: <ErrorBoundary /> },
       { path: ':handle',               element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },
     ],

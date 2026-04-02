@@ -2,6 +2,7 @@ import { Outlet, Navigate, useLocation } from 'react-router';
 import { BottomNav } from './BottomNav';
 import { useAppData } from '../context/AppDataContext';
 import { LoginModule } from './LoginModule';
+import { WhatsNewModal } from './WhatsNew';
 
 // Pages that require authentication — show login module instead of redirecting
 const AUTH_REQUIRED_PATHS = [
@@ -40,6 +41,7 @@ export function Layout() {
         <Outlet />
       </div>
       <BottomNav />
+      {isAuthenticated && <WhatsNewModal />}
     </div>
   );
 }
