@@ -4,6 +4,11 @@ import { Component, ReactNode } from 'react';
 import * as Sentry from '@sentry/react';
 import { initAnalytics } from './app/utils/analytics';
 
+// Take over scroll restoration so our own per-page logic is authoritative
+if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
 // Strip OG redirect marker added by middleware loop-breaker (?_r=1)
 if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_r')) {
   const clean = new URL(window.location.href);

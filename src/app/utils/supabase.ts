@@ -965,10 +965,19 @@ export const commentsAPI = {
     if (error) throw new Error(error.message);
     // Persist comment_count increment atomically via rpc; fall back to read-modify-write
     Promise.resolve(supabase.rpc('increment_comment_count', { post_id: postId })).catch(() =>
-      supabase.from('posts').select('comment_count').eq('id', postId).single().then(({ data }) =>
-        supabase.from('posts').update({ comment_count: (data?.comment_count ?? 0) + 1 }).eq('id', postId)
+      supabase.from('posts').select('comment_count').eq('id', postId).single().then(({ data: p }) =>
+        supabase.from('posts').update({ comment_count: (p?.comment_count ?? 0) + 1 }).eq('id', postId)
       )
     );
+    // Notify the post owner (fire-and-forget, skip self-comments)
+    supabase.from('posts').select('user_id').eq('id', postId).single()
+      .then(({ data: post }) => {
+        if (post?.user_id && post.user_id !== userId) {
+          supabase.from('notifications').insert({
+            user_id: post.user_id, actor_id: userId, type: 'comment', post_id: postId, read: false,
+          });
+        }
+      });
     return data;
   },
 

@@ -57,22 +57,33 @@ export function Explore() {
 
   const navigate = useNavigate();
   const navType = useNavigationType();
+  // Tracks whether we've already processed the initial mount (to skip first tab-change effect)
+  const didMountRef = useRef(false);
 
   // Pre-populate topic account avatar cache for all users in the list
   useTopicAccountProfiles(users.map(u => u.id));
 
-  // Scroll restoration: restore position on back-navigation, else reset to top
+  // On mount: restore position ONLY on back-navigation (POP); otherwise scroll to top.
+  // We do NOT save on unmount — position is saved explicitly via onClickCapture below
+  // so that it's only preserved when the user navigates forward to a detail view.
   useEffect(() => {
     if (navType === 'POP') {
       const saved = sessionStorage.getItem('explore-scroll-y');
-      if (saved) window.scrollTo(0, parseInt(saved, 10));
+      window.scrollTo(0, saved ? parseInt(saved, 10) : 0);
     } else {
       window.scrollTo(0, 0);
+      sessionStorage.removeItem('explore-scroll-y'); // clear any stale position
     }
-    return () => {
-      sessionStorage.setItem('explore-scroll-y', String(window.scrollY));
-    };
+    didMountRef.current = true;
   }, []);
+
+  // Tab change: always scroll to top and discard the saved position.
+  // Skip the very first execution (initial mount) so we don't override the POP restore above.
+  useEffect(() => {
+    if (!didMountRef.current) return;
+    window.scrollTo(0, 0);
+    sessionStorage.removeItem('explore-scroll-y');
+  }, [activeTab]);
 
   useEffect(() => {
     localStorage.setItem('explore-active-tab', activeTab);
@@ -350,8 +361,8 @@ export function Explore() {
   // Keep backward compat alias
   const gamingMediaPosts = allExplorePosts;
 
-  // Topic account handles allowed in Explore — only the 4 with verified Bluesky connections
-  const ALLOWED_TOPIC_HANDLES = new Set(['xbox', 'itchio', 'gamespot', 'ign']);
+  // Topic account handles allowed in Explore — verified connections only
+  const ALLOWED_TOPIC_HANDLES = new Set(['xbox', 'itchio', 'gamespot', 'ign', 'pcgamer', 'massivelyop']);
 
   const filteredUsers = users.filter(user => {
     if (user.id === currentUser?.id) return false;
@@ -509,8 +520,11 @@ export function Explore() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-4">
+      {/* Content — onClickCapture saves scroll only when user clicks into a detail view */}
+      <div
+        className="max-w-2xl mx-auto px-4 py-4"
+        onClickCapture={() => sessionStorage.setItem('explore-scroll-y', String(window.scrollY))}
+      >
 
         {/* ── GLOBAL SEARCH OVERLAY ── (not shown on games tab — that tab handles its own search) */}
         {isSearchActive && activeTab !== 'games' ? (

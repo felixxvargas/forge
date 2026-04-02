@@ -168,6 +168,63 @@ async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
   }
 }
 
+// Fetch posts from MassivelyOP on Mastodon (massivelyop@mastodon.social)
+async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
+  const cacheKey = 'mastodon-massivelyop';
+  const cached = postsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
+  try {
+    // MassivelyOP Mastodon account ID on mastodon.social: 109515680214374940
+    const response = await fetch(
+      `https://mastodon.social/api/v1/accounts/109515680214374940/statuses?limit=${limit}&exclude_replies=true`
+    );
+
+    if (!response.ok) return [];
+
+    const statuses = await response.json();
+    const posts: BlueskyPost[] = statuses
+      .filter((s: any) => s.content && !s.reblog)
+      .map((s: any) => {
+        const text = s.content
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .trim();
+
+        const images = s.media_attachments
+          ?.filter((m: any) => m.type === 'image')
+          .map((m: any) => m.url) || undefined;
+
+        return {
+          id: `mastodon-${s.id}`,
+          userId: 'user-massivelyop',
+          content: text,
+          timestamp: new Date(s.created_at),
+          likes: s.favourites_count ?? 0,
+          reposts: s.reblogs_count ?? 0,
+          comments: s.replies_count ?? 0,
+          images: images?.length ? images : undefined,
+          platform: 'mastodon' as const,
+          url: s.card?.url ?? undefined,
+          externalUrl: s.url,
+        };
+      });
+
+    postsCache.set(cacheKey, { data: posts, timestamp: Date.now() });
+    return posts;
+  } catch {
+    return [];
+  }
+}
+
 // Fetch posts from all gaming media topic accounts (Bluesky + Mastodon)
 export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]> {
   const cacheKey = 'all-gaming-media';
@@ -177,18 +234,19 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
   }
 
   try {
-    // Only fetch from the 4 confirmed working accounts (domain-verified Bluesky handles)
-    const gamingMediaHandles = ['ign.com', 'gamespot.com', 'xbox.com', 'itch.io'];
+    // Domain-verified Bluesky handles + PC Gamer
+    const gamingMediaHandles = ['ign.com', 'gamespot.com', 'xbox.com', 'itch.io', 'pcgamer.com'];
 
-    const blueskyResults = await Promise.allSettled(
-      gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))
-    );
+    const [blueskyResults, mastodonPosts] = await Promise.all([
+      Promise.allSettled(gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))),
+      fetchMassivelyOPPosts(limit),
+    ]);
 
     const blueskyPosts = blueskyResults.flatMap(r =>
       r.status === 'fulfilled' ? r.value : []
     );
 
-    const allPosts = [...blueskyPosts].sort(
+    const allPosts = [...blueskyPosts, ...mastodonPosts].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
@@ -218,6 +276,9 @@ export const topicAccountBlueskyHandles: Record<string, string> = {
   // itch.io — verified at itch.io
   'user-itchio': 'itch.io',
   'itchio': 'itch.io',
+  // PC Gamer — verified at pcgamer.com
+  'user-pcgamer': 'pcgamer.com',
+  'pcgamer': 'pcgamer.com',
 };
 
 export function getBlueskyHandleForUser(userId: string): string | undefined {

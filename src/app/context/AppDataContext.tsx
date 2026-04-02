@@ -309,11 +309,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const likePost = async (postId: string) => {
     if (!session?.user) return;
+    const actorId = session.user.id;
     // Optimistic: update UI immediately so count responds on tap
     setLikedPosts(prev => new Set([...prev, postId]));
     setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: (p.like_count ?? 0) + 1 } : p));
     try {
-      await postsAPI.like(session.user.id, postId);
+      await postsAPI.like(actorId, postId);
+      // Notify the post owner (fire-and-forget, skip self-likes)
+      setPostList(prev => {
+        const post = prev.find(p => p.id === postId);
+        if (post?.user_id && post.user_id !== actorId) {
+          notificationsAPI.create('like', post.user_id, actorId, postId).catch(() => {});
+        }
+        return prev;
+      });
     } catch {
       // Rollback on error
       setLikedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
