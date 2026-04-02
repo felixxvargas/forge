@@ -1,6 +1,17 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
+import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
+
+// Maps topic account synthetic IDs to their Bluesky/Mastodon fetcher
+const TOPIC_BLUESKY_MAP: Record<string, string> = {
+  'user-ign': 'ign.com',
+  'user-gamespot': 'gamespot.com',
+  'user-xbox': 'xbox.com',
+  'user-itchio': 'itch.io',
+  'user-pcgamer': 'pcgamer.com',
+};
+const MASTODON_TOPIC_IDS = new Set(['user-massivelyop']);
 
 interface AppDataContextType {
   currentUser: any | null;
@@ -136,8 +147,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const topicFollows: string[] = (profile?.game_lists?._topicFollows) ?? [];
       setFollowingIds(new Set([...followingIdList, ...topicFollows]));
       setHasUnreadNotifications(unreadCount > 0);
+      return topicFollows;
     } catch (e) {
       console.error('Error loading user data:', e);
+      return [];
     }
   }, []);
 
@@ -226,7 +239,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       try {
         await refreshFeed();
         if (session?.user) {
-          await loadUserData(session.user.id);
+          const topicFollows = await loadUserData(session.user.id);
+          // Append posts from followed topic accounts into the following feed
+          if (topicFollows && topicFollows.length > 0) {
+            try {
+              const fetchJobs = topicFollows.map(id => {
+                const bskyHandle = TOPIC_BLUESKY_MAP[id] ?? topicAccountBlueskyHandles[id];
+                if (bskyHandle) return fetchBlueskyPosts(bskyHandle, 10);
+                if (MASTODON_TOPIC_IDS.has(id)) return fetchMassivelyOPPosts(10);
+                return Promise.resolve([]);
+              });
+              const results = await Promise.allSettled(fetchJobs);
+              const topicPosts = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+              if (topicPosts.length > 0) {
+                setPostList(prev => {
+                  const existingIds = new Set(prev.map((p: any) => p.id));
+                  const newPosts = topicPosts.filter(p => !existingIds.has(p.id));
+                  return [...prev, ...newPosts].sort((a: any, b: any) =>
+                    new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
+                  );
+                });
+              }
+            } catch (e) {
+              console.error('Error loading topic account posts for feed:', e);
+            }
+          }
         } else {
           setCurrentUser(null);
         }
@@ -463,6 +500,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const updatedLists = { ...(currentUser.game_lists ?? {}), [key]: games };
     const updated = await profiles.update(session.user.id, { game_lists: updatedLists });
     setCurrentUser(normalizeProfile(updated));
+
+    // Sync to user_games table so game popularity rankings reflect list additions
+    const statusMap: Record<string, 'played' | 'owned'> = {
+      'recently-played': 'played',
+      'completed': 'played',
+      'favorite': 'owned',
+      'library': 'owned',
+      'wishlist': 'owned',
+    };
+    const status = statusMap[listType] ?? 'owned';
+    const userId = session.user.id;
+    const entries = games
+      .filter((g: any) => g?.id)
+      .map((g: any) => ({ user_id: userId, game_id: String(g.id), status }));
+    if (entries.length > 0) {
+      supabase
+        .from('user_games')
+        .upsert(entries, { onConflict: 'user_id,game_id,status', ignoreDuplicates: true })
+        .then(() => {})
+        .catch(() => {}); // non-critical — fire and forget
+    }
   };
 
   const createGroup = async (name: string, description: string, icon: string, type: string) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check, UserPlus, Loader2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import { useNavigate } from 'react-router';
 
 interface FollowButtonProps {
   userId: string;
@@ -17,7 +18,8 @@ export function FollowButton({
   size = 'md',
   variant = 'default'
 }: FollowButtonProps) {
-  const { followUser, unfollowUser } = useAppData();
+  const { followUser, unfollowUser, isAuthenticated } = useAppData() as any;
+  const navigate = useNavigate();
   const [isFollowing, setIsFollowing] = useState(initialFollowingState);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export function FollowButton({
     e.preventDefault();
     e.stopPropagation();
 
+    if (!isAuthenticated) { navigate('/login'); return; }
     if (isLoading) return;
 
     setIsLoading(true);

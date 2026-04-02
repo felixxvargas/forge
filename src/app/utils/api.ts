@@ -612,12 +612,19 @@ export const gamesAPI = {
 export const rawgAPI = {
   async searchGames(query: string, limit = 20): Promise<any[]> {
     const key = import.meta.env.VITE_RAWG_API_KEY;
-    if (!key || !query.trim()) return [];
+    if (!key) {
+      console.warn('[RAWG] VITE_RAWG_API_KEY is not set — game search fallback disabled');
+      return [];
+    }
+    if (!query.trim()) return [];
     try {
       // exclude_additions=true removes patches and DLC.
       const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit * 2}&search_exact=false&exclude_additions=true`;
       const res = await fetch(url);
-      if (!res.ok) return [];
+      if (!res.ok) {
+        console.error(`[RAWG] HTTP ${res.status} for query "${query}" — check API key`);
+        return [];
+      }
       // Title patterns for non-game content
       const NOISE_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack|randomizer|randomiser|mod pack|fan edit|texture pack)\b/i;
       const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -638,7 +645,8 @@ export const rawgAPI = {
         coverArt: g.background_image ?? '',
         genres: g.genres?.map((genre: any) => genre.name) ?? [],
       }));
-    } catch {
+    } catch (err) {
+      console.error('[RAWG] fetch error:', err);
       return [];
     }
   },

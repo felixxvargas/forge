@@ -43,6 +43,12 @@ interface PostCardProps {
 export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
+  const isAuthenticated = (context as any)?.isAuthenticated ?? false;
+
+  const requireAuth = (action: () => void) => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    action();
+  };
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // Build the full list of tagged games (multi-tag array takes priority; falls back to single field)
@@ -130,9 +136,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
 
   const handleRepost = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onRepost) {
-      onRepost(post.id);
-    }
+    requireAuth(() => onRepost?.(post.id));
   };
 
   const handleMutePost = async (e: React.MouseEvent) => {
@@ -451,7 +455,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onLike?.(post.id);
+            requireAuth(() => onLike?.(post.id));
           }}
           className={`flex items-center gap-2 text-sm transition-colors ${
             isLiked ? 'text-purple-400' : 'text-muted-foreground hover:text-foreground'
@@ -477,11 +481,13 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (isDetailView) {
-                onComment?.(post.id);
-              } else {
-                navigate(`/post/${post.id}#comments`);
-              }
+              requireAuth(() => {
+                if (isDetailView) {
+                  onComment?.(post.id);
+                } else {
+                  navigate(`/post/${post.id}#comments`);
+                }
+              });
             }}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >

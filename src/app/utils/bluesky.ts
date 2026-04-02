@@ -110,7 +110,7 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
 }
 
 // Fetch posts from MassivelyOP on Mastodon (massivelyop@mastodon.social)
-async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
+export async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
   const cacheKey = 'mastodon-massivelyop';
   const cached = postsCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
