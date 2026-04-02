@@ -350,9 +350,17 @@ export function Explore() {
   // Keep backward compat alias
   const gamingMediaPosts = allExplorePosts;
 
+  // Topic account handles allowed in Explore — only the 4 with verified Bluesky connections
+  const ALLOWED_TOPIC_HANDLES = new Set(['xbox', 'itchio', 'gamespot', 'ign']);
+
   const filteredUsers = users.filter(user => {
     if (user.id === currentUser?.id) return false;
     if (blockedUsers.has(user.id)) return false;
+    // Hide topic accounts that don't have a verified Bluesky connection
+    if ((user as any).account_type === 'topic') {
+      const handle = (user.handle || '').replace(/^@/, '').toLowerCase();
+      if (!ALLOWED_TOPIC_HANDLES.has(handle)) return false;
+    }
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (

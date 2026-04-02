@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { fetchBlueskyProfile, fetchBlueskyPosts, getBlueskyHandleForUser } from '../utils/bluesky';
-import type { User } from '../data/mockData';
 
 interface BlueskyData {
   avatar?: string;
@@ -8,7 +7,7 @@ interface BlueskyData {
   isLoading: boolean;
 }
 
-export function useBlueskyData(user: User): BlueskyData {
+export function useBlueskyData(user: any): BlueskyData {
   const [blueskyData, setBlueskyData] = useState<BlueskyData>({
     avatar: undefined,
     posts: [],

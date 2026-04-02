@@ -4,6 +4,7 @@ import { PlatformIcon } from './PlatformIcon';
 import { FollowButton } from './FollowButton';
 import { formatNumber } from '../utils/formatNumber';
 import { useAppData } from '../context/AppDataContext';
+import { useBlueskyData } from '../hooks/useBlueskyData';
 import type { User } from '../data/data';
 
 interface UserCardProps {
@@ -13,6 +14,11 @@ interface UserCardProps {
 export function UserCard({ user }: UserCardProps) {
   const navigate = useNavigate();
   const { currentUser, followingIds } = useAppData();
+
+  const isTopicAccount = (user as any).account_type === 'topic';
+  const blueskyData = useBlueskyData(user);
+  const resolvedPicture = (isTopicAccount ? blueskyData.avatar : undefined)
+    || user.profile_picture || user.profilePicture;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -29,7 +35,7 @@ export function UserCard({ user }: UserCardProps) {
       <div className="flex items-start gap-3 mb-3">
         <ProfileAvatar
           username={user.display_name || user.displayName || user.handle || '?'}
-          profilePicture={user.profile_picture || user.profilePicture}
+          profilePicture={resolvedPicture}
           size="md"
           userId={user.id}
         />

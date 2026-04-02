@@ -8,6 +8,7 @@ import { formatTimeAgo } from '../utils/formatTimeAgo';
 import { formatNumber } from '../utils/formatNumber';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
+import { useBlueskyData } from '../hooks/useBlueskyData';
 import { ShareModal } from './ShareModal';
 import { gameCoverCache } from '../utils/mentionHighlight';
 import { gamesAPI } from '../utils/api';
@@ -68,6 +69,11 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       }).catch(() => { gameCoverCache.set(g.id, null); });
     });
   }, [post.game_ids?.join(',') ?? post.game_id]);
+
+  // Resolve topic account avatar the same way Profile.tsx does
+  const isTopicAccount = (user as any)?.account_type === 'topic';
+  const blueskyData = useBlueskyData(user);
+  const resolvedProfilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || user?.profile_picture;
 
   // Safely destructure with fallbacks
   const {
@@ -251,7 +257,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         <div onClick={handleUserClick} className="cursor-pointer hover:opacity-80 transition-opacity">
           <ProfileAvatar
             username={user.display_name || user.handle || '?'}
-            profilePicture={user.profile_picture}
+            profilePicture={resolvedProfilePicture}
             size="md"
             userId={user.id}
           />

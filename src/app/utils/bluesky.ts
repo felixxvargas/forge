@@ -177,23 +177,18 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
   }
 
   try {
-    // Fetch from each gaming media handle directly via Public API + Mastodon
-    const gamingMediaHandles = [
-      'ign.com', 'gamespot.com', 'polygon.bsky.social', 'kotaku.com',
-      'eurogamer.bsky.social', 'nintendolife.com', 'pcgamer.bsky.social',
-      'destructoid.bsky.social', 'rockpapershotgun.bsky.social',
-    ];
+    // Only fetch from the 4 confirmed working accounts (domain-verified Bluesky handles)
+    const gamingMediaHandles = ['ign.com', 'gamespot.com', 'xbox.com', 'itch.io'];
 
-    const [blueskyResults, mastodonPosts] = await Promise.all([
-      Promise.allSettled(gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))),
-      fetchMassivelyOPPosts(limit),
-    ]);
+    const blueskyResults = await Promise.allSettled(
+      gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))
+    );
 
     const blueskyPosts = blueskyResults.flatMap(r =>
       r.status === 'fulfilled' ? r.value : []
     );
 
-    const allPosts = [...blueskyPosts, ...mastodonPosts].sort(
+    const allPosts = [...blueskyPosts].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
@@ -205,65 +200,23 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
   }
 }
 
-// Topic accounts and their Bluesky handles
-// Keyed by both old user-xxx IDs and Supabase profile handle slugs
+// Topic accounts and their verified Bluesky domain handles.
+// Only includes accounts confirmed working via Bluesky domain verification.
+// Others (polygon.bsky.social, eurogamer.bsky.social, etc.) returned 404 or
+// are unverified subdomains that resolve to inactive/incorrect accounts.
 export const topicAccountBlueskyHandles: Record<string, string> = {
-  // Gaming media — ID-based keys (legacy)
+  // IGN — verified at ign.com
   'user-ign': 'ign.com',
-  'user-gamespot': 'gamespot.com',
-  'user-polygon': 'polygon.bsky.social',
-  'user-kotaku': 'kotaku.com',
-  'user-eurogamer': 'eurogamer.bsky.social',
-  'user-nintendolife': 'nintendolife.com',
-  'user-pcgamer': 'pcgamer.bsky.social',
-  'user-destructoid': 'destructoid.bsky.social',
-  'user-rockpapershotgun': 'rockpapershotgun.bsky.social',
-  'user-massivelyop': 'massivelyop.bsky.social',
-  // Gaming media — handle-slug keys (and display_name-derived slugs)
   'ign': 'ign.com',
-  'gamespot': 'gamespot.com',
-  'kotaku': 'kotaku.com',
-  'eurogamer': 'eurogamer.bsky.social',
-  'rockpapershotgun': 'rockpapershotgun.bsky.social',
-  'massivelyop': 'massivelyop.bsky.social',
-  'pcgamer': 'pcgamer.bsky.social',
-  'polygon': 'polygon.bsky.social',
-  'destructoid': 'destructoid.bsky.social',
-  'nintendolife': 'nintendolife.com',
-  // display_name-derived slugs for resilience
   'ignentertainment': 'ign.com',
-  // Gaming studios & platforms — ID-based keys (legacy user-* IDs)
-  'user-blizzard': 'blizzard.com',
-  'user-larian': 'larianstudios.bsky.social',
-  'user-koop': 'koopmode.bsky.social',
-  'user-fromsoft': 'fromsoftware.bsky.social',
-  'user-nintendo': 'nintendo.com',
-  'user-playstation': 'playstation.bsky.social',
+  // GameSpot — verified at gamespot.com
+  'user-gamespot': 'gamespot.com',
+  'gamespot': 'gamespot.com',
+  // Xbox — verified at xbox.com
   'user-xbox': 'xbox.com',
-  'user-steam': 'steampowered.bsky.social',
-  'user-itchio': 'itch.io',
-  // Gaming studios & platforms — seeded studio-* IDs
-  'studio-koopmode': 'koopmode.bsky.social',
-  'studio-fromsoft': 'fromsoftware.bsky.social',
-  'studio-capcom': 'capcomusa.bsky.social',
-  'studio-nintendo': 'nintendo.bsky.social',
-  'studio-xbox': 'xbox.bsky.social',
-  'studio-sega': 'sega.bsky.social',
-  'studio-insomniac': 'insomniacgames.bsky.social',
-  // Gaming studios & platforms — handle-slug keys (and display_name-derived slugs)
-  'blizzard': 'blizzard.com',
-  'blizzardentertainment': 'blizzard.com',
-  'larian': 'larianstudios.bsky.social',
-  'larianstudios': 'larianstudios.bsky.social',
-  'koop': 'koopmode.bsky.social',
-  'koopmode': 'koopmode.bsky.social',
-  'fromsoft': 'fromsoftware.bsky.social',
-  'fromsoftware': 'fromsoftware.bsky.social',
-  'nintendo': 'nintendo.com',
-  'playstation': 'playstation.bsky.social',
   'xbox': 'xbox.com',
-  'steam': 'steampowered.bsky.social',
-  'steampowered': 'steampowered.bsky.social',
+  // itch.io — verified at itch.io
+  'user-itchio': 'itch.io',
   'itchio': 'itch.io',
 };
 
