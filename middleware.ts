@@ -13,7 +13,7 @@ const APP_ROUTES = new Set([
   'submit-indie-game', 'review-submissions', 'create-group', 'premium',
   'create-custom-list', 'trending-games', 'flare', 'flares', 'list',
   'new-post', 'onboarding', 'splash', 'login', 'signup', 'auth', 'admin',
-  'api', 'handle', 'privacy', 'terms', 'privacy-security',
+  'api', 'handle', 'privacy', 'terms', 'privacy-security', 'data-deletion',
 ]);
 
 export const config = {

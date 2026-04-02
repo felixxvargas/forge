@@ -297,12 +297,12 @@ export function Feed() {
 
       {/* Desktop: 2-col layout with login sidebar for guests */}
       {!isAuthenticated ? (
-        <div className="w-full max-w-5xl mx-auto px-4 py-6 md:flex md:gap-8 md:items-start">
+        <div className="w-full max-w-5xl mx-auto md:px-4 py-6 md:flex md:gap-8 md:items-start">
           {/* Left sidebar — desktop only */}
           <div className="hidden md:block w-80 shrink-0 sticky top-6 self-start">
             <LoginModule variant="sidebar" />
           </div>
-          {/* Feed */}
+          {/* Feed — no extra horizontal padding; feedContent supplies its own px-4 */}
           <div className="flex-1 min-w-0">
             <div className="max-w-2xl">
               {feedContent}

@@ -40,13 +40,15 @@ import { PostInteractions } from './pages/PostInteractions';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { PrivacySettings } from './pages/PrivacySettings';
+import { DataDeletion } from './pages/DataDeletion';
 
 export const router = createBrowserRouter([
   { path: '/login',         element: <Login />,         errorElement: <ErrorBoundary /> },
   { path: '/signup',        element: <SignUp />,         errorElement: <ErrorBoundary /> },
   { path: '/auth/callback', element: <AuthCallback />,  errorElement: <ErrorBoundary /> },
-  { path: '/privacy',       element: <PrivacyPolicy />,  errorElement: <ErrorBoundary /> },
-  { path: '/terms',         element: <TermsOfService />, errorElement: <ErrorBoundary /> },
+  { path: '/privacy',         element: <PrivacyPolicy />,  errorElement: <ErrorBoundary /> },
+  { path: '/terms',           element: <TermsOfService />, errorElement: <ErrorBoundary /> },
+  { path: '/data-deletion',   element: <DataDeletion />,   errorElement: <ErrorBoundary /> },
   { path: '/splash',        element: <Onboarding />,   errorElement: <ErrorBoundary /> },
   { path: '/onboarding',    element: <Onboarding />,   errorElement: <ErrorBoundary /> },
   {
