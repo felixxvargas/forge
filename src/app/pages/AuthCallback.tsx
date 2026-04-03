@@ -35,6 +35,15 @@ export function AuthCallback() {
           .eq('id', session.user.id)
           .maybeSingle();
 
+        // Handle account linking flow (set before Google OAuth redirect)
+        const isLinking = localStorage.getItem('forge-linking-account') === 'true';
+        if (isLinking) {
+          localStorage.removeItem('forge-linking-account');
+          localStorage.setItem('forge-save-linked-account', 'true');
+          navigate('/settings');
+          return;
+        }
+
         const oauthIntent = localStorage.getItem('forge-oauth-intent');
         localStorage.removeItem('forge-oauth-intent');
 

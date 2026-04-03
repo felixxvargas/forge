@@ -37,6 +37,7 @@ export type SocialPlatform =
 
 export type GameListType =
   | 'recently-played'
+  | 'played-before'
   | 'library'
   | 'favorite'
   | 'wishlist'

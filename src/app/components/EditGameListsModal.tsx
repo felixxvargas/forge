@@ -55,6 +55,7 @@ export function EditGameListsModal({
 
   const listTitles: Record<GameListType, string> = {
     'recently-played': 'Recently Played',
+    'played-before': "I've Played Before",
     'library': 'Library',
     'favorite': 'Favorite Games',
     'wishlist': 'Wishlist',

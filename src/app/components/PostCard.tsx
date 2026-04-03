@@ -258,9 +258,9 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       {reposter && (
         <button
           onClick={handleReposterClick}
-          className="flex items-center gap-2 mb-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+          className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
         >
-          <Repeat2 className="w-4 h-4 shrink-0" />
+          <Repeat2 className="w-3.5 h-3.5 shrink-0" />
           <span>{reposter.display_name || reposter.handle} reposted</span>
         </button>
       )}
@@ -271,7 +271,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           onClick={(e) => { e.stopPropagation(); navigate(`/post/${(post as any).reply_to}`); }}
           className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
         >
-          <CornerUpLeft className="w-3 h-3 shrink-0" />
+          <CornerUpLeft className="w-3.5 h-3.5 shrink-0" />
           <span>Replying to {parentAuthorHandle ? `@${parentAuthorHandle}` : 'a post'}</span>
         </button>
       )}

@@ -72,12 +72,13 @@ export function Profile() {
   const [showListTypeSelector, setShowListTypeSelector] = useState(false);
 
   // List drag-and-drop reorder
-  const DEFAULT_LIST_ORDER = ['recentlyPlayed', 'favorites', 'wishlist', 'library', 'completed'] as const;
+  const DEFAULT_LIST_ORDER = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library', 'completed'] as const;
   const [listOrder, setListOrder] = useState<string[]>(() => {
     const saved = (currentUser?.game_lists as any)?.listOrder;
-    // Accept saved orders of either 4 (legacy) or 5 (with completed)
-    if (Array.isArray(saved) && (saved.length === 4 || saved.length === 5)) {
-      return saved.includes('completed') ? saved : [...saved, 'completed'];
+    // Accept saved orders of either 4 (legacy) or 5 (with completed) or 6 (with playedBefore)
+    if (Array.isArray(saved) && saved.length >= 4) {
+      const withPlayedBefore = saved.includes('playedBefore') ? saved : [...saved, 'playedBefore'];
+      return withPlayedBefore.includes('completed') ? withPlayedBefore : [...withPlayedBefore, 'completed'];
     }
     return [...DEFAULT_LIST_ORDER];
   });
@@ -364,7 +365,7 @@ export function Profile() {
   // For other users' profiles: if they have no lists, treat active tab as 'posts'
   // so the empty Lists section (including "No game lists yet") is never shown.
   const _glCheck = (profileUser as any)?.game_lists ?? (profileUser as any)?.gameLists ?? {};
-  const profileHasLists = ['recentlyPlayed', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
+  const profileHasLists = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
   const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists') ? 'posts' : activeTab;
 
   return (
@@ -758,7 +759,7 @@ export function Profile() {
         <div className="flex gap-2 mb-4 border-b border-border px-4">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
-            const hasLists = ['recentlyPlayed','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);
+            const hasLists = ['recentlyPlayed','playedBefore','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);
             if (!isOwnProfile && !hasLists) return null;
             return (
               <button
@@ -809,8 +810,9 @@ export function Profile() {
         {effectiveTab === 'lists' && (
           <div className="px-4 space-y-6">
             {(() => {
-              const ALL_LISTS: { key: 'recentlyPlayed' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [
+              const ALL_LISTS: { key: 'recentlyPlayed' | 'playedBefore' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [
                 { key: 'recentlyPlayed', listType: 'recently-played', label: 'Recently Played' },
+                { key: 'playedBefore', listType: 'played-before', label: "I've Played Before" },
                 { key: 'favorites', listType: 'favorite', label: 'Favorite Games' },
                 { key: 'wishlist', listType: 'wishlist', label: 'Wishlist' },
                 { key: 'library', listType: 'library', label: 'Library' },
@@ -1336,6 +1338,7 @@ export function Profile() {
         onSave={handleSaveGameList}
         currentGames={editGameListModal.listType ? (
           editGameListModal.listType === 'recently-played' ? (profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []) :
+          editGameListModal.listType === 'played-before' ? (profileUser.game_lists?.playedBefore ?? []) :
           editGameListModal.listType === 'favorite' ? (profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []) :
           editGameListModal.listType === 'wishlist' ? (profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []) :
           editGameListModal.listType === 'completed' ? (profileUser.game_lists?.completed ?? []) :

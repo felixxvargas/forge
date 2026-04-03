@@ -43,9 +43,18 @@ export function Feed() {
 
   const handleRepost = (postId: string) => {
     const isReposted = repostedPosts.has(postId);
-    if (isReposted) unrepostPost(postId);
-    else repostPost(postId);
-    // repost_count is updated by AppDataContext — no local duplicate needed
+    if (isReposted) {
+      unrepostPost(postId);
+      setDynamicPosts(prev => prev === null ? null : prev.map(p =>
+        p.id === postId && !p.repostedBy ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p
+      ).filter(p => !(p.id === postId && p.repostedBy === currentUser?.id)));
+    } else {
+      repostPost(postId);
+      // Update dynamicPosts count for non-following feeds (AppDataContext handles postList)
+      setDynamicPosts(prev => prev === null ? null : prev.map(p =>
+        p.id === postId && !p.repostedBy ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p
+      ));
+    }
   };
 
   const handleShowMutedPost = (postId: string) => {

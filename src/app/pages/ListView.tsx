@@ -9,18 +9,22 @@ import type { Game, GameListType } from '../data/data';
 
 const LIST_LABELS: Record<GameListType, string> = {
   'recently-played': 'Recently Played',
+  'played-before': "I've Played Before",
   'favorite': 'Favorite Games',
   'wishlist': 'Wishlist',
   'library': 'Library',
+  'completed': 'Completed Games',
   'custom': 'Custom List',
   'lfg': 'Looking for Group',
 };
 
 const LIST_KEY_MAP: Record<GameListType, string> = {
   'recently-played': 'recentlyPlayed',
+  'played-before': 'playedBefore',
   'favorite': 'favorites',
   'wishlist': 'wishlist',
   'library': 'library',
+  'completed': 'completed',
   'custom': 'custom',
   'lfg': 'lfg',
 };

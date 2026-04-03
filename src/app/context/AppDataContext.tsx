@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
@@ -81,6 +81,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [postList, setPostList] = useState<any[]>([]);
+  const [topicPosts, setTopicPosts] = useState<any[]>([]);
+  const pendingReposts = useRef<Set<string>>(new Set());
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
@@ -272,13 +274,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 }));
               });
               if (topicPosts.length > 0) {
-                setPostList(prev => {
-                  const existingIds = new Set(prev.map((p: any) => p.id));
-                  const newPosts = topicPosts.filter((p: any) => !existingIds.has(p.id));
-                  return [...prev, ...newPosts].sort((a: any, b: any) =>
-                    new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
-                  );
-                });
+                setTopicPosts(topicPosts);
               }
             } catch (e) {
               console.error('Error loading topic account posts for feed:', e);
@@ -310,6 +306,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     await auth.signOut();
     setCurrentUser(null);
     setPostList([]);
+    setTopicPosts([]);
     setLikedPosts(new Set());
     setRepostedPosts(new Set());
   };
@@ -402,19 +399,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const repostPost = async (postId: string) => {
-    if (!session?.user || repostedPosts.has(postId)) return;
-    await postsAPI.repost(session.user.id, postId);
-    setRepostedPosts(prev => new Set([...prev, postId]));
-    setPostList(prev => {
-      const original = prev.find(p => p.id === postId && !p.repostedBy);
-      const newCount = (original?.repost_count ?? 0) + 1;
-      const updated = prev.map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: newCount } : p);
-      if (original) {
-        // Repost copy uses the same new count so both instances display identically
-        return [{ ...original, repost_count: newCount, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
-      }
-      return updated;
-    });
+    if (!session?.user || repostedPosts.has(postId) || pendingReposts.current.has(postId)) return;
+    pendingReposts.current.add(postId);
+    try {
+      await postsAPI.repost(session.user.id, postId);
+      setRepostedPosts(prev => new Set([...prev, postId]));
+      setPostList(prev => {
+        const original = prev.find(p => p.id === postId && !p.repostedBy);
+        const newCount = (original?.repost_count ?? 0) + 1;
+        const updated = prev.map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: newCount } : p);
+        if (original) {
+          // Repost copy uses the same new count so both instances display identically
+          return [{ ...original, repost_count: newCount, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
+        }
+        return updated;
+      });
+    } finally {
+      pendingReposts.current.delete(postId);
+    }
   };
 
   const unrepostPost = async (postId: string) => {
@@ -511,6 +513,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!session?.user || !currentUser) return;
     const keyMap: Record<string, string> = {
       'recently-played': 'recentlyPlayed',
+      'played-before': 'playedBefore',
       'favorite': 'favorites',
       'wishlist': 'wishlist',
       'library': 'library',
@@ -556,12 +559,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setHasUnreadNotifications(false);
   };
 
+  // Merge DB posts with topic account posts (kept separate so refreshFeed doesn't wipe topic posts)
+  const mergedPosts = useMemo(() => {
+    if (topicPosts.length === 0) return postList;
+    const existingIds = new Set(postList.map((p: any) => p.id + (p.repostedBy || '')));
+    const newTopics = topicPosts.filter((p: any) => !existingIds.has(p.id));
+    return [...postList, ...newTopics].sort((a: any, b: any) =>
+      new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
+    );
+  }, [postList, topicPosts]);
+
   return (
     <AppDataContext.Provider value={{
       currentUser,
       session,
       users,
-      posts: postList,
+      posts: mergedPosts,
       likedPosts,
       repostedPosts,
       blockedUsers,
