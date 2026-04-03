@@ -23,14 +23,17 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
   const resolvedPicture = profilePicture || (userId ? profileCache.get(userId)?.avatar : undefined);
 
   // If there's a profile picture and it hasn't errored, show it
+  // bg-background ensures PNG transparency shows the theme background colour, not a white/clear hole
   if (resolvedPicture && !imageError) {
     return (
-      <img
-        src={resolvedPicture}
-        alt={username}
-        className={`${sizeClasses[size]} rounded-full object-cover ${className}`}
-        onError={() => setImageError(true)}
-      />
+      <div className={`${sizeClasses[size]} rounded-full overflow-hidden shrink-0 bg-background ${className}`}>
+        <img
+          src={resolvedPicture}
+          alt={username}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+        />
+      </div>
     );
   }
 
@@ -38,11 +41,13 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
   const cleanName = (username ?? '').replace(/^@/, '').toLowerCase();
   if (cleanName === 'forge') {
     return (
-      <img
-        src="/forge-avatar.png"
-        alt="Forge"
-        className={`${sizeClasses[size]} rounded-full object-cover ${className}`}
-      />
+      <div className={`${sizeClasses[size]} rounded-full overflow-hidden shrink-0 bg-background ${className}`}>
+        <img
+          src="/forge-avatar.png"
+          alt="Forge"
+          className="w-full h-full object-cover"
+        />
+      </div>
     );
   }
 

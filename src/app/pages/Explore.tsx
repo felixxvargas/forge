@@ -535,76 +535,6 @@ export function Explore() {
               </div>
             )}
 
-            {/* Users — Forge first, then external */}
-            {(searchUsers.length > 0 || externalUsers.length > 0) && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-white">Users</h2>
-                  {filteredUsers.length > 4 && (
-                    <button
-                      onClick={() => goToTab('users')}
-                      className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
-                    >
-                      See all {filteredUsers.length} <ChevronRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {/* Forge users first */}
-                  {searchUsers.map(user => (
-                    <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
-                  ))}
-                  {/* External users (Bluesky + Mastodon) below, with separator */}
-                  {externalUsers.length > 0 && (
-                    <>
-                      {searchUsers.length > 0 && (
-                        <div className="flex items-center gap-2 py-1">
-                          <div className="flex-1 h-px bg-gray-800" />
-                          <span className="text-xs text-gray-600 font-medium">Also on the web</span>
-                          <div className="flex-1 h-px bg-gray-800" />
-                        </div>
-                      )}
-                      {externalUsers.map(u => (
-                        <a
-                          key={u.id}
-                          href={u.externalUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-900/60 hover:bg-gray-800/80 transition-colors"
-                        >
-                          {u.avatar ? (
-                            <img src={u.avatar} alt={u.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                              <UserIcon className="w-5 h-5 text-gray-500" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-semibold text-white text-sm truncate">{u.displayName}</span>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                                u.platform === 'bluesky'
-                                  ? 'bg-sky-500/20 text-sky-400'
-                                  : 'bg-purple-500/20 text-purple-400'
-                              }`}>
-                                {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 truncate">{u.handle}</p>
-                          </div>
-                          {u.followerCount > 0 && (
-                            <span className="text-xs text-gray-600 shrink-0">
-                              {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
-                            </span>
-                          )}
-                        </a>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </section>
-            )}
-
             {/* Games */}
             {searchGameResults.length > 0 && (
               <section>
@@ -647,6 +577,74 @@ export function Explore() {
                       </div>
                     );
                   })}
+                </div>
+              </section>
+            )}
+
+            {/* Users — Forge first, then external */}
+            {(searchUsers.length > 0 || externalUsers.length > 0) && (
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-semibold text-white">Users</h2>
+                  {filteredUsers.length > 4 && (
+                    <button
+                      onClick={() => goToTab('users')}
+                      className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
+                    >
+                      See all {filteredUsers.length} <ChevronRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {/* Forge users first */}
+                  {searchUsers.map(user => (
+                    <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
+                  ))}
+                  {/* External users (Bluesky + Mastodon) below, with separator */}
+                  {externalUsers.length > 0 && (
+                    <>
+                      {searchUsers.length > 0 && (
+                        <div className="flex items-center gap-2 py-1">
+                          <div className="flex-1 h-px bg-gray-800" />
+                          <span className="text-xs text-gray-600 font-medium">Also on the web</span>
+                          <div className="flex-1 h-px bg-gray-800" />
+                        </div>
+                      )}
+                      {externalUsers.map(u => (
+                        <div
+                          key={u.id}
+                          onClick={() => u.platform === 'bluesky' ? navigate(`/bsky/${u.handle}`) : window.open(u.externalUrl, '_blank', 'noopener,noreferrer')}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-900/60 hover:bg-gray-800/80 transition-colors cursor-pointer"
+                        >
+                          {u.avatar ? (
+                            <img src={u.avatar} alt={u.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                              <UserIcon className="w-5 h-5 text-gray-500" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-white text-sm truncate">{u.displayName}</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                u.platform === 'bluesky'
+                                  ? 'bg-sky-500/20 text-sky-400'
+                                  : 'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">{u.handle}</p>
+                          </div>
+                          {u.followerCount > 0 && (
+                            <span className="text-xs text-gray-600 shrink-0">
+                              {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </section>
             )}

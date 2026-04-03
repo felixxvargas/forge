@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
@@ -9,33 +9,87 @@ import { gameSearchCache, buildHighlightedHtml, gameCoverCache } from '../utils/
 import type { User } from '../data/data';
 
 const POST_MAX_LENGTH = 600;
+const AUTO_DRAFT_KEY = 'forge-post-draft';
+const DRAFTS_KEY = 'forge-post-drafts';
+
+interface DraftData {
+  content: string;
+  games: { id: string; title: string }[];
+  imageUrl: string;
+  linkUrl: string;
+}
+
+interface SavedDraft extends DraftData {
+  id: string;
+  savedAt: string;
+}
+
+function parseAutoDraft(): DraftData {
+  try {
+    const raw = localStorage.getItem(AUTO_DRAFT_KEY);
+    if (!raw) return { content: '', games: [], imageUrl: '', linkUrl: '' };
+    // Handle legacy plain-text format
+    if (!raw.startsWith('{')) return { content: raw, games: [], imageUrl: '', linkUrl: '' };
+    const parsed = JSON.parse(raw);
+    return {
+      content: parsed.content ?? '',
+      games: parsed.games ?? [],
+      imageUrl: parsed.imageUrl ?? '',
+      linkUrl: parsed.linkUrl ?? '',
+    };
+  } catch {
+    return { content: '', games: [], imageUrl: '', linkUrl: '' };
+  }
+}
+
+function getSavedDrafts(): SavedDraft[] {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
 
 export function NewPost() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const replyTo = searchParams.get('replyTo') ?? undefined;
   const { createPost, currentUser, users } = useAppData();
-  const [content, setContent] = useState(() => sessionStorage.getItem('forge-post-draft') ?? '');
-  const [imageUrl, setImageUrl] = useState('');
-  const [linkUrl, setLinkUrl] = useState('');
-  const [showImageUpload, setShowImageUpload] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
+
+  const autoDraft = useRef<DraftData>(parseAutoDraft());
+
+  const [content, setContent] = useState(autoDraft.current.content);
+  const [imageUrl, setImageUrl] = useState(autoDraft.current.imageUrl);
+  const [linkUrl, setLinkUrl] = useState(autoDraft.current.linkUrl);
+  const [showImageUpload, setShowImageUpload] = useState(!!autoDraft.current.imageUrl);
+  const [showLinkInput, setShowLinkInput] = useState(!!autoDraft.current.linkUrl);
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
-  const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>([]);
+  const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>(autoDraft.current.games);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [disableComments, setDisableComments] = useState(() => localStorage.getItem('forge-default-comments-disabled') === 'true');
   const [disableReposts, setDisableReposts] = useState(() => localStorage.getItem('forge-default-reposts-disabled') === 'true');
   const [threadPosts, setThreadPosts] = useState<string[]>([]);
-  // Track visual viewport to position mention dropdown above the OSK on mobile
   const [viewportBottom, setViewportBottom] = useState(0);
+  const [error, setError] = useState('');
+  const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
+  const [atGameResults, setAtGameResults] = useState<any[]>([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const [hashGameResults, setHashGameResults] = useState<any[]>([]);
+  const [showHashGames, setShowHashGames] = useState(false);
+
+  // Drafts panel
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>(getSavedDrafts);
+  // Cancel confirmation
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      // Distance from the bottom of the visual viewport to the bottom of the layout viewport
       const keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
       setViewportBottom(Math.max(0, keyboardHeight));
     };
@@ -43,12 +97,16 @@ export function NewPost() {
     vv.addEventListener('scroll', update);
     return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
   }, []);
-  const [error, setError] = useState('');
-  const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
-  const [atGameResults, setAtGameResults] = useState<any[]>([]);
-  const [showMentions, setShowMentions] = useState(false);
-  const [hashGameResults, setHashGameResults] = useState<any[]>([]);
-  const [showHashGames, setShowHashGames] = useState(false);
+
+  // Auto-save to localStorage on every relevant change
+  useEffect(() => {
+    const draft: DraftData = { content, games: selectedGames, imageUrl, linkUrl };
+    if (content.trim() || selectedGames.length > 0 || imageUrl || linkUrl) {
+      localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify(draft));
+    } else {
+      localStorage.removeItem(AUTO_DRAFT_KEY);
+    }
+  }, [content, selectedGames, imageUrl, linkUrl]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionStartRef = useRef<number>(-1);
@@ -65,14 +123,62 @@ export function NewPost() {
     el.style.height = `${el.scrollHeight}px`;
   }, [content]);
 
+  const isDirty = content.trim() !== '' || selectedGames.length > 0 || !!imageUrl || !!linkUrl;
+
+  const handleCancel = () => {
+    if (isDirty) {
+      setShowCancelConfirm(true);
+    } else {
+      localStorage.removeItem(AUTO_DRAFT_KEY);
+      navigate(-1);
+    }
+  };
+
+  const handleDiscard = () => {
+    localStorage.removeItem(AUTO_DRAFT_KEY);
+    navigate(-1);
+  };
+
+  const handleSaveDraft = () => {
+    if (!isDirty) { navigate(-1); return; }
+    const drafts = getSavedDrafts();
+    const newDraft: SavedDraft = {
+      id: Date.now().toString(),
+      content,
+      games: selectedGames,
+      imageUrl,
+      linkUrl,
+      savedAt: new Date().toISOString(),
+    };
+    const updated = [newDraft, ...drafts].slice(0, 20);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
+    localStorage.removeItem(AUTO_DRAFT_KEY);
+    navigate(-1);
+  };
+
+  const handleRestoreDraft = (draft: SavedDraft) => {
+    setContent(draft.content);
+    setSelectedGames(draft.games);
+    setImageUrl(draft.imageUrl);
+    setLinkUrl(draft.linkUrl);
+    if (draft.imageUrl) setShowImageUpload(true);
+    if (draft.linkUrl) setShowLinkInput(true);
+    // Remove from saved drafts
+    const updated = savedDrafts.filter(d => d.id !== draft.id);
+    setSavedDrafts(updated);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
+    setShowDrafts(false);
+  };
+
+  const handleDeleteDraft = (id: string) => {
+    const updated = savedDrafts.filter(d => d.id !== id);
+    setSavedDrafts(updated);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
+  };
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value.slice(0, POST_MAX_LENGTH);
     setContent(newContent);
-    if (newContent) {
-      sessionStorage.setItem('forge-post-draft', newContent);
-    } else {
-      sessionStorage.removeItem('forge-post-draft');
-    }
 
     const cursorPos = e.target.selectionStart ?? newContent.length;
     const before = newContent.slice(0, cursorPos);
@@ -273,7 +379,7 @@ export function NewPost() {
           undefined, undefined, lastPostId,
         );
       }
-      sessionStorage.removeItem('forge-post-draft');
+      localStorage.removeItem(AUTO_DRAFT_KEY);
       navigate(-1);
     } catch (err: any) {
       setError(err.message || 'Failed to create post. Please try again.');
@@ -281,28 +387,109 @@ export function NewPost() {
     }
   };
 
+  // Drafts panel overlay
+  if (showDrafts) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="sticky top-0 z-10 bg-card border-b border-border shrink-0">
+          <div className="flex items-center gap-4 p-4">
+            <button
+              onClick={() => setShowDrafts(false)}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back</span>
+            </button>
+            <h2 className="text-lg font-semibold">Saved Drafts</h2>
+          </div>
+        </div>
+        {savedDrafts.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <BookMarked className="w-10 h-10 opacity-30" />
+            <p>No saved drafts</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {savedDrafts.map(draft => (
+              <div key={draft.id} className="p-4 flex gap-3 items-start hover:bg-secondary/30 transition-colors">
+                <button
+                  className="flex-1 min-w-0 text-left"
+                  onClick={() => handleRestoreDraft(draft)}
+                >
+                  <p className="text-sm line-clamp-3 text-foreground">
+                    {draft.content || <span className="text-muted-foreground italic">(no text)</span>}
+                  </p>
+                  {draft.games.length > 0 && (
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Gamepad2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <p className="text-xs text-muted-foreground truncate">
+                        {draft.games.map(g => g.title).join(', ')}
+                      </p>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {new Date(draft.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </button>
+                <button
+                  onClick={() => handleDeleteDraft(draft.id)}
+                  className="p-1.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  title="Delete draft"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card border-b border-border shrink-0">
         <div className="flex items-center justify-between p-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleCancel}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             disabled={isPosting}
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Cancel</span>
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!content.trim() || isPosting || content.length > POST_MAX_LENGTH}
-            className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-          >
-            {isPosting ? 'Posting...' : 'Post'}
-          </button>
+          <div className="flex items-center gap-2">
+            {savedDrafts.length > 0 && (
+              <button
+                onClick={() => setShowDrafts(true)}
+                className="relative p-2 text-muted-foreground hover:text-foreground transition-colors"
+                title="Drafts"
+              >
+                <BookMarked className="w-5 h-5" />
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent text-accent-foreground rounded-full text-[10px] font-bold flex items-center justify-center">
+                  {savedDrafts.length}
+                </span>
+              </button>
+            )}
+            {isDirty && (
+              <button
+                onClick={handleSaveDraft}
+                disabled={isPosting}
+                className="px-3 py-2 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Save Draft
+              </button>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={!content.trim() || isPosting || content.length > POST_MAX_LENGTH}
+              className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              {isPosting ? 'Posting...' : 'Post'}
+            </button>
+          </div>
         </div>
-
       </div>
 
       {/* Error */}
@@ -631,6 +818,36 @@ export function NewPost() {
             <Plus className="w-4 h-4" />
             Add to thread
           </button>
+        </div>
+      )}
+
+      {/* Cancel confirmation dialog */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Save your post?</h2>
+            <p className="text-sm text-muted-foreground">Save this as a draft so you can come back to it later.</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleSaveDraft}
+                className="w-full px-4 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium text-sm hover:bg-accent/90 transition-colors"
+              >
+                Save as Draft
+              </button>
+              <button
+                onClick={handleDiscard}
+                className="w-full px-4 py-2.5 bg-destructive/10 text-destructive rounded-lg text-sm hover:bg-destructive/20 transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="w-full px-4 py-2.5 bg-secondary rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+              >
+                Keep Editing
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

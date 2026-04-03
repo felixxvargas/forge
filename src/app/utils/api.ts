@@ -613,7 +613,6 @@ export const rawgAPI = {
   async searchGames(query: string, limit = 20): Promise<any[]> {
     const key = import.meta.env.VITE_RAWG_API_KEY;
     if (!key) {
-      console.warn('[RAWG] VITE_RAWG_API_KEY is not set — game search fallback disabled');
       return [];
     }
     if (!query.trim()) return [];
@@ -622,7 +621,6 @@ export const rawgAPI = {
       const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit * 2}&search_exact=false&exclude_additions=true`;
       const res = await fetch(url);
       if (!res.ok) {
-        console.error(`[RAWG] HTTP ${res.status} for query "${query}" — check API key`);
         return [];
       }
       // Title patterns for non-game content
@@ -645,8 +643,7 @@ export const rawgAPI = {
         coverArt: g.background_image ?? '',
         genres: g.genres?.map((genre: any) => genre.name) ?? [],
       }));
-    } catch (err) {
-      console.error('[RAWG] fetch error:', err);
+    } catch {
       return [];
     }
   },

@@ -83,10 +83,32 @@ export function EditGameListsModal({
         const rawgGames: AnyGame[] = rawgRes.status === 'fulfilled' ? rawgRes.value : [];
 
         // Merge: prefer server/IGDB results, append RAWG results not already present.
-        // Normalise titles by lowercasing and stripping everything after " - " or ": "
-        const normalise = (t: string) => t.toLowerCase().replace(/\s*[:\-–]\s+.*$/, '').trim();
-        const serverTitles = new Set(serverGames.map((g: AnyGame) => normalise(g.title)));
-        const merged = [...serverGames, ...rawgGames.filter((g: AnyGame) => !serverTitles.has(normalise(g.title)))];
+        // Normalise: lowercase, strip subtitles, remove edition labels, strip punctuation.
+        const normalise = (t: string) => t.toLowerCase()
+          .replace(/\s*[:\-–]\s+.*$/, '')                          // strip subtitle after : - –
+          .replace(/\s+(complete|definitive|enhanced|remastered|goty|gold|ultimate|deluxe|premium|standard|special|collector|limited|anniversary|director.?s cut|game of the year)\s*(edition)?$/i, '')
+          .replace(/[''`,.!?™®]/g, '')                             // strip punctuation
+          .replace(/\s+/g, ' ')
+          .trim();
+        // Build a lookup: normalised title → year for IGDB games (year-aware dedup)
+        const serverKeys = new Set<string>();
+        for (const g of serverGames) {
+          const key = normalise(g.title);
+          serverKeys.add(key);
+          // Also add with year suffix so same-title different-year games aren't collapsed
+          const yr = (g as any).year ?? (g as any).first_release_year;
+          if (yr) serverKeys.add(`${key}|${yr}`);
+        }
+        const merged = [
+          ...serverGames,
+          ...rawgGames.filter((g: AnyGame) => {
+            const key = normalise(g.title);
+            if (serverKeys.has(key)) return false;
+            const yr = (g as any).year;
+            if (yr && serverKeys.has(`${key}|${yr}`)) return false;
+            return true;
+          }),
+        ];
 
         // Re-rank by: Forge popularity → title word coverage → alphabetical
         const queryWords = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);

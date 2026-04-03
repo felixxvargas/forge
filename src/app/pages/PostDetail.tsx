@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, AlertTriangle, Repeat2 } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
 import { posts as postsAPI } from '../utils/supabase';
+import { gamesAPI } from '../utils/api';
+import { gameSearchCache, gameCoverCache } from '../utils/mentionHighlight';
 
 export function PostDetail() {
   const { postId } = useParams();
@@ -28,6 +30,14 @@ export function PostDetail() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [standalonePost, setStandalonePost] = useState<any>(null);
   const mentionTriggerIndex = useRef<number>(-1);
+
+  // Game tagging in reply
+  const [replySelectedGames, setReplySelectedGames] = useState<{ id: string; title: string }[]>([]);
+  const [showReplyGamePicker, setShowReplyGamePicker] = useState(false);
+  const [replyGameQuery, setReplyGameQuery] = useState('');
+  const [replyGameResults, setReplyGameResults] = useState<any[]>([]);
+  const [isSearchingGames, setIsSearchingGames] = useState(false);
+  const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Bluesky fallback
   const [blueskyPost, setBlueskyPost] = useState<any>(null);
@@ -144,15 +154,44 @@ export function PostDetail() {
     setMentionSuggestions([]);
   };
 
+  const handleReplyGameSearch = (q: string) => {
+    setReplyGameQuery(q);
+    if (gameSearchTimer.current) clearTimeout(gameSearchTimer.current);
+    if (!q.trim()) { setReplyGameResults([]); return; }
+    gameSearchTimer.current = setTimeout(async () => {
+      setIsSearchingGames(true);
+      try {
+        const results = await gamesAPI.searchGames(q, 8);
+        setReplyGameResults(Array.isArray(results) ? results : (results as any)?.games ?? []);
+      } catch {
+        setReplyGameResults([]);
+      } finally {
+        setIsSearchingGames(false);
+      }
+    }, 400);
+  };
+
+  const handleSelectReplyGame = (game: any) => {
+    const gameId = String(game.id ?? game.game_id ?? '');
+    setReplySelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
+    const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
+    if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
+    setShowReplyGamePicker(false);
+    setReplyGameQuery('');
+    setReplyGameResults([]);
+  };
+
   const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReply.trim() || !session?.user || !postId) return;
     setIsSubmitting(true);
     try {
+      const gameIds = replySelectedGames.map(g => g.id);
+      const gameTitles = replySelectedGames.map(g => g.title);
       const replyId = await createPost(
         newReply.trim(),
         undefined, undefined, undefined, undefined,
-        undefined, undefined, undefined, undefined, undefined,
+        gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         undefined, undefined,
         postId,
       );
@@ -164,6 +203,7 @@ export function PostDetail() {
         } catch {}
       }
       setNewReply('');
+      setReplySelectedGames([]);
     } catch (err) {
       console.error('Failed to post reply:', err);
     } finally {
@@ -215,57 +255,59 @@ export function PostDetail() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto">
-        {/* Post */}
-        <div className="bg-card px-4 pt-4 pb-4 border-b border-border">
-          <PostCard
-            post={detailPost}
-            user={activeUser}
-            onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-            onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
-            onDelete={currentUser && activePost.user_id === currentUser.id
-              ? async (id) => { await deletePost(id); navigate(-1); }
-              : undefined}
-            isDetailView={true}
-          />
-        </div>
-
-        {/* Reposters */}
-        {reposters.length > 0 && (
-          <div className="px-4 py-3 border-b border-border flex items-center gap-2 flex-wrap">
-            <Repeat2 className="w-4 h-4 text-green-500 shrink-0" />
-            <div className="flex -space-x-1">
-              {reposters.slice(0, 6).map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => navigate(`/${(u.handle || '').replace(/^@/, '')}`)}
-                  title={u.display_name || u.handle}
-                  className="ring-2 ring-card rounded-full"
-                >
-                  <ProfileAvatar
-                    username={u.display_name || u.handle || '?'}
-                    profilePicture={u.profile_picture}
-                    userId={u.id}
-                    size="sm"
-                  />
-                </button>
-              ))}
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {reposters.length === 1 ? (
-                <>
-                  <button
-                    onClick={() => navigate(`/${(reposters[0].handle || '').replace(/^@/, '')}`)}
-                    className="font-medium text-foreground hover:underline"
-                  >
-                    {reposters[0].display_name || reposters[0].handle}
-                  </button>{' '}reposted
-                </>
-              ) : (
-                <>{reposters.length} reposts</>
-              )}
-            </span>
+        {/* Post + Reposters share the same card background */}
+        <div className="bg-card border-b border-border">
+          <div className="px-4 pt-4 pb-4">
+            <PostCard
+              post={detailPost}
+              user={activeUser}
+              onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+              onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onDelete={currentUser && activePost.user_id === currentUser.id
+                ? async (id) => { await deletePost(id); navigate(-1); }
+                : undefined}
+              isDetailView={true}
+            />
           </div>
-        )}
+
+          {/* Reposters */}
+          {reposters.length > 0 && (
+            <div className="px-4 py-3 border-t border-border flex items-center gap-2 flex-wrap">
+              <Repeat2 className="w-4 h-4 text-green-500 shrink-0" />
+              <div className="flex -space-x-1">
+                {reposters.slice(0, 6).map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => navigate(`/${(u.handle || '').replace(/^@/, '')}`)}
+                    title={u.display_name || u.handle}
+                    className="ring-2 ring-card rounded-full"
+                  >
+                    <ProfileAvatar
+                      username={u.display_name || u.handle || '?'}
+                      profilePicture={u.profile_picture}
+                      userId={u.id}
+                      size="sm"
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {reposters.length === 1 ? (
+                  <>
+                    <button
+                      onClick={() => navigate(`/${(reposters[0].handle || '').replace(/^@/, '')}`)}
+                      className="font-medium text-foreground hover:underline"
+                    >
+                      {reposters[0].display_name || reposters[0].handle}
+                    </button>{' '}reposted
+                  </>
+                ) : (
+                  <>{reposters.length} reposts</>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Replies Section */}
         <div ref={repliesRef} id="comments">
@@ -314,7 +356,77 @@ export function PostDetail() {
                       ))}
                     </div>
                   )}
-                  <div className="mt-2 flex justify-end">
+                  {/* Selected game tags */}
+                  {replySelectedGames.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {replySelectedGames.map(g => {
+                        const cover = gameCoverCache.get(g.id) ?? null;
+                        return (
+                          <div key={g.id} className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/60">
+                              {cover ? (
+                                <img src={cover} alt={g.title} className="w-6 h-8 rounded object-cover shrink-0" />
+                              ) : (
+                                <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                              )}
+                              <p className="text-xs font-medium truncate max-w-[120px]">{g.title}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setReplySelectedGames(prev => prev.filter(x => x.id !== g.id))}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <XIcon className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Game picker panel */}
+                  {showReplyGamePicker && (
+                    <div className="mt-2 p-3 bg-secondary/50 rounded-xl border border-border">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          value={replyGameQuery}
+                          onChange={(e) => handleReplyGameSearch(e.target.value)}
+                          placeholder="Search for a game…"
+                          className="w-full pl-8 pr-3 py-1.5 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                          autoFocus
+                        />
+                      </div>
+                      {isSearchingGames && <p className="text-xs text-muted-foreground mt-1.5">Searching…</p>}
+                      {replyGameResults.length > 0 && (
+                        <div className="mt-1.5 space-y-0.5 max-h-40 overflow-y-auto">
+                          {replyGameResults.map((game: any, i) => (
+                            <button
+                              key={game.id ?? i}
+                              type="button"
+                              onClick={() => handleSelectReplyGame(game)}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-secondary transition-colors text-sm flex items-center gap-2"
+                            >
+                              <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="truncate">{game.title}</span>
+                              {game.year && <span className="text-muted-foreground text-xs ml-auto shrink-0">{game.year}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setShowReplyGamePicker(v => !v)}
+                      className={`p-1.5 rounded-lg transition-colors ${(showReplyGamePicker || replySelectedGames.length > 0) ? 'text-accent' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+                      title="Tag a game"
+                    >
+                      <Gamepad2 className="w-4 h-4" />
+                    </button>
                     <button
                       type="submit"
                       disabled={!newReply.trim() || isSubmitting}

@@ -93,15 +93,10 @@ export function FollowScreen({ users, onComplete }: FollowScreenProps) {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-6">
         <button
           onClick={() => onComplete(selectedUsers)}
-          disabled={selectedUsers.length === 0}
-          className={`w-full py-4 rounded-xl font-semibold transition-all ${
-            selectedUsers.length === 0
-              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-              : 'bg-accent text-accent-foreground hover:opacity-90'
-          }`}
+          className="w-full py-4 rounded-xl font-semibold transition-all bg-accent text-accent-foreground hover:opacity-90"
         >
           {selectedUsers.length === 0
-            ? 'Select at least one'
+            ? 'Skip'
             : `Follow ${selectedUsers.length} ${selectedUsers.length === 1 ? 'user' : 'users'}`}
         </button>
       </div>

@@ -1,7 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { type User, type Post, type GameListType, type SocialPlatform } from '../data/data';
+import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
+
+// Quick lookup: topicId → User object (for attaching author to external posts)
+const topicAccountById: Record<string, User> = Object.fromEntries(
+  topicAccounts.map(u => [u.id, u])
+);
 
 // Maps topic account synthetic IDs to their Bluesky/Mastodon fetcher
 const TOPIC_BLUESKY_MAP: Record<string, string> = {
@@ -243,18 +248,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           // Append posts from followed topic accounts into the following feed
           if (topicFollows && topicFollows.length > 0) {
             try {
-              const fetchJobs = topicFollows.map(id => {
-                const bskyHandle = TOPIC_BLUESKY_MAP[id] ?? topicAccountBlueskyHandles[id];
-                if (bskyHandle) return fetchBlueskyPosts(bskyHandle, 10);
-                if (MASTODON_TOPIC_IDS.has(id)) return fetchMassivelyOPPosts(10);
-                return Promise.resolve([]);
+              const fetchPairs = topicFollows.map(topicId => {
+                const bskyHandle = TOPIC_BLUESKY_MAP[topicId] ?? topicAccountBlueskyHandles[topicId];
+                const fetchJob = bskyHandle
+                  ? fetchBlueskyPosts(bskyHandle, 10)
+                  : MASTODON_TOPIC_IDS.has(topicId)
+                    ? fetchMassivelyOPPosts(10)
+                    : Promise.resolve([]);
+                return { topicId, fetchJob };
               });
-              const results = await Promise.allSettled(fetchJobs);
-              const topicPosts = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+              const results = await Promise.allSettled(fetchPairs.map(p => p.fetchJob));
+              const topicPosts = results.flatMap((r, i) => {
+                if (r.status !== 'fulfilled') return [];
+                const { topicId } = fetchPairs[i];
+                const author = topicAccountById[topicId];
+                return r.value.map((post: any) => ({
+                  ...post,
+                  user_id: topicId,
+                  created_at: post.timestamp instanceof Date
+                    ? post.timestamp.toISOString()
+                    : (post.timestamp ?? post.created_at),
+                  author,
+                }));
+              });
               if (topicPosts.length > 0) {
                 setPostList(prev => {
                   const existingIds = new Set(prev.map((p: any) => p.id));
-                  const newPosts = topicPosts.filter(p => !existingIds.has(p.id));
+                  const newPosts = topicPosts.filter((p: any) => !existingIds.has(p.id));
                   return [...prev, ...newPosts].sort((a: any, b: any) =>
                     new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
                   );
@@ -382,7 +402,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const repostPost = async (postId: string) => {
-    if (!session?.user) return;
+    if (!session?.user || repostedPosts.has(postId)) return;
     await postsAPI.repost(session.user.id, postId);
     setRepostedPosts(prev => new Set([...prev, postId]));
     setPostList(prev => {

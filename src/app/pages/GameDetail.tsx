@@ -26,12 +26,15 @@ export function GameDetail() {
 
   const [isPlayed, setIsPlayed] = useState(false);
   const [isOwned, setIsOwned] = useState(false);
+  const [isFollowed, setIsFollowed] = useState(false);
   const [togglingPlayed, setTogglingPlayed] = useState(false);
   const [togglingOwned, setTogglingOwned] = useState(false);
   const [togglingFollowed, setTogglingFollowed] = useState(false);
 
-  // Derive isFollowed from context so it stays in sync with the feed
-  const isFollowed = gameId ? followedGameIds.has(gameId) : false;
+  // Sync isFollowed from context (handles changes from other pages & initial load)
+  useEffect(() => {
+    if (gameId) setIsFollowed(followedGameIds.has(gameId));
+  }, [followedGameIds, gameId]);
 
   const [players, setPlayers] = useState<any[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -42,6 +45,7 @@ export function GameDetail() {
 
   const [gameRank, setGameRank] = useState<number | null>(null);
   const [showAddToListTray, setShowAddToListTray] = useState(false);
+  const [showPlayedTray, setShowPlayedTray] = useState(false);
 
   // Load trending rank (non-blocking)
   useEffect(() => {
@@ -94,7 +98,7 @@ export function GameDetail() {
   useEffect(() => {
     if (!gameId || !session?.user) return;
     userGamesAPI.getStatus(session.user.id, gameId)
-      .then(({ played, owned }) => { setIsPlayed(played); setIsOwned(owned); })
+      .then(({ played, owned, followed }) => { setIsPlayed(played); setIsOwned(owned); setIsFollowed(followed); })
       .catch(() => {});
   }, [gameId, session?.user?.id]);
 
@@ -128,24 +132,40 @@ export function GameDetail() {
       .catch(() => setMyFlare(null));
   }, [gameId, session?.user?.id]);
 
-  const handleTogglePlayed = async () => {
+  const handleTogglePlayed = () => {
     if (!session?.user || !gameId || togglingPlayed) return;
+    if (isPlayed) {
+      // Unmark — no tray needed
+      setTogglingPlayed(true);
+      userGamesAPI.remove(session.user.id, gameId, 'played')
+        .then(() => {
+          setIsPlayed(false);
+          setPlayers(prev => prev.map(p => p.id === session!.user.id ? { ...p, played: false } : p)
+            .filter(p => p.id !== session!.user.id || p.played || p.owned));
+        })
+        .catch(() => {})
+        .finally(() => setTogglingPlayed(false));
+    } else {
+      setShowPlayedTray(true);
+    }
+  };
+
+  const handleMarkPlayed = async (listType: 'recently-played' | 'completed') => {
+    if (!session?.user || !gameId || !game) return;
+    setShowPlayedTray(false);
     setTogglingPlayed(true);
     try {
-      if (isPlayed) {
-        await userGamesAPI.remove(session.user.id, gameId, 'played');
-        setIsPlayed(false);
-        setPlayers(prev => prev.map(p => p.id === session.user.id ? { ...p, played: false } : p)
-          .filter(p => p.id !== session.user.id || p.played || p.owned));
-      } else {
-        await userGamesAPI.add(session.user.id, gameId, 'played');
-        setIsPlayed(true);
-        if (currentUser) {
-          setPlayers(prev => {
-            const ex = prev.find(p => p.id === currentUser.id);
-            if (ex) return prev.map(p => p.id === currentUser.id ? { ...p, played: true } : p);
-            return [...prev, { ...currentUser, played: true, owned: isOwned }];
-          });
+      await userGamesAPI.add(session.user.id, gameId, 'played');
+      setIsPlayed(true);
+      if (currentUser) {
+        setPlayers(prev => {
+          const ex = prev.find(p => p.id === currentUser.id);
+          if (ex) return prev.map(p => p.id === currentUser.id ? { ...p, played: true } : p);
+          return [...prev, { ...currentUser, played: true, owned: isOwned }];
+        });
+        const list: any[] = currentUser?.game_lists?.[listType === 'recently-played' ? 'recentlyPlayed' : 'completed'] ?? [];
+        if (!list.some((g: any) => String(g.id) === String(gameId))) {
+          await updateGameList(listType, [game, ...list]);
         }
       }
     } catch { /* ignore */ } finally { setTogglingPlayed(false); }
@@ -185,15 +205,18 @@ export function GameDetail() {
   const handleToggleFollowed = async () => {
     if (!session?.user || !gameId || togglingFollowed) return;
     setTogglingFollowed(true);
+    const wasFollowed = isFollowed;
+    setIsFollowed(!wasFollowed); // optimistic update
     try {
-      if (isFollowed) {
+      if (wasFollowed) {
         await unfollowGame(gameId);
       } else {
         await followGame(gameId);
       }
-      // Refresh feed so game posts appear / disappear immediately
       refreshFeed();
-    } catch { /* ignore */ } finally { setTogglingFollowed(false); }
+    } catch {
+      setIsFollowed(wasFollowed); // revert on error
+    } finally { setTogglingFollowed(false); }
   };
 
   if (loadingGame) {
@@ -738,6 +761,43 @@ export function GameDetail() {
               className="w-full py-4 text-center text-sm text-muted-foreground border-t border-border"
             >
               Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Played list tray */}
+      {showPlayedTray && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowPlayedTray(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl pb-safe"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-4" />
+            <p className="text-center font-semibold mb-1 px-4">Add to your played list</p>
+            <p className="text-center text-sm text-muted-foreground mb-4 px-4">Where would you like to add this game?</p>
+            <div className="divide-y divide-border border-t border-border">
+              <button
+                onClick={() => handleMarkPlayed('recently-played')}
+                className="w-full flex flex-col px-5 py-4 hover:bg-secondary transition-colors text-left"
+              >
+                <span className="font-medium">Recently Played</span>
+                <span className="text-sm text-muted-foreground mt-0.5">I play this game regularly</span>
+              </button>
+              <button
+                onClick={() => handleMarkPlayed('completed')}
+                className="w-full flex flex-col px-5 py-4 hover:bg-secondary transition-colors text-left"
+              >
+                <span className="font-medium">Completed</span>
+                <span className="text-sm text-muted-foreground mt-0.5">I reached my goal in this game</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowPlayedTray(false)}
+              className="w-full py-4 text-center text-sm text-muted-foreground border-t border-border"
+            >
+              Cancel
             </button>
           </div>
         </div>

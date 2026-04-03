@@ -11,19 +11,19 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: 'v0.2',
+    version: 'v0.2.1',
     date: 'March 2025',
-    title: "What's New in v0.2",
-    summary: "A big month of improvements across profiles, content, notifications, and settings.",
+    title: "What's New in Forge",
+    summary: "Forge launched! improvements across profiles, content, notifications, and settings.",
     highlights: [
-      'Topic accounts: follow gaming media from IGN, GameSpot, Xbox, itch.io, PC Gamer, and MassivelyOP',
-      'Profile avatars for topic accounts now load correctly across all surfaces',
-      'Like and comment notifications are now delivered to your notification feed',
-      'Scroll position is restored correctly when navigating back in Explore',
-      'OG image generation for profile sharing links',
+      'Launch of Forge: Feed, Explore, Messages, Profiles, Notifications, Settings & Login/Signup',
+      'Topic accounts: follow gaming accounts via ATProto and ActivityPub (IGN, GameSpot, Xbox, itch.io, PC Gamer, MassivelyOP, and more to be added)',
+      'Google OAuth: login and sign up via Google.',
       'Redesigned login screen',
+      'Games databases integrated including RAWG.io, IGDB, and more',
+      'Public view of Forge for users that are not signed in',
       'Data deletion page added (GDPR/privacy compliance)',
-      'Auto-save when adding games to a list',
+      'and many bug fixes and quality of life improvements',
     ],
   },
 ];

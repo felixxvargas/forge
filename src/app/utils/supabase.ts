@@ -348,7 +348,6 @@ export const posts = {
 
     const seen = new Set<string>();
     const merged = [...(postsData ?? []), ...repostItems, ...gamePostsData].filter((p: any) => {
-      if (p.reply_to) return false;
       const key = p.id + (p.repostedBy || '');
       if (seen.has(key)) return false;
       seen.add(key);
@@ -469,7 +468,7 @@ export const posts = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []).filter((p: any) => !p.reply_to);
+    return data ?? [];
   },
 
   async getByCommunity(communityId: string) {
@@ -590,13 +589,9 @@ export const posts = {
     const { error } = await supabase
       .from('reposts')
       .insert({ user_id: userId, post_id: postId });
+    // 23505 = unique violation (already reposted) — treat as a no-op, not an error
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Persist repost_count atomically via rpc; fall back to read-modify-write
-    Promise.resolve(supabase.rpc('increment_repost_count', { post_id: postId })).catch(() =>
-      supabase.from('posts').select('repost_count').eq('id', postId).single().then(({ data }) =>
-        supabase.from('posts').update({ repost_count: (data?.repost_count ?? 0) + 1 }).eq('id', postId)
-      )
-    );
+    // repost_count is maintained by the update_repost_count DB trigger on the reposts table
   },
 
   async unrepost(userId: string, postId: string) {
@@ -606,12 +601,7 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
-    // Persist repost_count decrement atomically via rpc; fall back to read-modify-write
-    Promise.resolve(supabase.rpc('decrement_repost_count', { post_id: postId })).catch(() =>
-      supabase.from('posts').select('repost_count').eq('id', postId).single().then(({ data }) =>
-        supabase.from('posts').update({ repost_count: Math.max(0, (data?.repost_count ?? 0) - 1) }).eq('id', postId)
-      )
-    );
+    // repost_count is maintained by the update_repost_count DB trigger on the reposts table
   },
 
   async getRepostedIds(userId: string) {

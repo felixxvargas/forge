@@ -45,6 +45,7 @@ import { AccountSettings } from './pages/AccountSettings';
 import { NotificationsSettings } from './pages/NotificationsSettings';
 import { FeedbackPage } from './pages/FeedbackPage';
 import { WhatsNewPage } from './pages/WhatsNewPage';
+import { BlueskyProfilePage } from './pages/BlueskyProfilePage';
 
 export const router = createBrowserRouter([
   { path: '/login',         element: <Login />,         errorElement: <ErrorBoundary /> },
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
       { path: 'settings/notifications', element: <NotificationsSettings />,   errorElement: <ErrorBoundary /> },
       { path: 'settings/feedback',    element: <FeedbackPage />,             errorElement: <ErrorBoundary /> },
       { path: 'settings/whats-new',   element: <WhatsNewPage />,             errorElement: <ErrorBoundary /> },
+      { path: 'bsky/:handle',          element: <BlueskyProfilePage />,       errorElement: <ErrorBoundary /> },
       { path: ':handle',               element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },
     ],

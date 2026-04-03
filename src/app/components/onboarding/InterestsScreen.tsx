@@ -210,14 +210,9 @@ export function InterestsScreen({ onComplete, initialInterests }: InterestsScree
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-6">
         <button
           onClick={() => onComplete(selectedInterests)}
-          disabled={selectedInterests.length === 0}
-          className={`w-full py-4 rounded-xl font-semibold transition-all ${
-            selectedInterests.length === 0
-              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-              : 'bg-accent text-accent-foreground hover:opacity-90'
-          }`}
+          className="w-full py-4 rounded-xl font-semibold transition-all bg-accent text-accent-foreground hover:opacity-90"
         >
-          Continue ({selectedInterests.length} selected)
+          {selectedInterests.length === 0 ? 'Skip' : `Continue (${selectedInterests.length} selected)`}
         </button>
       </div>
     </div>

@@ -613,9 +613,13 @@ export function Profile() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {profileUser.platforms.map(platform => {
-                  // Get the gaming handle for this platform
-                  const platformHandle = profileUser.platformHandles?.[platform];
-                  const showHandle = profileUser.showPlatformHandles?.[platform];
+                  // Read both camelCase (normalized) and snake_case (raw DB) field names
+                  const platformHandle =
+                    profileUser.platformHandles?.[platform] ??
+                    (profileUser as any).platform_handles?.[platform];
+                  const showHandle =
+                    profileUser.showPlatformHandles?.[platform] ??
+                    (profileUser as any).show_platform_handles?.[platform];
                   
                   return (
                     <PlatformIcon 
