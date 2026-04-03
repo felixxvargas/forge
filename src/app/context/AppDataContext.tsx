@@ -83,6 +83,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [postList, setPostList] = useState<any[]>([]);
   const [topicPosts, setTopicPosts] = useState<any[]>([]);
   const pendingReposts = useRef<Set<string>>(new Set());
+  // Ref so followGame/unfollowGame can access currentUser without stale closures
+  const currentUserRef = useRef<any>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
@@ -133,7 +135,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profile = fetched;
       }
 
-      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships, followedGameIds] = await Promise.all([
+      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),
@@ -141,11 +143,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profiles.getFollowingIds(userId),
         notificationsAPI.getUnreadCount(userId),
         groupsAPI.getUserMemberships(userId),
-        userGamesAPI.getFollowedGameIds(userId),
       ]);
+      // Followed game IDs are stored in game_lists._followedGames (reliable, uses profiles table)
+      const followedGameIds: string[] = profile?.game_lists?._followedGames ?? [];
       followedGameIdsRef.current = followedGameIds;
       setFollowedGameIds(new Set(followedGameIds));
-      setCurrentUser({ ...normalizeProfile(profile), communities: memberships });
+      const normalizedUser = { ...normalizeProfile(profile), communities: memberships };
+      currentUserRef.current = normalizedUser;
+      setCurrentUser(normalizedUser);
       setLikedPosts(new Set(likedIds));
       setRepostedPosts(new Set(repostedIds));
       setBlockedUsers(new Set(blockedIds));
@@ -164,7 +169,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const followGame = useCallback(async (gameId: string) => {
     const userId = sessionRef.current?.user?.id;
     if (!userId) return;
-    await userGamesAPI.add(userId, gameId, 'followed');
+    // Store in game_lists._followedGames (same pattern as _topicFollows — reliable, no RLS issues)
+    const existing = currentUserRef.current?.game_lists ?? {};
+    const prev: string[] = existing._followedGames ?? [];
+    if (!prev.includes(gameId)) {
+      const updated = [...prev, gameId];
+      await profiles.update(userId, { game_lists: { ...existing, _followedGames: updated } });
+      const merged = { ...(currentUserRef.current ?? {}), game_lists: { ...existing, _followedGames: updated } };
+      currentUserRef.current = merged;
+      setCurrentUser(merged);
+    }
     const next = [...followedGameIdsRef.current, gameId];
     followedGameIdsRef.current = next;
     setFollowedGameIds(new Set(next));
@@ -173,7 +187,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const unfollowGame = useCallback(async (gameId: string) => {
     const userId = sessionRef.current?.user?.id;
     if (!userId) return;
-    await userGamesAPI.remove(userId, gameId, 'followed');
+    const existing = currentUserRef.current?.game_lists ?? {};
+    const updated = (existing._followedGames ?? []).filter((id: string) => id !== gameId);
+    await profiles.update(userId, { game_lists: { ...existing, _followedGames: updated } });
+    const merged = { ...(currentUserRef.current ?? {}), game_lists: { ...existing, _followedGames: updated } };
+    currentUserRef.current = merged;
+    setCurrentUser(merged);
     const next = followedGameIdsRef.current.filter(id => id !== gameId);
     followedGameIdsRef.current = next;
     setFollowedGameIds(new Set(next));
@@ -314,20 +333,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const updateCurrentUser = async (data: Partial<any>) => {
     if (!session?.user) return;
     const updated = await profiles.update(session.user.id, data);
-    // Preserve communities (group memberships) and topic follows — both live outside
-    // the profiles row returned by the update call, or may not yet be committed.
-    setCurrentUser((prev: any) => ({
-      ...updated,
-      communities: prev?.communities,
-      game_lists: {
-        ...(updated?.game_lists ?? {}),
-        // Keep in-memory _topicFollows if the DB row doesn't have it yet (race condition safety)
-        _topicFollows:
-          updated?.game_lists?._topicFollows ??
-          prev?.game_lists?._topicFollows ??
-          [],
-      },
-    }));
+    // Preserve communities (group memberships), topic follows, and followed games — these live
+    // outside the profiles row returned by the update call, or may not yet be committed.
+    setCurrentUser((prev: any) => {
+      const merged = {
+        ...updated,
+        communities: prev?.communities,
+        game_lists: {
+          ...(updated?.game_lists ?? {}),
+          _topicFollows:
+            updated?.game_lists?._topicFollows ??
+            prev?.game_lists?._topicFollows ??
+            [],
+          _followedGames:
+            updated?.game_lists?._followedGames ??
+            prev?.game_lists?._followedGames ??
+            [],
+        },
+      };
+      currentUserRef.current = merged;
+      return merged;
+    });
   };
 
   const addPosts = (newPosts: any[]) => {

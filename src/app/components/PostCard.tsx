@@ -134,7 +134,8 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     if (isFlarePost && flareId) {
       navigate(`/flare/${flareId}`);
     } else {
-      navigate(`/post/${post.id}`);
+      // Encode external IDs (at:// URIs, mastodon- prefixed) so they survive URL routing
+      navigate(`/post/${encodeURIComponent(post.id)}`);
     }
   };
 

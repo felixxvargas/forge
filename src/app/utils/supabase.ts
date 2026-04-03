@@ -461,6 +461,17 @@ export const posts = {
     return data ?? [];
   },
 
+  /** Fetch Forge comments on an external post (stored with url = 'forge-comment:{externalId}'). */
+  async getExternalComments(externalPostId: string) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .eq('url', `forge-comment:${externalPostId}`)
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
   async getByUser(userId: string) {
     const { data, error } = await supabase
       .from('posts')

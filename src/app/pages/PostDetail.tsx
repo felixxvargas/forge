@@ -9,7 +9,9 @@ import { gamesAPI } from '../utils/api';
 import { gameSearchCache, gameCoverCache } from '../utils/mentionHighlight';
 
 export function PostDetail() {
-  const { postId } = useParams();
+  const { postId: rawPostId } = useParams();
+  // Decode URL-encoded external post IDs (at:// URIs encoded as %3A%2F%2F etc.)
+  const postId = rawPostId ? decodeURIComponent(rawPostId) : undefined;
   const navigate = useNavigate();
   const {
     posts, getUserById, users, currentUser,
@@ -22,8 +24,10 @@ export function PostDetail() {
 
   const [replies, setReplies] = useState<any[]>([]);
   const [reposters, setReposters] = useState<any[]>([]);
+  const [forgeReplies, setForgeReplies] = useState<any[]>([]); // Forge comments on external posts
   const [newReply, setNewReply] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const [isLoadingReplies, setIsLoadingReplies] = useState(true);
   const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
@@ -42,9 +46,13 @@ export function PostDetail() {
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Bluesky fallback
+  // External post fallback (Bluesky / Mastodon)
   const [blueskyPost, setBlueskyPost] = useState<any>(null);
   const [loadingBluesky, setLoadingBluesky] = useState(false);
+  // Native Bluesky thread replies
+  const [blueskyReplies, setBlueskyReplies] = useState<any[]>([]);
+
+  const isExternalPost = postId?.startsWith('at://') || postId?.startsWith('mastodon-');
 
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
@@ -53,19 +61,21 @@ export function PostDetail() {
 
   // Fetch post by ID if not in context (e.g. navigating directly to a reply post)
   useEffect(() => {
-    if (post || postId?.startsWith('at://') || !postId) return;
+    if (post || isExternalPost || !postId) return;
     postsAPI.getById(postId).then(p => setStandalonePost(p)).catch(() => {});
-  }, [postId, post]);
+  }, [postId, post, isExternalPost]);
 
-  // Bluesky fallback
+  // Bluesky fallback: load post data + native thread replies
   useEffect(() => {
     if (!postId?.startsWith('at://') || post) return;
     setLoadingBluesky(true);
-    fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getPosts?uris=${encodeURIComponent(postId)}`)
+    // Use getPostThread to get post + replies in one call
+    fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(postId)}&depth=3`)
       .then(r => r.json())
       .then(data => {
-        const bp = data.posts?.[0];
-        if (!bp) return;
+        const thread = data.thread;
+        if (!thread?.post) return;
+        const bp = thread.post;
         const handle = bp.author?.handle ?? '';
         const rkey = bp.uri?.split('/').pop() ?? '';
         setBlueskyPost({
@@ -83,6 +93,66 @@ export function PostDetail() {
             handle,
             display_name: bp.author?.displayName ?? handle,
             profile_picture: bp.author?.avatar ?? '',
+          },
+        });
+        // Extract native Bluesky replies from thread
+        const nativeReplies = (thread.replies ?? []).map((r: any) => {
+          if (!r?.post) return null;
+          const rp = r.post;
+          const rpHandle = rp.author?.handle ?? '';
+          const rpRkey = rp.uri?.split('/').pop() ?? '';
+          return {
+            id: rp.uri,
+            content: rp.record?.text ?? '',
+            created_at: rp.record?.createdAt ?? rp.indexedAt,
+            like_count: rp.likeCount ?? 0,
+            repost_count: rp.repostCount ?? 0,
+            comment_count: rp.replyCount ?? 0,
+            platform: 'bluesky',
+            external_url: `https://bsky.app/profile/${rpHandle}/post/${rpRkey}`,
+            images: rp.embed?.images?.map((img: any) => img.fullsize ?? img.thumb) ?? undefined,
+            author: {
+              id: rp.author?.did ?? rpHandle,
+              handle: rpHandle,
+              display_name: rp.author?.displayName ?? rpHandle,
+              profile_picture: rp.author?.avatar ?? '',
+            },
+          };
+        }).filter(Boolean);
+        setBlueskyReplies(nativeReplies);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingBluesky(false));
+  }, [postId, post]);
+
+  // Mastodon fallback
+  useEffect(() => {
+    if (!postId?.startsWith('mastodon-') || post) return;
+    const mastodonId = postId.replace('mastodon-', '');
+    setLoadingBluesky(true);
+    fetch(`https://mastodon.social/api/v1/statuses/${mastodonId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.id) return;
+        const text = (data.content || '')
+          .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n')
+          .replace(/<[^>]+>/g, '').replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        setBlueskyPost({
+          id: postId,
+          content: text,
+          created_at: data.created_at,
+          like_count: data.favourites_count ?? 0,
+          repost_count: data.reblogs_count ?? 0,
+          comment_count: data.replies_count ?? 0,
+          platform: 'mastodon',
+          external_url: data.url,
+          images: data.media_attachments?.filter((m: any) => m.type === 'image').map((m: any) => m.url),
+          author: {
+            id: `mastodon-${data.account?.id}`,
+            handle: data.account?.acct ?? '',
+            display_name: data.account?.display_name || data.account?.acct,
+            profile_picture: data.account?.avatar ?? '',
           },
         });
       })
@@ -103,9 +173,9 @@ export function PostDetail() {
     postsAPI.getById(replyToId).then(p => setParentPost(p)).catch(() => setParentPost(null));
   }, [activePost?.reply_to]);
 
-  // Load replies (posts with reply_to = postId)
+  // Load replies for normal Forge posts
   useEffect(() => {
-    if (!postId || postId.startsWith('at://')) return;
+    if (!postId || isExternalPost) { setIsLoadingReplies(false); return; }
     setIsLoadingReplies(true);
     postsAPI.getByReplyTo(postId)
       .then(data => {
@@ -114,15 +184,26 @@ export function PostDetail() {
       })
       .catch(() => setReplies([]))
       .finally(() => setIsLoadingReplies(false));
-  }, [postId]);
+  }, [postId, isExternalPost]);
 
-  // Load reposters
+  // Load Forge comments on external posts (stored with url = 'forge-comment:{externalId}')
   useEffect(() => {
-    if (!postId || postId.startsWith('at://')) return;
+    if (!postId || !isExternalPost) return;
+    postsAPI.getExternalComments(postId)
+      .then(data => {
+        setForgeReplies(data);
+        if (data.length > 0) addPosts(data);
+      })
+      .catch(() => setForgeReplies([]));
+  }, [postId, isExternalPost]);
+
+  // Load reposters (Forge posts only)
+  useEffect(() => {
+    if (!postId || isExternalPost) return;
     postsAPI.getPostReposters(postId)
       .then(data => setReposters(data))
       .catch(() => {});
-  }, [postId]);
+  }, [postId, isExternalPost]);
 
   // Scroll to replies if navigated with #comments hash
   useEffect(() => {
@@ -198,20 +279,30 @@ export function PostDetail() {
     e.preventDefault();
     if (!newReply.trim() || !session?.user || !postId) return;
     setIsSubmitting(true);
+    setReplyError(null);
     try {
       const gameIds = replySelectedGames.map(g => g.id);
       const gameTitles = replySelectedGames.map(g => g.title);
+      // For external posts, store a marker URL so we can query these comments back.
+      // reply_to is a UUID FK — we can't store external IDs there directly.
+      const externalMarkerUrl = isExternalPost ? `forge-comment:${postId}` : undefined;
       const replyId = await createPost(
         newReply.trim(),
-        undefined, undefined, undefined, undefined,
+        undefined,
+        externalMarkerUrl,
+        undefined, undefined,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         undefined, undefined,
-        postId,
+        isExternalPost ? undefined : postId,
       );
       if (replyId) {
         try {
           const replyPost = await postsAPI.getById(replyId);
-          setReplies(prev => [...prev, replyPost]);
+          if (isExternalPost) {
+            setForgeReplies(prev => [...prev, replyPost]);
+          } else {
+            setReplies(prev => [...prev, replyPost]);
+          }
           addPosts([replyPost]);
         } catch {}
       }
@@ -219,6 +310,7 @@ export function PostDetail() {
       setReplySelectedGames([]);
     } catch (err) {
       console.error('Failed to post reply:', err);
+      setReplyError('Failed to post comment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -354,11 +446,11 @@ export function PostDetail() {
         {/* Replies Section */}
         <div ref={repliesRef} id="comments">
           <div className="px-4 pt-6 pb-2">
-            <h2 className="text-lg font-semibold">Replies</h2>
+            <h2 className="text-lg font-semibold">{isExternalPost ? 'Comments' : 'Replies'}</h2>
           </div>
 
           {/* Reply Input */}
-          {currentUser && !activePost.comments_disabled && (
+          {currentUser && (isExternalPost || !activePost.comments_disabled) && (
             <form onSubmit={handleSubmitReply} className="px-4 pb-4 border-b border-border">
               <div className="flex gap-3 items-start">
                 <ProfileAvatar
@@ -474,9 +566,12 @@ export function PostDetail() {
                       disabled={!newReply.trim() || isSubmitting}
                       className="px-4 py-1.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isSubmitting ? 'Posting…' : 'Reply'}
+                      {isSubmitting ? 'Posting…' : isExternalPost ? 'Comment' : 'Reply'}
                     </button>
                   </div>
+                  {replyError && (
+                    <p className="mt-1.5 text-xs text-destructive">{replyError}</p>
+                  )}
                 </div>
               </div>
             </form>
@@ -486,6 +581,61 @@ export function PostDetail() {
           {isLoadingReplies ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent" />
+            </div>
+          ) : isExternalPost ? (
+            // External post: show Forge comments + native platform replies
+            <div>
+              {/* Forge comments on external post */}
+              {forgeReplies.length > 0 && (
+                <div>
+                  <p className="px-4 pt-2 pb-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">Forge Comments</p>
+                  <div className="divide-y divide-border">
+                    {forgeReplies.map((reply) => {
+                      const replyUser = reply.author ?? getUserById(reply.user_id);
+                      if (!replyUser) return null;
+                      return (
+                        <PostCard
+                          key={reply.id}
+                          post={reply}
+                          user={replyUser}
+                          onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                          onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                          onComment={() => navigate(`/post/${encodeURIComponent(reply.id)}#comments`)}
+                          onDelete={currentUser && reply.user_id === currentUser.id
+                            ? async (id) => setDeleteConfirmId(id)
+                            : undefined}
+                          isLiked={likedPosts.has(reply.id)}
+                          isReposted={repostedPosts.has(reply.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Native Bluesky replies */}
+              {blueskyReplies.length > 0 && (
+                <div>
+                  <p className="px-4 pt-4 pb-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                    {activePost?.platform === 'bluesky' ? 'Bluesky Replies' : 'Platform Replies'}
+                  </p>
+                  <div className="divide-y divide-border">
+                    {blueskyReplies.map((reply) => (
+                      <PostCard
+                        key={reply.id}
+                        post={reply}
+                        user={reply.author}
+                        isDetailView={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {forgeReplies.length === 0 && blueskyReplies.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No comments yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Be the first to comment from Forge!</p>
+                </div>
+              )}
             </div>
           ) : replies.length === 0 ? (
             <div className="text-center py-8">
@@ -506,7 +656,7 @@ export function PostDetail() {
                     user={replyUser}
                     onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
                     onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-                    onComment={() => navigate(`/post/${reply.id}#comments`)}
+                    onComment={() => navigate(`/post/${encodeURIComponent(reply.id)}#comments`)}
                     onDelete={currentUser && reply.user_id === currentUser.id
                       ? async (id) => setDeleteConfirmId(id)
                       : undefined}

@@ -23,6 +23,50 @@ const rankMap = new Map<string, number>();
 let lastFetched = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let loadPromise: Promise<RankedGame[]> | null = null;
+let rankMapPromise: Promise<void> | null = null;
+
+/**
+ * Fast path: only computes the rank map (no game detail fetch).
+ * Use this in GameDetail so the rank shows immediately without waiting
+ * for the cover-art batch fetch that loadTrendingRankings requires.
+ */
+export async function loadRankMapOnly(): Promise<void> {
+  if (rankMap.size > 0 && Date.now() - lastFetched < CACHE_TTL) return;
+  if (rankMapPromise) return rankMapPromise;
+  if (loadPromise) { await loadPromise; return; }
+
+  rankMapPromise = (async () => {
+    try {
+      const [postRes, listRes] = await Promise.all([
+        supabase.from('posts').select('game_id').not('game_id', 'is', null),
+        supabase.from('user_games').select('game_id, user_id'),
+      ]);
+      const scoredMap: Record<string, number> = {};
+      for (const row of postRes.data ?? []) {
+        if (row.game_id) scoredMap[row.game_id] = (scoredMap[row.game_id] ?? 0) + 1;
+      }
+      const byGame: Record<string, Set<string>> = {};
+      for (const row of listRes.data ?? []) {
+        if (!row.game_id) continue;
+        if (!byGame[row.game_id]) byGame[row.game_id] = new Set();
+        byGame[row.game_id].add(row.user_id);
+      }
+      for (const [gId, users] of Object.entries(byGame)) {
+        scoredMap[gId] = (scoredMap[gId] ?? 0) + users.size;
+      }
+      const sorted = Object.entries(scoredMap)
+        .filter(([, s]) => s > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 1000);
+      rankMap.clear();
+      sorted.forEach(([id], i) => rankMap.set(id, i + 1));
+      lastFetched = Date.now();
+    } finally {
+      rankMapPromise = null;
+    }
+  })();
+  return rankMapPromise;
+}
 
 export async function loadTrendingRankings(): Promise<RankedGame[]> {
   if (Date.now() - lastFetched < CACHE_TTL && rankedGames.length > 0) {

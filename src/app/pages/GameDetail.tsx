@@ -9,7 +9,7 @@ import { LFGFlareModal } from '../components/LFGFlareModal';
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
-import { loadTrendingRankings, getGameRank } from '../utils/gameRankings';
+import { loadRankMapOnly, getGameRank } from '../utils/gameRankings';
 
 type PostSort = 'latest' | 'top';
 
@@ -47,12 +47,12 @@ export function GameDetail() {
   const [showAddToListTray, setShowAddToListTray] = useState(false);
   const [showPlayedTray, setShowPlayedTray] = useState(false);
 
-  // Load trending rank (non-blocking)
+  // Load trending rank using fast rank-map-only path (no cover-art batch fetch)
   useEffect(() => {
     if (!gameId) return;
     const cached = getGameRank(gameId);
     if (cached !== null) { setGameRank(cached); return; }
-    loadTrendingRankings().then(() => {
+    loadRankMapOnly().then(() => {
       setGameRank(getGameRank(gameId) ?? null);
     }).catch(() => {});
   }, [gameId]);
@@ -344,20 +344,23 @@ export function GameDetail() {
             {(game.year || game.release_year) && (
               <p className="text-base text-muted-foreground">{game.year ?? game.release_year}</p>
             )}
-            {(() => {
-              const score = (listCount ?? 0) + taggedPosts.length;
-              const rankInTop = gameRank !== null && gameRank <= 1000;
-              if (score === 0 && !rankInTop) return null;
-              return (
-                <button
-                  onClick={() => navigate('/trending-games')}
-                  className="flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
-                >
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  {rankInTop ? `#${gameRank} on Forge` : 'Trending'}
-                </button>
-              );
-            })()}
+            {gameRank !== null && gameRank <= 1000 ? (
+              <button
+                onClick={() => navigate('/trending-games')}
+                className="flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                #{gameRank} on Forge
+              </button>
+            ) : listCount !== null && (listCount + taggedPosts.length) > 0 ? (
+              <button
+                onClick={() => navigate('/trending-games')}
+                className="flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                Trending
+              </button>
+            ) : null}
           </div>
           {game.genres && game.genres.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
