@@ -826,7 +826,22 @@ export function Profile() {
               ALL_LISTS.forEach(l => { if (!orderedLists.find(o => o.key === l.key)) orderedLists.push(l); });
 
               const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
-              const hasAnyList = ALL_LISTS.some(l => (gameLists[l.key] ?? []).length > 0);
+              const hiddenListKeys: string[] = (gameLists as any).hiddenLists ?? [];
+              const hasAnyList = ALL_LISTS.some(l => (gameLists[l.key] ?? []).length > 0 && !hiddenListKeys.includes(l.key));
+
+              const handleHideList = (key: string) => {
+                const existing = currentUser?.game_lists ?? {} as any;
+                const hiddenLists: string[] = existing.hiddenLists ?? [];
+                if (!hiddenLists.includes(key)) {
+                  updateCurrentUser({ game_lists: { ...existing, hiddenLists: [...hiddenLists, key] } });
+                }
+              };
+
+              const handleShowList = (key: string) => {
+                const existing = currentUser?.game_lists ?? {} as any;
+                const hiddenLists: string[] = existing.hiddenLists ?? [];
+                updateCurrentUser({ game_lists: { ...existing, hiddenLists: hiddenLists.filter((k: string) => k !== key) } });
+              };
 
               const handleGripPointerDown = (i: number, label: string) => (e: React.PointerEvent) => {
                 e.preventDefault();
@@ -889,6 +904,7 @@ export function Profile() {
                   {orderedLists.map(({ key, listType, label }, i) => {
                     const games = gameLists[key] ?? [];
                     if (games.length === 0) return null;
+                    if (hiddenListKeys.includes(key)) return null;
                     const isDragging = listDragIdx === i;
                     const isOver = listDragOverIdx === i && listDragIdx !== i;
                     return (
@@ -906,6 +922,7 @@ export function Profile() {
                           onEdit={isOwnProfile ? () => handleOpenGameListEdit(listType) : undefined}
                           onAddGame={isOwnProfile ? () => handleOpenGameListEditWithSearch(listType) : undefined}
                           onDelete={isOwnProfile ? () => updateGameList(listType, []) : undefined}
+                          onHide={isOwnProfile ? () => handleHideList(key) : undefined}
                           listType={listType}
                           showFirstOnly={true}
                           dragHandle={isOwnProfile}
@@ -925,6 +942,17 @@ export function Profile() {
                         <div className="bg-card/50 border border-border rounded-xl p-4">
                           <p className="text-sm font-medium mb-3">Choose list type</p>
                           <div className="grid grid-cols-2 gap-2">
+                            {/* Hidden lists (have games but are hidden) — show on profile */}
+                            {ALL_LISTS.filter(({ key }) => hiddenListKeys.includes(key) && (gameLists[key] ?? []).length > 0).map(({ key, label }) => (
+                              <button
+                                key={`show-${key}`}
+                                onClick={() => { setShowListTypeSelector(false); handleShowList(key); }}
+                                className="flex items-center gap-2 px-3 py-2.5 bg-accent/10 border border-accent/30 rounded-lg hover:bg-accent/20 transition-colors text-sm text-left"
+                              >
+                                <span className="text-accent">{label}</span>
+                              </button>
+                            ))}
+                            {/* Empty lists — create/add */}
                             {ALL_LISTS.filter(({ key }) => (gameLists[key] ?? []).length === 0).map(({ listType, label }) => (
                               <button
                                 key={listType}

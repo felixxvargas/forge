@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal, Flame } from 'lucide-react';
+import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal, Flame, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
@@ -13,6 +13,7 @@ interface GameListProps {
   onEdit?: () => void;
   onAddGame?: () => void;
   onDelete?: () => void;
+  onHide?: () => void;
   listType?: GameListType;
   showFirstOnly?: boolean;
   dragHandle?: boolean;
@@ -22,7 +23,7 @@ interface GameListProps {
   onGripPointerCancel?: (e: React.PointerEvent) => void;
 }
 
-export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onAddGame, onDelete, listType, showFirstOnly = false, dragHandle = false, onGripPointerDown, onGripPointerMove, onGripPointerUp, onGripPointerCancel }: GameListProps) {
+export function GameList({ title, games, showHours = false, badges, sortable = false, onEdit, onAddGame, onDelete, onHide, listType, showFirstOnly = false, dragHandle = false, onGripPointerDown, onGripPointerMove, onGripPointerUp, onGripPointerCancel }: GameListProps) {
   const navigate = useNavigate();
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
   const [showActionTray, setShowActionTray] = useState(false);
@@ -49,7 +50,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
     if (listType) navigate(`/list?type=${listType}&browse=true`);
   };
 
-  const hasActions = onEdit || onDelete || (listType && games.length > 0);
+  const hasActions = onEdit || onDelete || onHide || (listType && games.length > 0);
 
   if (games.length === 0 && !onEdit) return null;
 
@@ -162,6 +163,18 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                   >
                     <Edit2 className="w-5 h-5 text-muted-foreground shrink-0" />
                     <span className="text-sm">Edit list</span>
+                  </button>
+                )}
+                {onHide && (
+                  <button
+                    onClick={() => { onHide(); setShowActionTray(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-secondary transition-colors text-left"
+                  >
+                    <EyeOff className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Hide list</span>
+                      <span className="text-xs text-muted-foreground">Remove from profile. Games are kept.</span>
+                    </div>
                   </button>
                 )}
                 {onDelete && (
