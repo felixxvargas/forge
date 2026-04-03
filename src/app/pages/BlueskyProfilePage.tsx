@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, ExternalLink, Users, FileText } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Users } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { FollowButton } from '../components/FollowButton';
@@ -108,9 +108,8 @@ export function BlueskyProfilePage() {
                       <strong>{formatNumber(profile.followsCount)}</strong>{' '}
                       <span className="text-muted-foreground">following</span>
                     </span>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <FileText className="w-3.5 h-3.5" />
-                      {formatNumber(profile.postsCount)} posts
+                    <span className="text-muted-foreground">
+                      <strong>{formatNumber(profile.postsCount)}</strong> posts
                     </span>
                   </div>
                 </div>

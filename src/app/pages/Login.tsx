@@ -10,7 +10,10 @@ export function Login() {
   const { signIn, signInWithGoogle, isAuthenticated } = useAppData();
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/feed', { replace: true });
+    if (isAuthenticated) {
+      const isLinking = localStorage.getItem('forge-linking-account') === 'true';
+      if (!isLinking) navigate('/feed', { replace: true });
+    }
   }, [isAuthenticated]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

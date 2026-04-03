@@ -90,10 +90,13 @@ export function Settings() {
       refresh_token: account.refresh_token,
     });
     if (error) {
+      // Remove the stale linked account entry and prompt re-linking
       const updated = linked.filter(a => a.id !== account.id);
       setLinkedAccounts(updated.filter(a => a.id !== currentUser.id));
       localStorage.setItem('forge-linked-accounts', JSON.stringify(updated.filter(a => a.id !== currentUser.id)));
-      alert('Session expired for that account. Please sign in again to relink it.');
+      // Save current account before redirecting to re-link
+      localStorage.setItem('forge-linking-account', 'true');
+      navigate('/login');
       return;
     }
     navigate('/feed');

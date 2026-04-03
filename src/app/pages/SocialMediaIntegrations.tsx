@@ -3,13 +3,10 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, Check } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import type { SocialPlatform } from '../data/data';
+import BlueskyIconAsset from '../../assets/icons/bluesky.svg?react';
 
 // SVG logo components for each social platform
-const BlueskySVG = () => (
-  <svg viewBox="0 0 360 360" className="w-6 h-6" fill="currentColor">
-    <path d="M180 162C164 130 120 70 75 47 50 34 0 23 0 79c0 29 17 99 28 120 16 27 47 39 77 28 31-12 33-46 33-46s-4 55-39 78c-35 23-82 5-82 5s34 117 163 85c129-31 163-85 163-85s-47 18-82-5c-35-23-39-78-39-78s2 34 33 46c30 11 61-1 77-28C343 179 360 108 360 79c0-57-50-46-75-33C241 70 196 130 180 162z"/>
-  </svg>
-);
+const BlueskySVG = () => <BlueskyIconAsset className="w-6 h-6" />;
 
 const MastodonSVG = () => (
   <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
