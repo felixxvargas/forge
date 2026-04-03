@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
@@ -55,6 +61,9 @@ export function NewPost() {
   const [searchParams] = useSearchParams();
   const replyTo = searchParams.get('replyTo') ?? undefined;
   const { createPost, currentUser, users } = useAppData();
+
+  // Scroll to top when compose screen opens
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const autoDraft = useRef<DraftData>(parseAutoDraft());
 
@@ -638,24 +647,32 @@ export function NewPost() {
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setDisableComments(v => !v)}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${disableComments ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-secondary'}`}
-              title={disableComments ? 'Comments off' : 'Comments on'}
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{disableComments ? 'Off' : 'On'}</span>
-            </button>
-            <button
-              onClick={() => setDisableReposts(v => !v)}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${disableReposts ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-secondary'}`}
-              title={disableReposts ? 'Reposts off' : 'Reposts on'}
-            >
-              <Repeat2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{disableReposts ? 'Off' : 'On'}</span>
-            </button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={`p-2 rounded-lg transition-colors ${(disableComments || disableReposts) ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                title="More options"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                onClick={() => setDisableComments(v => !v)}
+                className={disableComments ? 'text-destructive' : ''}
+              >
+                <MessageCircle className="w-4 h-4 mr-2 shrink-0" />
+                <span>{disableComments ? 'Enable comments' : 'Disable comments'}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setDisableReposts(v => !v)}
+                className={disableReposts ? 'text-destructive' : ''}
+              >
+                <Repeat2 className="w-4 h-4 mr-2 shrink-0" />
+                <span>{disableReposts ? 'Enable reposts' : 'Disable reposts'}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Image upload */}

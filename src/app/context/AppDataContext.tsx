@@ -367,7 +367,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string): Promise<string | undefined> => {
     if (!session?.user) return undefined;
     const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled, replyTo });
-    if (!replyTo) setPostList(prev => [post, ...prev]);
+    if (!replyTo) {
+      setPostList(prev => [post, ...prev]);
+    } else {
+      // Optimistically increment comment_count on the parent post
+      setPostList(prev => prev.map(p => p.id === replyTo ? { ...p, comment_count: (p.comment_count ?? 0) + 1 } : p));
+    }
     // Send notifications for @mentions
     const mentionMatches = content.match(/@(\w+)/g) ?? [];
     for (const mention of mentionMatches) {

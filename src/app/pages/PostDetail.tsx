@@ -342,7 +342,9 @@ export function PostDetail() {
     );
   }
 
-  const detailPost = { ...activePost, repostedBy: undefined };
+  // Use actual loaded reply count once available (overrides potentially stale DB value)
+  const actualCommentCount = isLoadingReplies ? activePost.comment_count : Math.max(activePost.comment_count ?? 0, replies.length);
+  const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount };
 
   return (
     <div className="min-h-screen bg-background pb-20">

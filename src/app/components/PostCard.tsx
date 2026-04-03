@@ -76,10 +76,13 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     });
   }, [post.game_ids?.join(',') ?? post.game_id]);
 
-  // Resolve topic account avatar the same way Profile.tsx does
-  const isTopicAccount = (user as any)?.account_type === 'topic';
+  // Resolve profile picture: Bluesky avatar (topic accounts), then snake_case (Supabase),
+  // then camelCase (topic account User objects from data.ts), then undefined.
   const blueskyData = useBlueskyData(user);
-  const resolvedProfilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || user?.profile_picture;
+  const resolvedProfilePicture = blueskyData.avatar
+    || user?.profile_picture
+    || (user as any)?.profilePicture
+    || undefined;
 
   // Safely destructure with fallbacks
   const {

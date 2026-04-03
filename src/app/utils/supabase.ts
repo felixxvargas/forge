@@ -542,6 +542,14 @@ export const posts = {
       `)
       .single();
     if (error) throw new Error(error.message);
+    // Increment comment_count on the parent post (fire-and-forget)
+    if (options.replyTo) {
+      Promise.resolve(supabase.rpc('increment_comment_count', { post_id: options.replyTo })).catch(() =>
+        supabase.from('posts').select('comment_count').eq('id', options.replyTo!).single().then(({ data: p }) =>
+          supabase.from('posts').update({ comment_count: (p?.comment_count ?? 0) + 1 }).eq('id', options.replyTo!)
+        )
+      );
+    }
     return data;
   },
 
