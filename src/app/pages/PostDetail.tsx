@@ -31,6 +31,9 @@ export function PostDetail() {
   const [standalonePost, setStandalonePost] = useState<any>(null);
   const mentionTriggerIndex = useRef<number>(-1);
 
+  // Parent post (when the viewed post is itself a reply)
+  const [parentPost, setParentPost] = useState<any>(null);
+
   // Game tagging in reply
   const [replySelectedGames, setReplySelectedGames] = useState<{ id: string; title: string }[]>([]);
   const [showReplyGamePicker, setShowReplyGamePicker] = useState(false);
@@ -89,6 +92,16 @@ export function PostDetail() {
 
   const activePost = post ?? standalonePost ?? blueskyPost;
   const activeUser = postUser ?? standalonePost?.author ?? blueskyPost?.author;
+
+  // Load parent post when the active post is a reply
+  useEffect(() => {
+    const replyToId = activePost?.reply_to;
+    if (!replyToId || replyToId.startsWith('at://')) { setParentPost(null); return; }
+    // Check context first
+    const fromContext = posts.find(p => p.id === replyToId && !p.repostedBy);
+    if (fromContext) { setParentPost(fromContext); return; }
+    postsAPI.getById(replyToId).then(p => setParentPost(p)).catch(() => setParentPost(null));
+  }, [activePost?.reply_to]);
 
   // Load replies (posts with reply_to = postId)
   useEffect(() => {
@@ -255,6 +268,35 @@ export function PostDetail() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto">
+        {/* Parent post context — shown when the highlighted post is a reply */}
+        {parentPost && (() => {
+          const parentUser = parentPost.author ?? getUserById(parentPost.user_id);
+          if (!parentUser) return null;
+          return (
+            <div className="bg-card border-b border-border">
+              {/* Dimmed / context label */}
+              <div className="px-4 pt-3 pb-0">
+                <p className="text-xs text-muted-foreground mb-2 pl-11">Original post</p>
+              </div>
+              <div className="px-4 pb-2 opacity-80">
+                <PostCard
+                  post={parentPost}
+                  user={parentUser}
+                  onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                  onComment={() => navigate(`/post/${parentPost.id}#comments`)}
+                  isLiked={likedPosts.has(parentPost.id)}
+                />
+              </div>
+              {/* Thread connector line */}
+              <div className="flex items-center gap-3 px-4 pb-1">
+                <div className="w-10 flex justify-center">
+                  <div className="w-0.5 h-4 bg-border" />
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Post + Reposters share the same card background */}
         <div className="bg-card border-b border-border">
           <div className="px-4 pt-4 pb-4">

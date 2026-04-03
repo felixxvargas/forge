@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -84,6 +84,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   // Safely destructure with fallbacks
   const {
     getUserById,
+    posts: contextPosts = [],
     repostedPosts = new Set(),
     mutedUsers = new Set(),
     mutedPosts = new Set(),
@@ -95,6 +96,14 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
 
   // Games in this post that the user follows (drives the "following" indicator)
   const followedTaggedGames = taggedGames.filter(g => (followedGameIds as Set<string>).has(g.id));
+
+  // "Replying to" — resolve parent post author from context for feed indicator
+  const parentPostInContext = (post as any).reply_to
+    ? (contextPosts as any[]).find((p: any) => p.id === (post as any).reply_to)
+    : null;
+  const parentAuthorHandle = parentPostInContext
+    ? ((parentPostInContext.author ?? getUserById?.(parentPostInContext.user_id))?.handle ?? '').replace(/^@/, '')
+    : null;
 
   const isMutedUser = mutedUsers.has(post.user_id);
   const isMutedPost = mutedPosts.has(post.id);
@@ -253,6 +262,17 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         >
           <Repeat2 className="w-4 h-4 shrink-0" />
           <span>{reposter.display_name || reposter.handle} reposted</span>
+        </button>
+      )}
+
+      {/* Reply indicator */}
+      {!isDetailView && (post as any).reply_to && (
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/post/${(post as any).reply_to}`); }}
+          className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
+        >
+          <CornerUpLeft className="w-3 h-3 shrink-0" />
+          <span>Replying to {parentAuthorHandle ? `@${parentAuthorHandle}` : 'a post'}</span>
         </button>
       )}
 

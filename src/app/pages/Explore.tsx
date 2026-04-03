@@ -168,24 +168,40 @@ export function Explore() {
         setTrendingCounts(counts);
       } catch {}
     })();
-
-    // Unique list-adds per game (one per user, even across played + owned)
-    (async () => {
-      try {
-        const { data } = await supabase.from('user_games').select('game_id, user_id');
-        if (!data) return;
-        const byGame: Record<string, Set<string>> = {};
-        for (const row of data) {
-          if (!row.game_id) continue;
-          if (!byGame[row.game_id]) byGame[row.game_id] = new Set();
-          byGame[row.game_id].add(row.user_id);
-        }
-        const counts: Record<string, number> = {};
-        for (const [gId, us] of Object.entries(byGame)) counts[gId] = us.size;
-        setListCounts(counts);
-      } catch {}
-    })();
   }, [activeTab]);
+
+  // List-adds per game — computed from in-memory user data so it reflects the
+  // current user's most recent additions immediately without depending on the
+  // user_games table (which may lag or have RLS gaps).
+  useEffect(() => {
+    if (activeTab !== 'games') return;
+    const counts: Record<string, number> = {};
+    // Include all loaded users; prefer currentUser for up-to-date game_lists
+    const allUsers = [
+      ...users.filter(u => u.id !== currentUser?.id),
+      ...(currentUser ? [currentUser] : []),
+    ];
+    for (const user of allUsers) {
+      if (!user.game_lists) continue;
+      const gl = user.game_lists as any;
+      const seenForUser = new Set<string>();
+      const entries = [
+        ...(gl.recentlyPlayed ?? []),
+        ...(gl.library ?? []),
+        ...(gl.favorites ?? []),
+        ...(gl.wishlist ?? []),
+        ...(gl.completed ?? []),
+      ];
+      for (const game of entries) {
+        if (!game?.id) continue;
+        const gId = String(game.id);
+        if (seenForUser.has(gId)) continue;
+        seenForUser.add(gId);
+        counts[gId] = (counts[gId] ?? 0) + 1;
+      }
+    }
+    setListCounts(counts);
+  }, [activeTab, users, currentUser]);
 
   useEffect(() => {
     if (activeTab !== 'games') return;
