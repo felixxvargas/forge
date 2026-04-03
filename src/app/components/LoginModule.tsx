@@ -260,10 +260,11 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
       {/* App store badges — mobile only */}
       <div className="md:hidden w-full mt-8 mb-6">
         <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
-        <div className="flex items-center justify-center gap-4">
-          <a href="https://play.google.com/store/apps/details?id=app.forge.social" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+        <div className="flex items-center justify-center gap-6 pb-4">
+          <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10" />
-          </a>
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
+          </div>
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-10 grayscale" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
@@ -314,10 +315,11 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
         {/* App store badges */}
         <div className="relative z-10">
           <p className="text-xs text-muted-foreground/50 mb-3 uppercase tracking-wide font-medium">Also available on</p>
-          <div className="flex items-center gap-3">
-            <a href="https://play.google.com/store/apps/details?id=app.forge.social" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+          <div className="flex items-center gap-3 pb-4">
+            <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
               <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-9" />
-            </a>
+              <span className="absolute -bottom-3.5 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
+            </div>
             <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
               <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-9 grayscale" />
               <span className="absolute -bottom-3.5 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>

@@ -45,9 +45,7 @@ export function Feed() {
     const isReposted = repostedPosts.has(postId);
     if (isReposted) unrepostPost(postId);
     else repostPost(postId);
-    setDynamicPosts(prev => prev === null ? null : prev.map(p =>
-      p.id === postId && !p.repostedBy ? { ...p, repost_count: isReposted ? Math.max(0, (p.repost_count ?? 0) - 1) : (p.repost_count ?? 0) + 1 } : p
-    ));
+    // repost_count is updated by AppDataContext — no local duplicate needed
   };
 
   const handleShowMutedPost = (postId: string) => {

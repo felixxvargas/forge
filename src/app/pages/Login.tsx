@@ -142,31 +142,17 @@ export function Login() {
       {/* App Store Badges */}
       <div className="w-full max-w-md mt-8 mb-6">
         <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
-        <div className="flex items-center justify-center gap-4">
-          {/* Google Play — active */}
-          <a
-            href="https://play.google.com/store/apps/details?id=app.forge.social"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-transform hover:scale-105"
-          >
-            <img
-              src="/google-play-badge.png"
-              alt="Get it on Google Play"
-              className="h-10"
-            />
-          </a>
+        <div className="flex items-center justify-center gap-6 pb-4">
+          {/* Google Play — coming soon */}
+          <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
+            <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10" />
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
+          </div>
 
           {/* Apple App Store — coming soon */}
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
-            <img
-              src="/apple-store-badge.svg"
-              alt="Download on the App Store"
-              className="h-10 grayscale"
-            />
-            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">
-              Coming Soon
-            </span>
+            <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-10 grayscale" />
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
           </div>
         </div>
       </div>
