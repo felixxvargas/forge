@@ -112,7 +112,9 @@ export function Feed() {
   const sourcePosts = dynamicPosts !== null ? dynamicPosts : contextPosts;
 
   const filteredPosts = sourcePosts.filter(post => {
-    if (!post.content?.trim()) return false;
+    // Allow posts with images/links even if text content is empty (Bluesky media posts)
+    const hasContent = post.content?.trim() || post.images?.length || post.url || post.image_urls?.length;
+    if (!hasContent) return false;
     if (blockedUsers.has(post.user_id)) return false;
     if (typeof feedMode === 'object' && feedMode.type === 'group') {
       return post.community_id === feedMode.id || post.communityId === feedMode.id;

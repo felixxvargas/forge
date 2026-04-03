@@ -451,6 +451,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const updated = [...prev, userId];
         await profiles.update(session.user.id, { game_lists: { ...existing, _topicFollows: updated } });
         setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _topicFollows: updated } } : u);
+        // Immediately fetch posts for the newly followed topic account
+        try {
+          const bskyHandle = TOPIC_BLUESKY_MAP[userId] ?? topicAccountBlueskyHandles[userId];
+          const rawPosts = bskyHandle
+            ? await fetchBlueskyPosts(bskyHandle, 10)
+            : MASTODON_TOPIC_IDS.has(userId)
+              ? await fetchMassivelyOPPosts(10)
+              : [];
+          if (rawPosts.length > 0) {
+            const author = topicAccountById[userId];
+            const newPosts = rawPosts.map((post: any) => ({
+              ...post,
+              user_id: userId,
+              created_at: post.timestamp instanceof Date
+                ? post.timestamp.toISOString()
+                : (post.timestamp ?? post.created_at),
+              author,
+            }));
+            setTopicPosts(prev => {
+              const existingIds = new Set(prev.map((p: any) => p.id));
+              const toAdd = newPosts.filter((p: any) => !existingIds.has(p.id));
+              return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+            });
+          }
+        } catch (e) {
+          console.error('Error fetching posts for newly followed topic account:', userId, e);
+        }
       }
     } else {
       await profiles.follow(session.user.id, userId);

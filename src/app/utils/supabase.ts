@@ -594,7 +594,14 @@ export const posts = {
       .insert({ user_id: userId, post_id: postId });
     // 23505 = unique violation (already reposted) — treat as a no-op, not an error
     if (error && error.code !== '23505') throw new Error(error.message);
-    // repost_count is maintained by the update_repost_count DB trigger on the reposts table
+    // Authoritative count overrides any DB trigger to prevent double-increment bugs
+    const { count } = await supabase
+      .from('reposts')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId);
+    if (count !== null) {
+      await supabase.from('posts').update({ repost_count: count }).eq('id', postId);
+    }
   },
 
   async unrepost(userId: string, postId: string) {
@@ -604,7 +611,14 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
-    // repost_count is maintained by the update_repost_count DB trigger on the reposts table
+    // Authoritative count overrides any DB trigger to prevent double-decrement bugs
+    const { count } = await supabase
+      .from('reposts')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId);
+    if (count !== null) {
+      await supabase.from('posts').update({ repost_count: count }).eq('id', postId);
+    }
   },
 
   async getRepostedIds(userId: string) {
