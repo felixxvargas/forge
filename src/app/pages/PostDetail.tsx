@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
 import { posts as postsAPI } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 import { gameSearchCache, gameCoverCache } from '../utils/mentionHighlight';
+import { ImageUpload } from '../components/ImageUpload';
 
 export function PostDetail() {
   const { postId: rawPostId } = useParams();
@@ -33,6 +34,11 @@ export function PostDetail() {
   const [showMentions, setShowMentions] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [standalonePost, setStandalonePost] = useState<any>(null);
+  const [showReplyTray, setShowReplyTray] = useState(false);
+  const [replyImageUrl, setReplyImageUrl] = useState('');
+  const [replyLinkUrl, setReplyLinkUrl] = useState('');
+  const [showReplyImageUpload, setShowReplyImageUpload] = useState(false);
+  const [showReplyLinkInput, setShowReplyLinkInput] = useState(false);
   const mentionTriggerIndex = useRef<number>(-1);
 
   // Parent post (when the viewed post is itself a reply)
@@ -275,21 +281,21 @@ export function PostDetail() {
     setReplyGameResults([]);
   };
 
-  const handleSubmitReply = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performReplySubmit = async () => {
     if (!newReply.trim() || !session?.user || !postId) return;
     setIsSubmitting(true);
     setReplyError(null);
     try {
       const gameIds = replySelectedGames.map(g => g.id);
       const gameTitles = replySelectedGames.map(g => g.title);
-      // For external posts, store a marker URL so we can query these comments back.
-      // reply_to is a UUID FK — we can't store external IDs there directly.
-      const externalMarkerUrl = isExternalPost ? `forge-comment:${postId}` : undefined;
+      const urlToStore = isExternalPost
+        ? `forge-comment:${postId}`
+        : (replyLinkUrl || undefined);
+      const imagesToStore = replyImageUrl ? [replyImageUrl] : undefined;
       const replyId = await createPost(
         newReply.trim(),
-        undefined,
-        externalMarkerUrl,
+        imagesToStore,
+        urlToStore,
         undefined, undefined,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         undefined, undefined,
@@ -308,12 +314,22 @@ export function PostDetail() {
       }
       setNewReply('');
       setReplySelectedGames([]);
+      setReplyImageUrl('');
+      setReplyLinkUrl('');
+      setShowReplyTray(false);
+      setShowReplyImageUpload(false);
+      setShowReplyLinkInput(false);
     } catch (err) {
       console.error('Failed to post reply:', err);
       setReplyError('Failed to post comment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmitReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performReplySubmit();
   };
 
   const handleDeleteReply = async (replyId: string) => {
@@ -451,132 +467,250 @@ export function PostDetail() {
             <h2 className="text-lg font-semibold">{isExternalPost ? 'Comments' : 'Replies'}</h2>
           </div>
 
-          {/* Reply Input */}
+          {/* Compact reply trigger */}
           {currentUser && (isExternalPost || !activePost.comments_disabled) && (
-            <form onSubmit={handleSubmitReply} className="px-4 pb-4 border-b border-border">
-              <div className="flex gap-3 items-start">
+            <div className="px-4 pb-4 border-b border-border">
+              <div className="flex gap-3 items-center">
                 <ProfileAvatar
                   username={currentUser.display_name || currentUser.handle || '?'}
                   profilePicture={currentUser.profile_picture}
                   size="md"
                 />
-                <div className="flex-1 relative">
-                  <textarea
-                    value={newReply}
-                    onChange={handleReplyChange}
-                    placeholder="Post a reply… Use @ to mention"
-                    rows={2}
-                    style={{ fontSize: '16px' }}
-                    className="w-full px-4 py-2 bg-secondary rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-accent text-sm resize-none"
+                <button
+                  onClick={() => setShowReplyTray(true)}
+                  className="flex-1 px-4 py-2.5 bg-secondary rounded-xl border border-border text-sm text-muted-foreground text-left cursor-text hover:bg-secondary/80 transition-colors"
+                >
+                  {isExternalPost ? 'Post a comment…' : 'Post a reply…'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Reply Tray — fullscreen on mobile, centered dialog on desktop */}
+          {showReplyTray && (
+            <div className="fixed inset-0 z-50 flex flex-col sm:items-end sm:justify-end md:items-center md:justify-center sm:bg-black/60">
+              <div className="w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-background flex flex-col overflow-hidden shadow-2xl">
+                {/* Tray header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { setShowReplyTray(false); setShowReplyImageUpload(false); setShowReplyLinkInput(false); setShowReplyGamePicker(false); }}
+                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
+                  >
+                    <XIcon className="w-4 h-4" />
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={performReplySubmit}
+                    disabled={!newReply.trim() || isSubmitting}
+                    className="px-5 py-1.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? 'Posting…' : isExternalPost ? 'Comment' : 'Reply'}
+                  </button>
+                </div>
+
+                {/* Scrollable body */}
+                <div className="flex gap-3 px-4 pt-4 pb-2 flex-1 overflow-y-auto min-h-0">
+                  <ProfileAvatar
+                    username={currentUser.display_name || currentUser.handle || '?'}
+                    profilePicture={currentUser.profile_picture}
+                    size="md"
                   />
-                  {showMentions && mentionSuggestions.length > 0 && (
-                    <div className="absolute bottom-full mb-2 left-0 right-0 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                      {mentionSuggestions.map(u => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
-                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-secondary transition-colors text-left"
-                        >
-                          <ProfileAvatar
-                            username={u.display_name || u.handle || '?'}
-                            profilePicture={u.profile_picture}
-                            userId={u.id}
-                            size="sm"
-                          />
-                          <div>
-                            <p className="text-sm font-medium">{u.display_name || u.handle}</p>
-                            <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {/* Selected game tags */}
-                  {replySelectedGames.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {replySelectedGames.map(g => {
-                        const cover = gameCoverCache.get(g.id) ?? null;
-                        return (
-                          <div key={g.id} className="flex items-center gap-1.5">
-                            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/60">
-                              {cover ? (
-                                <img src={cover} alt={g.title} className="w-6 h-8 rounded object-cover shrink-0" />
-                              ) : (
-                                <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                              )}
-                              <p className="text-xs font-medium truncate max-w-[120px]">{g.title}</p>
+                  <div className="flex-1 min-w-0 relative">
+                    {/* Mention suggestions */}
+                    {showMentions && mentionSuggestions.length > 0 && (
+                      <div className="absolute bottom-full mb-2 left-0 right-0 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                        {mentionSuggestions.map(u => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
+                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-secondary transition-colors text-left"
+                          >
+                            <ProfileAvatar
+                              username={u.display_name || u.handle || '?'}
+                              profilePicture={u.profile_picture}
+                              userId={u.id}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="text-sm font-medium">{u.display_name || u.handle}</p>
+                              <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => setReplySelectedGames(prev => prev.filter(x => x.id !== g.id))}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <XIcon className="w-3 h-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Game picker panel */}
-                  {showReplyGamePicker && (
-                    <div className="mt-2 p-3 bg-secondary/50 rounded-xl border border-border">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <input
-                          type="text"
-                          value={replyGameQuery}
-                          onChange={(e) => handleReplyGameSearch(e.target.value)}
-                          placeholder="Search for a game…"
-                          className="w-full pl-8 pr-3 py-1.5 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
-                          autoFocus
-                        />
+                          </button>
+                        ))}
                       </div>
-                      {isSearchingGames && <p className="text-xs text-muted-foreground mt-1.5">Searching…</p>}
-                      {replyGameResults.length > 0 && (
-                        <div className="mt-1.5 space-y-0.5 max-h-40 overflow-y-auto">
-                          {replyGameResults.map((game: any, i) => (
-                            <button
-                              key={game.id ?? i}
-                              type="button"
-                              onClick={() => handleSelectReplyGame(game)}
-                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-secondary transition-colors text-sm flex items-center gap-2"
-                            >
-                              <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <span className="truncate">{game.title}</span>
-                              {game.year && <span className="text-muted-foreground text-xs ml-auto shrink-0">{game.year}</span>}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
 
-                  <div className="mt-2 flex items-center justify-between">
+                    <textarea
+                      autoFocus
+                      value={newReply}
+                      onChange={handleReplyChange}
+                      placeholder={isExternalPost ? 'Post a comment… Use @ to mention' : 'Post a reply… Use @ to mention'}
+                      style={{ fontSize: '16px' }}
+                      className="w-full bg-transparent outline-none resize-none text-foreground placeholder:text-muted-foreground min-h-[120px]"
+                      rows={5}
+                    />
+
+                    {/* Image preview */}
+                    {replyImageUrl && (
+                      <div className="relative mt-2 inline-block">
+                        <img src={replyImageUrl} alt="" className="max-h-40 rounded-lg object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setReplyImageUrl('')}
+                          className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
+                        >
+                          <XIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Link preview */}
+                    {replyLinkUrl && !isExternalPost && (
+                      <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-secondary/50 rounded-lg text-sm">
+                        <span className="flex-1 truncate text-muted-foreground">{replyLinkUrl}</span>
+                        <button type="button" onClick={() => setReplyLinkUrl('')} className="text-muted-foreground hover:text-foreground shrink-0">
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Selected game tags */}
+                    {replySelectedGames.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {replySelectedGames.map(g => {
+                          const cover = gameCoverCache.get(g.id) ?? null;
+                          return (
+                            <div key={g.id} className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/60">
+                                {cover ? (
+                                  <img src={cover} alt={g.title} className="w-6 h-8 rounded object-cover shrink-0" />
+                                ) : (
+                                  <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                                )}
+                                <p className="text-xs font-medium truncate max-w-[120px]">{g.title}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setReplySelectedGames(prev => prev.filter(x => x.id !== g.id))}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <XIcon className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Image upload panel */}
+                {showReplyImageUpload && (
+                  <div className="px-4 pb-3 border-t border-border pt-3">
+                    <ImageUpload
+                      onUpload={(url) => { setReplyImageUrl(url); setShowReplyImageUpload(false); }}
+                      onRemove={() => setReplyImageUrl('')}
+                      existingUrl={replyImageUrl}
+                      accept="image/*,video/*"
+                      maxSizeMB={50}
+                      bucketType="post"
+                    />
+                  </div>
+                )}
+
+                {/* Link input panel */}
+                {showReplyLinkInput && !isExternalPost && (
+                  <div className="px-4 pb-3 border-t border-border pt-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={replyLinkUrl}
+                        onChange={(e) => setReplyLinkUrl(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') setShowReplyLinkInput(false); }}
+                        placeholder="https://example.com"
+                        className="flex-1 bg-secondary px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowReplyLinkInput(false)}
+                        className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Game picker panel */}
+                {showReplyGamePicker && (
+                  <div className="px-4 pb-3 border-t border-border pt-3">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={replyGameQuery}
+                        onChange={(e) => handleReplyGameSearch(e.target.value)}
+                        placeholder="Search for a game…"
+                        className="w-full pl-8 pr-3 py-1.5 bg-secondary rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                        autoFocus
+                      />
+                    </div>
+                    {isSearchingGames && <p className="text-xs text-muted-foreground mt-1.5">Searching…</p>}
+                    {replyGameResults.length > 0 && (
+                      <div className="mt-1.5 space-y-0.5 max-h-40 overflow-y-auto">
+                        {replyGameResults.map((game: any, i) => (
+                          <button
+                            key={game.id ?? i}
+                            type="button"
+                            onClick={() => handleSelectReplyGame(game)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-secondary transition-colors text-sm flex items-center gap-2"
+                          >
+                            <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="truncate">{game.title}</span>
+                            {game.year && <span className="text-muted-foreground text-xs ml-auto shrink-0">{game.year}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Toolbar */}
+                <div className="flex items-center gap-1 px-4 py-3 border-t border-border shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { setShowReplyImageUpload(v => !v); setShowReplyLinkInput(false); setShowReplyGamePicker(false); }}
+                    className={`p-2 rounded-lg transition-colors ${(showReplyImageUpload || replyImageUrl) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                    title="Add image"
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+                  {!isExternalPost && (
                     <button
                       type="button"
-                      onClick={() => setShowReplyGamePicker(v => !v)}
-                      className={`p-1.5 rounded-lg transition-colors ${(showReplyGamePicker || replySelectedGames.length > 0) ? 'text-accent' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
-                      title="Tag a game"
+                      onClick={() => { setShowReplyLinkInput(v => !v); setShowReplyImageUpload(false); setShowReplyGamePicker(false); }}
+                      className={`p-2 rounded-lg transition-colors ${(showReplyLinkInput || replyLinkUrl) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                      title="Add link"
                     >
-                      <Gamepad2 className="w-4 h-4" />
+                      <LinkIcon className="w-5 h-5" />
                     </button>
-                    <button
-                      type="submit"
-                      disabled={!newReply.trim() || isSubmitting}
-                      className="px-4 py-1.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? 'Posting…' : isExternalPost ? 'Comment' : 'Reply'}
-                    </button>
-                  </div>
-                  {replyError && (
-                    <p className="mt-1.5 text-xs text-destructive">{replyError}</p>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => { setShowReplyGamePicker(v => !v); setShowReplyImageUpload(false); setShowReplyLinkInput(false); }}
+                    className={`p-2 rounded-lg transition-colors ${(showReplyGamePicker || replySelectedGames.length > 0) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                    title="Tag a game"
+                  >
+                    <Gamepad2 className="w-5 h-5" />
+                  </button>
+                  {replyError && <p className="ml-2 text-xs text-destructive flex-1">{replyError}</p>}
                 </div>
               </div>
-            </form>
+            </div>
           )}
 
           {/* Replies List */}

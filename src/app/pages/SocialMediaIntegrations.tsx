@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { ArrowLeft, Check } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import type { SocialPlatform } from '../data/data';
@@ -163,6 +163,8 @@ const availableSocialPlatforms: { id: SocialPlatform; name: string; description:
 
 export function SocialMediaIntegrations() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo = (location.state as any)?.from === 'settings' ? '/settings' : '/edit-profile';
   const { currentUser, updateCurrentUser } = useAppData();
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>(
     currentUser?.social_platforms || currentUser?.socialPlatforms || []
@@ -181,7 +183,7 @@ export function SocialMediaIntegrations() {
     setIsSaving(true);
     try {
       await updateCurrentUser({ social_platforms: selectedPlatforms });
-      navigate('/edit-profile');
+      navigate(backTo);
     } catch (err) {
       console.error('Failed to save social platforms:', err);
     } finally {

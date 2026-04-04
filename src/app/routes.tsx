@@ -46,9 +46,11 @@ import { NotificationsSettings } from './pages/NotificationsSettings';
 import { FeedbackPage } from './pages/FeedbackPage';
 import { WhatsNewPage } from './pages/WhatsNewPage';
 import { BlueskyProfilePage } from './pages/BlueskyProfilePage';
+import { ResetPassword } from './pages/ResetPassword';
 
 export const router = createBrowserRouter([
-  { path: '/login',         element: <Login />,         errorElement: <ErrorBoundary /> },
+  { path: '/login',          element: <Login />,          errorElement: <ErrorBoundary /> },
+  { path: '/reset-password', element: <ResetPassword />,  errorElement: <ErrorBoundary /> },
   { path: '/signup',        element: <SignUp />,         errorElement: <ErrorBoundary /> },
   { path: '/auth/callback', element: <AuthCallback />,  errorElement: <ErrorBoundary /> },
   { path: '/privacy',         element: <PrivacyPolicy />,  errorElement: <ErrorBoundary /> },

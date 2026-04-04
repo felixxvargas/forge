@@ -456,7 +456,8 @@ export function NewPost() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="sm:fixed sm:inset-0 sm:z-50 sm:flex sm:items-end sm:justify-center md:items-center sm:bg-black/60">
+    <div className="w-full min-h-screen bg-background flex flex-col sm:min-h-0 sm:h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl sm:overflow-hidden sm:shadow-2xl">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card border-b border-border shrink-0">
         <div className="flex items-center justify-between p-4">
@@ -867,6 +868,7 @@ export function NewPost() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
