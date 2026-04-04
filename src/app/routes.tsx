@@ -49,10 +49,16 @@ const FeedbackPage          = lazy(() => import('./pages/FeedbackPage').then(m =
 const WhatsNewPage          = lazy(() => import('./pages/WhatsNewPage').then(m => ({ default: m.WhatsNewPage })));
 const BlueskyProfilePage    = lazy(() => import('./pages/BlueskyProfilePage').then(m => ({ default: m.BlueskyProfilePage })));
 const ResetPassword         = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const BlueskyCallback       = lazy(() => import('./pages/BlueskyCallback').then(m => ({ default: m.BlueskyCallback })));
+const MastodonCallback      = lazy(() => import('./pages/MastodonCallback').then(m => ({ default: m.MastodonCallback })));
+const SocialClaimAccount    = lazy(() => import('./pages/SocialClaimAccount').then(m => ({ default: m.SocialClaimAccount })));
 
 export const router = createBrowserRouter([
-  { path: '/login',          element: <Login />,          errorElement: <ErrorBoundary /> },
-  { path: '/reset-password', element: <ResetPassword />,  errorElement: <ErrorBoundary /> },
+  { path: '/login',                    element: <Login />,              errorElement: <ErrorBoundary /> },
+  { path: '/reset-password',           element: <ResetPassword />,      errorElement: <ErrorBoundary /> },
+  { path: '/auth/bluesky/callback',    element: <BlueskyCallback />,    errorElement: <ErrorBoundary /> },
+  { path: '/auth/mastodon/callback',   element: <MastodonCallback />,   errorElement: <ErrorBoundary /> },
+  { path: '/auth/social-claim',        element: <SocialClaimAccount />, errorElement: <ErrorBoundary /> },
   { path: '/signup',        element: <SignUp />,         errorElement: <ErrorBoundary /> },
   { path: '/auth/callback', element: <AuthCallback />,  errorElement: <ErrorBoundary /> },
   { path: '/privacy',         element: <PrivacyPolicy />,  errorElement: <ErrorBoundary /> },

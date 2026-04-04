@@ -44,6 +44,35 @@ export function AuthCallback() {
           return;
         }
 
+        // Apply pending social link (Bluesky/Mastodon account linking via magic link)
+        const pendingSocialLink = localStorage.getItem('forge-pending-social-link');
+        if (pendingSocialLink) {
+          localStorage.removeItem('forge-pending-social-link');
+          try {
+            const link = JSON.parse(pendingSocialLink);
+            const platform = link.provider; // 'bluesky' or 'mastodon'
+            // Fetch current social_handles and merge
+            const { data: currentProfile } = await supabase
+              .from('profiles')
+              .select('social_handles, social_platforms')
+              .eq('id', session.user.id)
+              .maybeSingle();
+            const currentHandles = (currentProfile?.social_handles as Record<string, string>) ?? {};
+            const currentPlatforms: string[] = currentProfile?.social_platforms ?? [];
+            await supabase.from('profiles').update({
+              social_handles: { ...currentHandles, [platform]: link.socialHandle },
+              social_platforms: currentPlatforms.includes(platform)
+                ? currentPlatforms
+                : [...currentPlatforms, platform],
+            }).eq('id', session.user.id);
+            toast.success(`${platform === 'bluesky' ? 'Bluesky' : 'Mastodon'} account linked!`);
+          } catch {
+            // ignore link errors — user is still signed in
+          }
+          navigate('/feed', { replace: true });
+          return;
+        }
+
         const oauthIntent = localStorage.getItem('forge-oauth-intent');
         localStorage.removeItem('forge-oauth-intent');
 

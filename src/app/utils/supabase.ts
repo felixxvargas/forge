@@ -513,6 +513,12 @@ export const posts = {
     repostsDisabled?: boolean;
     replyTo?: string;
   } = {}) {
+    // Content moderation check
+    if (content && content.trim().length >= 3) {
+      const { checkContent } = await import('./moderation');
+      const modResult = await checkContent(content);
+      if (!modResult.ok) throw new Error(modResult.reason || 'Content violates community guidelines.');
+    }
     // Support multi-game tagging: game_ids/game_titles arrays are the source of truth.
     // game_id/game_title kept for backward compat (first entry mirrors the array).
     const gameIds = options.gameIds ?? (options.gameId ? [options.gameId] : []);
@@ -1479,6 +1485,11 @@ export const directMessages = {
   },
 
   async send(senderId: string, recipientId: string, content: string) {
+    if (content && content.trim().length >= 3) {
+      const { checkContent } = await import('./moderation');
+      const modResult = await checkContent(content);
+      if (!modResult.ok) throw new Error(modResult.reason || 'Message violates community guidelines.');
+    }
     const { data, error } = await supabase
       .from('direct_messages')
       .insert({ sender_id: senderId, recipient_id: recipientId, content })
@@ -1534,6 +1545,11 @@ export const groupThreads = {
   },
 
   async sendMessage(threadId: string, senderId: string, content: string) {
+    if (content && content.trim().length >= 3) {
+      const { checkContent } = await import('./moderation');
+      const modResult = await checkContent(content);
+      if (!modResult.ok) throw new Error(modResult.reason || 'Message violates community guidelines.');
+    }
     const { data, error } = await supabase
       .from('group_messages')
       .insert({ thread_id: threadId, sender_id: senderId, content })

@@ -30,7 +30,9 @@ export default defineConfig({
           if (id.includes('recharts') || id.includes('/d3-') || id.includes('/d3/')) return 'vendor-charts';
           if (id.includes('@radix-ui')) return 'vendor-radix';
           if (id.includes('@sentry')) return 'vendor-sentry';
-          if (id.includes('react-dom') || id.includes('react-router') || id.includes('scheduler')) return 'vendor-react';
+          // Keep react, react-dom, react-router, and scheduler together — splitting them apart
+          // causes multiple React instance errors at runtime.
+          if (id.includes('/react/') || id.includes('react-dom') || id.includes('react-router') || id.includes('/scheduler/')) return 'vendor-react';
         },
       },
     },
