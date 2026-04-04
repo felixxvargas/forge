@@ -539,7 +539,7 @@ export function Profile() {
                 onClick={() => navigate(isOwnProfile ? '/followers' : `/followers/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{freshFollowerCount !== null ? formatNumber(freshFollowerCount) : '—'}</p>
+                <p className="text-xl font-semibold">{formatNumber(freshFollowerCount ?? (profileUser as any)?.follower_count ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Followers</p>
               </button>
               <button

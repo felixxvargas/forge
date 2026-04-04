@@ -50,8 +50,14 @@ export function BottomNav() {
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
         <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
-          <Link
-            to="/feed"
+          <button
+            onClick={() => {
+              if (location.pathname === '/feed' || location.pathname === '/') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } else {
+                navigate('/feed');
+              }
+            }}
             className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
               isActive('/feed') || location.pathname === '/'
                 ? 'text-accent'
@@ -59,7 +65,7 @@ export function BottomNav() {
             }`}
           >
             <Home className="w-6 h-6" />
-          </Link>
+          </button>
 
           <Link
             to="/explore"

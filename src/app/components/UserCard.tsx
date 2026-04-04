@@ -43,7 +43,7 @@ export function UserCard({ user }: UserCardProps) {
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-medium">{user.display_name || user.displayName || user.handle}</h3>
           </div>
-          <p className="text-sm text-muted-foreground mb-1">{user.handle}</p>
+          <p className="text-sm text-muted-foreground mb-1">@{(user.handle || '').replace(/^@/, '')}</p>
           {user.pronouns && (
             <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground">
               {user.pronouns}

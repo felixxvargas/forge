@@ -650,7 +650,7 @@ export function Explore() {
                                 {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-500 truncate">{u.handle}</p>
+                            <p className="text-xs text-gray-500 truncate">@{(u.handle || '').replace(/^@/, '')}</p>
                           </div>
                           {u.followerCount > 0 && (
                             <span className="text-xs text-gray-600 shrink-0">
