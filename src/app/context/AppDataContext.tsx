@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
-import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle } from '../utils/bluesky';
+import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
 import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
 
 // Quick lookup: topicId → User object (for attaching author to external posts)
@@ -676,11 +676,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       let rawPosts: any[] = [];
       if (user.platform === 'bluesky') {
         rawPosts = await fetchBskyPostsForHandle(user.handle, 10);
+        // Only follow on AT Proto if the current Forge user has an active Bluesky OAuth session
         if (user.did) {
-          followAtProtoAccount(user.did).catch(() => {});
+          getAtProtoSession().then(sess => {
+            if (sess) followAtProtoAccount(user.did!).catch(() => {});
+          }).catch(() => {});
         }
       } else if (user.platform === 'mastodon' && user.instance && user.accountId) {
         rawPosts = await fetchMastodonAccountPosts(user.instance, user.accountId, 10);
+        // Only follow on Mastodon if the current Forge user has a stored Mastodon token for this instance
         const token = getStoredMastodonToken(user.instance);
         if (token) {
           followMastodonAccount(user.instance, token, user.accountId).catch(() => {});
