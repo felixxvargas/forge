@@ -6,8 +6,10 @@ import { PostCard } from '../components/PostCard';
 import { WritePostButton } from '../components/WritePostButton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LoginModule } from '../components/LoginModule';
+import { SocialAuthButtons } from '../components/SocialAuthButtons';
 import { useAppData } from '../context/AppDataContext';
 import { posts as postsAPI } from '../utils/supabase';
+import ForgeSVG from '../../assets/forge-logo.svg?react';
 
 type FeedMode = 'following' | 'for-you' | 'trending' | { type: 'group'; id: string } | { type: 'game'; id: string; title: string };
 
@@ -330,9 +332,40 @@ export function Feed() {
         </div>
       )}
 
-      {/* First-visit full-screen overlay for desktop guests */}
+      {/* Desktop sidebar for logged-out users */}
+      {!isAuthenticated && (
+        <aside className="hidden xl:block fixed top-[4.5rem] left-[calc(50%+22rem)] w-64">
+          <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <ForgeSVG width="24" height="19" aria-hidden="true" />
+              <span className="font-black text-lg text-accent">Forge</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4 leading-snug">Connect with gamers across all platforms</p>
+            <Link
+              to="/signup"
+              className="w-full block text-center py-2.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-semibold text-sm mb-2"
+            >
+              Create free account
+            </Link>
+            <Link
+              to="/login"
+              className="w-full block text-center py-2.5 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium text-sm mb-4"
+            >
+              Sign in
+            </Link>
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center text-xs"><span className="px-2 bg-card text-muted-foreground">or continue with</span></div>
+            </div>
+            <SocialAuthButtons />
+          </div>
+        </aside>
+      )}
+
+      {/* First-visit full-screen overlay for desktop guests (md only — sidebar handles xl+) */}
       {!isAuthenticated && showGuestPopup && (
-        <div className="hidden md:block fixed inset-0 z-50 overflow-y-auto">
+        <div className="hidden md:block xl:hidden fixed inset-0 z-50 overflow-y-auto">
           <button
             onClick={dismissGuestPopup}
             className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
