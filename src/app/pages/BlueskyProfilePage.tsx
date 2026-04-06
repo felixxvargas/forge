@@ -16,14 +16,15 @@ const bskyHandleToForgeId: Record<string, string> = Object.fromEntries(
 export function BlueskyProfilePage() {
   const { handle } = useParams<{ handle: string }>();
   const navigate = useNavigate();
-  const { followingIds, likedPosts, repostedPosts } = useAppData() as any;
+  const { followingIds, likedPosts, repostedPosts, followExternalUser, unfollowExternalUser, externalFollowIds } = useAppData() as any;
 
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const forgeId = handle ? bskyHandleToForgeId[handle] : undefined;
-  const isFollowing = forgeId ? followingIds?.has(forgeId) : false;
+  const externalIsFollowing = handle ? (externalFollowIds?.has(`bsky-${handle}`) ?? false) : false;
+  const isFollowing = forgeId ? (followingIds?.has(forgeId) ?? false) : externalIsFollowing;
 
   useEffect(() => {
     if (!handle) return;
@@ -78,12 +79,36 @@ export function BlueskyProfilePage() {
                       <p className="text-sm text-muted-foreground">@{profile.handle}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {forgeId && (
+                      {forgeId ? (
                         <FollowButton
                           userId={forgeId}
                           initialFollowingState={isFollowing}
                           size="sm"
                         />
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            if (!isFollowing) {
+                              await followExternalUser({
+                                id: `bsky-${handle}`,
+                                platform: 'bluesky',
+                                handle: handle!,
+                                displayName: profile.displayName,
+                                avatar: profile.avatar,
+                                did: undefined,
+                              });
+                            } else {
+                              await unfollowExternalUser(`bsky-${handle}`);
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                            isFollowing
+                              ? 'bg-secondary text-foreground hover:bg-destructive/10 hover:text-destructive'
+                              : 'bg-accent text-accent-foreground hover:bg-accent/90'
+                          }`}
+                        >
+                          {isFollowing ? 'Following' : 'Follow'}
+                        </button>
                       )}
                       <a
                         href={`https://bsky.app/profile/${profile.handle}`}

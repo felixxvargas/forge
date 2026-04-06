@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
-import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
+import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle } from '../utils/bluesky';
+import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
 
 // Quick lookup: topicId → User object (for attaching author to external posts)
 const topicAccountById: Record<string, User> = Object.fromEntries(
@@ -50,6 +51,8 @@ interface AppDataContextType {
   unmuteUser: (userId: string) => Promise<void>;
   followingIds: Set<string>;
   followedGameIds: Set<string>;
+  filteredSocialPlatforms: Set<string>;
+  toggleSocialPlatformFilter: (platform: string) => void;
   groups: any[];
   getUserById: (userId: string) => any | undefined;
   getUserByHandle: (handle: string) => any | undefined;
@@ -60,6 +63,9 @@ interface AppDataContextType {
   markNotificationsAsRead: () => void;
   followGame: (gameId: string) => Promise<void>;
   unfollowGame: (gameId: string) => Promise<void>;
+  externalFollowIds: Set<string>;
+  followExternalUser: (user: { id: string; platform: string; handle: string; displayName: string; avatar?: string; instance?: string; accountId?: string; did?: string }) => Promise<void>;
+  unfollowExternalUser: (id: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -93,6 +99,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [filteredSocialPlatforms, setFilteredSocialPlatforms] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('forge-filtered-platforms');
+      return stored ? new Set(JSON.parse(stored)) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
+  const [externalFollows, setExternalFollows] = useState<any[]>([]);
+  const externalFollowIds = useMemo(() => new Set(externalFollows.map((f: any) => f.id)), [externalFollows]);
 
   const isAuthenticated = !!session;
 
@@ -159,10 +173,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const topicFollows: string[] = (profile?.game_lists?._topicFollows) ?? [];
       setFollowingIds(new Set([...followingIdList, ...topicFollows]));
       setHasUnreadNotifications(unreadCount > 0);
-      return topicFollows;
+      const externalFollowsList: any[] = (profile?.game_lists?._externalFollows) ?? [];
+      setExternalFollows(externalFollowsList);
+      return { topicFollows, externalFollows: externalFollowsList };
     } catch (e) {
       console.error('Error loading user data:', e);
-      return [];
+      return { topicFollows: [], externalFollows: [] };
     }
   }, []);
 
@@ -265,11 +281,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       try {
         await refreshFeed();
         if (session?.user) {
-          const topicFollows = await loadUserData(session.user.id);
+          const loadResult = await loadUserData(session.user.id);
+          const topicFollows = loadResult?.topicFollows ?? [];
+          const loadedExternalFollows = loadResult?.externalFollows ?? [];
           // Append posts from followed topic accounts into the following feed
           if (topicFollows && topicFollows.length > 0) {
             try {
-              const fetchPairs = topicFollows.map(topicId => {
+              const fetchPairs = topicFollows.map((topicId: string) => {
                 const bskyHandle = TOPIC_BLUESKY_MAP[topicId] ?? topicAccountBlueskyHandles[topicId];
                 const fetchJob = bskyHandle
                   ? fetchBlueskyPosts(bskyHandle, 10)
@@ -278,12 +296,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                     : Promise.resolve([]);
                 return { topicId, fetchJob };
               });
-              const results = await Promise.allSettled(fetchPairs.map(p => p.fetchJob));
+              const results = await Promise.allSettled(fetchPairs.map((p: any) => p.fetchJob));
               const topicPosts = results.flatMap((r, i) => {
                 if (r.status !== 'fulfilled') return [];
                 const { topicId } = fetchPairs[i];
                 const author = topicAccountById[topicId];
-                return r.value.map((post: any) => ({
+                return (r as any).value.map((post: any) => ({
                   ...post,
                   user_id: topicId,
                   created_at: post.timestamp instanceof Date
@@ -297,6 +315,45 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               }
             } catch (e) {
               console.error('Error loading topic account posts for feed:', e);
+            }
+          }
+          // Load posts for followed external Bluesky/Mastodon accounts
+          if (loadedExternalFollows.length > 0) {
+            try {
+              const externalPosts: any[] = [];
+              await Promise.allSettled(
+                loadedExternalFollows.map(async (ef: any) => {
+                  let rawPosts: any[] = [];
+                  if (ef.platform === 'bluesky') {
+                    rawPosts = await fetchBskyPostsForHandle(ef.handle, 10).catch(() => []);
+                  } else if (ef.platform === 'mastodon' && ef.instance && ef.accountId) {
+                    rawPosts = await fetchMastodonAccountPosts(ef.instance, ef.accountId, 10).catch(() => []);
+                  }
+                  const syntheticAuthor = {
+                    id: ef.id,
+                    handle: ef.handle,
+                    display_name: ef.displayName,
+                    profile_picture: ef.avatar ?? null,
+                  };
+                  for (const post of rawPosts) {
+                    externalPosts.push({
+                      ...post,
+                      user_id: ef.id,
+                      created_at: post.timestamp instanceof Date ? post.timestamp.toISOString() : (post.timestamp ?? post.created_at),
+                      author: syntheticAuthor,
+                    });
+                  }
+                })
+              );
+              if (externalPosts.length > 0) {
+                setTopicPosts(prev => {
+                  const existingIds = new Set(prev.map((p: any) => p.id));
+                  const toAdd = externalPosts.filter((p: any) => !existingIds.has(p.id));
+                  return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+                });
+              }
+            } catch (e) {
+              console.error('Error loading external follow posts:', e);
             }
           }
         } else {
@@ -348,6 +405,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           _followedGames:
             updated?.game_lists?._followedGames ??
             prev?.game_lists?._followedGames ??
+            [],
+          _externalFollows:
+            updated?.game_lists?._externalFollows ??
+            prev?.game_lists?._externalFollows ??
             [],
         },
       };
@@ -408,6 +469,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         return prev;
       });
+      // Also like on AT Protocol if this is a Bluesky post
+      if (postId.startsWith('at://')) {
+        const allPosts = [...postList, ...topicPosts];
+        const targetPost = allPosts.find((p: any) => p.id === postId);
+        if (targetPost?.cid) {
+          likeAtProtoPost(postId, targetPost.cid).catch(() => {});
+        }
+      }
+      // Also favourite on Mastodon if this is a Mastodon post
+      if (postId.startsWith('mastodon-')) {
+        const statusId = postId.replace('mastodon-', '');
+        const allPosts = [...postList, ...topicPosts];
+        const targetPost = allPosts.find((p: any) => p.id === postId);
+        const instance = targetPost?.externalUrl ? (() => { try { return new URL(targetPost.externalUrl).hostname; } catch { return null; } })() : null;
+        if (instance) {
+          const token = getStoredMastodonToken(instance);
+          if (token) favouriteMastodonPost(instance, token, statusId).catch(() => {});
+        }
+      }
     } catch {
       // Rollback on error
       setLikedPosts(prev => { const s = new Set(prev); s.delete(postId); return s; });
@@ -422,6 +502,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPostList(prev => prev.map(p => p.id === postId ? { ...p, like_count: Math.max(0, (p.like_count ?? 0) - 1) } : p));
     try {
       await postsAPI.unlike(session.user.id, postId);
+      if (postId.startsWith('at://')) {
+        unlikeAtProtoPost(postId).catch(() => {});
+      }
+      if (postId.startsWith('mastodon-')) {
+        const statusId = postId.replace('mastodon-', '');
+        const allPosts = [...postList, ...topicPosts];
+        const targetPost = allPosts.find((p: any) => p.id === postId);
+        const instance = targetPost?.externalUrl ? (() => { try { return new URL(targetPost.externalUrl).hostname; } catch { return null; } })() : null;
+        if (instance) {
+          const token = getStoredMastodonToken(instance);
+          if (token) unfavouriteMastodonPost(instance, token, statusId).catch(() => {});
+        }
+      }
     } catch {
       // Rollback on error
       setLikedPosts(prev => new Set([...prev, postId]));
@@ -445,6 +538,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         return updated;
       });
+      if (postId.startsWith('at://')) {
+        const allPosts = [...postList, ...topicPosts];
+        const targetPost = allPosts.find((p: any) => p.id === postId);
+        if (targetPost?.cid) repostAtProtoPost(postId, targetPost.cid).catch(() => {});
+      }
+      if (postId.startsWith('mastodon-')) {
+        const statusId = postId.replace('mastodon-', '');
+        const allPosts = [...postList, ...topicPosts];
+        const targetPost = allPosts.find((p: any) => p.id === postId);
+        const instance = targetPost?.externalUrl ? (() => { try { return new URL(targetPost.externalUrl).hostname; } catch { return null; } })() : null;
+        if (instance) {
+          const token = getStoredMastodonToken(instance);
+          if (token) boostMastodonPost(instance, token, statusId).catch(() => {});
+        }
+      }
     } finally {
       pendingReposts.current.delete(postId);
     }
@@ -462,6 +570,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
     try {
       await postsAPI.unrepost(uid, postId);
+      if (postId.startsWith('at://')) unrepostAtProtoPost(postId).catch(() => {});
+      if (postId.startsWith('mastodon-')) {
+        const statusId = postId.replace('mastodon-', '');
+        const allPosts = [...postList, ...topicPosts];
+        const targetPost = allPosts.find((p: any) => p.id === postId);
+        const instance = targetPost?.externalUrl ? (() => { try { return new URL(targetPost.externalUrl).hostname; } catch { return null; } })() : null;
+        if (instance) {
+          const token = getStoredMastodonToken(instance);
+          if (token) unboostMastodonPost(instance, token, statusId).catch(() => {});
+        }
+      }
     } catch {
       // Revert on error
       setRepostedPosts(prev => new Set([...prev, postId]));
@@ -535,6 +654,67 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u
     ));
     setCurrentUser((prev: any) => prev ? { ...prev, following_count: Math.max(0, (prev.following_count ?? 0) - 1) } : prev);
+  };
+
+  const followExternalUser = async (user: { id: string; platform: string; handle: string; displayName: string; avatar?: string; instance?: string; accountId?: string; did?: string }) => {
+    if (!session?.user) return;
+    const existing = (currentUser?.game_lists ?? {}) as any;
+    const prev: any[] = existing._externalFollows ?? [];
+    if (prev.find((f: any) => f.id === user.id)) return; // already following
+
+    const updated = [...prev, user];
+    await profiles.update(session.user.id, { game_lists: { ...existing, _externalFollows: updated } });
+    setExternalFollows(updated);
+    setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _externalFollows: updated } } : u);
+    currentUserRef.current = { ...(currentUserRef.current ?? {}), game_lists: { ...(currentUserRef.current?.game_lists ?? {}), _externalFollows: updated } };
+
+    // Add to followingIds for UI consistency
+    setFollowingIds(prev => new Set([...prev, user.id]));
+
+    // Fetch their posts and inject into feed
+    try {
+      let rawPosts: any[] = [];
+      if (user.platform === 'bluesky') {
+        rawPosts = await fetchBskyPostsForHandle(user.handle, 10);
+        if (user.did) {
+          followAtProtoAccount(user.did).catch(() => {});
+        }
+      } else if (user.platform === 'mastodon' && user.instance && user.accountId) {
+        rawPosts = await fetchMastodonAccountPosts(user.instance, user.accountId, 10);
+        const token = getStoredMastodonToken(user.instance);
+        if (token) {
+          followMastodonAccount(user.instance, token, user.accountId).catch(() => {});
+        }
+      }
+      if (rawPosts.length > 0) {
+        const syntheticAuthor = { id: user.id, handle: user.handle, display_name: user.displayName, profile_picture: user.avatar ?? null };
+        const newPosts = rawPosts.map((post: any) => ({
+          ...post,
+          user_id: user.id,
+          created_at: post.timestamp instanceof Date ? post.timestamp.toISOString() : (post.timestamp ?? post.created_at),
+          author: syntheticAuthor,
+        }));
+        setTopicPosts(prev => {
+          const existingIds = new Set(prev.map((p: any) => p.id));
+          const toAdd = newPosts.filter((p: any) => !existingIds.has(p.id));
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching posts for followed external account:', e);
+    }
+  };
+
+  const unfollowExternalUser = async (id: string) => {
+    if (!session?.user) return;
+    const existing = (currentUser?.game_lists ?? {}) as any;
+    const updated = (existing._externalFollows ?? []).filter((f: any) => f.id !== id);
+    await profiles.update(session.user.id, { game_lists: { ...existing, _externalFollows: updated } });
+    setExternalFollows(updated);
+    setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _externalFollows: updated } } : u);
+    currentUserRef.current = { ...(currentUserRef.current ?? {}), game_lists: { ...(currentUserRef.current?.game_lists ?? {}), _externalFollows: updated } };
+    setFollowingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    setTopicPosts(prev => prev.filter((p: any) => p.user_id !== id));
   };
 
   const blockUser = async (userId: string) => {
@@ -619,6 +799,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return group;
   };
 
+  const toggleSocialPlatformFilter = (platform: string) => {
+    setFilteredSocialPlatforms(prev => {
+      const next = new Set(prev);
+      if (next.has(platform)) next.delete(platform); else next.add(platform);
+      localStorage.setItem('forge-filtered-platforms', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const markNotificationsAsRead = async () => {
     if (!session?.user) return;
     await notificationsAPI.markAllRead(session.user.id);
@@ -668,6 +857,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       unmuteUser,
       followingIds,
       followedGameIds,
+      filteredSocialPlatforms,
+      toggleSocialPlatformFilter,
       followGame,
       unfollowGame,
       groups: groupsList,
@@ -678,6 +869,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       refreshFeed,
       refreshGroups,
       markNotificationsAsRead,
+      externalFollowIds,
+      followExternalUser,
+      unfollowExternalUser,
     }}>
       {children}
     </AppDataContext.Provider>

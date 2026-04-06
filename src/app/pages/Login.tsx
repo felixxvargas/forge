@@ -83,7 +83,7 @@ export function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background">
-      <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-10 sm:pt-0">
+      <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-20 sm:pt-0">
         <div className="text-center mb-8">
           <div className="w-20 h-16 mx-auto mb-4 flex items-center justify-center">
             <ForgeSVG width="80" height="64" aria-hidden="true" />

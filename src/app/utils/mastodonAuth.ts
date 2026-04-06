@@ -3,7 +3,7 @@ const REDIRECT_URI =
     ? `${window.location.origin}/auth/mastodon/callback`
     : 'https://forge-social.app/auth/mastodon/callback';
 
-const SCOPES = 'read:accounts';
+const SCOPES = 'read:accounts write:favourites write:statuses write:follows';
 
 interface MastodonClientCredentials {
   client_id: string;
@@ -151,4 +151,99 @@ export function normalizeMastodonHandle(acct: string, instance: string): string 
 
   // Local accounts only have the username
   return `@${acct}@${instance}`;
+}
+
+/** Gets the stored Mastodon access token for the given instance (set after OAuth). */
+export function getStoredMastodonToken(instance: string): string | null {
+  return localStorage.getItem(`forge-mastodon-token-${instance}`);
+}
+
+/** Stores the Mastodon access token after OAuth. */
+export function storeMastodonToken(instance: string, token: string): void {
+  localStorage.setItem(`forge-mastodon-token-${instance}`, token);
+  localStorage.setItem('forge-mastodon-last-instance', instance);
+}
+
+/** Gets the instance of the most recently linked Mastodon account. */
+export function getLastMastodonInstance(): string | null {
+  return localStorage.getItem('forge-mastodon-last-instance');
+}
+
+async function mastodonPost(instance: string, token: string, path: string): Promise<any> {
+  const res = await fetch(`https://${instance}/api/v1/${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Mastodon API error ${res.status} on ${path}`);
+  return res.json();
+}
+
+export async function favouriteMastodonPost(instance: string, token: string, statusId: string): Promise<void> {
+  await mastodonPost(instance, token, `statuses/${statusId}/favourite`);
+}
+
+export async function unfavouriteMastodonPost(instance: string, token: string, statusId: string): Promise<void> {
+  await mastodonPost(instance, token, `statuses/${statusId}/unfavourite`);
+}
+
+export async function boostMastodonPost(instance: string, token: string, statusId: string): Promise<void> {
+  await mastodonPost(instance, token, `statuses/${statusId}/reblog`);
+}
+
+export async function unboostMastodonPost(instance: string, token: string, statusId: string): Promise<void> {
+  await mastodonPost(instance, token, `statuses/${statusId}/unreblog`);
+}
+
+export async function replyToMastodonPost(instance: string, token: string, inReplyToId: string, text: string): Promise<void> {
+  const res = await fetch(`https://${instance}/api/v1/statuses`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: text, in_reply_to_id: inReplyToId }),
+  });
+  if (!res.ok) throw new Error(`Mastodon reply failed: ${res.status}`);
+}
+
+export async function followMastodonAccount(instance: string, token: string, accountId: string): Promise<void> {
+  await mastodonPost(instance, token, `accounts/${accountId}/follow`);
+}
+
+export async function unfollowMastodonAccount(instance: string, token: string, accountId: string): Promise<void> {
+  await mastodonPost(instance, token, `accounts/${accountId}/unfollow`);
+}
+
+/** Fetch posts from an arbitrary Mastodon account by instance + account ID (public, no auth needed). */
+export async function fetchMastodonAccountPosts(instance: string, accountId: string, limit = 10): Promise<any[]> {
+  try {
+    const res = await fetch(
+      `https://${instance}/api/v1/accounts/${accountId}/statuses?limit=${limit}&exclude_replies=true`
+    );
+    if (!res.ok) return [];
+    const statuses = await res.json();
+    return statuses
+      .filter((s: any) => s.content && !s.reblog)
+      .map((s: any) => {
+        const text = s.content
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+          .trim();
+        const images = s.media_attachments?.filter((m: any) => m.type === 'image').map((m: any) => m.url);
+        return {
+          id: `mastodon-${s.id}`,
+          userId: `masto-${instance}-${accountId}`,
+          content: text,
+          timestamp: new Date(s.created_at),
+          likes: s.favourites_count ?? 0,
+          reposts: s.reblogs_count ?? 0,
+          comments: s.replies_count ?? 0,
+          images: images?.length ? images : undefined,
+          platform: 'mastodon' as const,
+          url: s.card?.url ?? undefined,
+          externalUrl: s.url,
+        };
+      });
+  } catch {
+    return [];
+  }
 }

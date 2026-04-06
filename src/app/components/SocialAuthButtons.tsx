@@ -58,7 +58,7 @@ export function SocialAuthButtons({ disabled }: Props) {
           type="button"
           onClick={() => setActive('bluesky')}
           disabled={disabled}
-          className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-sky-500 text-white rounded-xl hover:bg-sky-600 active:bg-sky-700 transition-colors font-medium disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-sky-500 text-white rounded-xl hover:bg-sky-600 active:bg-sky-700 transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
         >
           <BlueskySVG className="w-5 h-5 shrink-0" />
           Continue with Bluesky
@@ -111,7 +111,7 @@ export function SocialAuthButtons({ disabled }: Props) {
           type="button"
           onClick={() => setActive('mastodon')}
           disabled={disabled}
-          className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-[#6364ff] text-white rounded-xl hover:bg-[#5253e0] active:bg-[#4344cc] transition-colors font-medium disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-[#6364ff] text-white rounded-xl hover:bg-[#5253e0] active:bg-[#4344cc] transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
         >
           <MastodonSVG className="w-5 h-5 shrink-0" />
           Continue with Mastodon

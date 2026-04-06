@@ -334,7 +334,7 @@ export function Feed() {
 
       {/* Desktop sidebar for logged-out users */}
       {!isAuthenticated && (
-        <aside className="hidden xl:block fixed top-[4.5rem] left-[calc(50%+22rem)] w-64">
+        <aside className="hidden xl:block fixed top-[9rem] left-[calc(50%+22rem)] w-64">
           <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
             <div className="flex items-center gap-2 mb-3">
               <ForgeSVG width="24" height="19" aria-hidden="true" />
@@ -346,7 +346,7 @@ export function Feed() {
               to="/signup"
               className="w-full block text-center py-2.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-semibold text-sm mb-2"
             >
-              Create free account
+              Create account
             </Link>
             <Link
               to="/login"

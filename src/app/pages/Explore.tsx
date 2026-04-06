@@ -17,7 +17,7 @@ import { gamesAPI } from '../utils/api';
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 
 export function Explore() {
-  const { posts, users, getUserById, followingIds, currentUser, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading } = useAppData();
+  const { posts, users, getUserById, followingIds, currentUser, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading, followExternalUser, unfollowExternalUser, externalFollowIds, isAuthenticated } = useAppData() as any;
 
   const [activeTab, setActiveTab] = useState<ExploreTab>(() => {
     const saved = localStorage.getItem('explore-active-tab');
@@ -656,6 +656,49 @@ export function Explore() {
                             <span className="text-xs text-gray-600 shrink-0">
                               {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
                             </span>
+                          )}
+                          {isAuthenticated && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const efId = u.platform === 'bluesky'
+                                  ? `bsky-${(u.handle || '').replace(/^@/, '')}`
+                                  : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`;
+                                const isFollowing = externalFollowIds?.has(efId);
+                                if (isFollowing) {
+                                  await unfollowExternalUser(efId);
+                                } else {
+                                  const instance = u.platform === 'mastodon'
+                                    ? (() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()
+                                    : undefined;
+                                  const accountId = u.platform === 'mastodon' ? u.id.replace('mastodon-', '') : undefined;
+                                  await followExternalUser({
+                                    id: efId,
+                                    platform: u.platform,
+                                    handle: (u.handle || '').replace(/^@/, ''),
+                                    displayName: u.displayName,
+                                    avatar: u.avatar,
+                                    instance,
+                                    accountId,
+                                  });
+                                }
+                              }}
+                              className={`shrink-0 px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+                                externalFollowIds?.has(
+                                  u.platform === 'bluesky'
+                                    ? `bsky-${(u.handle || '').replace(/^@/, '')}`
+                                    : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`
+                                )
+                                  ? 'bg-gray-700 text-gray-300 hover:bg-red-900/40 hover:text-red-400'
+                                  : 'bg-purple-600 text-white hover:bg-purple-500'
+                              }`}
+                            >
+                              {externalFollowIds?.has(
+                                u.platform === 'bluesky'
+                                  ? `bsky-${(u.handle || '').replace(/^@/, '')}`
+                                  : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`
+                              ) ? 'Following' : 'Follow'}
+                            </button>
                           )}
                         </div>
                       ))}

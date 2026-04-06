@@ -20,6 +20,7 @@ interface BlueskyPost {
   images?: string[];
   platform: 'bluesky' | 'mastodon';
   externalUrl: string;
+  cid?: string;
 }
 
 // Cache for Bluesky data to avoid excessive API calls
@@ -99,6 +100,7 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
           platform: 'bluesky' as const,
           url: articleUrl,
           externalUrl: `https://bsky.app/profile/${post.author?.handle ?? handle}/post/${post.uri.split('/').pop()}`,
+          cid: post.cid,
         };
       });
 
@@ -257,5 +259,175 @@ export async function searchBlueskyUsers(query: string, limit = 5): Promise<Exte
     }));
   } catch {
     return [];
+  }
+}
+
+import { BrowserOAuthClient } from '@atproto/oauth-client-browser';
+import { Agent } from '@atproto/api';
+
+// Store like/repost AT Proto record URIs so we can delete them later
+const bskyInteractionStore = {
+  getLikeUri: (postUri: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('forge-bsky-likes') || '{}');
+      return map[postUri] as string | undefined;
+    } catch { return undefined; }
+  },
+  setLikeUri: (postUri: string, likeUri: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('forge-bsky-likes') || '{}');
+      map[postUri] = likeUri;
+      localStorage.setItem('forge-bsky-likes', JSON.stringify(map));
+    } catch {}
+  },
+  deleteLikeUri: (postUri: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('forge-bsky-likes') || '{}');
+      delete map[postUri];
+      localStorage.setItem('forge-bsky-likes', JSON.stringify(map));
+    } catch {}
+  },
+  getRepostUri: (postUri: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('forge-bsky-reposts') || '{}');
+      return map[postUri] as string | undefined;
+    } catch { return undefined; }
+  },
+  setRepostUri: (postUri: string, repostUri: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('forge-bsky-reposts') || '{}');
+      map[postUri] = repostUri;
+      localStorage.setItem('forge-bsky-reposts', JSON.stringify(map));
+    } catch {}
+  },
+  deleteRepostUri: (postUri: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('forge-bsky-reposts') || '{}');
+      delete map[postUri];
+      localStorage.setItem('forge-bsky-reposts', JSON.stringify(map));
+    } catch {}
+  },
+};
+
+export async function getAtProtoSession(): Promise<{ agent: Agent; did: string } | null> {
+  try {
+    const IS_DEV = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+    const CLIENT_ID = IS_DEV ? 'http://localhost' : 'https://forge-social.app/client-metadata.json';
+    const client = new BrowserOAuthClient({ clientId: CLIENT_ID, handleResolver: 'https://bsky.social' });
+    const result = await client.init();
+    if (!result) return null;
+    const agent = new Agent(result.session);
+    return { agent, did: result.session.did };
+  } catch {
+    return null;
+  }
+}
+
+export async function likeAtProtoPost(uri: string, cid: string): Promise<void> {
+  const sess = await getAtProtoSession();
+  if (!sess) return;
+  const { agent, did } = sess;
+  try {
+    const resp = await (agent as any).api.com.atproto.repo.createRecord({
+      repo: did,
+      collection: 'app.bsky.feed.like',
+      record: { $type: 'app.bsky.feed.like', subject: { uri, cid }, createdAt: new Date().toISOString() },
+    });
+    bskyInteractionStore.setLikeUri(uri, resp.data.uri);
+  } catch (e) {
+    console.warn('[bsky] like failed:', e);
+  }
+}
+
+export async function unlikeAtProtoPost(uri: string): Promise<void> {
+  const likeUri = bskyInteractionStore.getLikeUri(uri);
+  if (!likeUri) return;
+  const sess = await getAtProtoSession();
+  if (!sess) return;
+  const { agent, did } = sess;
+  try {
+    const [, , rkey] = likeUri.replace('at://', '').split('/');
+    await (agent as any).api.com.atproto.repo.deleteRecord({
+      repo: did,
+      collection: 'app.bsky.feed.like',
+      rkey,
+    });
+    bskyInteractionStore.deleteLikeUri(uri);
+  } catch (e) {
+    console.warn('[bsky] unlike failed:', e);
+  }
+}
+
+export async function repostAtProtoPost(uri: string, cid: string): Promise<void> {
+  const sess = await getAtProtoSession();
+  if (!sess) return;
+  const { agent, did } = sess;
+  try {
+    const resp = await (agent as any).api.com.atproto.repo.createRecord({
+      repo: did,
+      collection: 'app.bsky.feed.repost',
+      record: { $type: 'app.bsky.feed.repost', subject: { uri, cid }, createdAt: new Date().toISOString() },
+    });
+    bskyInteractionStore.setRepostUri(uri, resp.data.uri);
+  } catch (e) {
+    console.warn('[bsky] repost failed:', e);
+  }
+}
+
+export async function unrepostAtProtoPost(uri: string): Promise<void> {
+  const repostUri = bskyInteractionStore.getRepostUri(uri);
+  if (!repostUri) return;
+  const sess = await getAtProtoSession();
+  if (!sess) return;
+  const { agent, did } = sess;
+  try {
+    const [, , rkey] = repostUri.replace('at://', '').split('/');
+    await (agent as any).api.com.atproto.repo.deleteRecord({
+      repo: did,
+      collection: 'app.bsky.feed.repost',
+      rkey,
+    });
+    bskyInteractionStore.deleteRepostUri(uri);
+  } catch (e) {
+    console.warn('[bsky] unrepost failed:', e);
+  }
+}
+
+export async function replyToAtProtoPost(
+  parentUri: string, parentCid: string,
+  rootUri: string, rootCid: string,
+  text: string
+): Promise<void> {
+  const sess = await getAtProtoSession();
+  if (!sess) return;
+  const { agent, did } = sess;
+  try {
+    await (agent as any).api.com.atproto.repo.createRecord({
+      repo: did,
+      collection: 'app.bsky.feed.post',
+      record: {
+        $type: 'app.bsky.feed.post',
+        text,
+        reply: { root: { uri: rootUri, cid: rootCid }, parent: { uri: parentUri, cid: parentCid } },
+        createdAt: new Date().toISOString(),
+      },
+    });
+  } catch (e) {
+    console.warn('[bsky] reply failed:', e);
+  }
+}
+
+export async function followAtProtoAccount(did: string): Promise<void> {
+  const sess = await getAtProtoSession();
+  if (!sess) return;
+  const { agent, did: myDid } = sess;
+  try {
+    await (agent as any).api.com.atproto.repo.createRecord({
+      repo: myDid,
+      collection: 'app.bsky.graph.follow',
+      record: { $type: 'app.bsky.graph.follow', subject: did, createdAt: new Date().toISOString() },
+    });
+  } catch (e) {
+    console.warn('[bsky] follow failed:', e);
   }
 }

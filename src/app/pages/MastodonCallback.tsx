@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { supabase } from '../utils/supabase';
-import { exchangeMastodonCode, getMastodonProfile, normalizeMastodonHandle } from '../utils/mastodonAuth';
+import { exchangeMastodonCode, getMastodonProfile, normalizeMastodonHandle, storeMastodonToken } from '../utils/mastodonAuth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
@@ -29,6 +29,8 @@ export function MastodonCallback() {
 
         setStatus('Exchanging authorization code…');
         const accessToken = await exchangeMastodonCode(code, instance);
+        // Store token for ongoing interactions (favourites, boosts, replies, follows)
+        storeMastodonToken(instance, accessToken);
 
         setStatus('Fetching your Mastodon profile…');
         const mastodonProfile = await getMastodonProfile(instance, accessToken);
