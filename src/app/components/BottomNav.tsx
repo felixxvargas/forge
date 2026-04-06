@@ -34,9 +34,10 @@ export function BottomNav() {
   return (
     <>
       {/* Auth modal for guests */}
+      {/* Auth modal — mobile: slide-up sheet; desktop: full-screen overlay */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 px-0 sm:px-4">
-          <div className="relative w-full sm:max-w-md sm:rounded-2xl overflow-auto max-h-screen bg-background">
+        <div className="fixed inset-0 z-[60] flex items-end md:block bg-black/60 md:bg-transparent">
+          <div className="relative w-full md:h-full md:overflow-y-auto rounded-t-2xl md:rounded-none overflow-hidden bg-background">
             <button
               onClick={() => setShowAuthModal(false)}
               className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"

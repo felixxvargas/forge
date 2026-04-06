@@ -330,18 +330,16 @@ export function Feed() {
         </div>
       )}
 
-      {/* First-visit popup for desktop guests */}
+      {/* First-visit full-screen overlay for desktop guests */}
       {!isAuthenticated && showGuestPopup && (
-        <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center bg-black/60 px-4">
-          <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
-            <button
-              onClick={dismissGuestPopup}
-              className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <LoginModule variant="page" onSuccess={dismissGuestPopup} />
-          </div>
+        <div className="hidden md:block fixed inset-0 z-50 overflow-y-auto">
+          <button
+            onClick={dismissGuestPopup}
+            className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <LoginModule variant="page" onSuccess={dismissGuestPopup} />
         </div>
       )}
     </div>
