@@ -4,6 +4,7 @@ import { Mail, Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
+import { SocialAuthButtons } from '../components/SocialAuthButtons';
 
 function PasswordRule({ met, text }: { met: boolean; text: string }) {
   return (
@@ -27,43 +28,6 @@ export function SignUp() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const [showBlueskyInput, setShowBlueskyInput] = useState(false);
-  const [blueskyHandle, setBlueskyHandle] = useState('');
-  const [blueskyLoading, setBlueskyLoading] = useState(false);
-  const [blueskyError, setBlueskyError] = useState('');
-  const [showMastodonInput, setShowMastodonInput] = useState(false);
-  const [mastodonInstance, setMastodonInstance] = useState('');
-  const [mastodonLoading, setMastodonLoading] = useState(false);
-  const [mastodonError, setMastodonError] = useState('');
-
-  const handleBlueskySignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const handle = blueskyHandle.trim().replace(/^@/, '');
-    if (!handle) return;
-    setBlueskyLoading(true); setBlueskyError('');
-    try {
-      const { initiateBlueskyLogin } = await import('../utils/blueskyAuth');
-      await initiateBlueskyLogin(handle);
-    } catch (err: any) {
-      setBlueskyError(err.message || 'Bluesky sign-in failed. Check your handle.');
-      setBlueskyLoading(false);
-    }
-  };
-
-  const handleMastodonSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const instance = mastodonInstance.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (!instance) return;
-    setMastodonLoading(true); setMastodonError('');
-    try {
-      const { initiateMastodonLogin } = await import('../utils/mastodonAuth');
-      await initiateMastodonLogin(instance);
-    } catch (err: any) {
-      setMastodonError(err.message || 'Mastodon sign-in failed. Check your instance.');
-      setMastodonLoading(false);
-    }
-  };
 
   const rules = {
     length: password.length >= 8 && password.length <= 64,
@@ -165,50 +129,7 @@ export function SignUp() {
             Sign up with Google
           </button>
 
-          {/* Bluesky */}
-          {!showBlueskyInput ? (
-            <button type="button" onClick={() => { setShowBlueskyInput(true); setShowMastodonInput(false); }} disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors mb-3 disabled:opacity-50 font-medium">
-              <svg className="w-5 h-5" viewBox="0 0 360 320" fill="currentColor"><path d="M180 141.964C163.699 110.262 119.308 51.1 78.0485 32.0987C38.1258 13.5097 0 31.3737 0 71.4946C0 82.5457 4.5 165.613 6 180.5C12.5 239.737 68.5 257.15 123.5 250.5C75.1 258.5 29.5 289.5 29.5 341.5C29.5 393.5 74.0835 413.5 118.5 413.5C173.5 413.5 200 388.5 220 358.5C240 388.5 266.5 413.5 321.5 413.5C365.917 413.5 410.5 393.5 410.5 341.5C410.5 289.5 364.9 258.5 316.5 250.5C371.5 257.15 427.5 239.737 434 180.5C435.5 165.613 440 82.5457 440 71.4946C440 31.3737 401.874 13.5097 361.952 32.0987C320.692 51.1 276.301 110.262 260 141.964V141.964Z"/></svg>
-              Sign up with Bluesky
-            </button>
-          ) : (
-            <form onSubmit={handleBlueskySignUp} className="mb-3">
-              {blueskyError && <p className="text-xs text-destructive mb-1.5">{blueskyError}</p>}
-              <div className="flex gap-2">
-                <input type="text" value={blueskyHandle} onChange={e => setBlueskyHandle(e.target.value)}
-                  placeholder="you.bsky.social" autoFocus disabled={blueskyLoading}
-                  className="flex-1 px-3 py-2.5 bg-secondary rounded-lg border border-sky-500/50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm" />
-                <button type="submit" disabled={blueskyLoading || !blueskyHandle.trim()}
-                  className="px-4 py-2.5 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-medium text-sm disabled:opacity-50">{blueskyLoading ? '…' : 'Go'}</button>
-                <button type="button" onClick={() => { setShowBlueskyInput(false); setBlueskyHandle(''); setBlueskyError(''); }}
-                  className="px-3 py-2.5 bg-secondary rounded-lg text-muted-foreground hover:text-foreground text-sm">✕</button>
-              </div>
-            </form>
-          )}
-
-          {/* Mastodon */}
-          {!showMastodonInput ? (
-            <button type="button" onClick={() => { setShowMastodonInput(true); setShowBlueskyInput(false); }} disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#6364ff] text-white rounded-lg hover:bg-[#5253e0] transition-colors mb-4 disabled:opacity-50 font-medium">
-              <svg className="w-5 h-5" viewBox="0 0 74 79" fill="currentColor"><path d="M73.7014 17.4323C72.5616 9.05445 65.1095 2.32028 56.254 1.0651C54.7214 0.826088 49.0778 0 36.9817 0H36.9178C24.8166 0 22.1861 0.826088 20.6497 1.0651C11.9703 2.29253 4.14925 8.26853 2.5469 16.7197C1.7558 20.9174 1.6621 25.4968 1.81198 29.7472C2.02372 35.7573 2.06698 41.7536 2.51927 47.7424C2.84058 51.9712 3.43222 56.1717 4.29474 60.3061C5.94592 67.9661 13.0358 74.1945 20.6319 76.5658C28.7803 79.0417 37.5146 79.5049 45.8924 77.9219C46.8352 77.7376 47.7715 77.5182 48.6938 77.2683L48.6151 77.3429C47.7159 77.6034 46.7903 77.8252 45.8541 77.9872C37.5478 79.5476 29.0156 79.0972 20.9327 76.5883C13.0826 74.2126 6.19137 67.9406 4.56904 60.2462C3.70862 56.0954 3.11841 51.8797 2.79719 47.6348C2.33913 41.6174 2.29733 35.5953 2.08414 29.5617C1.92851 25.2871 2.02081 20.6845 2.81592 16.4538C4.46277 8.1014 12.4044 2.22261 21.2267 1.00019C22.7812 0.756765 25.8163 0 36.9178 0H36.9817C48.0776 0 51.3103 0.752563 52.6724 0.987609C61.4197 2.21284 69.2257 8.02252 70.8695 16.3924C71.6767 20.6637 71.7549 25.3157 71.5846 29.6284C71.3591 35.6661 71.3043 41.6993 70.8428 47.7091C70.5183 51.9494 69.9253 56.1628 69.0632 60.3113C67.4395 67.9699 60.3573 74.2132 52.7661 76.5858C44.7146 79.0913 36.1793 79.5626 27.9169 77.9857C27.0063 77.823 26.1063 77.6075 25.2161 77.3417C24.3209 77.0759 23.4341 76.7671 22.5638 76.4161L22.4957 76.3456C30.8571 77.9267 39.59 77.4587 47.7218 74.9612C55.3185 72.5937 62.4116 66.3617 64.0354 58.6987C64.8995 54.5527 65.4938 50.3354 65.8177 46.0896C66.2744 40.0753 66.3306 34.0394 66.5512 27.9988C66.7089 23.671 66.6147 19.0588 65.8048 14.7852C64.186 6.71399 56.9918 1.19087 48.3914 0.0547485C46.923 -0.133348 44.2247 -0.000219345 36.9817 0V0Z"/></svg>
-              Sign up with Mastodon
-            </button>
-          ) : (
-            <form onSubmit={handleMastodonSignUp} className="mb-4">
-              {mastodonError && <p className="text-xs text-destructive mb-1.5">{mastodonError}</p>}
-              <div className="flex gap-2">
-                <input type="text" value={mastodonInstance} onChange={e => setMastodonInstance(e.target.value)}
-                  placeholder="mastodon.social" autoFocus disabled={mastodonLoading}
-                  className="flex-1 px-3 py-2.5 bg-secondary rounded-lg border border-[#6364ff]/50 focus:outline-none focus:ring-2 focus:ring-[#6364ff] text-sm" />
-                <button type="submit" disabled={mastodonLoading || !mastodonInstance.trim()}
-                  className="px-4 py-2.5 bg-[#6364ff] text-white rounded-lg hover:bg-[#5253e0] transition-colors font-medium text-sm disabled:opacity-50">{mastodonLoading ? '…' : 'Go'}</button>
-                <button type="button" onClick={() => { setShowMastodonInput(false); setMastodonInstance(''); setMastodonError(''); }}
-                  className="px-3 py-2.5 bg-secondary rounded-lg text-muted-foreground hover:text-foreground text-sm">✕</button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5">Enter your Mastodon server domain</p>
-            </form>
-          )}
+          <SocialAuthButtons disabled={isLoading} />
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
