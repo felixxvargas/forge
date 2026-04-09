@@ -8,7 +8,12 @@ interface Props {
   disabled?: boolean;
 }
 
-export function SocialAuthButtons({ disabled }: Props) {
+export function SocialAuthButtons({ disabled: _disabled }: Props) {
+  return null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _SocialAuthButtonsFull({ disabled }: Props) {
   const [active, setActive] = useState<'bluesky' | 'mastodon' | null>(null);
 
   const [blueskyHandle, setBlueskyHandle] = useState('');

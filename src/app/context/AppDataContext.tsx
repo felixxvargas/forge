@@ -36,7 +36,7 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string) => Promise<string | undefined>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string, quotePostId?: string) => Promise<string | undefined>;
   addPosts: (newPosts: any[]) => void;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
@@ -425,9 +425,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string): Promise<string | undefined> => {
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string, quotePostId?: string): Promise<string | undefined> => {
     if (!session?.user) return undefined;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled, replyTo });
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled, replyTo, quotePostId });
     if (!replyTo) {
       setPostList(prev => [post, ...prev]);
     } else {
@@ -788,11 +788,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .filter((g: any) => g?.id)
       .map((g: any) => ({ user_id: userId, game_id: String(g.id), status }));
     if (entries.length > 0) {
-      supabase
+      void supabase
         .from('user_games')
-        .upsert(entries, { onConflict: 'user_id,game_id,status', ignoreDuplicates: true })
-        .then(() => {})
-        .catch(() => {}); // non-critical — fire and forget
+        .upsert(entries, { onConflict: 'user_id,game_id,status', ignoreDuplicates: true }); // non-critical — fire and forget
     }
   };
 
@@ -820,11 +818,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   // Merge DB posts with topic account posts (kept separate so refreshFeed doesn't wipe topic posts)
   const mergedPosts = useMemo(() => {
-    if (topicPosts.length === 0) return postList;
-    const existingIds = new Set(postList.map((p: any) => p.id + (p.repostedBy || '')));
-    const newTopics = topicPosts.filter((p: any) => !existingIds.has(p.id));
-    return [...postList, ...newTopics].sort((a: any, b: any) =>
-      new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
+    const combined = topicPosts.length === 0 ? postList : (() => {
+      const existingIds = new Set(postList.map((p: any) => p.id + (p.repostedBy || '')));
+      const newTopics = topicPosts.filter((p: any) => !existingIds.has(p.id));
+      return [...postList, ...newTopics].sort((a: any, b: any) =>
+        new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
+      );
+    })();
+    // Resolve quotedPost for any post that has quote_post_id
+    const byId = new Map(combined.map((p: any) => [p.id, p]));
+    return combined.map((p: any) =>
+      p.quote_post_id && !p.quotedPost
+        ? { ...p, quotedPost: byId.get(p.quote_post_id) }
+        : p
     );
   }, [postList, topicPosts]);
 

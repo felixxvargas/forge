@@ -60,7 +60,8 @@ export function NewPost() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const replyTo = searchParams.get('replyTo') ?? undefined;
-  const { createPost, currentUser, users } = useAppData();
+  const quotePostId = searchParams.get('quotePostId') ?? undefined;
+  const { createPost, currentUser, users, posts: contextPosts = [], getUserById } = useAppData() as any;
 
   // Scroll to top when compose screen opens
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -377,7 +378,7 @@ export function NewPost() {
       let lastPostId = await createPost(
         content, images, linkUrl || undefined, undefined, undefined,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
-        disableComments, disableReposts, replyTo,
+        disableComments, disableReposts, replyTo, quotePostId,
       );
       // Chain thread continuation posts as replies to the previous post
       for (const threadContent of threadPosts.filter(p => p.trim())) {
@@ -621,6 +622,31 @@ export function NewPost() {
             ))}
           </div>
         )}
+
+        {/* Quoted post preview */}
+        {quotePostId && (() => {
+          const qp = (contextPosts as any[]).find((p: any) => p.id === quotePostId);
+          const qUser = qp ? (getUserById?.(qp.user_id ?? qp.userId) ?? {}) : null;
+          return (
+            <div className="mt-3 rounded-xl border border-border bg-secondary/30 p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Repeat2 className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span className="text-xs text-accent font-medium">Quoting</span>
+              </div>
+              {qp ? (
+                <>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-semibold truncate">{(qUser as any)?.display_name || (qUser as any)?.handle || '—'}</span>
+                    <span className="text-xs text-muted-foreground">@{((qUser as any)?.handle || '').replace(/^@/, '')}</span>
+                  </div>
+                  <p className="text-sm text-foreground/80 line-clamp-3 whitespace-pre-wrap">{qp.content}</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Original post</p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 pt-3 border-t border-border mt-2">

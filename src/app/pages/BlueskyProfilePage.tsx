@@ -7,6 +7,7 @@ import { FollowButton } from '../components/FollowButton';
 import { fetchBlueskyProfile, fetchBlueskyPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
 import { useAppData } from '../context/AppDataContext';
 import { formatNumber } from '../utils/formatNumber';
+import { supabase } from '../utils/supabase';
 
 // Reverse map: bsky handle → forge topic user id
 const bskyHandleToForgeId: Record<string, string> = Object.fromEntries(
@@ -21,6 +22,7 @@ export function BlueskyProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forgeFollowerCount, setForgeFollowerCount] = useState<number | null>(null);
 
   const forgeId = handle ? bskyHandleToForgeId[handle] : undefined;
   const externalIsFollowing = handle ? (externalFollowIds?.has(`bsky-${handle}`) ?? false) : false;
@@ -36,6 +38,21 @@ export function BlueskyProfilePage() {
       setProfile(prof);
       setPosts(postsData);
     }).finally(() => setLoading(false));
+
+    // Count Forge users who follow this account
+    const externalId = `bsky-${handle}`;
+    void (async () => {
+      try {
+        const { data: rows } = await supabase.from('game_lists').select('data');
+        if (!rows) return;
+        let count = 0;
+        for (const row of rows) {
+          const follows: any[] = row.data?._externalFollows ?? [];
+          if (follows.some((f: any) => f.id === externalId)) count++;
+        }
+        setForgeFollowerCount(count);
+      } catch { /* ignore */ }
+    })();
   }, [handle]);
 
   return (
@@ -124,7 +141,7 @@ export function BlueskyProfilePage() {
                   {profile.description && (
                     <p className="text-sm mt-2 text-foreground/80 line-clamp-4">{profile.description}</p>
                   )}
-                  <div className="flex gap-4 mt-3 text-sm">
+                  <div className="flex gap-4 mt-3 text-sm flex-wrap">
                     <span>
                       <strong>{formatNumber(profile.followersCount)}</strong>{' '}
                       <span className="text-muted-foreground">followers</span>
@@ -136,6 +153,12 @@ export function BlueskyProfilePage() {
                     <span className="text-muted-foreground">
                       <strong>{formatNumber(profile.postsCount)}</strong> posts
                     </span>
+                    {forgeFollowerCount !== null && (
+                      <span className="text-accent">
+                        <strong>{formatNumber(forgeFollowerCount)}</strong>{' '}
+                        <span className="text-accent/70">on Forge</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

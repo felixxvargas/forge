@@ -512,6 +512,7 @@ export const posts = {
     commentsDisabled?: boolean;
     repostsDisabled?: boolean;
     replyTo?: string;
+    quotePostId?: string;
   } = {}) {
     // Content moderation check
     if (content && content.trim().length >= 3) {
@@ -541,6 +542,7 @@ export const posts = {
         ...(options.commentsDisabled ? { comments_disabled: true } : {}),
         ...(options.repostsDisabled ? { reposts_disabled: true } : {}),
         ...(options.replyTo ? { reply_to: options.replyTo } : {}),
+        ...(options.quotePostId ? { quote_post_id: options.quotePostId } : {}),
       })
       .select(`
         *,

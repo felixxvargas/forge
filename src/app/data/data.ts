@@ -137,6 +137,14 @@ export interface Post {
   comment_count?: number;
   image_alts?: string[];
   flare_id?: string;
+  quote_post_id?: string;
+  quotedPost?: Post; // resolved quoted post object (client-side join)
+  is_blurred?: boolean;
+  game_titles?: string[];
+  game_ids?: string[];
+  reposts_disabled?: boolean;
+  comments_disabled?: boolean;
+  reply_to?: string;
 }
 
 // Sample game data

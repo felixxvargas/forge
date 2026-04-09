@@ -50,6 +50,10 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     action();
   };
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [showRepostTray, setShowRepostTray] = useState(false);
+
+  // External posts (AT Proto / ActivityPub) — engagement is read-only
+  const isExternalPost = post.platform === 'bluesky' || post.platform === 'mastodon';
 
   // Build the full list of tagged games (multi-tag array takes priority; falls back to single field)
   const taggedGames: { id: string; title: string }[] = (() => {
@@ -149,7 +153,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
 
   const handleRepost = (e: React.MouseEvent) => {
     e.stopPropagation();
-    requireAuth(() => onRepost?.(post.id));
+    requireAuth(() => setShowRepostTray(true));
   };
 
   const handleMutePost = async (e: React.MouseEvent) => {
@@ -474,25 +478,52 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </a>
       )}
 
+      {/* Quoted post embed */}
+      {post.quotedPost && (() => {
+        const qp = post.quotedPost;
+        const qUser = getUserById?.(qp.user_id ?? qp.userId) ?? { handle: qp.user_id, display_name: qp.user_id } as any;
+        return (
+          <div
+            className="mb-3 rounded-xl border border-border bg-secondary/30 p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+            onClick={(e) => { e.stopPropagation(); navigate(`/post/${encodeURIComponent(qp.id)}`); }}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-sm font-semibold truncate">{qUser.display_name || qUser.handle}</span>
+              <span className="text-xs text-muted-foreground shrink-0">@{(qUser.handle || '').replace(/^@/, '')}</span>
+            </div>
+            <p className="text-sm text-foreground/80 line-clamp-3 whitespace-pre-wrap">{qp.content}</p>
+            {qp.images && qp.images.length > 0 && (
+              <img src={qp.images[0]} alt="" className="mt-2 w-full max-h-40 object-cover rounded-lg" />
+            )}
+          </div>
+        );
+      })()}
+
       {/* Actions */}
       <div className="flex items-center gap-6 pt-2">
         <button
           onClick={(e) => {
             e.stopPropagation();
-            requireAuth(() => onLike?.(post.id));
+            if (!isExternalPost) requireAuth(() => onLike?.(post.id));
           }}
+          disabled={isExternalPost}
+          title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
           className={`flex items-center gap-2 text-sm transition-colors ${
+            isExternalPost ? 'opacity-40 cursor-not-allowed' :
             isLiked ? 'text-purple-400' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+          <Heart className={`w-5 h-5 ${isLiked && !isExternalPost ? 'fill-current' : ''}`} />
           <span>{formatNumber(post.like_count ?? post.likes ?? 0)}</span>
         </button>
 
         {onRepost && !post.reposts_disabled && (
           <button
-            onClick={handleRepost}
+            onClick={isExternalPost ? (e) => e.stopPropagation() : handleRepost}
+            disabled={isExternalPost}
+            title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
             className={`flex items-center gap-2 text-sm transition-colors ${
+              isExternalPost ? 'opacity-40 cursor-not-allowed' :
               isReposted ? 'text-accent' : 'text-muted-foreground hover:text-accent'
             }`}
           >
@@ -505,22 +536,26 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           <button
             onClick={(e) => {
               e.stopPropagation();
-              requireAuth(() => {
+              if (!isExternalPost) requireAuth(() => {
                 if (isDetailView) {
                   onComment?.(post.id);
                 } else {
-                  navigate(`/post/${post.id}#comments`);
+                  navigate(`/post/${encodeURIComponent(post.id)}#comments`);
                 }
               });
             }}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            disabled={isExternalPost}
+            title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
+            className={`flex items-center gap-2 text-sm transition-colors ${
+              isExternalPost ? 'opacity-40 cursor-not-allowed text-muted-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             <MessageCircle className="w-5 h-5" />
             <span>{formatNumber(post.comment_count ?? post.comments ?? 0)}</span>
           </button>
         )}
-        
-        <button 
+
+        <button
           onClick={(e) => {
             e.stopPropagation();
             setShareModalOpen(true);
@@ -530,6 +565,50 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           <Upload className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Repost tray */}
+      {showRepostTray && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          onClick={(e) => { e.stopPropagation(); setShowRepostTray(false); }}
+        >
+          <div
+            className="w-full max-w-lg bg-card rounded-t-2xl p-4 pb-8 space-y-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
+            <button
+              onClick={() => {
+                setShowRepostTray(false);
+                if (!isReposted) onRepost?.(post.id);
+              }}
+              disabled={isReposted}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                isReposted ? 'opacity-50 cursor-not-allowed bg-secondary/30' : 'hover:bg-secondary'
+              }`}
+            >
+              <Repeat2 className="w-5 h-5 text-accent shrink-0" />
+              <div className="text-left">
+                <p className="font-medium">{isReposted ? 'Already reposted' : 'Repost'}</p>
+                <p className="text-xs text-muted-foreground">Share to your followers instantly</p>
+              </div>
+            </button>
+            <button
+              onClick={() => {
+                setShowRepostTray(false);
+                navigate(`/new-post?quotePostId=${encodeURIComponent(post.id)}`);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-secondary transition-colors"
+            >
+              <MessageCircle className="w-5 h-5 text-accent shrink-0" />
+              <div className="text-left">
+                <p className="font-medium">Quote Post</p>
+                <p className="text-xs text-muted-foreground">Add your own commentary</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Share Modal */}
       <ShareModal
