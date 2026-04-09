@@ -80,7 +80,13 @@ export function SignUp() {
 
     setIsLoading(true);
     try {
-      // Store credentials so the onboarding flow can complete sign-up
+      const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
+      const { error: signUpError } = await supabase.auth.signUp({ email, password });
+      if (signUpError) {
+        setError(signUpError.message || 'Sign-up failed. Please try again.');
+        return;
+      }
+      // Store credentials as fallback for onboarding in case email confirmation is required
       localStorage.setItem('forge-signup-email', email);
       localStorage.setItem('forge-signup-password', password);
       localStorage.setItem('forge-logged-in', 'true');

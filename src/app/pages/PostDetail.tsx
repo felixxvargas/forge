@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
@@ -43,6 +44,7 @@ export function PostDetail() {
 
   // Parent post (when the viewed post is itself a reply)
   const [parentPost, setParentPost] = useState<any>(null);
+  const [showParentContext, setShowParentContext] = useState(false);
 
   // Game tagging in reply
   const [replySelectedGames, setReplySelectedGames] = useState<{ id: string; title: string }[]>([]);
@@ -66,7 +68,7 @@ export function PostDetail() {
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
 
-  useEffect(() => { window.scrollTo(0, 0); }, [postId]);
+  useEffect(() => { window.scrollTo(0, 0); setShowParentContext(false); }, [postId]);
 
   // Fetch post by ID if not in context (e.g. navigating directly to a reply post)
   useEffect(() => {
@@ -382,6 +384,13 @@ export function PostDetail() {
   const actualCommentCount = isLoadingReplies ? activePost.comment_count : Math.max(activePost.comment_count ?? 0, replies.length);
   const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount };
 
+  const parentUser = parentPost ? (parentPost.author ?? getUserById(parentPost.user_id)) : null;
+
+  const handleReplyToClick = () => {
+    setShowParentContext(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -398,6 +407,33 @@ export function PostDetail() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto">
+        {/* Parent post context — revealed with animation when "Replying to" is tapped */}
+        <AnimatePresence>
+          {showParentContext && parentPost && parentUser && (
+            <motion.div
+              key="parent-context"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div className="bg-card border-b border-border">
+                <div className="px-4 pt-4 pb-4">
+                  <PostCard
+                    post={parentPost}
+                    user={parentUser}
+                    onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                    onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                    onComment={() => navigate(`/post/${encodeURIComponent(parentPost.id)}#comments`)}
+                    isLiked={likedPosts.has(parentPost.id)}
+                    isReposted={repostedPosts.has(parentPost.id)}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Post + Reposters share the same card background */}
         <div className="bg-card border-b border-border">
           <div className="px-4 pt-4 pb-4">
@@ -415,6 +451,7 @@ export function PostDetail() {
                   ? ((parentPost.author?.handle ?? getUserById(parentPost.user_id)?.handle ?? '').replace(/^@/, '') || undefined)
                   : undefined
               }
+              onReplyToClick={parentPost ? handleReplyToClick : undefined}
             />
           </div>
 
@@ -803,44 +840,32 @@ export function PostDetail() {
 
                     {/* Sub-replies — connected with a vertical thread line */}
                     {subReplies.length > 0 && (
-                      <div className="pl-4 pr-0">
-                        {subReplies.map((sub, si) => {
+                      <div className="border-l-2 border-border/60">
+                        {subReplies.map((sub) => {
                           const subUser = sub.author ?? getUserById(sub.user_id);
                           if (!subUser) return null;
-                          const isLast = si === subReplies.length - 1;
                           return (
-                            <div key={sub.id} className="relative flex">
-                              {/* Vertical thread line */}
-                              <div className="w-10 shrink-0 flex flex-col items-center pt-4">
-                                <div className={`w-0.5 bg-border ${isLast ? 'h-6' : 'flex-1'}`} />
-                              </div>
-                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/post/${encodeURIComponent(sub.id)}`)}>
-                                <PostCard
-                                  post={sub}
-                                  user={subUser}
-                                  onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-                                  onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-                                  onComment={() => navigate(`/post/${encodeURIComponent(sub.id)}#comments`)}
-                                  isLiked={likedPosts.has(sub.id)}
-                                  isReposted={repostedPosts.has(sub.id)}
-                                />
-                              </div>
+                            <div key={sub.id} className="border-t border-border cursor-pointer" onClick={() => navigate(`/post/${encodeURIComponent(sub.id)}`)}>
+                              <PostCard
+                                post={sub}
+                                user={subUser}
+                                onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                                onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                                onComment={() => navigate(`/post/${encodeURIComponent(sub.id)}#comments`)}
+                                isLiked={likedPosts.has(sub.id)}
+                                isReposted={repostedPosts.has(sub.id)}
+                              />
                             </div>
                           );
                         })}
                         {/* "More replies" link if there are additional sub-replies beyond what's shown */}
                         {(reply.comment_count ?? 0) > subReplies.length && (
-                          <div className="relative flex">
-                            <div className="w-10 shrink-0 flex flex-col items-center">
-                              <div className="w-0.5 h-4 bg-border" />
-                            </div>
-                            <button
-                              onClick={() => navigate(`/post/${encodeURIComponent(reply.id)}`)}
-                              className="pb-3 text-xs text-accent hover:underline"
-                            >
-                              View {(reply.comment_count ?? 0) - subReplies.length} more {(reply.comment_count ?? 0) - subReplies.length === 1 ? 'reply' : 'replies'}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => navigate(`/post/${encodeURIComponent(reply.id)}`)}
+                            className="w-full text-left px-4 py-3 text-xs text-accent hover:underline border-t border-border"
+                          >
+                            View {(reply.comment_count ?? 0) - subReplies.length} more {(reply.comment_count ?? 0) - subReplies.length === 1 ? 'reply' : 'replies'}
+                          </button>
                         )}
                       </div>
                     )}

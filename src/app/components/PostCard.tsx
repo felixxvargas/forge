@@ -39,9 +39,10 @@ interface PostCardProps {
   isReposted?: boolean;
   onUserClick?: (e: React.MouseEvent) => void;
   replyToHandle?: string;
+  onReplyToClick?: () => void;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -277,7 +278,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       {/* Reply indicator */}
       {(post as any).reply_to && (
         <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/post/${encodeURIComponent((post as any).reply_to)}`); }}
+          onClick={(e) => { e.stopPropagation(); if (onReplyToClick) { onReplyToClick(); } else { navigate(`/post/${encodeURIComponent((post as any).reply_to)}`); } }}
           className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
         >
           <CornerUpLeft className="w-3.5 h-3.5 shrink-0" />

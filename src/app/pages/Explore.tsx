@@ -359,6 +359,7 @@ export function Explore() {
     ...livePosts,
     ...posts, // all user posts (own + followed)
   ].filter(post => {
+    if (post.repostedBy) return false;
     if (!post.content?.trim()) return false;
     if (seenPostIds.has(post.id)) return false;
     seenPostIds.add(post.id);

@@ -76,28 +76,6 @@ export function NewPost() {
     'completed': 'Completed Games', 'custom': 'Custom List', 'lfg': 'Looking for Group',
   };
 
-  // Build attached list snapshot from state (set either via URL params or in-compose picker)
-  const attachedListData = useCallback((): object | undefined => {
-    const listType = pickedListType;
-    const listUserId = pickedListUserId;
-    if (!listType || !listUserId) return undefined;
-    const listOwner = users ? users.find((u: any) => u.id === listUserId) ?? currentUser : currentUser;
-    if (!listOwner) return undefined;
-    const listKey = LIST_KEY_MAP[listType] ?? listType;
-    const gameLists = (listOwner as any).game_lists ?? (listOwner as any).gameLists ?? {};
-    const games: any[] = gameLists[listKey] ?? [];
-    const covers = games.slice(0, 4).map((g: any) =>
-      g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
-    ).filter(Boolean);
-    return {
-      listType,
-      userId: listUserId,
-      title: LIST_LABELS[listType] ?? listType,
-      gameCount: games.length,
-      covers,
-    };
-  }, [pickedListType, pickedListUserId, users, currentUser]);
-
   // Scroll to top when compose screen opens
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -134,6 +112,28 @@ export function NewPost() {
   const [showListPicker, setShowListPicker] = useState(false);
   const [pickedListType, setPickedListType] = useState<string | undefined>(attachListType);
   const [pickedListUserId, setPickedListUserId] = useState<string | undefined>(attachListUserId);
+
+  // Build attached list snapshot from state (set either via URL params or in-compose picker)
+  const attachedListData = useCallback((): object | undefined => {
+    const listType = pickedListType;
+    const listUserId = pickedListUserId;
+    if (!listType || !listUserId) return undefined;
+    const listOwner = users ? users.find((u: any) => u.id === listUserId) ?? currentUser : currentUser;
+    if (!listOwner) return undefined;
+    const listKey = LIST_KEY_MAP[listType] ?? listType;
+    const gameLists = (listOwner as any).game_lists ?? (listOwner as any).gameLists ?? {};
+    const games: any[] = gameLists[listKey] ?? [];
+    const covers = games.slice(0, 4).map((g: any) =>
+      g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+    ).filter(Boolean);
+    return {
+      listType,
+      userId: listUserId,
+      title: LIST_LABELS[listType] ?? listType,
+      gameCount: games.length,
+      covers,
+    };
+  }, [pickedListType, pickedListUserId, users, currentUser]);
 
   useEffect(() => {
     const vv = window.visualViewport;

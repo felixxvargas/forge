@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Send, Loader2, CheckCircle, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 import { supabase } from '../utils/supabase';
@@ -16,6 +16,8 @@ export function FeedbackPage() {
   const navigate = useNavigate();
   const { currentUser } = useAppData();
   const [type, setType] = useState<FeedbackType>('feature_request');
+
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);

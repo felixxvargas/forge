@@ -1,17 +1,19 @@
 # Forge - Gaming Social App Guidelines
 
 ## Overview
-Forge is a mobile-first gaming social application that connects gamers across different gaming platforms and social media websites. This document outlines the app's architecture, features, and development guidelines.
+Forge is a mobile-first gaming social application that connects gamers across different gaming platforms and social networks. This document outlines the app's architecture, features, and development guidelines.
 
 ## Table of Contents
 1. [Core Concept](#core-concept)
 2. [Design System](#design-system)
 3. [Architecture](#architecture)
-4. [Features](#features)
-5. [Data Models](#data-models)
-6. [Development Guidelines](#development-guidelines)
-7. [Component Patterns](#component-patterns)
-8. [State Management](#state-management)
+4. [Authentication](#authentication)
+5. [Features](#features)
+6. [Data Models](#data-models)
+7. [Development Guidelines](#development-guidelines)
+8. [Component Patterns](#component-patterns)
+9. [State Management](#state-management)
+10. [Observability](#observability)
 
 ---
 
@@ -19,35 +21,36 @@ Forge is a mobile-first gaming social application that connects gamers across di
 
 Forge bridges the gap between different gaming ecosystems and social media platforms, allowing gamers to:
 - Connect their gaming platforms (Nintendo, PlayStation, Steam, PC, Battle.net, Riot, Xbox)
-- Integrate social media accounts (Bluesky, Tumblr, X, TikTok, Instagram, Threads, Red Note, Upscrolled)
-- Share gaming experiences across platforms
+- Follow external gaming accounts from Bluesky (ATProto) and Mastodon (ActivityPub) — e.g., IGN, GameSpot, Xbox, itch.io, PC Gamer
+- Share gaming experiences, game lists, and gaming content
 - Join and create gaming communities
-- Discover games, players, and content
+- Discover games (via IGDB), players, and content
 
 ---
 
 ## Design System
 
 ### Color Theme
-- **Primary Color**: Dark purple (#7C3AED variants)
-- **Accent Color**: Lime green (#84CC16 variants)
-- **Background**: Dark mode optimized
-- **Light Mode**: Optional toggle available in settings
+- **Accent (dark mode)**: Lime/chartreuse `#E7FFC4` — used for interactive elements, buttons, highlights
+- **Accent (light mode)**: `#6aaa1a`
+- **Background (dark mode)**: Deep purple `#1c1228`
+- **Background (light mode)**: Near-white with light purple tones
+- **Dark mode is the default**; light mode is togglable in settings
 
 ### Typography
-- **Font Family**: Poppins (applied across the entire app)
-- **Font Sizes**: Use Tailwind default classes sparingly; custom sizes defined in theme.css
-- **Font Weights**: Defined in theme.css; avoid Tailwind font-weight classes unless overriding
+- **Primary Font**: Poppins (weights 300–700) — applied globally via `theme.css`
+- **Secondary Font**: Sora (weights 400–800) — used selectively via `.font-sora` class (e.g., "Forge" wordmark in splash)
+- Avoid inline Tailwind font-weight/font-size classes; use theme-defined values in `theme.css`
 
 ### Visual Elements
-- **Logo**: Thunderbolt/Zap icon (used in navigation and splash screen)
-- **Rounded Corners**: Consistent use of rounded-lg, rounded-xl, and rounded-full
-- **Shadows**: Subtle elevation with shadow-lg
-- **Spacing**: 4px grid system (gap-2, gap-4, etc.)
+- **Logo**: Custom SVG shape (see `src/assets/forge-logo.svg` and inline SVGs throughout the app)
+- **Rounded Corners**: `rounded-lg`, `rounded-xl`, `rounded-full` — used consistently
+- **Shadows**: Subtle elevation with `shadow-lg`
+- **Spacing**: 4px grid (`gap-2`, `gap-4`, etc.)
 
 ### Accessibility
 - High contrast ratios for text readability
-- Light/dark mode toggle
+- Light/dark mode toggle in settings
 - Semantic HTML elements
 - ARIA labels where appropriate
 - Keyboard navigation support
@@ -59,13 +62,15 @@ Forge bridges the gap between different gaming ecosystems and social media platf
 ### Tech Stack
 - **Framework**: React 18 + TypeScript 5
 - **Build Tool**: Vite 6
-- **Router**: React Router v7 (Data mode pattern)
+- **Router**: React Router v7
 - **Styling**: Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- **Animation**: Motion (motion/react)
+- **Animation**: Motion (`motion/react`)
 - **State Management**: React Context API
 - **Backend**: Supabase (Postgres + Auth + Storage)
 - **Edge Functions**: Deno + Hono at `supabase/functions/make-server-17285bd7/index.ts`
 - **Deployment**: Vercel (frontend) + Supabase (backend)
+- **Error Tracking**: Sentry (`@sentry/react`)
+- **Analytics**: Google Analytics 4 (via `VITE_GA_MEASUREMENT_ID`)
 
 ### File Structure
 ```
@@ -74,40 +79,43 @@ Forge bridges the gap between different gaming ecosystems and social media platf
     /components       # Reusable UI components
       /onboarding    # Onboarding-specific components
     /context         # React Context providers (AppDataContext, ThemeContext)
-    /data            # Type definitions (mockData.ts for types only)
+    /data            # Type definitions and static data
     /pages           # Route pages/screens
     /styles          # Global styles and theme
     /utils
+      analytics.ts   # GA4 helpers (initAnalytics, trackPageView, trackEvent)
       api.ts         # HTTP client for edge function + Supabase Storage uploads
       supabase.ts    # Supabase JS client singleton + typed helpers
 /supabase
   /functions
     /make-server-17285bd7  # Hono edge function — canonical source AND deploy slug
+  /migrations              # SQL migration files
 /guidelines          # This documentation
 ```
 
 ### Routing Pattern
-The app uses React Router's Data mode with a Layout component that wraps all authenticated routes:
-- **Login/Onboarding**: Standalone routes without layout
-- **Main App**: Wrapped in Layout with BottomNav and AppDataProvider
-- **Protected Routes**: Check for authentication and onboarding completion
-- **Auth Callback** (`/auth/callback`): Handles Google OAuth redirect, stores tokens, upserts profile
+- **Login/Signup/Onboarding**: Standalone routes without layout
+- **Main App**: Wrapped in `Layout` with `BottomNav` and `AppDataProvider`
+- **Protected Routes**: Check for authentication and onboarding completion in `Layout.tsx`
+- **Auth Callback** (`/auth/callback`): Handles Google OAuth redirect, upserts profile
+- **`/splash` and `/onboarding`**: Both map to the `Onboarding` component
 
 ### Backend Architecture
 
 #### Supabase Database (Postgres)
 All data is stored in Supabase. Key tables:
 - `profiles` — user profiles (snake_case columns)
-- `posts` — user posts with optional image arrays
+- `posts` — user posts; includes `repost_count`, `like_count`, `comment_count` counters
 - `follows` — follower/following relationships
 - `likes` — post likes
-- `reposts` — post reposts
+- `reposts` — post reposts (a SECURITY DEFINER trigger `trg_repost_count` maintains `posts.repost_count`)
 - `communities` / `community_members` — community data
 - `notifications` — user notifications
 - `blocked_users` / `muted_users` — safety features
+- `messages` / `conversations` — direct messages
 
 #### Supabase Storage
-File uploads go directly to Supabase Storage via the REST API (bypassing the edge function):
+File uploads go directly to Supabase Storage via the REST API:
 - `forge-avatars` — profile pictures (`avatars/<userId>.<ext>`)
 - `forge-banners` — profile banners (`banners/<userId>.<ext>`)
 - `forge-post-media` — post images/videos
@@ -116,10 +124,9 @@ File uploads go directly to Supabase Storage via the REST API (bypassing the edg
 
 #### Edge Function
 A single Hono app at `supabase/functions/make-server-17285bd7/index.ts` handles:
-- `/auth/signup`, `/auth/signin`, `/auth/me`
 - `/users/*` — user CRUD, follow/unfollow, block/mute, handle check
 - `/posts/*` — post CRUD, likes
-- `/games/*` — game search and batch fetch (MobyGames integration)
+- `/games/*` — game search and batch fetch (IGDB integration)
 - `/admin/*` — admin utilities
 
 **Deploy command:**
@@ -137,10 +144,11 @@ npx supabase functions deploy make-server-17285bd7 \
 ## Authentication
 
 ### Flows
-1. **Email/Password**: `authAPI.signin` / `authAPI.signup` → calls edge function → stores tokens in localStorage
-2. **Google OAuth**: `supabase.auth.signInWithOAuth` → redirect to `/auth/callback` → `AuthCallback.tsx` stores tokens in localStorage
+1. **Email/Password Signup**: `SignUp.tsx` calls `supabase.auth.signUp` → stores credentials in localStorage → navigates to `/splash` (Onboarding). At the end of onboarding (`UsernameScreen`), uses the active Supabase session (or falls back to `signInWithPassword` with stored credentials) to save the profile.
+2. **Email/Password Login**: `Login.tsx` → `auth.signIn(email, password)` in `AppDataContext`
+3. **Google OAuth**: `supabase.auth.signInWithOAuth` → redirects to `/auth/callback` → `AuthCallback.tsx` upserts the profile
 
-### Token Storage (localStorage)
+### localStorage Keys
 | Key | Value |
 |-----|-------|
 | `forge-access-token` | Supabase JWT (expires ~1 hour) |
@@ -148,6 +156,7 @@ npx supabase functions deploy make-server-17285bd7 \
 | `forge-user-id` | Authenticated user's UUID |
 | `forge-logged-in` | `'true'` when authenticated |
 | `forge-onboarding-complete` | `'true'` when onboarding done |
+| `forge-signup-email` / `forge-signup-password` | Temporary credentials during email signup onboarding (removed after use) |
 
 ### Token Refresh
 `getValidToken()` in `api.ts` automatically:
@@ -161,50 +170,45 @@ npx supabase functions deploy make-server-17285bd7 \
 
 ### 1. Authentication & Onboarding
 **Flow**:
-1. **Login Screen**: Email/password or Google OAuth
-2. **Splash Screen**: Animated logo and app name
-3. **Interest Selection**: Choose gaming interests and preferences
-4. **Follow Suggestions**: Recommended users to follow based on interests
-5. **Username Creation**: Real-time handle validation and uniqueness check
+1. **Signup/Login**: Email/password or Google OAuth
+2. **Splash Screen**: Animated Forge logo
+3. **Interest Selection**: Choose gaming platforms, genres, and playstyles
+4. **Follow Suggestions**: Recommended users to follow (pinned: @forge, then top users by follower count)
+5. **Username Creation**: Real-time handle validation — the only onboarding screen already centered/constrained on desktop
 
-**Implementation**:
-- Tokens and user ID persisted in localStorage
-- Sequential screens with AnimatePresence for smooth transitions
-- `AuthCallback.tsx` handles Google OAuth, upserts profile row, stores tokens
+**Desktop optimization**: Interest and Follow screens constrain content to `max-w-2xl mx-auto`; buttons do not span full screen width.
 
 ### 2. User Profiles
 **Features**:
 - Profile picture and banner
 - Display name, handle (@username), pronouns (optional)
 - Bio and About sections
-- Gaming platform badges
-- Social media integrations
-- Game library (Recently Played, Library, Favorites, Wishlist)
+- Gaming platform badges and handles
+- Social media integrations (Bluesky, Mastodon, X, Instagram, TikTok, etc.)
+- Game library (Recently Played, Library, Favorites, Wishlist, Completed, LFG, Custom)
+- Shareable game lists with cover art previews
 - Community memberships (max 3 displayed, customizable)
 - Follower/following counts
 
-**Edit Profile**:
-- `profilePictureRef` (useRef) tracks uploaded URL synchronously — prevents stale closure reads in `handleSave`
-- Save button disabled while image is uploading (`isImageUploading` state)
-- All fields saved as snake_case to Supabase `profiles` table
-
 ### 3. Social Feed
 **Two main feeds**:
-- **Following**: Posts from users you follow
-- **For You**: Algorithmic/curated content
+- **Following**: Posts from users you follow, including cross-posted content from Bluesky and Mastodon accounts
+- **Trending**: Algorithmic/most-engaged content; shown to all guests and authenticated users when Following feed is empty
 
 **Post Features**:
-- Text content (with platform attribution)
-- Image support (single or multiple)
-- GIF and video support
+- Text content with @mention and #game hashtag support
+- Image support (single or multiple, with ALT text)
 - Link previews
-- Community tags
-- Timestamp (relative formatting: "2h ago", "3d ago")
-- Like, Repost, Comment interactions
+- Game tags (IGDB-linked)
+- Timestamp (relative: "2h ago", "3d ago")
+- Like, Repost, Quote Post, Comment interactions
+- Repost count maintained by `trg_repost_count` SECURITY DEFINER trigger (bypasses RLS for cross-user updates)
+- Attached game list previews (tap to open full list detail)
+- Threaded replies on post detail pages (sub-replies connected by a left border line, full-width like top-level replies)
 
-**Account Types**:
-- **Standard**: User-created or claimed account
-- **Topic (Unclaimed)**: Gaming websites and studios (IGN, PlayStation, Nintendo, Blizzard, etc.) — auto-cross-post from other platforms
+**External Accounts**:
+- Gaming sites and studios (IGN, GameSpot, Xbox, itch.io, PC Gamer, etc.) are followed via ATProto (Bluesky) or ActivityPub (Mastodon)
+- External post engagement buttons are read-only indicators
 
 ### 4. Communities
 **Community Types**:
@@ -222,8 +226,8 @@ npx supabase functions deploy make-server-17285bd7 \
 ### 5. Explore Page
 **Tabs**:
 - **Posts**: Trending/featured posts
-- **Users**: User discovery and suggestions
-- **Games**: Game discovery (MobyGames integration)
+- **Users**: User discovery and search
+- **Games**: Game discovery via IGDB
 - **Communities**: Browse and join communities
 
 **Search**: Real-time search across users, communities, and games
@@ -232,10 +236,13 @@ npx supabase functions deploy make-server-17285bd7 \
 **Types**: New followers, likes, comments, reposts, community invites/approvals
 
 ### 7. Messages
-**Features**: Direct messaging, conversation list, unread indicators
+**Features**: Direct messaging between users, conversation list, unread indicators. Tapping a user's avatar or handle in the messages list navigates to their profile.
 
 ### 8. Settings
-**Sections**: Account, privacy, notifications, theme, platforms, social integrations, feed filtering
+**Sections**: Account, privacy, notifications, theme (light/dark), gaming platforms, social integrations, feed filtering, data deletion (GDPR compliance)
+
+### 9. What's New Modal
+Shown on first launch after a new version is deployed. Version is tracked in `localStorage` (`forge-whats-new-seen`). Release history is maintained in `WhatsNew.tsx` (`RELEASES` array). A "What's New" page in settings shows current and past version release notes.
 
 ---
 
@@ -259,11 +266,14 @@ interface Profile {
   social_handles?: Record<string, string>;
   show_social_handles?: Record<string, boolean>;
   displayed_communities?: string[];   // Community IDs (max 3)
+  interests?: Interest[];
+  follower_count?: number;
+  following_count?: number;
   updated_at?: string;
 }
 ```
 
-> **Note**: React state and components may also see camelCase aliases (`displayName`, `profilePicture`) from older code paths. `normalizeProfile()` in AppDataContext ensures `display_name`, `handle`, and `profile_picture` are always set.
+> **Note**: React state may also see camelCase aliases (`displayName`, `profilePicture`) from older code paths. `normalizeProfile()` in `AppDataContext` ensures `display_name`, `handle`, and `profile_picture` are always set.
 
 ### Post
 ```typescript
@@ -273,14 +283,18 @@ interface Post {
   content: string;
   platform: SocialPlatform | 'forge';
   created_at: string;
-  likes: number;
-  reposts: number;
-  comments: number;
+  like_count: number;
+  repost_count: number;
+  comment_count: number;
   images?: string[];
   image_alts?: string[];
   url?: string;
   community_id?: string;
+  reply_to?: string;           // parent post ID for replies
+  quote_post_id?: string;      // quoted post ID for quote posts
+  attached_list?: object;      // game list preview snapshot
   author?: Pick<Profile, 'id' | 'handle' | 'display_name' | 'profile_picture'>;
+  repostedBy?: string;         // user ID of reposter (on repost copies)
 }
 ```
 
@@ -314,7 +328,7 @@ interface Community {
 - **File Naming**: PascalCase for components, camelCase for utilities
 - **Import Order**: React → Third-party → Local components → Utilities → Types
 - **Props**: Destructure in function signature
-- **State**: Use Context for global state, useState for local
+- **State**: Use Context for global state, `useState` for local
 
 ### Database Field Names
 - Supabase returns **snake_case** (`display_name`, `profile_picture`, `platform_handles`)
@@ -326,7 +340,7 @@ interface Community {
 - Avoid custom font-size, font-weight, and line-height classes unless overriding
 - Define custom theme values in `/src/styles/theme.css`
 - Import fonts only in `/src/styles/fonts.css`
-- Use consistent spacing (gap-2, gap-3, gap-4, etc.)
+- Use consistent spacing (`gap-2`, `gap-3`, `gap-4`, etc.)
 - Hover states for all interactive elements
 - Transition classes for smooth animations
 
@@ -336,18 +350,19 @@ interface Community {
 
 ### Layout Components
 - **Header**: Top navigation with logo and actions
-- **BottomNav**: Fixed bottom navigation (Feed, Explore, Notifications, Profile)
+- **BottomNav**: Fixed bottom navigation (Feed, Explore, Messages, Notifications, Profile)
 - **Layout**: Wraps authenticated routes with BottomNav and AppDataProvider
 
 ### Reusable Components
-- **PostCard**: Displays social posts with interactions
+- **PostCard**: Displays social posts with interactions (like, repost, quote, comment)
 - **UserCard**: User profile preview with follow button
 - **CommunityCard**: Community preview with join button
-- **GameCard**: Game preview with cover art
+- **GameCard**: Game preview with cover art (IGDB data)
 - **ImageUpload**: File picker + upload to Supabase Storage; exposes `onUploadingChange` so parents can disable Save while uploading
 - **ProfileAvatar**: Avatar with fallback initials
 - **FollowButton**: Follow/unfollow with optimistic state
-- **ConfirmationModal**: Generic confirmation dialog
+- **WhatsNewModal**: First-launch release notes modal (version-gated via localStorage)
+- **LoginModule**: Email/password + Google sign-in form used in both login page and feed desktop sidebar
 
 ### Modal Patterns
 - Use fixed positioning with backdrop
@@ -365,26 +380,44 @@ interface Community {
 
 ### AppDataContext
 Provides global state for:
-- `currentUser` — normalized profile (never has null display_name/handle)
+- `currentUser` — normalized profile (never has null `display_name`/`handle`)
 - `session` — Supabase auth session
 - Posts (feed, user posts, community posts)
 - Liked/reposted post IDs (Sets)
-- Hidden social platforms (Set)
+- Followed game IDs
+- Blocked/muted user IDs (Sets)
 
 **Key Functions**:
 - `updateCurrentUser(updates)` — calls `profiles.update()` with snake_case payload
 - `updateGameList(type, games)` — update game library
-- `createPost(content, images, url)` — create new post
+- `createPost(content, images, url, ...)` — create new post (supports images, games, replyTo, quotePostId, attachedList)
 - `deletePost(postId)` — delete user's post
 - `likePost(postId)` / `unlikePost(postId)` — toggle like
 - `repostPost(postId)` / `unrepostPost(postId)` — toggle repost
-- `toggleSocialPlatformFilter(platform)` — hide/show platform posts
+- `signIn(email, password)` / `signUp(email, password)` / `signInWithGoogle()` / `signOut()`
+- `toggleSocialPlatformFilter(platform)` — hide/show platform posts in feed
 
 **`normalizeProfile(profile)`**: Ensures `display_name`, `handle`, and `profile_picture` are always present on the current user object, even if the DB row has nulls.
 
 ### ThemeContext
 - Current theme (`'light' | 'dark'`)
 - Toggle function
+
+---
+
+## Observability
+
+### Google Analytics 4
+- Initialized in `main.tsx` via `initAnalytics()` from `src/app/utils/analytics.ts`
+- Measurement ID: `VITE_GA_MEASUREMENT_ID` environment variable
+- Tracks: page views (on every route change), post creation, game follows, profile views, game detail views, search, sign-up, and login events
+- **No advertising IDs (IDFA/GAID) are used** — GA4 is configured for analytics only, not ad targeting
+
+### Sentry
+- Initialized in `main.tsx` via `Sentry.init()` when `VITE_SENTRY_DSN` is present
+- Captures uncaught exceptions and React render errors via `RootErrorBoundary`
+- `tracesSampleRate: 0.2` (20% of transactions), `replaysSessionSampleRate: 0.05` (5% of sessions), `replaysOnErrorSampleRate: 1.0` (100% of error sessions)
+- Only enabled in production (`import.meta.env.PROD`)
 
 ---
 
@@ -400,21 +433,12 @@ Provides global state for:
 - Edge function: `make-server-17285bd7`
 - Storage buckets: `forge-avatars`, `forge-banners`, `forge-post-media`, `forge-community-icons`, `forge-community-banners`
 
-### Environment
-- Supabase project ID and anon key are stored in `/utils/supabase/info` (Vite alias)
-
----
-
-## Future Enhancements
-
-### Planned Features
-- Real-time messaging with WebSocket / Supabase Realtime
-- Push notifications
-- Game library sync with Steam/PlayStation/Xbox APIs
-- Advanced search and filtering
-- Community moderation tools
-- Events and tournaments
-- Desktop application
+### Environment Variables
+| Variable | Purpose |
+|----------|---------|
+| `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 measurement ID |
+| `VITE_SENTRY_DSN` | Sentry DSN for error tracking |
+| Supabase project ID and anon key | Stored in `/utils/supabase/info` (Vite alias) |
 
 ---
 
@@ -429,12 +453,12 @@ Provides global state for:
 ### Code Review Checklist
 - [ ] Code follows style guide
 - [ ] TypeScript types are correct
-- [ ] Components are responsive
+- [ ] Components are responsive (mobile-first, desktop-enhanced)
 - [ ] No console errors/warnings
 - [ ] snake_case used for all Supabase writes
 
 ---
 
-**Last Updated**: March 20, 2026
-**Version**: 1.1.0
+**Last Updated**: April 9, 2026
+**Version**: v0.2.5
 **Maintainer**: Forge Development Team

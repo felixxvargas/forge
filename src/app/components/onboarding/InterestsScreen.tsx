@@ -146,6 +146,7 @@ export function InterestsScreen({ onComplete, initialInterests }: InterestsScree
   return (
     <div className="fixed inset-0 bg-background overflow-y-auto z-50">
       <div className="min-h-screen px-6 py-12 pb-32">
+        <div className="max-w-2xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -204,16 +205,19 @@ export function InterestsScreen({ onComplete, initialInterests }: InterestsScree
             })}
           </div>
         </motion.div>
+        </div>
       </div>
 
       {/* Fixed bottom button */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-6">
-        <button
-          onClick={() => onComplete(selectedInterests)}
-          className="w-full py-4 rounded-xl font-semibold transition-all bg-accent text-accent-foreground hover:opacity-90"
-        >
-          {selectedInterests.length === 0 ? 'Skip' : `Continue (${selectedInterests.length} selected)`}
-        </button>
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={() => onComplete(selectedInterests)}
+            className="w-full py-4 rounded-xl font-semibold transition-all bg-accent text-accent-foreground hover:opacity-90"
+          >
+            {selectedInterests.length === 0 ? 'Skip' : `Continue (${selectedInterests.length} selected)`}
+          </button>
+        </div>
       </div>
     </div>
   );
