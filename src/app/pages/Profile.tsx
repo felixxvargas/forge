@@ -579,27 +579,27 @@ export function Profile() {
               <p className="text-sm text-muted-foreground">
                 {(() => {
                   const n = mutualFollowers.slice(0, 2).map((u: any) => u.display_name || u.handle);
-                  let label = '';
+                  const b = (s: string) => <span className="text-foreground font-medium">{s}</span>;
+                  const sep = (s: string) => <span className="font-normal">{s}</span>;
                   if (isFollowing) {
                     if (mutualFollowers.length === 0) {
-                      label = 'you';
+                      return <>Followed by {b('you')}</>;
                     } else if (mutualFollowers.length === 1) {
-                      label = `you and ${n[0]}`;
+                      return <>Followed by {b('you')}{sep(' and ')}{b(n[0])}</>;
                     } else if (mutualFollowers.length === 2) {
-                      label = `you, ${n[0]}, and ${n[1]}`;
+                      return <>Followed by {b('you')}{sep(', ')}{b(n[0])}{sep(', and ')}{b(n[1])}</>;
                     } else {
-                      label = `you, ${n[0]}, & ${mutualFollowers.length - 1} others`;
+                      return <>Followed by {b('you')}{sep(', ')}{b(n[0])}{sep(', & ')}{b(`${mutualFollowers.length - 1} others`)}</>;
                     }
                   } else {
                     if (mutualFollowers.length === 1) {
-                      label = n[0];
+                      return <>Followed by {b(n[0])}</>;
                     } else if (mutualFollowers.length === 2) {
-                      label = `${n[0]} and ${n[1]}`;
+                      return <>Followed by {b(n[0])}{sep(' and ')}{b(n[1])}</>;
                     } else {
-                      label = `${n[0]}, ${n[1]}, and ${mutualFollowers.length - 2} others`;
+                      return <>Followed by {b(n[0])}{sep(', ')}{b(n[1])}{sep(', and ')}{b(`${mutualFollowers.length - 2} others`)}</>;
                     }
                   }
-                  return <>Followed by <span className="text-foreground font-medium">{label}</span></>;
                 })()}
               </p>
             </button>

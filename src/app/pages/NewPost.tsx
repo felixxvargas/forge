@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams, useBlocker } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -61,7 +61,42 @@ export function NewPost() {
   const [searchParams] = useSearchParams();
   const replyTo = searchParams.get('replyTo') ?? undefined;
   const quotePostId = searchParams.get('quotePostId') ?? undefined;
+  const attachListType = searchParams.get('attachListType') ?? undefined;
+  const attachListUserId = searchParams.get('attachListUserId') ?? undefined;
   const { createPost, currentUser, users, posts: contextPosts = [], getUserById } = useAppData() as any;
+
+  const LIST_KEY_MAP: Record<string, string> = {
+    'recently-played': 'recentlyPlayed', 'played-before': 'playedBefore',
+    'favorite': 'favorites', 'wishlist': 'wishlist', 'library': 'library',
+    'completed': 'completed', 'custom': 'custom', 'lfg': 'lfg',
+  };
+  const LIST_LABELS: Record<string, string> = {
+    'recently-played': 'Recently Played', 'played-before': "I've Played Before",
+    'favorite': 'Favorite Games', 'wishlist': 'Wishlist', 'library': 'Library',
+    'completed': 'Completed Games', 'custom': 'Custom List', 'lfg': 'Looking for Group',
+  };
+
+  // Build attached list snapshot from state (set either via URL params or in-compose picker)
+  const attachedListData = useCallback((): object | undefined => {
+    const listType = pickedListType;
+    const listUserId = pickedListUserId;
+    if (!listType || !listUserId) return undefined;
+    const listOwner = users ? users.find((u: any) => u.id === listUserId) ?? currentUser : currentUser;
+    if (!listOwner) return undefined;
+    const listKey = LIST_KEY_MAP[listType] ?? listType;
+    const gameLists = (listOwner as any).game_lists ?? (listOwner as any).gameLists ?? {};
+    const games: any[] = gameLists[listKey] ?? [];
+    const covers = games.slice(0, 4).map((g: any) =>
+      g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+    ).filter(Boolean);
+    return {
+      listType,
+      userId: listUserId,
+      title: LIST_LABELS[listType] ?? listType,
+      gameCount: games.length,
+      covers,
+    };
+  }, [pickedListType, pickedListUserId, users, currentUser]);
 
   // Scroll to top when compose screen opens
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -95,6 +130,10 @@ export function NewPost() {
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>(getSavedDrafts);
   // Cancel confirmation
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // List picker
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [pickedListType, setPickedListType] = useState<string | undefined>(attachListType);
+  const [pickedListUserId, setPickedListUserId] = useState<string | undefined>(attachListUserId);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -135,6 +174,18 @@ export function NewPost() {
 
   const isDirty = content.trim() !== '' || selectedGames.length > 0 || !!imageUrl || !!linkUrl;
 
+  // Block navigation (browser back, link clicks) when there's unsaved content
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // When blocker fires, show the confirm dialog
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setShowCancelConfirm(true);
+    }
+  }, [blocker.state]);
+
   const handleCancel = () => {
     if (isDirty) {
       setShowCancelConfirm(true);
@@ -146,24 +197,35 @@ export function NewPost() {
 
   const handleDiscard = () => {
     localStorage.removeItem(AUTO_DRAFT_KEY);
-    navigate(-1);
+    setShowCancelConfirm(false);
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
+    } else {
+      navigate(-1);
+    }
   };
 
   const handleSaveDraft = () => {
-    if (!isDirty) { navigate(-1); return; }
-    const drafts = getSavedDrafts();
-    const newDraft: SavedDraft = {
-      id: Date.now().toString(),
-      content,
-      games: selectedGames,
-      imageUrl,
-      linkUrl,
-      savedAt: new Date().toISOString(),
-    };
-    const updated = [newDraft, ...drafts].slice(0, 20);
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
+    if (isDirty) {
+      const drafts = getSavedDrafts();
+      const newDraft: SavedDraft = {
+        id: Date.now().toString(),
+        content,
+        games: selectedGames,
+        imageUrl,
+        linkUrl,
+        savedAt: new Date().toISOString(),
+      };
+      const updated = [newDraft, ...drafts].slice(0, 20);
+      localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
+    }
     localStorage.removeItem(AUTO_DRAFT_KEY);
-    navigate(-1);
+    setShowCancelConfirm(false);
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
+    } else {
+      navigate(-1);
+    }
   };
 
   const handleRestoreDraft = (draft: SavedDraft) => {
@@ -378,7 +440,7 @@ export function NewPost() {
       let lastPostId = await createPost(
         content, images, linkUrl || undefined, undefined, undefined,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
-        disableComments, disableReposts, replyTo, quotePostId,
+        disableComments, disableReposts, replyTo, quotePostId, attachedListData(),
       );
       // Chain thread continuation posts as replies to the previous post
       for (const threadContent of threadPosts.filter(p => p.trim())) {
@@ -648,6 +710,44 @@ export function NewPost() {
           );
         })()}
 
+        {/* Attached list preview */}
+        {pickedListType && (() => {
+          const listData = attachedListData() as any;
+          if (!listData) return null;
+          return (
+            <div className="mt-3 rounded-xl border border-accent/30 bg-accent/5 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <PenSquare className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span className="text-xs text-accent font-medium">Attaching List</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setPickedListType(undefined); setPickedListUserId(undefined); }}
+                  className="p-0.5 hover:text-foreground text-muted-foreground transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1 shrink-0">
+                  {listData.covers.length > 0 ? listData.covers.slice(0, 4).map((c: string, i: number) => (
+                    <img key={i} src={c} alt="" className="w-10 h-14 object-cover rounded" />
+                  )) : (
+                    <div className="w-10 h-14 rounded bg-secondary flex items-center justify-center">
+                      <Gamepad2 className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm">{listData.title}</p>
+                  <p className="text-xs text-muted-foreground">{listData.gameCount} games</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Toolbar */}
         <div className="flex items-center gap-1 pt-3 border-t border-border mt-2">
           <button
@@ -670,6 +770,13 @@ export function NewPost() {
             title="Tag a game"
           >
             <Gamepad2 className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setShowListPicker(true)}
+            className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+            title="Attach a game list"
+          >
+            <PenSquare className="w-5 h-5" />
           </button>
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}
@@ -865,6 +972,59 @@ export function NewPost() {
         </div>
       )}
 
+      {/* List picker tray */}
+      {showListPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          onClick={() => setShowListPicker(false)}
+        >
+          <div
+            className="w-full max-w-lg bg-card rounded-t-2xl p-4 pb-8"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
+            <h3 className="font-semibold mb-3 text-center">Attach a Game List</h3>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {Object.entries(LIST_LABELS).map(([type, label]) => {
+                const listKey = LIST_KEY_MAP[type] ?? type;
+                const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
+                const games: any[] = gameLists[listKey] ?? [];
+                const covers = games.slice(0, 4).map((g: any) =>
+                  g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+                ).filter(Boolean);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setPickedListType(type);
+                      setPickedListUserId(currentUser?.id ?? '');
+                      setShowListPicker(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${
+                      pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'
+                    }`}
+                  >
+                    <div className="flex gap-0.5 shrink-0">
+                      {covers.length > 0 ? covers.slice(0, 3).map((c, i) => (
+                        <img key={i} src={c} alt="" className="w-7 h-10 object-cover rounded" />
+                      )) : (
+                        <div className="w-7 h-10 rounded bg-secondary flex items-center justify-center">
+                          <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{label}</p>
+                      <p className="text-xs text-muted-foreground">{games.length} games</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cancel confirmation dialog */}
       {showCancelConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
@@ -885,7 +1045,10 @@ export function NewPost() {
                 Discard
               </button>
               <button
-                onClick={() => setShowCancelConfirm(false)}
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  if (blocker.state === 'blocked') blocker.reset();
+                }}
                 className="w-full px-4 py-2.5 bg-secondary rounded-lg text-sm hover:bg-secondary/80 transition-colors"
               >
                 Keep Editing

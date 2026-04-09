@@ -139,6 +139,13 @@ export interface Post {
   flare_id?: string;
   quote_post_id?: string;
   quotedPost?: Post; // resolved quoted post object (client-side join)
+  attached_list?: {
+    listType: string;
+    userId: string;
+    title: string;
+    gameCount: number;
+    covers: string[]; // up to 4 cover art URLs
+  };
   is_blurred?: boolean;
   game_titles?: string[];
   game_ids?: string[];

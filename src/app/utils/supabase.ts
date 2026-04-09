@@ -513,6 +513,7 @@ export const posts = {
     repostsDisabled?: boolean;
     replyTo?: string;
     quotePostId?: string;
+    attachedList?: object;
   } = {}) {
     // Content moderation check
     if (content && content.trim().length >= 3) {
@@ -543,6 +544,7 @@ export const posts = {
         ...(options.repostsDisabled ? { reposts_disabled: true } : {}),
         ...(options.replyTo ? { reply_to: options.replyTo } : {}),
         ...(options.quotePostId ? { quote_post_id: options.quotePostId } : {}),
+        ...(options.attachedList ? { attached_list: options.attachedList } : {}),
       })
       .select(`
         *,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Users, Share2, Copy, Check, X } from 'lucide-react';
+import { ArrowLeft, Edit2, Users, Share2, Copy, Check, X, PenSquare } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
@@ -224,6 +224,16 @@ export function ListView() {
                 className="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
               >
                 {sortLabel}
+              </button>
+              <button
+                onClick={() => {
+                  const uid = viewUserId ?? currentUser?.id ?? '';
+                  navigate(`/new-post?attachListType=${listType}&attachListUserId=${uid}`);
+                }}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                title="Post about this list"
+              >
+                <PenSquare className="w-5 h-5" />
               </button>
               <button
                 onClick={handleShare}

@@ -478,6 +478,40 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </a>
       )}
 
+      {/* Attached list card */}
+      {post.attached_list && (() => {
+        const list = post.attached_list as any;
+        return (
+          <div
+            className="mb-3 rounded-xl border border-accent/25 bg-accent/5 p-3 cursor-pointer hover:bg-accent/10 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/list?type=${list.listType}&userId=${list.userId}`);
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1 shrink-0">
+                {list.covers && list.covers.length > 0 ? (
+                  list.covers.slice(0, 4).map((c: string, i: number) => (
+                    <img key={i} src={c} alt="" className="w-10 h-14 object-cover rounded" />
+                  ))
+                ) : (
+                  <div className="w-10 h-14 rounded bg-secondary flex items-center justify-center">
+                    <Gamepad2 className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-accent font-medium mb-0.5 uppercase tracking-wide">Game List</p>
+                <p className="font-semibold text-sm">{list.title}</p>
+                <p className="text-xs text-muted-foreground">{list.gameCount} games</p>
+              </div>
+              <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Quoted post embed */}
       {post.quotedPost && (() => {
         const qp = post.quotedPost;
