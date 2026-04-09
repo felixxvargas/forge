@@ -529,18 +529,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       await postsAPI.repost(session.user.id, postId);
       setRepostedPosts(prev => new Set([...prev, postId]));
       setPostList(prev => {
-        const original = prev.find(p => p.id === postId && !p.repostedBy);
+        // Find the canonical original (no repostedBy). If only a repost copy exists, use that
+        // to derive the current count — avoids count staying 0 when original isn't in postList.
+        const original = prev.find(p => p.id === postId && !p.repostedBy)
+          ?? prev.find(p => p.id === postId);
         const newCount = (original?.repost_count ?? 0) + 1;
-        const updated = prev.map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: newCount } : p);
-        if (original) {
-          // Repost copy uses the same new count so both instances display identically
+        // Update count on every copy of this post (original + any existing repost copies)
+        const updated = prev.map(p => p.id === postId ? { ...p, repost_count: newCount } : p);
+        if (original && !original.repostedBy) {
+          // Prepend the current user's repost copy for immediate feed display
           return [{ ...original, repost_count: newCount, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
         }
         return updated;
       });
       // Also update count for posts that live in topicPosts (external/Bluesky/Mastodon)
       setTopicPosts(prev => prev.map(p =>
-        p.id === postId && !p.repostedBy ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p
+        p.id === postId ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p
       ));
       if (postId.startsWith('at://')) {
         const allPosts = [...postList, ...topicPosts];
@@ -570,7 +574,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPostList(prev =>
       prev
         .filter(p => !(p.id === postId && p.repostedBy === uid))
-        .map(p => p.id === postId && !p.repostedBy ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p)
+        .map(p => p.id === postId ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) - 1) } : p)
     );
     try {
       await postsAPI.unrepost(uid, postId);
@@ -826,12 +830,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const existingIds = new Set(postList.map((p: any) => p.id + (p.repostedBy || '')));
       const newTopics = topicPosts.filter((p: any) => !existingIds.has(p.id));
       return [...postList, ...newTopics].sort((a: any, b: any) =>
-        new Date(b.created_at ?? b.timestamp).getTime() - new Date(a.created_at ?? a.timestamp).getTime()
+        new Date(b.repostedAt ?? b.created_at ?? b.timestamp).getTime() - new Date(a.repostedAt ?? a.created_at ?? a.timestamp).getTime()
       );
     })();
+
+    // Deduplicate by post id — keep the most-recent entry per post
+    // (prevents original + repost of same post both appearing in the feed)
+    const seenIds = new Set<string>();
+    const deduped = combined.filter((p: any) => {
+      if (seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+
     // Resolve quotedPost for any post that has quote_post_id
     const byId = new Map(combined.map((p: any) => [p.id, p]));
-    return combined.map((p: any) =>
+    return deduped.map((p: any) =>
       p.quote_post_id && !p.quotedPost
         ? { ...p, quotedPost: byId.get(p.quote_post_id) }
         : p

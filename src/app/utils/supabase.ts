@@ -349,16 +349,21 @@ export const posts = {
       .filter((r: any) => r.post)
       .map((r: any) => ({ ...r.post, repostedBy: r.user_id, repostedAt: r.created_at }));
 
-    const seen = new Set<string>();
-    const merged = [...(postsData ?? []), ...repostItems, ...gamePostsData].filter((p: any) => {
-      const key = p.id + (p.repostedBy || '');
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    merged.sort((a: any, b: any) =>
+    // Merge all candidates and sort newest-first (reposts use repostedAt for freshness)
+    const all = [...(postsData ?? []), ...repostItems, ...gamePostsData];
+    all.sort((a: any, b: any) =>
       new Date(b.repostedAt || b.created_at).getTime() - new Date(a.repostedAt || a.created_at).getTime()
     );
+
+    // Deduplicate by post id — keep only the single most-recent entry per post
+    // (avoids showing the original post AND a repost of the same post simultaneously)
+    const seenIds = new Set<string>();
+    const merged = all.filter((p: any) => {
+      if (seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+
     return merged.slice(0, limit);
   },
 
