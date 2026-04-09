@@ -106,9 +106,14 @@ export function Feed() {
     loadDynamicFeed();
   }, [loadDynamicFeed]);
 
-  // For guests, always show trending
+  // For guests, always show trending; restore following when auth resolves
   useEffect(() => {
-    if (!isAuthenticated) setFeedMode('trending');
+    if (!isAuthenticated) {
+      setFeedMode('trending');
+    } else if (feedMode === 'trending') {
+      setFeedMode('following');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   const sourcePosts = dynamicPosts !== null ? dynamicPosts : contextPosts;

@@ -538,6 +538,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         return updated;
       });
+      // Also update count for posts that live in topicPosts (external/Bluesky/Mastodon)
+      setTopicPosts(prev => prev.map(p =>
+        p.id === postId && !p.repostedBy ? { ...p, repost_count: (p.repost_count ?? 0) + 1 } : p
+      ));
       if (postId.startsWith('at://')) {
         const allPosts = [...postList, ...topicPosts];
         const targetPost = allPosts.find((p: any) => p.id === postId);

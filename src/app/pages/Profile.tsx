@@ -165,6 +165,9 @@ export function Profile() {
   // Fetch fresh follower/following counts from the follows table (source of truth — avoids stale counters)
   useEffect(() => {
     if (!profileUser?.id) return;
+    // Seed from cached profile value immediately to avoid the "—" flash
+    const cachedFollowers = profileUser?.follower_count ?? (profileUser as any)?.followerCount ?? null;
+    if (cachedFollowers !== null) setFreshFollowerCount(cachedFollowers);
     Promise.all([
       profiles.getFollowerCount(profileUser.id),
       profiles.getFollowingCount(profileUser.id),

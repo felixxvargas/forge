@@ -703,8 +703,9 @@ export function Messages() {
                     ) : (
                       <div className="bg-card rounded-xl flex items-center overflow-hidden">
                         <button
-                          onClick={() => openConversation(partnerId, partnerProfile)}
-                          className="flex-1 p-4 hover:bg-card/80 transition-colors flex items-center gap-3 text-left min-w-0"
+                          onClick={(e) => { e.stopPropagation(); navigate(partnerProfile.id === currentUser?.id ? '/profile' : `/profile/${partnerProfile.id}`); }}
+                          className="p-4 pr-0 hover:opacity-80 transition-opacity shrink-0"
+                          title={`View ${partnerProfile.display_name || partnerProfile.handle}'s profile`}
                         >
                           <ProfileAvatar
                             username={partnerProfile.display_name || partnerProfile.handle || '?'}
@@ -712,9 +713,19 @@ export function Messages() {
                             size="md"
                             userId={partnerProfile.id}
                           />
+                        </button>
+                        <button
+                          onClick={() => openConversation(partnerId, partnerProfile)}
+                          className="flex-1 p-4 hover:bg-card/80 transition-colors flex items-center gap-3 text-left min-w-0"
+                        >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
-                              <p className="font-semibold truncate">{partnerProfile.display_name || partnerProfile.handle}</p>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(partnerProfile.id === currentUser?.id ? '/profile' : `/profile/${partnerProfile.id}`); }}
+                                className="font-semibold truncate hover:underline text-left"
+                              >
+                                {partnerProfile.display_name || partnerProfile.handle}
+                              </button>
                               <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatTime(item.created_at)}</span>
                             </div>
                             <p className="text-sm text-muted-foreground truncate">{item.content}</p>
