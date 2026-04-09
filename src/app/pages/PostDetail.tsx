@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
@@ -398,39 +398,6 @@ export function PostDetail() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto">
-        {/* Parent post context — shown when the highlighted post is a reply */}
-        {parentPost && (() => {
-          const parentUser = parentPost.author ?? getUserById(parentPost.user_id);
-          if (!parentUser) return null;
-          return (
-            <div className="bg-card border-b border-border">
-              {/* Clickable "Original post" label */}
-              <button
-                onClick={() => navigate(`/post/${encodeURIComponent(parentPost.id)}`)}
-                className="w-full px-4 pt-3 pb-0 flex items-center gap-1.5 group text-left"
-              >
-                <ExternalLink className="w-3 h-3 text-accent shrink-0" />
-                <p className="text-xs text-accent font-medium group-hover:underline">View original post</p>
-              </button>
-              <div className="px-4 pb-2 opacity-80 pointer-events-none">
-                <PostCard
-                  post={parentPost}
-                  user={parentUser}
-                  onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-                  onComment={() => navigate(`/post/${parentPost.id}#comments`)}
-                  isLiked={likedPosts.has(parentPost.id)}
-                />
-              </div>
-              {/* Thread connector line */}
-              <div className="flex items-center gap-3 px-4 pb-1">
-                <div className="w-10 flex justify-center">
-                  <div className="w-0.5 h-4 bg-border" />
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Post + Reposters share the same card background */}
         <div className="bg-card border-b border-border">
           <div className="px-4 pt-4 pb-4">
@@ -443,6 +410,11 @@ export function PostDetail() {
                 ? async (id) => { await deletePost(id); navigate(-1); }
                 : undefined}
               isDetailView={true}
+              replyToHandle={
+                parentPost
+                  ? ((parentPost.author?.handle ?? getUserById(parentPost.user_id)?.handle ?? '').replace(/^@/, '') || undefined)
+                  : undefined
+              }
             />
           </div>
 

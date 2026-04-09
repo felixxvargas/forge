@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "forge-social.app" }],
+      "destination": "https://www.forge-social.app/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [{"source":"/((?!api/).*)", "destination":"/index.html"}],
   "crons": [{"path":"/api/emails/weekly-digest","schedule":"0 9 * * 1"}]
 }

@@ -38,9 +38,10 @@ interface PostCardProps {
   isLiked?: boolean;
   isReposted?: boolean;
   onUserClick?: (e: React.MouseEvent) => void;
+  replyToHandle?: string;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -274,13 +275,13 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       )}
 
       {/* Reply indicator */}
-      {!isDetailView && (post as any).reply_to && (
+      {(post as any).reply_to && (
         <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/post/${(post as any).reply_to}`); }}
+          onClick={(e) => { e.stopPropagation(); navigate(`/post/${encodeURIComponent((post as any).reply_to)}`); }}
           className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
         >
           <CornerUpLeft className="w-3.5 h-3.5 shrink-0" />
-          <span>Replying to {parentAuthorHandle ? `@${parentAuthorHandle}` : 'a post'}</span>
+          <span>Replying to {(replyToHandle ?? parentAuthorHandle) ? `@${replyToHandle ?? parentAuthorHandle}` : 'a post'}</span>
         </button>
       )}
 
@@ -603,28 +604,26 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       {/* Repost tray */}
       {showRepostTray && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50"
           onClick={(e) => { e.stopPropagation(); setShowRepostTray(false); }}
         >
           <div
-            className="w-full max-w-lg bg-card rounded-t-2xl p-4 pb-8 space-y-2"
+            className="w-full max-w-lg bg-card rounded-t-2xl p-4 space-y-2"
+            style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
             <button
               onClick={() => {
                 setShowRepostTray(false);
-                if (!isReposted) onRepost?.(post.id);
+                onRepost?.(post.id);
               }}
-              disabled={isReposted}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                isReposted ? 'opacity-50 cursor-not-allowed bg-secondary/30' : 'hover:bg-secondary'
-              }`}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-secondary transition-colors"
             >
-              <Repeat2 className="w-5 h-5 text-accent shrink-0" />
+              <Repeat2 className={`w-5 h-5 shrink-0 ${isReposted ? 'text-destructive' : 'text-accent'}`} />
               <div className="text-left">
-                <p className="font-medium">{isReposted ? 'Already reposted' : 'Repost'}</p>
-                <p className="text-xs text-muted-foreground">Share to your followers instantly</p>
+                <p className="font-medium">{isReposted ? 'Undo Repost' : 'Repost'}</p>
+                <p className="text-xs text-muted-foreground">{isReposted ? 'Remove from your followers\' feeds' : 'Share to your followers instantly'}</p>
               </div>
             </button>
             <button
