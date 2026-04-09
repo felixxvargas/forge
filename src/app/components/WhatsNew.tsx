@@ -11,6 +11,49 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.2.5',
+    date: 'April 2025',
+    title: "What's New in Forge",
+    summary: "Reply threading, following feed improvements, and polish across the board.",
+    highlights: [
+      'Threaded replies on post detail pages with vertical connector lines',
+      'Bluesky, Mastodon, and topic account posts now appear correctly in the Following feed',
+      'Clicking a user\'s avatar or handle in Messages navigates to their profile',
+      'Repost counts now update correctly for external posts',
+      'View original post link on reply detail pages',
+      '"Followed by" separator text no longer bold',
+      'Follower count no longer flashes on profile load',
+    ],
+  },
+  {
+    version: 'v0.2.4',
+    date: 'April 2025',
+    title: "What's New in Forge",
+    summary: "Quote posts, list sharing in the feed, compose improvements, and URL fixes.",
+    highlights: [
+      'Quote post support — repost tray now offers Repost or Quote Post',
+      'Attach a game list preview to any post from compose or from the List page',
+      'Tapping a list preview in a post opens the full list detail page',
+      'Navigation away from an unsaved draft now prompts to keep editing or discard',
+      'Fixed canonical URL for Upwork and social crawlers',
+      'Bug fixes and quality of life improvements',
+    ],
+  },
+  {
+    version: 'v0.2.3',
+    date: 'March 2025',
+    title: "What's New in Forge",
+    summary: "Bluesky and Mastodon integration improvements, share lists, and profile polish.",
+    highlights: [
+      'External Bluesky and Mastodon accounts can now be followed from Explore',
+      'Forge follower count shown on Bluesky external profile pages',
+      'Share any game list via link with a dedicated share tray',
+      'Browse other users\' lists of the same type from the List page',
+      'Read-only indicators on external (Bluesky/Mastodon) post engagement buttons',
+      'Bluesky and Mastodon login/signup options temporarily hidden pending full integration',
+    ],
+  },
+  {
     version: 'v0.2.1',
     date: 'March 2025',
     title: "What's New in Forge",
@@ -19,7 +62,7 @@ export const RELEASES: Release[] = [
       'Launch of Forge: Feed, Explore, Messages, Profiles, Notifications, Settings & Login/Signup',
       'Follow gaming accounts via ATProto and ActivityPub (IGN, GameSpot, Xbox, itch.io, PC Gamer, MassivelyOP, and more)',
       'Login and sign up via Google',
-      'Games databases integrated with IGDB',
+      'Games database integrated with IGDB',
       'Public view of Forge for users that are not signed in',
       'Data deletion page added (GDPR/privacy compliance)',
       'Bug fixes and quality of life improvements',

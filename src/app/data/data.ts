@@ -331,6 +331,18 @@ export const topicAccounts: User[] = [
     gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
     followerCount: 0,
   },
+  {
+    id: 'user-forge-support',
+    handle: '@forgesupport',
+    displayName: 'Forge Support',
+    bio: 'Official Forge support account. Having trouble with the app? Send us a message and we\'ll help you out.',
+    email: 'support@forge-social.app',
+    profilePicture: '/forge-avatar.png',
+    platforms: [],
+    socialPlatforms: [],
+    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
+    followerCount: 0,
+  },
 ];
 
 // No posts - will be loaded from backend and Bluesky integration
