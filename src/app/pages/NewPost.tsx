@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -777,7 +777,7 @@ export function NewPost() {
             className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
             title="Attach a game list"
           >
-            <PenSquare className="w-5 h-5" />
+            <LayoutList className="w-5 h-5" />
           </button>
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}

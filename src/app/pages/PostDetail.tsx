@@ -382,9 +382,11 @@ export function PostDetail() {
     );
   }
 
-  // Use live reposter count from reposts table — more reliable than posts.repost_count
-  // which can lag if the SECURITY DEFINER sync function hasn't been applied yet
-  const liveRepostCount = reposters.length > 0 ? reposters.length : (activePost.repost_count ?? 0);
+  // Use live reposter + quote-post count — quote posts count as reposts per product spec.
+  // Falls back to DB repost_count only when both lists are still loading (empty).
+  const liveRepostCount = (reposters.length + quotePosts.length) > 0
+    ? reposters.length + quotePosts.length
+    : (activePost.repost_count ?? 0);
 
   // Use actual loaded reply count once available (overrides potentially stale DB value)
   const actualCommentCount = isLoadingReplies ? activePost.comment_count : Math.max(activePost.comment_count ?? 0, replies.length);

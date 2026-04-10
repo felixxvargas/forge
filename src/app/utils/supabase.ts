@@ -565,6 +565,10 @@ export const posts = {
         )
       );
     }
+    // Sync repost_count on the quoted post — quote posts count toward repost_count (fire-and-forget)
+    if (options.quotePostId) {
+      Promise.resolve(supabase.rpc('sync_repost_count', { p_post_id: options.quotePostId })).catch(() => {});
+    }
     return data;
   },
 

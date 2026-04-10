@@ -21,6 +21,7 @@ export function PostInteractions() {
   const [likers, setLikers] = useState<any[]>([]);
   const [reposters, setReposters] = useState<any[]>([]);
   const [quotePosts, setQuotePosts] = useState<any[]>([]);
+  const [originalPost, setOriginalPost] = useState<any>(null);
   const [loadingLikes, setLoadingLikes] = useState(false);
   const [loadingReposts, setLoadingReposts] = useState(false);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
@@ -50,6 +51,8 @@ export function PostInteractions() {
       .then((data: any[]) => setQuotePosts(data))
       .catch(() => setQuotePosts([]))
       .finally(() => setLoadingQuotes(false));
+    // Fetch the original post so we can embed it in each quote post card
+    postsAPI.getById(postId).then((p: any) => setOriginalPost(p)).catch(() => {});
   }, [postId]);
 
   const loading = tab === 'likes' ? loadingLikes : tab === 'reposts' ? loadingReposts : loadingQuotes;
@@ -155,10 +158,11 @@ export function PostInteractions() {
             <div>
               {quotePosts.map((qp: any) => {
                 const qUser = qp.author ?? getUserById?.(qp.user_id) ?? { handle: qp.user_id, display_name: qp.user_id };
+                const postWithEmbed = originalPost ? { ...qp, quotedPost: originalPost } : qp;
                 return (
                   <PostCard
                     key={qp.id}
-                    post={qp}
+                    post={postWithEmbed}
                     user={qUser}
                     onLike={(id) => likedPosts?.has(id) ? unlikePost(id) : likePost(id)}
                     onRepost={(id) => repostedPosts?.has(id) ? unrepostPost(id) : repostPost(id)}
