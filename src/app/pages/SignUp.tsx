@@ -80,17 +80,10 @@ export function SignUp() {
 
     setIsLoading(true);
     try {
-      const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) {
-        setError(signUpError.message || 'Sign-up failed. Please try again.');
-        return;
-      }
-      // Store credentials as fallback for onboarding in case email confirmation is required
+      // Store credentials — account is created at the end of onboarding once the
+      // profile (handle, display name) is ready, so we have all data in one atomic step.
       localStorage.setItem('forge-signup-email', email);
       localStorage.setItem('forge-signup-password', password);
-      localStorage.setItem('forge-logged-in', 'true');
-      toast.success('Account created! Complete your profile.');
       navigate('/splash');
     } catch (err: any) {
       setError(err.message || 'Sign-up failed. Please try again.');

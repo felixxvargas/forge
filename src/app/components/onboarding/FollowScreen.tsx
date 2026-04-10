@@ -93,7 +93,7 @@ export function FollowScreen({ users, onComplete }: FollowScreenProps) {
 
       {/* Fixed bottom button */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-6">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-md mx-auto">
           <button
             onClick={() => onComplete(selectedUsers)}
             className="w-full py-4 rounded-xl font-semibold transition-all bg-accent text-accent-foreground hover:opacity-90"

@@ -382,9 +382,12 @@ export function PostDetail() {
 
   // Use actual loaded reply count once available (overrides potentially stale DB value)
   const actualCommentCount = isLoadingReplies ? activePost.comment_count : Math.max(activePost.comment_count ?? 0, replies.length);
-  const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount };
+  const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount, repost_count: liveRepostCount };
 
   const parentUser = parentPost ? (parentPost.author ?? getUserById(parentPost.user_id)) : null;
+  // Use live reposter count from reposts table — more reliable than posts.repost_count
+  // which can lag if the SECURITY DEFINER sync function hasn't been applied yet
+  const liveRepostCount = reposters.length > 0 ? reposters.length : (activePost.repost_count ?? 0);
 
   const handleReplyToClick = () => {
     setShowParentContext(true);
@@ -496,18 +499,14 @@ export function PostDetail() {
 
         {/* Replies Section */}
         <div ref={repliesRef} id="comments">
-          <div className="px-4 pt-6 pb-2">
-            <h2 className="text-lg font-semibold">{isExternalPost ? 'Comments' : 'Replies'}</h2>
-          </div>
-
           {/* Compact reply trigger */}
           {currentUser && (isExternalPost || !activePost.comments_disabled) && (
-            <div className="px-4 pb-4 border-b border-border">
+            <div className="px-4 py-4 border-b border-border">
               <div className="flex gap-3 items-center">
                 <ProfileAvatar
                   username={currentUser.display_name || currentUser.handle || '?'}
                   profilePicture={currentUser.profile_picture}
-                  size="md"
+                  size="sm"
                 />
                 <button
                   onClick={() => setShowReplyTray(true)}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SplashScreen } from '../components/onboarding/SplashScreen';
 import { InterestsScreen } from '../components/onboarding/InterestsScreen';
@@ -119,45 +120,96 @@ export function Onboarding() {
   };
 
   const handleUsernameComplete = async (username: string, displayName: string, pronouns: string) => {
-    try {
-      // Get the current Supabase session (works for both email signup and OAuth)
-      const { data: { session } } = await supabase.auth.getSession();
+    // Helper to save profile and go to feed
+    const finishOnboarding = async (userId: string) => {
+      await profiles.update(userId, {
+        handle: username,
+        display_name: displayName,
+        ...(pronouns ? { pronouns } : {}),
+        interests: selectedInterests,
+      });
+      localStorage.removeItem('forge-signup-email');
+      localStorage.removeItem('forge-signup-password');
+      localStorage.setItem('forge-onboarding-complete', 'true');
+      navigate('/feed');
+    };
 
-      if (!session?.user) {
-        // Try localStorage fallback for old signup flow
-        const signupEmail = localStorage.getItem('forge-signup-email');
-        const signupPassword = localStorage.getItem('forge-signup-password');
-        if (signupEmail && signupPassword) {
-          const { data, error } = await supabase.auth.signInWithPassword({ email: signupEmail, password: signupPassword });
-          if (error) throw new Error('Session expired. Please sign in again.');
-          localStorage.removeItem('forge-signup-email');
-          localStorage.removeItem('forge-signup-password');
-          await profiles.update(data.session!.user.id, {
-            handle: username,
-            display_name: displayName,
-            pronouns,
-            interests: selectedInterests,
-          });
-          navigate('/feed');
-          return;
-        }
+    try {
+      // 1. Existing session (Google OAuth or previously authenticated)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await finishOnboarding(session.user.id);
+        return;
+      }
+
+      // 2. Email signup flow — credentials stored in localStorage by SignUp.tsx
+      const signupEmail = localStorage.getItem('forge-signup-email');
+      const signupPassword = localStorage.getItem('forge-signup-password');
+
+      if (!signupEmail || !signupPassword) {
         throw new Error('Session expired. Please sign in again.');
       }
 
-      // Update profile with onboarding data
-      await profiles.update(session.user.id, {
-        handle: username,
-        display_name: displayName,
-        pronouns,
-        interests: selectedInterests,
+      // Try creating the account now (deferred from SignUp.tsx so we have all profile data)
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: signupEmail,
+        password: signupPassword,
       });
 
-      localStorage.setItem('forge-onboarding-complete', 'true');
-      navigate('/feed');
+      if (signUpData?.session?.user) {
+        // Email confirmation is disabled — we have a session immediately
+        await finishOnboarding(signUpData.session.user.id);
+        return;
+      }
+
+      if (signUpData?.user && !signUpData.session) {
+        // Email confirmation is enabled — store profile data so AuthCallback can apply it
+        // after the user clicks the confirmation link in their email
+        localStorage.setItem('forge-pending-profile', JSON.stringify({
+          handle: username,
+          display_name: displayName,
+          pronouns,
+          interests: selectedInterests,
+        }));
+        localStorage.removeItem('forge-signup-email');
+        localStorage.removeItem('forge-signup-password');
+        toast.info('Check your email to verify your account, then sign in.');
+        navigate('/login');
+        return;
+      }
+
+      // signUp failed — account may already exist (previous attempt or re-try)
+      // Try signing in instead
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: signupEmail,
+        password: signupPassword,
+      });
+
+      if (signInData?.session?.user) {
+        await finishOnboarding(signInData.session.user.id);
+        return;
+      }
+
+      // Sign-in also failed — likely email not confirmed from a previous attempt
+      if (signInError?.message?.toLowerCase().includes('email')) {
+        localStorage.setItem('forge-pending-profile', JSON.stringify({
+          handle: username,
+          display_name: displayName,
+          pronouns,
+          interests: selectedInterests,
+        }));
+        localStorage.removeItem('forge-signup-email');
+        localStorage.removeItem('forge-signup-password');
+        toast.info('Check your email to verify your account, then sign in.');
+        navigate('/login');
+        return;
+      }
+
+      throw new Error(signInError?.message || signUpError?.message || 'Unable to complete sign-up. Please try again.');
     } catch (error: any) {
       console.error('Onboarding error:', error);
       const msg = error.message || 'Failed to complete onboarding';
-      if (msg.includes('Session expired') || msg.includes('sign in')) {
+      if (msg.includes('Session expired') || msg.includes('sign in') || msg.includes('sign-up')) {
         alert(msg);
         navigate('/login');
         return;

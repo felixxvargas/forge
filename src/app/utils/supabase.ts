@@ -628,14 +628,8 @@ export const posts = {
       .insert({ user_id: userId, post_id: postId });
     // 23505 = unique violation (already reposted) — treat as a no-op, not an error
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Authoritative count overrides any DB trigger to prevent double-increment bugs
-    const { count } = await supabase
-      .from('reposts')
-      .select('*', { count: 'exact', head: true })
-      .eq('post_id', postId);
-    if (count !== null) {
-      await supabase.from('posts').update({ repost_count: count }).eq('id', postId);
-    }
+    // Use SECURITY DEFINER RPC to bypass RLS — direct posts.update() is blocked for cross-user posts
+    await supabase.rpc('sync_repost_count', { p_post_id: postId });
   },
 
   async unrepost(userId: string, postId: string) {
@@ -645,14 +639,8 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
-    // Authoritative count overrides any DB trigger to prevent double-decrement bugs
-    const { count } = await supabase
-      .from('reposts')
-      .select('*', { count: 'exact', head: true })
-      .eq('post_id', postId);
-    if (count !== null) {
-      await supabase.from('posts').update({ repost_count: count }).eq('id', postId);
-    }
+    // Use SECURITY DEFINER RPC to bypass RLS
+    await supabase.rpc('sync_repost_count', { p_post_id: postId });
   },
 
   async getRepostedIds(userId: string) {

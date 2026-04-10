@@ -28,6 +28,26 @@ export function AuthCallback() {
           profile_picture: meta.avatar_url || meta.picture || null,
         }, { onConflict: 'id', ignoreDuplicates: true });
 
+        // Apply pending profile from email signup onboarding (when email confirmation is enabled)
+        const pendingProfileRaw = localStorage.getItem('forge-pending-profile');
+        if (pendingProfileRaw) {
+          try {
+            const pending = JSON.parse(pendingProfileRaw);
+            localStorage.removeItem('forge-pending-profile');
+            await supabase.from('profiles').update({
+              handle: pending.handle,
+              display_name: pending.display_name,
+              ...(pending.pronouns ? { pronouns: pending.pronouns } : {}),
+              ...(pending.interests?.length ? { interests: pending.interests } : {}),
+            }).eq('id', session.user.id);
+            localStorage.setItem('forge-onboarding-complete', 'true');
+            navigate('/feed', { replace: true });
+            return;
+          } catch {
+            // Fall through to normal routing on error
+          }
+        }
+
         // Always re-fetch so we route based on the actual DB state
         const { data: profile } = await supabase
           .from('profiles')
