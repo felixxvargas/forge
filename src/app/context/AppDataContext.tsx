@@ -771,12 +771,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
     const key = keyMap[listType];
     const existing = currentUser.game_lists ?? {} as any;
-    // Auto-hide lists when they're first populated programmatically (e.g. via game detail buttons).
-    // The user can explicitly show them again via the "Create a game list" selector on their profile.
+    // Auto-show lists when they receive their first games (newly created list becomes visible).
     const wasEmpty = (existing[key] ?? []).length === 0;
     const hiddenLists: string[] = existing.hiddenLists ?? [];
-    const newHiddenLists = wasEmpty && games.length > 0 && !hiddenLists.includes(key)
-      ? [...hiddenLists, key]
+    const newHiddenLists = wasEmpty && games.length > 0
+      ? hiddenLists.filter((k: string) => k !== key)
       : hiddenLists;
     const updatedLists = { ...existing, [key]: games, hiddenLists: newHiddenLists };
     const updated = await profiles.update(session.user.id, { game_lists: updatedLists });

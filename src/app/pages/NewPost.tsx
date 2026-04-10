@@ -990,6 +990,7 @@ export function NewPost() {
                 const listKey = LIST_KEY_MAP[type] ?? type;
                 const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
                 const games: any[] = gameLists[listKey] ?? [];
+                if (games.length === 0) return null;
                 const covers = games.slice(0, 4).map((g: any) =>
                   g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
                 ).filter(Boolean);

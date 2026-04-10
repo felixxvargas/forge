@@ -20,7 +20,7 @@ export function GameCard({ game, showHours = false, fullWidth = false }: GameCar
   return (
     <div
       className={`group cursor-pointer ${fullWidth ? 'w-full' : 'flex-shrink-0 w-32'}`}
-      onClick={() => navigate(`/game/${game.id}`)}
+      onClick={() => navigate(`/game/${encodeURIComponent(game.id)}`, { state: { fallbackGame: game } })}
     >
       <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary">
         {coverUrl && !imgError ? (

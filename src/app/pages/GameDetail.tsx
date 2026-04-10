@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
@@ -15,7 +15,9 @@ type PostSort = 'latest' | 'top';
 
 export function GameDetail() {
   const navigate = useNavigate();
-  const { gameId } = useParams();
+  const location = useLocation();
+  const { gameId: rawGameId } = useParams();
+  const gameId = rawGameId ? decodeURIComponent(rawGameId) : rawGameId;
   const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeed, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
 
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
@@ -69,7 +71,10 @@ export function GameDetail() {
     setLoadingGame(true);
     gamesAPI.getGame(gameId)
       .then((data: any) => setGame(data?.game ?? data ?? null))
-      .catch(() => setGame(null))
+      .catch(() => {
+        const fallback = (location.state as any)?.fallbackGame ?? null;
+        setGame(fallback);
+      })
       .finally(() => setLoadingGame(false));
   }, [gameId]);
 

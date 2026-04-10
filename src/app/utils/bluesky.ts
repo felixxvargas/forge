@@ -66,8 +66,10 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
   }
 
   try {
+    // Fetch more than needed so we still have results after filtering out reposts
+    const fetchLimit = Math.min(limit * 5, 100);
     const response = await fetch(
-      `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=${limit}&filter=posts_no_replies`
+      `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=${fetchLimit}&filter=posts_no_replies`
     );
 
     if (!response.ok) return [];
@@ -75,6 +77,7 @@ export async function fetchBlueskyPosts(handle: string, limit = 10): Promise<Blu
     const { feed } = await response.json();
     const transformedPosts: BlueskyPost[] = (feed ?? [])
       .filter((item: any) => item?.post && !item.reason) // skip reposts
+      .slice(0, limit)
       .map((item: any) => {
         const post = item.post;
         const record = post.record ?? {};

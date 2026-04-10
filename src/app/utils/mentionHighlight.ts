@@ -64,7 +64,7 @@ export function buildHighlightedHtml(
   let cursor = 0;
   for (const { start, end } of ranges) {
     html += escapeHtml(text.slice(cursor, start));
-    html += `<strong style="color:var(--accent)">${escapeHtml(text.slice(start, end))}</strong>`;
+    html += `<span style="color:var(--accent)">${escapeHtml(text.slice(start, end))}</span>`;
     cursor = end;
   }
   html += escapeHtml(text.slice(cursor));

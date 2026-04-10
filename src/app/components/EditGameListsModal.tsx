@@ -84,9 +84,9 @@ export function EditGameListsModal({
         const rawgGames: AnyGame[] = rawgRes.status === 'fulfilled' ? rawgRes.value : [];
 
         // Merge: prefer server/IGDB results, append RAWG results not already present.
-        // Normalise: lowercase, strip subtitles, remove edition labels, strip punctuation.
+        // Normalise: normalize subtitle separator but keep subtitle content; strip edition labels.
         const normalise = (t: string) => t.toLowerCase()
-          .replace(/\s*[:\-–]\s+.*$/, '')                          // strip subtitle after : - –
+          .replace(/\s*[:\-–]\s+/g, ' ')                           // normalize separator → space (keeps subtitle)
           .replace(/\s+(complete|definitive|enhanced|remastered|goty|gold|ultimate|deluxe|premium|standard|special|collector|limited|anniversary|director.?s cut|game of the year)\s*(edition)?$/i, '')
           .replace(/[''`,.!?™®]/g, '')                             // strip punctuation
           .replace(/\s+/g, ' ')
@@ -96,7 +96,6 @@ export function EditGameListsModal({
         for (const g of serverGames) {
           const key = normalise(g.title);
           serverKeys.add(key);
-          // Also add with year suffix so same-title different-year games aren't collapsed
           const yr = (g as any).year ?? (g as any).first_release_year;
           if (yr) serverKeys.add(`${key}|${yr}`);
         }
@@ -122,14 +121,31 @@ export function EditGameListsModal({
           const rankB = getGameRank(String(b.id)) ?? 9999;
           const covA = wordCoverage(a.title);
           const covB = wordCoverage(b.title);
-          // Primary: title word coverage (more words matched = better)
           if (covB !== covA) return covB - covA;
-          // Secondary: Forge popularity rank
           if (rankA !== rankB) return rankA - rankB;
           return 0;
         });
 
-        setSearchResults(merged);
+        // Second-pass dedup: collapse variant versions of the same game (HD remasters,
+        // Re: prefixes, Final Mix, parenthetical platform tags, etc.) keeping the
+        // highest-ranked entry per group.
+        const versionKey = (t: string) => t.toLowerCase()
+          .replace(/\s*[:\-–]\s*/g, ' ')
+          .replace(/\bre:?\s*/gi, '')                              // strip "Re:" version prefix
+          .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary)\b/gi, '')
+          .replace(/\s*\([^)]*\)\s*/g, '')                        // strip parentheticals (platform/year)
+          .replace(/[''`,.!?™®]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const seenVersionKeys = new Set<string>();
+        const deduped = merged.filter(g => {
+          const vk = versionKey(g.title);
+          if (seenVersionKeys.has(vk)) return false;
+          seenVersionKeys.add(vk);
+          return true;
+        });
+
+        setSearchResults(deduped);
       } catch {
         setSearchResults([]);
       } finally {

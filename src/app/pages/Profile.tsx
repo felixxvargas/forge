@@ -901,12 +901,15 @@ export function Profile() {
                 setListDragLabel(null);
               };
 
+              let visibleListCount = 0;
               return (
                 <>
                   {orderedLists.map(({ key, listType, label }, i) => {
                     const games = gameLists[key] ?? [];
                     if (games.length === 0) return null;
                     if (hiddenListKeys.includes(key)) return null;
+                    if (visibleListCount >= 4) return null;
+                    visibleListCount++;
                     const isDragging = listDragIdx === i;
                     const isOver = listDragOverIdx === i && listDragIdx !== i;
                     return (

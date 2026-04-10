@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Users, Share2, Copy, Check, X, PenSquare } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Edit2, Users, Upload, Copy, Check, X, PenSquare, MoreHorizontal } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
@@ -41,6 +41,8 @@ export function ListView() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showShareTray, setShowShareTray] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showOverflow, setShowOverflow] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
 
   const EDIT_MODAL_KEY = `forge-edit-list-open-${listType}`;
 
@@ -225,32 +227,81 @@ export function ListView() {
               >
                 {sortLabel}
               </button>
-              <button
-                onClick={() => {
-                  const uid = viewUserId ?? currentUser?.id ?? '';
-                  navigate(`/new-post?attachListType=${listType}&attachListUserId=${uid}`);
-                }}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                title="Post about this list"
-              >
-                <PenSquare className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleShare}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                title="Share list"
-              >
-                <Share2 className="w-5 h-5" />
-              </button>
-              {!viewUser && (
+
+              {/* Desktop: individual action buttons */}
+              <div className="hidden sm:flex items-center gap-2">
                 <button
-                  onClick={openEditModal}
+                  onClick={() => {
+                    const uid = viewUserId ?? currentUser?.id ?? '';
+                    navigate(`/new-post?attachListType=${listType}&attachListUserId=${uid}`);
+                  }}
                   className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                  title="Edit list"
+                  title="Post about this list"
                 >
-                  <Edit2 className="w-5 h-5" />
+                  <PenSquare className="w-5 h-5" />
                 </button>
-              )}
+                <button
+                  onClick={handleShare}
+                  className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                  title="Share list"
+                >
+                  <Upload className="w-5 h-5" />
+                </button>
+                {!viewUser && (
+                  <button
+                    onClick={openEditModal}
+                    className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                    title="Edit list"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile: 3-dot overflow menu */}
+              <div className="relative sm:hidden" ref={overflowRef}>
+                <button
+                  onClick={() => setShowOverflow(v => !v)}
+                  className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                  title="More actions"
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+                {showOverflow && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowOverflow(false)} />
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+                      <button
+                        onClick={() => {
+                          setShowOverflow(false);
+                          const uid = viewUserId ?? currentUser?.id ?? '';
+                          navigate(`/new-post?attachListType=${listType}&attachListUserId=${uid}`);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary transition-colors text-left"
+                      >
+                        <PenSquare className="w-4 h-4 shrink-0" />
+                        Post about this list
+                      </button>
+                      <button
+                        onClick={() => { setShowOverflow(false); handleShare(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary transition-colors text-left"
+                      >
+                        <Upload className="w-4 h-4 shrink-0" />
+                        Share list
+                      </button>
+                      {!viewUser && (
+                        <button
+                          onClick={() => { setShowOverflow(false); openEditModal(); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary transition-colors text-left"
+                        >
+                          <Edit2 className="w-4 h-4 shrink-0" />
+                          Edit list
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

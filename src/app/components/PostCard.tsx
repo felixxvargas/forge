@@ -505,11 +505,10 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-accent font-medium mb-0.5 uppercase tracking-wide">Game List</p>
+                <p className="hidden sm:block text-xs text-accent font-medium mb-0.5 uppercase tracking-wide">Game List</p>
                 <p className="font-semibold text-sm">{list.title}</p>
                 <p className="text-xs text-muted-foreground">{list.gameCount} games</p>
               </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
             </div>
           </div>
         );
