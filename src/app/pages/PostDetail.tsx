@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, Heart, MessageCircle, Quote } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
@@ -26,6 +26,8 @@ export function PostDetail() {
 
   const [replies, setReplies] = useState<any[]>([]);
   const [reposters, setReposters] = useState<any[]>([]);
+  const [likers, setLikers] = useState<any[]>([]);
+  const [quotePosts, setQuotePosts] = useState<any[]>([]);
   const [forgeReplies, setForgeReplies] = useState<any[]>([]); // Forge comments on external posts
   const [newReply, setNewReply] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -225,12 +227,12 @@ export function PostDetail() {
       .catch(() => setForgeReplies([]));
   }, [postId, isExternalPost]);
 
-  // Load reposters (Forge posts only)
+  // Load reposters, likers, and quote posts (Forge posts only)
   useEffect(() => {
     if (!postId || isExternalPost) return;
-    postsAPI.getPostReposters(postId)
-      .then(data => setReposters(data))
-      .catch(() => {});
+    postsAPI.getPostReposters(postId).then(data => setReposters(data)).catch(() => {});
+    postsAPI.getPostLikers(postId).then(data => setLikers(data)).catch(() => {});
+    postsAPI.getQuotePosts(postId).then(data => setQuotePosts(data)).catch(() => {});
   }, [postId, isExternalPost]);
 
   // Scroll to replies if navigated with #comments hash
@@ -438,18 +440,21 @@ export function PostDetail() {
           )}
         </AnimatePresence>
 
-        {/* Post + Reposters share the same card background */}
+        {/* Post + interaction summaries share the same card background */}
         <div className="bg-card border-b border-border">
           <div className="px-4 pt-4 pb-4">
             <PostCard
               post={detailPost}
               user={activeUser}
               onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+              onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
               onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
               onDelete={currentUser && activePost.user_id === currentUser.id
                 ? async (id) => { await deletePost(id); navigate(-1); }
                 : undefined}
               isDetailView={true}
+              isReposted={repostedPosts.has(activePost.id)}
+              isLiked={likedPosts.has(activePost.id)}
               replyToHandle={
                 parentPost
                   ? ((parentPost.author?.handle ?? getUserById(parentPost.user_id)?.handle ?? '').replace(/^@/, '') || undefined)
@@ -459,41 +464,81 @@ export function PostDetail() {
             />
           </div>
 
-          {/* Reposters */}
-          {reposters.length > 0 && (
-            <div className="px-4 py-3 border-t border-border flex items-center gap-2 flex-wrap">
-              <Repeat2 className="w-4 h-4 text-green-500 shrink-0" />
-              <div className="flex -space-x-1">
-                {reposters.slice(0, 6).map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => navigate(`/${(u.handle || '').replace(/^@/, '')}`)}
-                    title={u.display_name || u.handle}
-                    className="ring-2 ring-card rounded-full"
-                  >
-                    <ProfileAvatar
-                      username={u.display_name || u.handle || '?'}
-                      profilePicture={u.profile_picture}
-                      userId={u.id}
-                      size="sm"
-                    />
-                  </button>
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {reposters.length === 1 ? (
-                  <>
-                    <button
-                      onClick={() => navigate(`/${(reposters[0].handle || '').replace(/^@/, '')}`)}
-                      className="font-medium text-foreground hover:underline"
-                    >
-                      {reposters[0].display_name || reposters[0].handle}
-                    </button>{' '}reposted
-                  </>
-                ) : (
-                  <>{reposters.length} reposts</>
-                )}
-              </span>
+          {/* Interaction summaries — likes, reposts, quote posts */}
+          {(likers.length > 0 || reposters.length > 0 || quotePosts.length > 0) && (
+            <div className="border-t border-border divide-y divide-border">
+              {likers.length > 0 && (
+                <button
+                  onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=likes`)}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors text-left"
+                >
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {likers.slice(0, 6).map(u => (
+                      <div key={u.id} className="ring-2 ring-card rounded-full">
+                        <ProfileAvatar username={u.display_name || u.handle || '?'} profilePicture={u.profile_picture} userId={u.id} size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {likers.length === 1 ? (
+                      <><strong className="text-foreground">{likers[0].display_name || likers[0].handle}</strong> liked</>
+                    ) : likers.length === 2 ? (
+                      <><strong className="text-foreground">{likers[0].display_name || likers[0].handle}</strong> and <strong className="text-foreground">{likers[1].display_name || likers[1].handle}</strong> liked</>
+                    ) : (
+                      <><strong className="text-foreground">{likers[0].display_name || likers[0].handle}</strong>, <strong className="text-foreground">{likers[1].display_name || likers[1].handle}</strong>, and {likers.length - 2} others liked</>
+                    )}
+                  </span>
+                </button>
+              )}
+              {reposters.length > 0 && (
+                <button
+                  onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=reposts`)}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors text-left"
+                >
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {reposters.slice(0, 6).map(u => (
+                      <div key={u.id} className="ring-2 ring-card rounded-full">
+                        <ProfileAvatar username={u.display_name || u.handle || '?'} profilePicture={u.profile_picture} userId={u.id} size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {reposters.length === 1 ? (
+                      <><strong className="text-foreground">{reposters[0].display_name || reposters[0].handle}</strong> reposted</>
+                    ) : reposters.length === 2 ? (
+                      <><strong className="text-foreground">{reposters[0].display_name || reposters[0].handle}</strong> and <strong className="text-foreground">{reposters[1].display_name || reposters[1].handle}</strong> reposted</>
+                    ) : (
+                      <><strong className="text-foreground">{reposters[0].display_name || reposters[0].handle}</strong>, <strong className="text-foreground">{reposters[1].display_name || reposters[1].handle}</strong>, and {reposters.length - 2} others reposted</>
+                    )}
+                  </span>
+                </button>
+              )}
+              {quotePosts.length > 0 && (
+                <button
+                  onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=quotes`)}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors text-left"
+                >
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {quotePosts.slice(0, 6).map((qp: any) => {
+                      const qUser = qp.author ?? { handle: qp.user_id, display_name: qp.user_id };
+                      return (
+                        <div key={qp.id} className="ring-2 ring-card rounded-full">
+                          <ProfileAvatar username={qUser.display_name || qUser.handle || '?'} profilePicture={qUser.profile_picture} userId={qUser.id} size="sm" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {quotePosts.length === 1 ? (
+                      <><strong className="text-foreground">{(quotePosts[0].author?.display_name || quotePosts[0].author?.handle) ?? 'Someone'}</strong> quote posted</>
+                    ) : quotePosts.length === 2 ? (
+                      <><strong className="text-foreground">{(quotePosts[0].author?.display_name || quotePosts[0].author?.handle) ?? 'Someone'}</strong> and <strong className="text-foreground">{(quotePosts[1].author?.display_name || quotePosts[1].author?.handle) ?? 'Someone'}</strong> quote posted</>
+                    ) : (
+                      <><strong className="text-foreground">{(quotePosts[0].author?.display_name || quotePosts[0].author?.handle) ?? 'Someone'}</strong>, <strong className="text-foreground">{(quotePosts[1].author?.display_name || quotePosts[1].author?.handle) ?? 'Someone'}</strong>, and {quotePosts.length - 2} others quote posted</>
+                    )}
+                  </span>
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -671,6 +671,16 @@ export const posts = {
     return (data ?? []).map((r: any) => r.user).filter(Boolean);
   },
 
+  async getQuotePosts(postId: string) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .eq('quote_post_id', postId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
   async getRepostsByUser(userId: string) {
     const { data, error } = await supabase
       .from('reposts')
