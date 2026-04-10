@@ -9,7 +9,6 @@ INSERT INTO public.profiles (
   display_name,
   bio,
   profile_picture,
-  lists_public,
   created_at
 )
 VALUES (
@@ -18,7 +17,6 @@ VALUES (
   'Forge Support',
   'Official Forge support account. Having trouble with the app? Send us a message and we''ll help you out.',
   'https://www.forge-social.app/apple-touch-icon.png',
-  true,
   now()
 )
 ON CONFLICT (id) DO UPDATE SET

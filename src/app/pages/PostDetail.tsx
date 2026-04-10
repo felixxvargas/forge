@@ -380,14 +380,15 @@ export function PostDetail() {
     );
   }
 
+  // Use live reposter count from reposts table — more reliable than posts.repost_count
+  // which can lag if the SECURITY DEFINER sync function hasn't been applied yet
+  const liveRepostCount = reposters.length > 0 ? reposters.length : (activePost.repost_count ?? 0);
+
   // Use actual loaded reply count once available (overrides potentially stale DB value)
   const actualCommentCount = isLoadingReplies ? activePost.comment_count : Math.max(activePost.comment_count ?? 0, replies.length);
   const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount, repost_count: liveRepostCount };
 
   const parentUser = parentPost ? (parentPost.author ?? getUserById(parentPost.user_id)) : null;
-  // Use live reposter count from reposts table — more reliable than posts.repost_count
-  // which can lag if the SECURITY DEFINER sync function hasn't been applied yet
-  const liveRepostCount = reposters.length > 0 ? reposters.length : (activePost.repost_count ?? 0);
 
   const handleReplyToClick = () => {
     setShowParentContext(true);

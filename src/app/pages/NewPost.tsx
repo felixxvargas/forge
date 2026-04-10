@@ -175,8 +175,9 @@ export function NewPost() {
   const isDirty = content.trim() !== '' || selectedGames.length > 0 || !!imageUrl || !!linkUrl;
 
   // Block navigation (browser back, link clicks) when there's unsaved content
+  // Do NOT block when posting is in progress — handleSubmit navigates on success
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    isDirty && currentLocation.pathname !== nextLocation.pathname
+    isDirty && !isPosting && currentLocation.pathname !== nextLocation.pathname
   );
 
   // When blocker fires, show the confirm dialog
@@ -452,7 +453,7 @@ export function NewPost() {
         );
       }
       localStorage.removeItem(AUTO_DRAFT_KEY);
-      navigate(-1);
+      navigate('/feed', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to create post. Please try again.');
       setIsPosting(false);
