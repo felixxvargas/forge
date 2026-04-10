@@ -774,6 +774,7 @@ export function PostDetail() {
                             : undefined}
                           isLiked={likedPosts.has(reply.id)}
                           isReposted={repostedPosts.has(reply.id)}
+                          noBacker={true}
                         />
                       );
                     })}
@@ -793,6 +794,7 @@ export function PostDetail() {
                         post={reply}
                         user={reply.author}
                         isDetailView={false}
+                        noBacker={true}
                       />
                     ))}
                   </div>
@@ -835,11 +837,12 @@ export function PostDetail() {
                         : undefined}
                       isLiked={likedPosts.has(reply.id)}
                       isReposted={repostedPosts.has(reply.id)}
+                      noBacker={true}
                     />
 
                     {/* Sub-replies — connected with a vertical thread line */}
                     {subReplies.length > 0 && (
-                      <div className="border-l-2 border-border/60">
+                      <div className="border-l-2 border-border/60 ml-5">
                         {subReplies.map((sub) => {
                           const subUser = sub.author ?? getUserById(sub.user_id);
                           if (!subUser) return null;
@@ -853,6 +856,7 @@ export function PostDetail() {
                                 onComment={() => navigate(`/post/${encodeURIComponent(sub.id)}#comments`)}
                                 isLiked={likedPosts.has(sub.id)}
                                 isReposted={repostedPosts.has(sub.id)}
+                                noBacker={true}
                               />
                             </div>
                           );

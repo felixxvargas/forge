@@ -40,9 +40,10 @@ interface PostCardProps {
   onUserClick?: (e: React.MouseEvent) => void;
   replyToHandle?: string;
   onReplyToClick?: () => void;
+  noBacker?: boolean;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -229,9 +230,9 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       className={`${
         isFlarePost
           ? 'relative overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-950/60 via-red-950/30 to-card'
-          : 'bg-card'
+          : noBacker ? 'bg-transparent' : 'bg-card'
       } p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer transition-colors' : ''} ${
-        isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-card/80' : ''
+        isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-secondary/40' : ''
       }`}
       onClick={handlePostClick}
     >
