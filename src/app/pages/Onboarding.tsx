@@ -9,6 +9,7 @@ import { FollowScreen } from '../components/onboarding/FollowScreen';
 import { UsernameScreen } from '../components/onboarding/UsernameScreen';
 import { topicAccounts } from '../data/data';
 import { profiles, supabase } from '../utils/supabase';
+import { useAppData } from '../context/AppDataContext';
 import type { User } from '../data/data';
 import type { Interest } from '../components/onboarding/InterestsScreen';
 
@@ -16,6 +17,7 @@ type OnboardingStep = 'splash' | 'interests' | 'follow' | 'username';
 
 export function Onboarding() {
   const navigate = useNavigate();
+  const { refreshCurrentUser } = useAppData() as any;
   const [searchParams] = useSearchParams();
   const startStep = searchParams.get('step') as OnboardingStep | null;
   const [step, setStep] = useState<OnboardingStep>(startStep || 'splash');
@@ -131,6 +133,9 @@ export function Onboarding() {
       localStorage.removeItem('forge-signup-email');
       localStorage.removeItem('forge-signup-password');
       localStorage.setItem('forge-onboarding-complete', 'true');
+      // Refresh context so currentUser reflects the handle/display_name set above,
+      // not the stale email-derived values loaded by AppDataContext during sign-up.
+      await refreshCurrentUser();
       navigate('/feed');
     };
 

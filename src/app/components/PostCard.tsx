@@ -265,8 +265,8 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </div>
       )}
 
-      {/* Repost header */}
-      {reposter && (
+      {/* Repost header — hidden on detail view (the detail page shows the original post without the repost label) */}
+      {reposter && !isDetailView && (
         <button
           onClick={handleReposterClick}
           className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
@@ -276,8 +276,8 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </button>
       )}
 
-      {/* Reply indicator */}
-      {(post as any).reply_to && (
+      {/* Reply indicator — hidden when the post is a repost in Feed (shown on detail page only) */}
+      {(post as any).reply_to && !post.repostedBy && (
         <button
           onClick={(e) => { e.stopPropagation(); if (onReplyToClick) { onReplyToClick(); } else { navigate(`/post/${encodeURIComponent((post as any).reply_to)}`); } }}
           className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"

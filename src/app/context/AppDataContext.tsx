@@ -824,6 +824,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setHasUnreadNotifications(false);
   };
 
+  // Re-fetch the current user's profile from DB and sync to React state.
+  // Used after onboarding completes to ensure the context reflects the correct
+  // handle/display_name set by finishOnboarding, not the stale email-derived values.
+  const refreshCurrentUser = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    const profile = await profiles.getById(authUser.id);
+    if (!profile) return;
+    setCurrentUser((prev: any) => ({
+      ...normalizeProfile(profile),
+      communities: prev?.communities,
+      game_lists: {
+        ...(normalizeProfile(profile).game_lists ?? {}),
+        _topicFollows: prev?.game_lists?._topicFollows ?? [],
+        _followedGames: prev?.game_lists?._followedGames ?? [],
+        _externalFollows: prev?.game_lists?._externalFollows ?? [],
+      },
+    }));
+  };
+
   // Merge DB posts with topic account posts (kept separate so refreshFeed doesn't wipe topic posts)
   const mergedPosts = useMemo(() => {
     const combined = topicPosts.length === 0 ? postList : (() => {
@@ -900,6 +920,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       externalFollowIds,
       followExternalUser,
       unfollowExternalUser,
+      refreshCurrentUser,
     }}>
       {children}
     </AppDataContext.Provider>
