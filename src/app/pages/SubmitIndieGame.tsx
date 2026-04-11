@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Upload, Link as LinkIcon, Info } from 'lucide-react';
+import { ArrowLeft, Upload, Link as LinkIcon, Info, Crown } from 'lucide-react';
 import { Header } from '../components/Header';
+import { useAppData } from '../context/AppDataContext';
+
+type HostingType = 'external' | 'forge';
 
 export function SubmitIndieGame() {
   const navigate = useNavigate();
+  const { currentUser } = useAppData();
+  const isPremium = currentUser?.is_premium;
+  const [hostingType, setHostingType] = useState<HostingType>('external');
+  const [gameFile, setGameFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -62,7 +69,9 @@ export function SubmitIndieGame() {
     }
   };
 
-  const hasGameLink = formData.website.trim() || formData.steamUrl.trim();
+  const hasGameLink = hostingType === 'forge'
+    ? !!gameFile
+    : (formData.website.trim() || formData.steamUrl.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +153,44 @@ export function SubmitIndieGame() {
             <p className="text-muted-foreground">
               Submissions typically take 3-5 business days to review. You'll be notified once your game is approved or if we need additional information.
             </p>
+          </div>
+        </div>
+
+        {/* Hosting type toggle */}
+        <div className="bg-card rounded-xl p-4 space-y-3">
+          <p className="font-semibold text-sm">Where is your game hosted?</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setHostingType('external')}
+              className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 transition-colors text-left ${
+                hostingType === 'external' ? 'border-accent bg-accent/10' : 'border-border bg-secondary hover:bg-secondary/80'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <LinkIcon className="w-4 h-4" />
+                <span className="font-medium text-sm">External Link</span>
+              </div>
+              <span className="text-xs text-muted-foreground">Steam, itch.io, your website, etc.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => isPremium ? setHostingType('forge') : navigate('/premium')}
+              className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 transition-colors text-left relative ${
+                hostingType === 'forge' ? 'border-accent bg-accent/10' : 'border-border bg-secondary hover:bg-secondary/80'
+              }`}
+            >
+              {!isPremium && (
+                <span className="absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 bg-accent/20 text-accent text-[10px] rounded-full font-medium">
+                  <Crown className="w-2.5 h-2.5" />Premium
+                </span>
+              )}
+              <div className="flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                <span className="font-medium text-sm">Host on Forge</span>
+              </div>
+              <span className="text-xs text-muted-foreground">Upload files directly to Forge</span>
+            </button>
           </div>
         </div>
 
@@ -289,46 +336,71 @@ export function SubmitIndieGame() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Website <span className="text-accent">*</span>
-                <span className="text-muted-foreground font-normal ml-1">(or Steam URL required)</span>
-              </label>
-              <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="url"
-                  value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  placeholder="https://yourgame.com"
-                  className={`w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
-                    !hasGameLink ? 'border-red-500/50' : 'border-border'
-                  }`}
-                />
-              </div>
-            </div>
+            {hostingType === 'external' ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Website <span className="text-accent">*</span>
+                    <span className="text-muted-foreground font-normal ml-1">(or Steam URL required)</span>
+                  </label>
+                  <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="https://yourgame.com"
+                      className={`w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
+                        !hasGameLink ? 'border-red-500/50' : 'border-border'
+                      }`}
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Steam URL <span className="text-accent">*</span>
-                <span className="text-muted-foreground font-normal ml-1">(or Website required)</span>
-              </label>
-              <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="url"
-                  value={formData.steamUrl}
-                  onChange={(e) => setFormData({ ...formData, steamUrl: e.target.value })}
-                  placeholder="https://store.steampowered.com/app/..."
-                  className={`w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
-                    !hasGameLink ? 'border-red-500/50' : 'border-border'
-                  }`}
-                />
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Steam URL <span className="text-accent">*</span>
+                    <span className="text-muted-foreground font-normal ml-1">(or Website required)</span>
+                  </label>
+                  <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="url"
+                      value={formData.steamUrl}
+                      onChange={(e) => setFormData({ ...formData, steamUrl: e.target.value })}
+                      placeholder="https://store.steampowered.com/app/..."
+                      className={`w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
+                        !hasGameLink ? 'border-red-500/50' : 'border-border'
+                      }`}
+                    />
+                  </div>
+                  {!hasGameLink && (
+                    <p className="text-xs text-red-400 mt-1">A website or Steam URL is required</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Game File <span className="text-accent">*</span>
+                  <span className="text-muted-foreground font-normal ml-1">(ZIP, max 500 MB)</span>
+                </label>
+                <label className="cursor-pointer block">
+                  <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${gameFile ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'}`}>
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium">{gameFile ? gameFile.name : 'Click to upload game file'}</p>
+                    <p className="text-xs text-muted-foreground mt-1">ZIP archive of your playable build</p>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".zip,.rar,.7z"
+                    onChange={(e) => setGameFile(e.target.files?.[0] ?? null)}
+                    className="hidden"
+                  />
+                </label>
+                {!hasGameLink && <p className="text-xs text-red-400 mt-1">Game file is required</p>}
               </div>
-              {!hasGameLink && (
-                <p className="text-xs text-red-400 mt-1">A website or Steam URL is required</p>
-              )}
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium mb-2">Trailer URL</label>

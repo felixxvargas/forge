@@ -33,6 +33,7 @@ const FollowersList         = lazy(() => import('./pages/FollowersList').then(m 
 const FollowingList         = lazy(() => import('./pages/FollowingList').then(m => ({ default: m.FollowingList })));
 const CreateGroup           = lazy(() => import('./pages/CreateGroup').then(m => ({ default: m.CreateGroup })));
 const Premium               = lazy(() => import('./pages/Premium').then(m => ({ default: m.Premium })));
+const PremiumSuccess        = lazy(() => import('./pages/PremiumSuccess').then(m => ({ default: m.PremiumSuccess })));
 const CreateCustomList      = lazy(() => import('./pages/CreateCustomList').then(m => ({ default: m.CreateCustomList })));
 const TrendingGames         = lazy(() => import('./pages/TrendingGames').then(m => ({ default: m.TrendingGames })));
 const NotFound              = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
       { path: 'review-submissions',     element: <ReviewSubmissions />,       errorElement: <ErrorBoundary /> },
       { path: 'create-group',           element: <CreateGroup />,             errorElement: <ErrorBoundary /> },
       { path: 'premium',               element: <Premium />,                 errorElement: <ErrorBoundary /> },
+      { path: 'premium/success',       element: <PremiumSuccess />,          errorElement: <ErrorBoundary /> },
       { path: 'create-custom-list',    element: <CreateCustomList />,        errorElement: <ErrorBoundary /> },
       { path: 'trending-games',        element: <TrendingGames />,           errorElement: <ErrorBoundary /> },
       { path: 'flare/:flareId',        element: <FlareDetail />,             errorElement: <ErrorBoundary /> },

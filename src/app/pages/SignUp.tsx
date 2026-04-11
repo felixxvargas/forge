@@ -5,9 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
 import { SocialAuthButtons } from '../components/SocialAuthButtons';
-import { Turnstile } from '@marsidev/react-turnstile';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+import { useRef } from 'react';
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string;
 
 function PasswordRule({ met, text }: { met: boolean; text: string }) {
   return (
@@ -32,6 +33,7 @@ export function SignUp() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha>(null);
 
   const rules = {
     length: password.length >= 8 && password.length <= 64,
@@ -81,7 +83,7 @@ export function SignUp() {
       setError('Passwords do not match.');
       return;
     }
-    if (TURNSTILE_SITE_KEY && !captchaToken) {
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
       setError('Please complete the CAPTCHA verification.');
       return;
     }
@@ -234,19 +236,20 @@ export function SignUp() {
               )}
             </div>
 
-            {TURNSTILE_SITE_KEY && (
-              <Turnstile
-                siteKey={TURNSTILE_SITE_KEY}
-                onSuccess={setCaptchaToken}
+            {HCAPTCHA_SITE_KEY && (
+              <HCaptcha
+                ref={captchaRef}
+                sitekey={HCAPTCHA_SITE_KEY}
+                onVerify={setCaptchaToken}
                 onExpire={() => setCaptchaToken(null)}
                 onError={() => setCaptchaToken(null)}
-                options={{ theme: 'dark', size: 'flexible' }}
+                theme="dark"
               />
             )}
 
             <button
               type="submit"
-              disabled={isLoading || !passwordValid || !passwordsMatch || (!!TURNSTILE_SITE_KEY && !captchaToken)}
+              disabled={isLoading || !passwordValid || !passwordsMatch || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
               className="w-full py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50"
             >
               {isLoading ? 'Creating account...' : 'Create Account →'}

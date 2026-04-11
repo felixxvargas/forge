@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles } from 'lucide-react';
+import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect, useRef } from 'react';
@@ -348,7 +348,7 @@ export function Settings() {
         {/* Subscription */}
         <div className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Subscription</h2>
-          <div className="bg-card rounded-xl overflow-hidden">
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
             <button
               onClick={() => navigate('/premium')}
               className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
@@ -364,6 +364,19 @@ export function Settings() {
                 <span className="px-2 py-0.5 text-xs bg-accent/20 text-accent rounded-full font-medium">Pro</span>
               )}
             </button>
+            {currentUser?.is_premium && (
+              <a
+                href="mailto:support@forge-social.app?subject=Premium Support"
+                className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+              >
+                <Headphones className="w-5 h-5 text-accent" />
+                <div className="text-left flex-1">
+                  <p className="font-medium">Premium Support</p>
+                  <p className="text-sm text-muted-foreground">Direct help from the Forge team</p>
+                </div>
+                <span className="px-2 py-0.5 text-xs bg-accent/20 text-accent rounded-full font-medium shrink-0">Premium</span>
+              </a>
+            )}
           </div>
         </div>
 
