@@ -23,6 +23,12 @@ export function FeedbackPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const TYPE_LABELS: Record<FeedbackType, string> = {
+    feature_request: 'Feature Request',
+    bug: 'Bug Report',
+    general: 'General Feedback',
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) return;
     setSubmitting(true);
@@ -37,6 +43,17 @@ export function FeedbackPage() {
         created_at: new Date().toISOString(),
       });
       setSubmitted(true);
+      // Fire-and-forget email notification
+      fetch('/api/emails/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'felixvgiles@gmail.com',
+          subject: `[Forge Feedback] ${TYPE_LABELS[type]}: ${title.trim()}`,
+          recipientName: 'Felix',
+          body: `<strong>Type:</strong> ${TYPE_LABELS[type]}<br><strong>From:</strong> ${currentUser?.handle ?? 'Anonymous'}<br><br><strong>Title:</strong> ${title.trim()}<br><br><strong>Description:</strong><br>${description.trim().replace(/\n/g, '<br>')}`,
+        }),
+      }).catch(() => {});
       setTimeout(() => navigate(-1), 2000);
     } catch (err) {
       console.error('Failed to submit feedback:', err);

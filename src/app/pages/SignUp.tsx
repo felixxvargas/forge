@@ -5,6 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
 import { SocialAuthButtons } from '../components/SocialAuthButtons';
+import { Turnstile } from '@marsidev/react-turnstile';
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 function PasswordRule({ met, text }: { met: boolean; text: string }) {
   return (
@@ -28,6 +31,7 @@ export function SignUp() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const rules = {
     length: password.length >= 8 && password.length <= 64,
@@ -77,6 +81,10 @@ export function SignUp() {
       setError('Passwords do not match.');
       return;
     }
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError('Please complete the CAPTCHA verification.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -84,6 +92,7 @@ export function SignUp() {
       // profile (handle, display name) is ready, so we have all data in one atomic step.
       localStorage.setItem('forge-signup-email', email);
       localStorage.setItem('forge-signup-password', password);
+      if (captchaToken) localStorage.setItem('forge-signup-captcha', captchaToken);
       navigate('/splash');
     } catch (err: any) {
       setError(err.message || 'Sign-up failed. Please try again.');
@@ -225,9 +234,19 @@ export function SignUp() {
               )}
             </div>
 
+            {TURNSTILE_SITE_KEY && (
+              <Turnstile
+                siteKey={TURNSTILE_SITE_KEY}
+                onSuccess={setCaptchaToken}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+                options={{ theme: 'dark', size: 'flexible' }}
+              />
+            )}
+
             <button
               type="submit"
-              disabled={isLoading || !passwordValid || !passwordsMatch}
+              disabled={isLoading || !passwordValid || !passwordsMatch || (!!TURNSTILE_SITE_KEY && !captchaToken)}
               className="w-full py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50"
             >
               {isLoading ? 'Creating account...' : 'Create Account →'}

@@ -156,10 +156,13 @@ export function Onboarding() {
       }
 
       // Try creating the account now (deferred from SignUp.tsx so we have all profile data)
+      const signupCaptcha = localStorage.getItem('forge-signup-captcha') ?? undefined;
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
+        options: signupCaptcha ? { captchaToken: signupCaptcha } : undefined,
       });
+      localStorage.removeItem('forge-signup-captcha');
 
       if (signUpData?.session?.user) {
         // Email confirmation is disabled — we have a session immediately
@@ -178,6 +181,7 @@ export function Onboarding() {
         }));
         localStorage.removeItem('forge-signup-email');
         localStorage.removeItem('forge-signup-password');
+        localStorage.removeItem('forge-signup-captcha');
         toast.info('Check your email to verify your account, then sign in.');
         navigate('/login');
         return;
@@ -205,6 +209,7 @@ export function Onboarding() {
         }));
         localStorage.removeItem('forge-signup-email');
         localStorage.removeItem('forge-signup-password');
+        localStorage.removeItem('forge-signup-captcha');
         toast.info('Check your email to verify your account, then sign in.');
         navigate('/login');
         return;
