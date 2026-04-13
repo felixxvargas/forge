@@ -29,11 +29,16 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ error: 'userId is required' }, 400);
   }
 
+  // Idempotency key prevents duplicate charges if the client retries.
+  // Scoped to userId so re-submitting the same form doesn't double-charge.
+  const idempotencyKey = `forge-premium-${body.userId}`;
+
   const res = await fetch('https://api.stripe.com/v1/payment_intents', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${secretKey}`,
       'Content-Type': 'application/x-www-form-urlencoded',
+      'Idempotency-Key': idempotencyKey,
     },
     body: new URLSearchParams({
       amount: '499',            // $4.99 in cents

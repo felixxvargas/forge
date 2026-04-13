@@ -86,12 +86,11 @@ export const profiles = {
       .select('*')
       .or(`handle.ilike.${stripped},handle.ilike.@${stripped}`)
       .limit(1)
-      .single();
+      .maybeSingle();
     return data ?? null;
   },
 
   async update(id: string, updates: Record<string, any>) {
-    console.log('[profiles.update] payload →', JSON.stringify(updates));
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -127,12 +126,12 @@ export const profiles = {
       .from('follows')
       .insert({ follower_id: followerId, following_id: followingId });
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Persist counter increments — fire-and-forget, don't block the call
+    // Sync counters from the follows table (count is authoritative, no read-modify-write race)
     Promise.allSettled([
-      supabase.from('profiles').select('follower_count').eq('id', followingId).single()
-        .then(({ data }) => supabase.from('profiles').update({ follower_count: (data?.follower_count ?? 0) + 1 }).eq('id', followingId)),
-      supabase.from('profiles').select('following_count').eq('id', followerId).single()
-        .then(({ data }) => supabase.from('profiles').update({ following_count: (data?.following_count ?? 0) + 1 }).eq('id', followerId)),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId)
+        .then(({ count }) => supabase.from('profiles').update({ follower_count: count ?? 0 }).eq('id', followingId)),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', followerId)
+        .then(({ count }) => supabase.from('profiles').update({ following_count: count ?? 0 }).eq('id', followerId)),
     ]).catch(() => {});
   },
 
@@ -143,12 +142,12 @@ export const profiles = {
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
     if (error) throw new Error(error.message);
-    // Persist counter decrements — fire-and-forget
+    // Sync counters from the follows table (count is authoritative, no read-modify-write race)
     Promise.allSettled([
-      supabase.from('profiles').select('follower_count').eq('id', followingId).single()
-        .then(({ data }) => supabase.from('profiles').update({ follower_count: Math.max(0, (data?.follower_count ?? 0) - 1) }).eq('id', followingId)),
-      supabase.from('profiles').select('following_count').eq('id', followerId).single()
-        .then(({ data }) => supabase.from('profiles').update({ following_count: Math.max(0, (data?.following_count ?? 0) - 1) }).eq('id', followerId)),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId)
+        .then(({ count }) => supabase.from('profiles').update({ follower_count: count ?? 0 }).eq('id', followingId)),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', followerId)
+        .then(({ count }) => supabase.from('profiles').update({ following_count: count ?? 0 }).eq('id', followerId)),
     ]).catch(() => {});
   },
 

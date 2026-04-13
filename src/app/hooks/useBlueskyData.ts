@@ -15,6 +15,7 @@ export function useBlueskyData(user: any): BlueskyData {
   });
 
   useEffect(() => {
+    if (!user) return;
     // Try: explicit bluesky_handle field, then map by user ID, then by handle slug, then by display_name slug
     const handleSlug = (user.handle || '').replace(/^@/, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '');
     const displayNameSlug = ((user as any).display_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -58,7 +59,7 @@ export function useBlueskyData(user: any): BlueskyData {
     return () => {
       mounted = false;
     };
-  }, [user.id]);
+  }, [user?.id]);
 
   return blueskyData;
 }
