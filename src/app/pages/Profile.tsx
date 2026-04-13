@@ -69,6 +69,7 @@ export function Profile() {
     focusSearch?: boolean;
   }>({ isOpen: false, listType: null });
   const [showListTypeSelector, setShowListTypeSelector] = useState(false);
+  const [showListLimitTray, setShowListLimitTray] = useState(false);
 
   // List drag-and-drop reorder
   const DEFAULT_LIST_ORDER = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library', 'completed'] as const;
@@ -1009,12 +1010,20 @@ export function Profile() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => setShowListTypeSelector(true)}
+                          onClick={() => {
+                            if (visibleListCount >= 4) {
+                              setShowListLimitTray(true);
+                            } else {
+                              setShowListTypeSelector(true);
+                            }
+                          }}
                           className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
                         >
                           <div>
                             <p className="font-medium text-sm">Create a game list</p>
-                            <p className="text-xs text-muted-foreground">+ Add games to a new list</p>
+                            <p className="text-xs text-muted-foreground">
+                              {visibleListCount >= 4 ? '4/4 lists shown — hide one to add another' : '+ Add games to a new list'}
+                            </p>
                           </div>
                         </button>
                       )}
@@ -1404,6 +1413,28 @@ export function Profile() {
       />
 
       {/* Report Modal */}
+      {/* 4-list limit tray */}
+      {showListLimitTray && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-safe" onClick={() => setShowListLimitTray(false)}>
+          <div className="bg-card rounded-t-2xl w-full max-w-lg p-6 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-border rounded-full mx-auto -mt-1 mb-2" />
+            <h2 className="text-base font-semibold">4-list limit reached</h2>
+            <p className="text-sm text-muted-foreground">
+              Your profile shows up to 4 game lists at once. To add a new one, hide an existing list first — your games will be saved.
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Tip: Use the <span className="text-foreground font-medium">⋮</span> menu on any list to hide it from your profile.
+            </p>
+            <button
+              onClick={() => setShowListLimitTray(false)}
+              className="w-full py-3 bg-secondary rounded-xl font-medium text-sm hover:bg-secondary/80 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">

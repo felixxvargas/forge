@@ -3,6 +3,11 @@ import { supabase } from './supabase';
 
 const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7`;
 
+/** Strip diacritics so "Pokemon" matches "Pokémon", "Zelda" matches "Zëlda", etc. */
+function deAccent(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 interface RequestOptions {
   method?: string;
   body?: any;
@@ -531,7 +536,9 @@ export const gamesAPI = {
   },
 
   async searchGames(query: string, limit = 20) {
-    const raw: any = await apiRequest(`/games/search/${encodeURIComponent(query)}?limit=${limit}`);
+    // Send the normalized (accent-stripped) query so the backend search also finds accented titles
+    const normalizedQuery = deAccent(query).trim() || query.trim();
+    const raw: any = await apiRequest(`/games/search/${encodeURIComponent(normalizedQuery)}?limit=${limit}`);
     const list: any[] = Array.isArray(raw) ? raw : raw?.games ?? [];
 
     // IGDB categories:
@@ -552,10 +559,10 @@ export const gamesAPI = {
       return true;
     });
 
-    // Re-rank: full games first, then by title-word coverage of the query
-    const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+    // Re-rank: full games first, then by title-word coverage of the query (accent-insensitive)
+    const queryWords = deAccent(query).split(/\s+/).filter(Boolean);
     const titleScore = (title: string) => {
-      const t = title.toLowerCase();
+      const t = deAccent(title);
       return queryWords.filter(w => t.includes(w)).length;
     };
     filtered.sort((a: any, b: any) => {
@@ -625,9 +632,9 @@ export const rawgAPI = {
       }
       // Title patterns for non-game content
       const NOISE_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack|randomizer|randomiser|mod pack|fan edit|texture pack)\b/i;
-      const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const queryWords = deAccent(query).split(/\s+/).filter(Boolean);
       const titleScore = (name: string) => {
-        const t = name.toLowerCase();
+        const t = deAccent(name);
         return queryWords.filter(w => t.includes(w)).length;
       };
       const { results } = await res.json();

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Check, Crown, Sparkles, List, Headphones, Gamepad2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Crown, TrendingUp, List, Headphones, Gamepad2, Loader2 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAppData } from '../context/AppDataContext';
@@ -25,9 +25,10 @@ const FEATURES = [
     description: 'Upload your indie game directly to Forge for the community to discover',
   },
   {
-    icon: <Sparkles className="w-5 h-5" />,
-    label: 'Premium Badge',
-    description: 'Show off your Premium status with a crown badge on your profile',
+    icon: <TrendingUp className="w-5 h-5" />,
+    label: 'Priority Game Placement',
+    description: 'Your games get priority placement in Forge\'s game module (coming soon)',
+    comingSoon: true,
   },
 ];
 
@@ -207,15 +208,23 @@ export function Premium() {
         {/* Features */}
         <div className="space-y-3">
           {FEATURES.map((f, i) => (
-            <div key={i} className="flex items-start gap-4 bg-card rounded-xl p-4 border border-border">
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0">
+            <div key={i} className={`flex items-start gap-4 bg-card rounded-xl p-4 border ${(f as any).comingSoon ? 'border-border/50 opacity-75' : 'border-border'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${(f as any).comingSoon ? 'bg-muted/30 text-muted-foreground' : 'bg-accent/10 text-accent'}`}>
                 {f.icon}
               </div>
               <div className="flex-1">
-                <p className="font-semibold">{f.label}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold">{f.label}</p>
+                  {(f as any).comingSoon && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 bg-muted/40 text-muted-foreground rounded-full">Soon</span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">{f.description}</p>
               </div>
-              <Check className="w-5 h-5 text-accent ml-auto shrink-0 mt-2" />
+              {(f as any).comingSoon
+                ? <span className="text-muted-foreground/40 ml-auto shrink-0 mt-2 text-xs">—</span>
+                : <Check className="w-5 h-5 text-accent ml-auto shrink-0 mt-2" />
+              }
             </div>
           ))}
         </div>

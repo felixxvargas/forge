@@ -101,9 +101,23 @@ export function GameDetail() {
   }, [gameId]);
 
   useEffect(() => {
-    if (!gameId || !session?.user) return;
+    if (!gameId) return;
+    // Derive immediate state from local game lists (instant, no network)
+    const playedBefore: any[] = currentUser?.game_lists?.playedBefore ?? [];
+    const library: any[] = currentUser?.game_lists?.library ?? [];
+    if (playedBefore.some((g: any) => String(g.id) === String(gameId))) setIsPlayed(true);
+    if (library.some((g: any) => String(g.id) === String(gameId))) setIsOwned(true);
+
+    if (!session?.user) return;
+    // Confirm against user_games table (authoritative for played/owned; follow is tracked via followedGameIds context)
     userGamesAPI.getStatus(session.user.id, gameId)
-      .then(({ played, owned, followed }) => { setIsPlayed(played); setIsOwned(owned); setIsFollowed(followed); })
+      .then(({ played, owned }) => {
+        setIsPlayed(p => p || played);
+        setIsOwned(o => o || owned);
+        // NOTE: isFollowed is intentionally NOT set here — followGame() stores data in
+        // profiles.game_lists._followedGames (not user_games), so the context effect
+        // at the top of this component is the authoritative source for follow state.
+      })
       .catch(() => {});
   }, [gameId, session?.user?.id]);
 

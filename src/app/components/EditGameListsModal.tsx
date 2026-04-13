@@ -85,7 +85,7 @@ export function EditGameListsModal({
 
         // Merge: prefer server/IGDB results, append RAWG results not already present.
         // Normalise: normalize subtitle separator but keep subtitle content; strip edition labels.
-        const normalise = (t: string) => t.toLowerCase()
+        const normalise = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
           .replace(/\s*[:\-–]\s+/g, ' ')                           // normalize separator → space (keeps subtitle)
           .replace(/\s+(complete|definitive|enhanced|remastered|goty|gold|ultimate|deluxe|premium|standard|special|collector|limited|anniversary|director.?s cut|game of the year)\s*(edition)?$/i, '')
           .replace(/[''`,.!?™®]/g, '')                             // strip punctuation
@@ -111,9 +111,10 @@ export function EditGameListsModal({
         ];
 
         // Re-rank by: Forge popularity → title word coverage → alphabetical
-        const queryWords = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        const deAccent = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const queryWords = deAccent(searchQuery.trim()).split(/\s+/).filter(Boolean);
         const wordCoverage = (title: string) => {
-          const t = title.toLowerCase();
+          const t = deAccent(title);
           return queryWords.filter(w => t.includes(w)).length;
         };
         merged.sort((a, b) => {

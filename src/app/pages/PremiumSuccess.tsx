@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Crown, Check, List, Headphones, Gamepad2, Sparkles } from 'lucide-react';
+import { Crown, Check, List, Headphones, Gamepad2, TrendingUp } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 
 export function PremiumSuccess() {
@@ -46,7 +46,7 @@ export function PremiumSuccess() {
           { icon: <List className="w-5 h-5" />, label: 'Custom Game Lists' },
           { icon: <Headphones className="w-5 h-5" />, label: 'Priority Support' },
           { icon: <Gamepad2 className="w-5 h-5" />, label: 'Host Indie Games on Forge' },
-          { icon: <Sparkles className="w-5 h-5" />, label: 'Premium Profile Badge' },
+          { icon: <TrendingUp className="w-5 h-5" />, label: 'Priority Game Placement (coming soon)' },
         ].map((f, i) => (
           <div
             key={i}
