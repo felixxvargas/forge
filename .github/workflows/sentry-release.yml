@@ -1,0 +1,47 @@
+name: Sentry Release
+
+# Triggers:
+#   1. Every push to main — creates a Sentry release from the commit SHA so
+#      errors are pinned to the exact code that caused them.
+#   2. Every published GitHub Release — associates the tag name (e.g. v1.2.0)
+#      as a named Sentry release so you can track which version fixed a bug.
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  sentry-release:
+    name: Create Sentry release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so Sentry can diff commits between releases
+
+      - name: Determine release name
+        id: release_name
+        run: |
+          # Use the GitHub Release tag when triggered by a release event;
+          # otherwise use the short commit SHA for every push to main.
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Sentry release & associate commits
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG:        ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT:    ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment:  production
+          version:      ${{ steps.release_name.outputs.name }}
+          # Automatically detect and link commits since the previous Sentry release
+          set_commits:  auto

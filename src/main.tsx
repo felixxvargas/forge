@@ -26,6 +26,9 @@ if (import.meta.env.VITE_SENTRY_DSN) {
     environment: import.meta.env.MODE, // 'production' | 'development'
     // Only send events in production by default; remove this check to capture dev errors too
     enabled: import.meta.env.PROD,
+    // release is injected at build time by @sentry/vite-plugin (git commit SHA or SENTRY_RELEASE).
+    // This tags every error/replay with the exact code version it came from.
+    release: import.meta.env.VITE_SENTRY_RELEASE,
     tracesSampleRate: 0.2,        // 20% of transactions for performance monitoring
     replaysSessionSampleRate: 0.05, // 5% of sessions
     replaysOnErrorSampleRate: 1.0,  // 100% of sessions with an error

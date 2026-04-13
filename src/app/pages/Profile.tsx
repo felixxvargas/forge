@@ -676,10 +676,10 @@ export function Profile() {
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full hover:bg-secondary/80 transition-colors text-sm"
                         >
                           {membership.role === 'creator' && (
-                            <Crown className="w-3.5 h-3.5 text-accent" title="Creator" />
+                            <span title="Creator"><Crown className="w-3.5 h-3.5 text-accent" /></span>
                           )}
                           {membership.role === 'moderator' && (
-                            <Shield className="w-3.5 h-3.5 text-accent" title="Moderator" />
+                            <span title="Moderator"><Shield className="w-3.5 h-3.5 text-accent" /></span>
                           )}
                           <span>{group.name}</span>
                         </button>
