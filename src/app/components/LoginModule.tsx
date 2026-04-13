@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Mail, Eye, EyeOff } from 'lucide-react';
+import { Mail, Eye, EyeOff, AlertTriangle, Gamepad2, Megaphone, Search } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { toast } from 'sonner';
 import { SocialAuthButtons } from './SocialAuthButtons';
@@ -97,7 +97,7 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
         <div className="w-full max-w-sm bg-card rounded-2xl p-6 space-y-4 shadow-xl">
           <div className="text-center">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-yellow-500/20 flex items-center justify-center">
-              <span className="text-2xl">⚠️</span>
+              <AlertTriangle className="w-6 h-6 text-yellow-500" />
             </div>
             <h2 className="text-lg font-semibold">Account Suspended</h2>
             <p className="text-sm text-muted-foreground mt-2">
@@ -303,12 +303,12 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
           </h2>
           <ul className="space-y-4">
             {[
-              { icon: '🎮', text: 'Connect with gamers across PlayStation, Xbox, Steam, and more' },
-              { icon: '📢', text: 'Share gaming moments, reviews, and finds with your community' },
-              { icon: '🔍', text: 'Discover groups, LFG flares, and trending games' },
-            ].map(({ icon, text }) => (
-              <li key={icon} className="flex items-start gap-3">
-                <span className="text-xl shrink-0 mt-0.5">{icon}</span>
+              { icon: Gamepad2, text: 'Connect with gamers across PlayStation, Xbox, Steam, and more' },
+              { icon: Megaphone, text: 'Share gaming moments, reviews, and finds with your community' },
+              { icon: Search, text: 'Discover groups, LFG flares, and trending games' },
+            ].map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3">
+                <Icon className="w-5 h-5 shrink-0 mt-0.5 text-accent" />
                 <span className="text-muted-foreground text-sm leading-relaxed">{text}</span>
               </li>
             ))}

@@ -74,7 +74,7 @@ Forge bridges the gap between different gaming ecosystems and social media platf
 | Animation | Motion (`motion/react`) |
 | State | React Context API |
 | Database / Auth / Storage | Supabase (Postgres + GoTrue + S3-compatible) |
-| Edge Functions | Deno + Hono at `supabase/functions/make-server-17285bd7` |
+| Edge Functions | Deno + Hono at `supabase/functions/forge-api` |
 | Payments | Stripe (one-time $4.99 Forge Premium via Stripe Elements) |
 | Email | Resend (transactional — feedback notifications, change-email, password reset) |
 | CAPTCHA | hCaptcha on signup form |
@@ -105,7 +105,7 @@ Forge bridges the gap between different gaming ecosystems and social media platf
     webhook.ts                # Vercel edge function — handles payment_intent.succeeded → sets is_premium
 /supabase
   /functions
-    /make-server-17285bd7  # Hono edge function — canonical source AND deploy slug
+    /forge-api  # Hono edge function — canonical source AND deploy slug
   /migrations              # SQL migration files
 /.github
   /workflows
@@ -335,7 +335,7 @@ interface Feedback {
 ## API Layer
 
 ### Edge Function (Supabase/Hono)
-Single Hono app at `supabase/functions/make-server-17285bd7/index.ts`.
+Single Hono app at `supabase/functions/forge-api/index.ts`.
 
 **Active routes** (all KV-based auth/user/post/social routes were removed in v3):
 | Route | Purpose |
@@ -359,7 +359,7 @@ Single Hono app at `supabase/functions/make-server-17285bd7/index.ts`.
 
 **Deploy command:**
 ```bash
-npx supabase functions deploy make-server-17285bd7 \
+npx supabase functions deploy forge-api \
   --project-ref xmxeafjpscgqprrreulh \
   --use-api \
   --no-verify-jwt
@@ -601,7 +601,7 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 
 ### Backend (Supabase)
 - Project ref: `xmxeafjpscgqprrreulh`
-- Edge function: `make-server-17285bd7`
+- Edge function: `forge-api`
 - Storage buckets: `forge-avatars`, `forge-banners`, `forge-post-media`, `forge-community-icons`, `forge-community-banners`
 
 ### Environment Variables Reference

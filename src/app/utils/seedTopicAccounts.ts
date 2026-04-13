@@ -4,7 +4,7 @@ import { projectId } from '/utils/supabase/info';
 export async function seedTopicAccounts(): Promise<void> {
   try {
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7/seed/topic-accounts`,
+      `https://${projectId}.supabase.co/functions/v1/forge-api/seed/topic-accounts`,
       {
         method: 'POST',
         headers: {

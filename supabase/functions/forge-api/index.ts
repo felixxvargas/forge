@@ -35,7 +35,7 @@ const STORAGE_BUCKETS = {
 
 // ===== HEALTH =====
 
-app.get("/make-server-17285bd7/health", (c) => {
+app.get("/forge-api/health", (c) => {
   return c.json({ status: "ok", version: "v3" });
 });
 
@@ -44,7 +44,7 @@ app.get("/make-server-17285bd7/health", (c) => {
 // Check if a handle is available.
 // Queries the profiles table (source of truth) — not the legacy KV store.
 // If the handle is taken by the authenticated user themselves, still returns available: true.
-app.get("/make-server-17285bd7/users/check-handle/:handle", async (c) => {
+app.get("/forge-api/users/check-handle/:handle", async (c) => {
   try {
     const raw = c.req.param("handle");
     const handle = raw.replace(/^@/, "").toLowerCase();
@@ -151,7 +151,7 @@ async function moderateImage(imageUrl: string): Promise<ModerationResult> {
 // Upload a file to Supabase Storage with image moderation.
 // Frontend can also upload directly to Storage; this endpoint is kept for
 // server-side moderation on post media uploads.
-app.post("/make-server-17285bd7/upload", async (c) => {
+app.post("/forge-api/upload", async (c) => {
   try {
     const accessToken = c.req.header("Authorization")?.split(" ")[1];
     if (!accessToken) {
@@ -222,7 +222,7 @@ app.post("/make-server-17285bd7/upload", async (c) => {
 
 // ===== GAMES =====
 
-app.get("/make-server-17285bd7/games", async (c) => {
+app.get("/forge-api/games", async (c) => {
   try {
     const limit = parseInt(c.req.query("limit") || "50");
     const offset = parseInt(c.req.query("offset") || "0");
@@ -234,7 +234,7 @@ app.get("/make-server-17285bd7/games", async (c) => {
   }
 });
 
-app.get("/make-server-17285bd7/games/search/:query", async (c) => {
+app.get("/forge-api/games/search/:query", async (c) => {
   try {
     const query = c.req.param("query");
     const limit = parseInt(c.req.query("limit") || "20");
@@ -246,7 +246,7 @@ app.get("/make-server-17285bd7/games/search/:query", async (c) => {
   }
 });
 
-app.post("/make-server-17285bd7/games/batch", async (c) => {
+app.post("/forge-api/games/batch", async (c) => {
   try {
     const { gameIds } = await c.req.json();
     if (!Array.isArray(gameIds)) {
@@ -262,7 +262,7 @@ app.post("/make-server-17285bd7/games/batch", async (c) => {
 
 // NOTE: /games/search/:query must be registered before /games/:gameId
 // to prevent Hono matching "search" as a gameId param.
-app.get("/make-server-17285bd7/games/:gameId", async (c) => {
+app.get("/forge-api/games/:gameId", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const game = await gamesAPI.getGame(gameId);
@@ -273,7 +273,7 @@ app.get("/make-server-17285bd7/games/:gameId", async (c) => {
   }
 });
 
-app.get("/make-server-17285bd7/games/:gameId/similar", async (c) => {
+app.get("/forge-api/games/:gameId/similar", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const genresParam = c.req.query("genres") || "";
@@ -287,7 +287,7 @@ app.get("/make-server-17285bd7/games/:gameId/similar", async (c) => {
   }
 });
 
-app.get("/make-server-17285bd7/games/:gameId/versions", async (c) => {
+app.get("/forge-api/games/:gameId/versions", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const title = c.req.query("title") || "";
@@ -301,7 +301,7 @@ app.get("/make-server-17285bd7/games/:gameId/versions", async (c) => {
 });
 
 // Players who have this game in their user_games table (played or owned)
-app.get("/make-server-17285bd7/games/:gameId/players", async (c) => {
+app.get("/forge-api/games/:gameId/players", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const { data, error } = await supabase
@@ -327,7 +327,7 @@ app.get("/make-server-17285bd7/games/:gameId/players", async (c) => {
   }
 });
 
-app.post("/make-server-17285bd7/games/:gameId/artwork", async (c) => {
+app.post("/forge-api/games/:gameId/artwork", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const artworkData = await c.req.json();
@@ -339,7 +339,7 @@ app.post("/make-server-17285bd7/games/:gameId/artwork", async (c) => {
   }
 });
 
-app.post("/make-server-17285bd7/games/moby", async (c) => {
+app.post("/forge-api/games/moby", async (c) => {
   try {
     const { gameTitle } = await c.req.json();
     if (!gameTitle) {
@@ -357,7 +357,7 @@ app.post("/make-server-17285bd7/games/moby", async (c) => {
 });
 
 // Bulk seed top-rated games from IGDB into forge_games_17285bd7
-app.post("/make-server-17285bd7/seed/igdb-games", async (c) => {
+app.post("/forge-api/seed/igdb-games", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
     const offset = parseInt(body.offset ?? 0);

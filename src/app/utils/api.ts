@@ -1,7 +1,7 @@
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { supabase } from './supabase';
 
-const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-17285bd7`;
+const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/forge-api`;
 
 /** Strip diacritics so "Pokemon" matches "Pokémon", "Zelda" matches "Zëlda", etc. */
 function deAccent(s: string): string {
