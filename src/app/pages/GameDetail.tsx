@@ -7,6 +7,7 @@ import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
 import { LFGFlareModal } from '../components/LFGFlareModal';
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
+import { toast } from 'sonner';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 import { loadRankMapOnly, getGameRank } from '../utils/gameRankings';
@@ -237,6 +238,7 @@ export function GameDetail() {
         await unfollowGame(gameId);
       } else {
         await followGame(gameId);
+        toast.success(`Following ${game?.title ?? 'game'}`);
       }
       refreshFeed();
     } catch {

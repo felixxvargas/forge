@@ -78,6 +78,15 @@ export const profiles = {
     return data; // null when no row exists
   },
 
+  async getPublicKey(userId: string): Promise<string | null> {
+    const { data } = await supabase
+      .from('profiles')
+      .select('public_key')
+      .eq('id', userId)
+      .maybeSingle();
+    return data?.public_key ?? null;
+  },
+
   async getByHandle(handle: string) {
     const stripped = handle.replace(/^@/, '');
     // Try both with and without @ prefix, case-insensitive
@@ -1494,15 +1503,21 @@ export const directMessages = {
     return data ?? [];
   },
 
-  async send(senderId: string, recipientId: string, content: string) {
-    if (content && content.trim().length >= 3) {
+  async send(senderId: string, recipientId: string, content: string, opts?: { encrypted?: boolean; iv?: string }) {
+    // Only run moderation on plaintext — skip for encrypted payloads
+    if (!opts?.encrypted && content && content.trim().length >= 3) {
       const { checkContent } = await import('./moderation');
       const modResult = await checkContent(content);
       if (!modResult.ok) throw new Error(modResult.reason || 'Message violates community guidelines.');
     }
     const { data, error } = await supabase
       .from('direct_messages')
-      .insert({ sender_id: senderId, recipient_id: recipientId, content })
+      .insert({
+        sender_id: senderId,
+        recipient_id: recipientId,
+        content,
+        ...(opts?.encrypted ? { encrypted: true, iv: opts.iv } : {}),
+      })
       .select(`*, sender:profiles!sender_id(id, handle, display_name, profile_picture)`)
       .single();
     if (error) throw new Error(error.message);

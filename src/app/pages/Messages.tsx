@@ -5,6 +5,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut, Flame } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase } from '../utils/supabase';
+import { initEncryptionKeys, getMyPublicKeyJwk, encryptMessage, decryptMessage } from '../utils/crypto';
 
 interface DmMessage {
   id: string;
@@ -75,6 +76,11 @@ export function Messages() {
   const addPeopleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // E2E encryption: partner's public key JWK (fetched when a DM conversation opens)
+  const partnerPublicKeyRef = useRef<JsonWebKey | null>(null);
+  // Cache of decrypted message content keyed by message id
+  const decryptedCache = useRef<Record<string, string>>({});
+
   // Handle ?to=userId deep-link
   useEffect(() => {
     const toUserId = searchParams.get('to');
@@ -85,6 +91,33 @@ export function Messages() {
       })
       .catch(() => {});
   }, [searchParams, currentUser?.id]);
+
+  // Initialise E2E encryption: generate keypair if needed and publish public key to profile
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    initEncryptionKeys().then(pubKeyJwk => {
+      if (!pubKeyJwk) return;
+      // Save public key to profile so partners can fetch it when encrypting
+      const stored = JSON.stringify(pubKeyJwk);
+      // Only update if the profile doesn't already have this key (avoid thrashing)
+      profiles.getPublicKey(currentUser.id).then(existing => {
+        if (existing !== stored) {
+          profiles.update(currentUser.id, { public_key: stored }).catch(() => {});
+        }
+      }).catch(() => {});
+    });
+  }, [currentUser?.id]);
+
+  // Fetch partner's public key when a DM conversation is opened
+  useEffect(() => {
+    partnerPublicKeyRef.current = null;
+    if (!selectedPartnerId) return;
+    profiles.getPublicKey(selectedPartnerId).then(raw => {
+      if (raw) {
+        try { partnerPublicKeyRef.current = JSON.parse(raw); } catch { /* ignore */ }
+      }
+    }).catch(() => {});
+  }, [selectedPartnerId]);
 
   // Load conversations + group threads
   useEffect(() => {
@@ -99,10 +132,22 @@ export function Messages() {
     }).finally(() => setLoadingConvos(false));
   }, [currentUser?.id]);
 
-  // Load DM messages
+  // Load DM messages, decrypting any E2E-encrypted ones
   useEffect(() => {
     if (!currentUser?.id || !selectedPartnerId) return;
-    dmAPI.getMessages(currentUser.id, selectedPartnerId).then(setMessages).catch(() => {});
+    dmAPI.getMessages(currentUser.id, selectedPartnerId).then(async rawMsgs => {
+      const decrypted = await Promise.all(rawMsgs.map(async (msg: any) => {
+        if (!msg.encrypted || !msg.iv) return msg;
+        // Need the *sender's* public key to derive the shared secret
+        const senderKey = msg.sender_id === currentUser.id
+          ? partnerPublicKeyRef.current  // I sent it: I used partner's key
+          : partnerPublicKeyRef.current; // I received it: sender is partner
+        if (!senderKey) return msg;
+        const plain = await decryptMessage(msg.content, msg.iv, senderKey);
+        return plain !== null ? { ...msg, _plaintext: plain } : msg;
+      }));
+      setMessages(decrypted);
+    }).catch(() => {});
   }, [currentUser?.id, selectedPartnerId]);
 
   // Load group messages + participants
@@ -125,9 +170,15 @@ export function Messages() {
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'direct_messages',
         filter: `recipient_id=eq.${currentUser.id}`,
-      }, (payload) => {
-        const msg = payload.new as DmMessage;
-        if (msg.sender_id === selectedPartnerId) setMessages(prev => [...prev, msg]);
+      }, async (payload) => {
+        const msg = payload.new as any;
+        if (msg.sender_id !== selectedPartnerId) return;
+        if (msg.encrypted && msg.iv && partnerPublicKeyRef.current) {
+          const plain = await decryptMessage(msg.content, msg.iv, partnerPublicKeyRef.current);
+          setMessages(prev => [...prev, { ...msg, _plaintext: plain ?? undefined }]);
+        } else {
+          setMessages(prev => [...prev, msg]);
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -209,14 +260,31 @@ export function Messages() {
 
   const handleSend = async () => {
     if (!messageInput.trim() || !currentUser?.id || !selectedPartnerId || isSending) return;
-    const content = messageInput.trim();
+    const plaintext = messageInput.trim();
     setMessageInput('');
     setIsSending(true);
     try {
-      const msg = await dmAPI.send(currentUser.id, selectedPartnerId, content);
-      setMessages(prev => [...prev, msg]);
+      const partnerKey = partnerPublicKeyRef.current;
+      const myKey = getMyPublicKeyJwk();
+
+      let content = plaintext;
+      let opts: { encrypted?: boolean; iv?: string } | undefined;
+
+      if (partnerKey && myKey) {
+        const encrypted = await encryptMessage(plaintext, partnerKey);
+        if (encrypted) {
+          content = encrypted.ciphertext;
+          opts = { encrypted: true, iv: encrypted.iv };
+          // Cache the plaintext locally so the sender sees it immediately
+          // (will be overwritten by decryption once the message round-trips)
+        }
+      }
+
+      const msg = await dmAPI.send(currentUser.id, selectedPartnerId, content, opts);
+      // For the sender's own view, display the original plaintext
+      setMessages(prev => [...prev, { ...msg, _plaintext: plaintext }]);
       dmAPI.getConversations(currentUser.id).then(setConversations).catch(() => {});
-    } catch { setMessageInput(content); }
+    } catch { setMessageInput(plaintext); }
     finally { setIsSending(false); }
   };
 
@@ -437,7 +505,7 @@ export function Messages() {
                     </button>
                   )}
                   <div className={`rounded-2xl px-4 py-2 ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'}`}>
-                    <p className="text-sm">{msg.content}</p>
+                    <p className="text-sm">{(msg as any)._plaintext ?? msg.content}</p>
                     <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
                       {formatMessageTime(msg.created_at)}
                     </p>
@@ -607,7 +675,7 @@ export function Messages() {
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'}`}>
-                  <p className="text-sm">{msg.content}</p>
+                  <p className="text-sm">{(msg as any)._plaintext ?? msg.content}</p>
                   <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
                     {formatMessageTime(msg.created_at)}
                   </p>
@@ -728,7 +796,7 @@ export function Messages() {
                               </button>
                               <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatTime(item.created_at)}</span>
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">{item.content}</p>
+                            <p className="text-sm text-muted-foreground truncate">{(item as any).encrypted ? '🔒 Encrypted message' : item.content}</p>
                           </div>
                         </button>
                         <button

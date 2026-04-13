@@ -7,9 +7,9 @@ import { GroupIcon } from '../components/GroupIcon';
 import { useNavigate, useNavigationType } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
-import { type User, type Group } from '../data/data';
+import { type User, type Group, topicAccounts } from '../data/data';
 import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, groups as groupsAPI, supabase } from '../utils/supabase';
-import { fetchAllGamingMediaPosts, searchBlueskyUsers, type ExternalUser } from '../utils/bluesky';
+import { fetchAllGamingMediaPosts, searchBlueskyUsers, topicAccountBlueskyHandles, type ExternalUser } from '../utils/bluesky';
 import { searchMastodonUsers } from '../utils/fediverse';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
@@ -254,7 +254,29 @@ export function Explore() {
           fetchAllGamingMediaPosts(8),
         ]);
         if (supabasePosts.status === 'fulfilled') setTopicPosts(supabasePosts.value);
-        if (live.status === 'fulfilled') setLivePosts(live.value as any[]);
+        if (live.status === 'fulfilled') {
+          // Enrich live Bluesky/Mastodon posts with their topic account author object
+          // so PostCard can render them (it requires post.author to be set).
+          const bskyHandleToTopic: Record<string, any> = {};
+          for (const [topicId, handle] of Object.entries(topicAccountBlueskyHandles)) {
+            const account = topicAccounts.find(a => a.id === topicId);
+            if (account) bskyHandleToTopic[handle] = account;
+          }
+          const enriched = (live.value as any[]).map(p => {
+            const topicAccount = bskyHandleToTopic[p.userId];
+            if (!topicAccount) return null;
+            return {
+              ...p,
+              author: topicAccount,
+              user_id: topicAccount.id,
+              created_at: p.timestamp instanceof Date ? p.timestamp.toISOString() : (p.timestamp ?? p.created_at),
+              like_count: p.likes ?? 0,
+              repost_count: p.reposts ?? 0,
+              comment_count: p.comments ?? 0,
+            };
+          }).filter(Boolean);
+          setLivePosts(enriched);
+        }
       } catch {}
       finally { setLoadingTopicPosts(false); }
     };
@@ -360,7 +382,7 @@ export function Explore() {
     ...posts, // all user posts (own + followed)
   ].filter(post => {
     if (post.repostedBy) return false;
-    if (!post.content?.trim()) return false;
+    if (!post.content?.trim() && !post.images?.length && !post.url && !post.image_urls?.length) return false;
     if (seenPostIds.has(post.id)) return false;
     seenPostIds.add(post.id);
     const uid = post.user_id || post.userId || '';

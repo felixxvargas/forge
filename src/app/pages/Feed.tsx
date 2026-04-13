@@ -9,7 +9,16 @@ import { LoginModule } from '../components/LoginModule';
 import { SocialAuthButtons } from '../components/SocialAuthButtons';
 import { useAppData } from '../context/AppDataContext';
 import { posts as postsAPI } from '../utils/supabase';
+import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
+import { topicAccounts } from '../data/data';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
+
+// Reverse map: Bluesky handle → topic account (built once at module level)
+const BSKY_HANDLE_TO_TOPIC: Record<string, any> = {};
+for (const [topicId, handle] of Object.entries(topicAccountBlueskyHandles)) {
+  const account = topicAccounts.find(a => a.id === topicId);
+  if (account) BSKY_HANDLE_TO_TOPIC[handle] = account;
+}
 
 type FeedMode = 'following' | 'for-you' | 'trending' | { type: 'group'; id: string } | { type: 'game'; id: string; title: string };
 
@@ -84,8 +93,30 @@ export function Feed() {
     setDynamicLoading(true);
     try {
       if (feedMode === 'trending' || !isAuthenticated) {
-        const data = await postsAPI.getTrendingFeed(40);
-        setDynamicPosts(data);
+        const [trendingRes, liveRes] = await Promise.allSettled([
+          postsAPI.getTrendingFeed(40),
+          fetchAllGamingMediaPosts(8),
+        ]);
+        const trending: any[] = trendingRes.status === 'fulfilled' ? trendingRes.value : [];
+        const live: any[] = liveRes.status === 'fulfilled'
+          ? (liveRes.value as any[]).map(p => {
+              const topicAccount = BSKY_HANDLE_TO_TOPIC[p.userId];
+              if (!topicAccount) return null;
+              return {
+                ...p,
+                author: topicAccount,
+                user_id: topicAccount.id,
+                created_at: p.timestamp instanceof Date ? p.timestamp.toISOString() : (p.timestamp ?? p.created_at),
+                like_count: p.likes ?? 0,
+                repost_count: p.reposts ?? 0,
+                comment_count: p.comments ?? 0,
+              };
+            }).filter(Boolean)
+          : [];
+        const merged = [...trending, ...live].sort((a: any, b: any) =>
+          new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()
+        );
+        setDynamicPosts(merged);
       } else if (feedMode === 'for-you') {
         const data = await postsAPI.getForYouFeed(currentUser?.id ?? '', Array.from(followedGameIds), 40);
         setDynamicPosts(data);

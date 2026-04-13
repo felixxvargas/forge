@@ -101,11 +101,8 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     mutePost = async () => {},
     unmutePost = async () => {},
     likedPosts = new Set(),
-    followedGameIds = new Set()
-  } = context || {};
 
-  // Games in this post that the user follows (drives the "following" indicator)
-  const followedTaggedGames = taggedGames.filter(g => (followedGameIds as Set<string>).has(g.id));
+  } = context || {};
 
   // "Replying to" — resolve parent post author from context for feed indicator
   const parentPostInContext = (post as any).reply_to
@@ -246,14 +243,6 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           {flareId && !isDetailView && (
             <span className="ml-auto text-xs text-orange-400/60 font-medium">View Flare →</span>
           )}
-        </div>
-      )}
-
-      {/* Following game indicator */}
-      {followedTaggedGames.length > 0 && (
-        <div className="flex items-center gap-1.5 mb-2 text-xs text-accent/70">
-          <Bell className="w-3 h-3" />
-          <span>Following {followedTaggedGames.map(g => g.title).join(', ')}</span>
         </div>
       )}
 
