@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { WritePostButton } from '../components/WritePostButton';
@@ -24,7 +24,13 @@ type FeedMode = 'following' | 'for-you' | 'trending' | { type: 'group'; id: stri
 
 export function Feed() {
   const { posts: contextPosts, currentUser, isAuthenticated, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading, followedGameIds, signInWithGoogle } = useAppData() as any;
-  const [feedMode, setFeedMode] = useState<FeedMode>('following');
+  const [searchParams] = useSearchParams();
+  const [feedMode, setFeedMode] = useState<FeedMode>(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'trending') return 'trending';
+    if (tab === 'for-you') return 'for-you';
+    return 'following';
+  });
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
@@ -138,10 +144,11 @@ export function Feed() {
   }, [loadDynamicFeed]);
 
   // For guests, always show trending; restore following when auth resolves
+  // (unless ?tab=trending was explicitly requested)
   useEffect(() => {
     if (!isAuthenticated) {
       setFeedMode('trending');
-    } else if (feedMode === 'trending') {
+    } else if (feedMode === 'trending' && searchParams.get('tab') !== 'trending') {
       setFeedMode('following');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -348,10 +355,10 @@ export function Feed() {
 
       {/* Mobile guest sticky CTA — sits above bottom nav (bottom-nav height ~4rem) */}
       {!isAuthenticated && (
-        <div className="md:hidden fixed left-0 right-0 z-40 bg-card border-t-2 border-accent/30 px-4 py-3 flex items-center gap-3" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="md:hidden fixed left-0 right-0 z-40 bg-card/80 backdrop-blur-md backdrop-saturate-150 border-t-2 border-accent/30 px-4 py-3 flex items-center gap-3" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">Join Forge</p>
-            <p className="text-xs text-muted-foreground truncate">Connect with gamers everywhere</p>
+            <p className="text-xs text-muted-foreground truncate">Connect across platforms</p>
           </div>
           <Link
             to="/signup"

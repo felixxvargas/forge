@@ -83,6 +83,8 @@ export function NewPost() {
 
   const [content, setContent] = useState(autoDraft.current.content);
   const [imageUrl, setImageUrl] = useState(autoDraft.current.imageUrl);
+  const [imageAlt, setImageAlt] = useState('');
+  const [showAltInput, setShowAltInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState(autoDraft.current.linkUrl);
   const [showImageUpload, setShowImageUpload] = useState(!!autoDraft.current.imageUrl);
   const [showLinkInput, setShowLinkInput] = useState(!!autoDraft.current.linkUrl);
@@ -436,10 +438,11 @@ export function NewPost() {
     setError('');
     try {
       const images = imageUrl ? [imageUrl] : undefined;
+      const imageAlts = imageUrl ? [imageAlt.trim()] : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
       let lastPostId = await createPost(
-        content, images, linkUrl || undefined, undefined, undefined,
+        content, images, linkUrl || undefined, imageAlts, undefined,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(),
       );
@@ -568,7 +571,7 @@ export function NewPost() {
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+        <div id="post-error" role="alert" className="mx-4 mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
           {error}
         </div>
       )}
@@ -606,6 +609,10 @@ export function NewPost() {
             className="relative w-full min-h-[200px] bg-transparent resize-none outline-none text-base p-0"
             style={{ color: 'transparent', caretColor: 'var(--foreground)' }}
             autoFocus
+            aria-label="Post content"
+            aria-multiline="true"
+            aria-required="true"
+            aria-describedby={error ? 'post-error' : undefined}
           />
         </div>
 
@@ -750,34 +757,41 @@ export function NewPost() {
         })()}
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1 pt-3 border-t border-border mt-2">
+        <div className="flex items-center gap-1 pt-3 border-t border-border mt-2" role="toolbar" aria-label="Post formatting options">
           <button
+            type="button"
             onClick={() => setShowImageUpload(!showImageUpload)}
             className={`p-2 rounded-lg transition-colors ${showImageUpload ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            title="Add image"
+            aria-label="Add image"
+            aria-pressed={showImageUpload}
           >
-            <ImageIcon className="w-5 h-5" />
+            <ImageIcon className="w-5 h-5" aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={() => setShowLinkInput(!showLinkInput)}
             className={`p-2 rounded-lg transition-colors ${showLinkInput ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            title="Add link"
+            aria-label="Add link"
+            aria-pressed={showLinkInput}
           >
-            <LinkIcon className="w-5 h-5" />
+            <LinkIcon className="w-5 h-5" aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={() => setShowGamePicker(!showGamePicker)}
             className={`p-2 rounded-lg transition-colors ${(showGamePicker || selectedGames.length > 0) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            title="Tag a game"
+            aria-label="Tag a game"
+            aria-pressed={showGamePicker || selectedGames.length > 0}
           >
-            <Gamepad2 className="w-5 h-5" />
+            <Gamepad2 className="w-5 h-5" aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={() => setShowListPicker(true)}
             className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            title="Attach a game list"
+            aria-label="Attach a game list"
           >
-            <LayoutList className="w-5 h-5" />
+            <LayoutList className="w-5 h-5" aria-hidden="true" />
           </button>
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}
@@ -814,13 +828,45 @@ export function NewPost() {
         {showImageUpload && (
           <div className="mt-3">
             <ImageUpload
-              onUpload={(url) => setImageUrl(url)}
-              onRemove={() => setImageUrl('')}
+              onUpload={(url) => { setImageUrl(url); setShowAltInput(true); }}
+              onRemove={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); }}
               existingUrl={imageUrl}
               accept="image/*,video/*"
               maxSizeMB={50}
               bucketType="post"
             />
+            {/* ALT text badge + input — shown once an image is uploaded */}
+            {imageUrl && (
+              <div className="mt-2">
+                {!showAltInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAltInput(true)}
+                    aria-label="Add alt text to image"
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border transition-colors ${imageAlt.trim() ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-accent/40'}`}
+                  >
+                    <span>ALT</span>
+                    {imageAlt.trim() && <span className="max-w-[120px] truncate ml-1 font-normal opacity-80">{imageAlt}</span>}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-muted-foreground shrink-0">ALT</span>
+                    <input
+                      type="text"
+                      value={imageAlt}
+                      onChange={e => setImageAlt(e.target.value)}
+                      onBlur={() => setShowAltInput(false)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setShowAltInput(false); }}
+                      placeholder="Describe this image for screen readers…"
+                      maxLength={500}
+                      autoFocus
+                      aria-label="Image alt text"
+                      className="flex-1 bg-secondary/60 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-accent text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -960,9 +1006,6 @@ export function NewPost() {
       {/* Add to thread button */}
       {!replyTo && (
         <div className="border-t border-border px-4 py-3 flex items-center gap-2">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <div className="w-px h-full bg-border" />
-          </div>
           <button
             onClick={() => setThreadPosts(prev => [...prev, ''])}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-accent transition-colors"

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "play-store-screenshots": {
+      "source": "mobile-dev-ci/play-store-screenshots",
+      "sourceType": "github",
+      "computedHash": "e0acd772dd9ff7bbac598e81c396ae944bb80fa50bd1b5241031d34669a3ae5c"
+    }
+  }
+}

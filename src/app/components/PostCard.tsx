@@ -56,12 +56,12 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   const [showRepostTray, setShowRepostTray] = useState(false);
 
   // External posts (AT Proto / ActivityPub) — engagement is read-only
-  const isExternalPost = post.platform === 'bluesky' || post.platform === 'mastodon';
+  const isExternalPost = post?.platform === 'bluesky' || post?.platform === 'mastodon';
 
   // Build the full list of tagged games (multi-tag array takes priority; falls back to single field)
   const taggedGames: { id: string; title: string }[] = (() => {
-    const ids: string[] = post.game_ids?.length > 0 ? post.game_ids : post.game_id ? [post.game_id] : [];
-    const titles: string[] = post.game_titles?.length > 0 ? post.game_titles : post.game_title ? [post.game_title] : [];
+    const ids: string[] = (post?.game_ids?.length ?? 0) > 0 ? post.game_ids : post?.game_id ? [post.game_id] : [];
+    const titles: string[] = (post?.game_titles?.length ?? 0) > 0 ? post.game_titles : post?.game_title ? [post.game_title] : [];
     return ids.map((id: string, i: number) => ({ id, title: titles[i] || '' })).filter((g: { id: string; title: string }) => g.id);
   })();
 
@@ -81,7 +81,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         setGameCovers(prev => new Map(prev).set(g.id, url));
       }).catch(() => { gameCoverCache.set(g.id, null); });
     });
-  }, [post.game_ids?.join(',') ?? post.game_id]);
+  }, [post?.game_ids?.join(',') ?? post?.game_id]);
 
   // Resolve profile picture: Bluesky avatar (topic accounts), then snake_case (Supabase),
   // then camelCase (topic account User objects from data.ts), then undefined.
@@ -177,8 +177,8 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   // Get reposter info if this post was reposted
   const reposter = post.repostedBy ? getUserById(post.repostedBy) : null;
 
-  // Guard against undefined user
-  if (!user) return null;
+  // Guard against undefined post or user
+  if (!post || !user) return null;
 
   // If user is muted and has onShowMutedPost callback, show collapsed version
   if (isMutedUser && onShowMutedPost) {
@@ -534,7 +534,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           disabled={isExternalPost}
           title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
           className={`flex items-center gap-2 text-sm transition-colors ${
-            isExternalPost ? 'opacity-40 cursor-not-allowed' :
+            isExternalPost ? 'opacity-40 cursor-not-allowed text-muted-foreground' :
             isLiked ? 'text-purple-400' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -548,7 +548,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
             disabled={isExternalPost}
             title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
             className={`flex items-center gap-2 text-sm transition-colors ${
-              isExternalPost ? 'opacity-40 cursor-not-allowed' :
+              isExternalPost ? 'opacity-40 cursor-not-allowed text-muted-foreground' :
               isReposted ? 'text-accent' : 'text-muted-foreground hover:text-accent'
             }`}
           >

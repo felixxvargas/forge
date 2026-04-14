@@ -143,8 +143,11 @@ export function Profile() {
   // Fetch Bluesky data for Topic accounts (if applicable)
   const blueskyData = useBlueskyData(profileUser || currentUser);
 
-  // Only use Bluesky avatar for topic accounts — prevents stale data bleeding into own profile
-  const isTopicAccount = ((profileUser || currentUser) as any)?.account_type === 'topic';
+  // Use Bluesky avatar for topic accounts (UUID-based from Supabase) and synthetic topic IDs
+  // from data.ts (e.g. 'user-ign'). Prevents stale Bluesky data bleeding onto own profile.
+  const profileUserId = (profileUser as any)?.id || userId || '';
+  const isTopicAccount = ((profileUser || currentUser) as any)?.account_type === 'topic'
+    || /^user-|^studio-/.test(profileUserId);
   const profilePicture = (isTopicAccount ? blueskyData.avatar : undefined) || profileUser?.profile_picture || undefined;
 
   // Dynamic OG meta tags for social share previews

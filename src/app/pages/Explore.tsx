@@ -44,6 +44,7 @@ export function Explore() {
   const [loadingLfg, setLoadingLfg] = useState(false);
   const [groupGameTitles, setGroupGameTitles] = useState<Record<string, string>>({});
   const [postSort, setPostSort] = useState<'latest' | 'top'>('latest');
+  const [postFilter, setPostFilter] = useState<'all' | 'forge'>('all');
   const [realFollowerCounts, setRealFollowerCounts] = useState<Record<string, number>>({});
 
   // Global search state
@@ -388,9 +389,15 @@ export function Explore() {
     const uid = post.user_id || post.userId || '';
     if (blockedUsers.has(uid)) return false;
     if (mutedUsers.has(uid) && !showMutedPosts.has(post.id)) return false;
+    // Forge filter: only native Forge posts (no platform or platform === 'forge')
+    if (postFilter === 'forge') {
+      const platform = post.platform;
+      if (platform && platform !== 'forge') return false;
+    }
     return true;
   }).sort((a, b) => {
-    if (postSort === 'top') {
+    // Forge filter always uses recency; otherwise respect Latest/Top setting
+    if (postFilter !== 'forge' && postSort === 'top') {
       const engA = (a.like_count ?? 0) + (a.repost_count ?? 0) + (a.comment_count ?? 0);
       const engB = (b.like_count ?? 0) + (b.repost_count ?? 0) + (b.comment_count ?? 0);
       return engB - engA;
@@ -807,14 +814,14 @@ export function Explore() {
             {/* ── NORMAL TABBED CONTENT ── */}
             {activeTab === 'posts' && (
               <div className="space-y-4">
-                {/* Latest / Top sort toggle */}
-                <div className="flex gap-2">
+                {/* Sort / filter chips */}
+                <div className="flex gap-2 flex-wrap">
                   {(['latest', 'top'] as const).map(s => (
                     <button
                       key={s}
-                      onClick={() => setPostSort(s)}
+                      onClick={() => { setPostSort(s); setPostFilter('all'); }}
                       className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        postSort === s
+                        postFilter === 'all' && postSort === s
                           ? 'bg-purple-600 text-white'
                           : 'bg-gray-800 text-gray-400 hover:text-white'
                       }`}
@@ -822,6 +829,16 @@ export function Explore() {
                       {s === 'latest' ? 'Latest' : 'Top'}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setPostFilter(postFilter === 'forge' ? 'all' : 'forge')}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      postFilter === 'forge'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Forge
+                  </button>
                 </div>
                 {loadingTopicPosts ? (
                   <div className="text-center py-8">

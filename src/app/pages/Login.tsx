@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -6,6 +6,9 @@ import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
 import { SocialAuthButtons } from '../components/SocialAuthButtons';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
 
 export function Login() {
   const navigate = useNavigate();
@@ -22,6 +25,8 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha>(null);
 
   // Forgot password
   const [showForgot, setShowForgot] = useState(false);
@@ -64,7 +69,7 @@ export function Login() {
     setError('');
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(email, password, captchaToken ?? undefined);
       const isLinking = localStorage.getItem('forge-linking-account') === 'true';
       if (isLinking) {
         localStorage.removeItem('forge-linking-account');
@@ -206,7 +211,17 @@ export function Login() {
                     </button>
                   </div>
                 </div>
-                <button type="submit" disabled={isLoading}
+                {HCAPTCHA_SITE_KEY && (
+                  <HCaptcha
+                    ref={captchaRef}
+                    sitekey={HCAPTCHA_SITE_KEY}
+                    onVerify={setCaptchaToken}
+                    onExpire={() => setCaptchaToken(null)}
+                    onError={() => setCaptchaToken(null)}
+                    theme="dark"
+                  />
+                )}
+                <button type="submit" disabled={isLoading || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
                   className="w-full py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50">
                   {isLoading ? 'Signing in...' : 'Sign In'}
                 </button>

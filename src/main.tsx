@@ -9,6 +9,11 @@ if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
+// Reload the page when Vite fails to load a dynamically imported chunk (stale cache after deploy)
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload();
+});
+
 // Strip OG redirect marker added by middleware loop-breaker (?_r=1)
 if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_r')) {
   const clean = new URL(window.location.href);
@@ -47,8 +52,8 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
   render() {
     if (this.state.error) {
       return (
-        <div style={{ background: '#1c1228', color: '#f87171', minHeight: '100vh', padding: 40, fontFamily: 'monospace', fontSize: 14 }}>
-          <div style={{ color: '#b8d84e', fontSize: 24, marginBottom: 20 }}>⚡ Forge — Runtime Error</div>
+        <div style={{ background: '#080613', color: '#f87171', minHeight: '100vh', padding: 40, fontFamily: 'monospace', fontSize: 14 }}>
+          <div style={{ color: '#C4B5FD', fontSize: 24, marginBottom: 20 }}>Forge — Runtime Error</div>
           <div style={{ color: '#fbbf24', marginBottom: 10 }}>{(this.state.error as any).message}</div>
           <pre style={{ color: '#f87171', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
             {(this.state.error as any).stack}
@@ -76,8 +81,8 @@ async function init() {
     const root = document.getElementById('root');
     if (root) {
       root.innerHTML = `
-        <div style="background:#1c1228;color:#f87171;min-height:100vh;padding:40px;font-family:monospace;font-size:14px;">
-          <div style="color:#b8d84e;font-size:24px;margin-bottom:20px;">⚡ Forge — Import Error</div>
+        <div style="background:#080613;color:#f87171;min-height:100vh;padding:40px;font-family:monospace;font-size:14px;">
+          <div style="color:#C4B5FD;font-size:24px;margin-bottom:20px;">Forge — Import Error</div>
           <div style="color:#fbbf24;margin-bottom:10px;">${e.message}</div>
           <pre style="color:#f87171;white-space:pre-wrap;word-break:break-all;">${e.stack}</pre>
         </div>

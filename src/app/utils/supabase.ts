@@ -16,8 +16,12 @@ export const auth = {
     return data;
   },
 
-  async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  async signIn(email: string, password: string, captchaToken?: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error) throw new Error(error.message);
     return data;
   },

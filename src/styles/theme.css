@@ -130,6 +130,13 @@
     @apply bg-background text-foreground;
   }
 
+  /* Forge purple ambient glow — dark mode only */
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 110% 45% at 50% 0%, rgba(139, 92, 246, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 35% at 50% 105%, rgba(88, 28, 135, 0.12) 0%, transparent 60%);
+  }
+
   /**
   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.

@@ -171,7 +171,7 @@ export async function fetchMassivelyOPPosts(limit = 5): Promise<BlueskyPost[]> {
   }
 }
 
-// Fetch posts from all gaming media topic accounts (Bluesky + Mastodon)
+// Fetch posts from all gaming media topic accounts (all via Bluesky)
 export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]> {
   const cacheKey = 'all-gaming-media';
   const cached = postsCache.get(cacheKey);
@@ -180,21 +180,16 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
   }
 
   try {
-    // Domain-verified Bluesky handles + PC Gamer
-    const gamingMediaHandles = ['ign.com', 'gamespot.com', 'xbox.com', 'itch.io', 'pcgamer.com'];
+    // All handles now on Bluesky (MassivelyOP migrated from Mastodon to massivelyop.bsky.social)
+    const gamingMediaHandles = ['ign.com', 'gamespot.com', 'xbox.com', 'itch.io', 'pcgamer.com', 'massivelyop.bsky.social'];
 
-    const [blueskyResults, mastodonPosts] = await Promise.all([
-      Promise.allSettled(gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))),
-      fetchMassivelyOPPosts(limit),
-    ]);
-
-    const blueskyPosts = blueskyResults.flatMap(r =>
-      r.status === 'fulfilled' ? r.value : []
+    const blueskyResults = await Promise.allSettled(
+      gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))
     );
 
-    const allPosts = [...blueskyPosts, ...mastodonPosts].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    const allPosts = blueskyResults
+      .flatMap(r => r.status === 'fulfilled' ? r.value : [])
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     postsCache.set(cacheKey, { data: allPosts, timestamp: Date.now() });
     return allPosts;
@@ -225,6 +220,9 @@ export const topicAccountBlueskyHandles: Record<string, string> = {
   // PC Gamer — verified at pcgamer.com
   'user-pcgamer': 'pcgamer.com',
   'pcgamer': 'pcgamer.com',
+  // MassivelyOP — active Bluesky account
+  'user-massivelyop': 'massivelyop.bsky.social',
+  'massivelyop': 'massivelyop.bsky.social',
 };
 
 export function getBlueskyHandleForUser(userId: string): string | undefined {

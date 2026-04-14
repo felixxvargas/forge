@@ -125,6 +125,7 @@ export function ImageUpload({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
+          aria-label={isUploading ? 'Uploading image…' : `Upload ${accept === 'image/*' ? 'image' : 'image or video'}`}
           className="w-full p-6 border-2 border-dashed border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
         >
           {isUploading ? (
@@ -156,15 +157,16 @@ export function ImageUpload({
           <button
             type="button"
             onClick={handleRemove}
+            aria-label="Remove image"
             className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
           >
-            <X className="w-4 h-4 text-white" />
+            <X className="w-4 h-4 text-white" aria-hidden="true" />
           </button>
         </div>
       )}
 
       {error && (
-        <p className="mt-2 text-sm text-red-500">{error}</p>
+        <p role="alert" className="mt-2 text-sm text-red-500">{error}</p>
       )}
     </div>
   );

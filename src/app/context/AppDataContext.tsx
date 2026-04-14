@@ -9,15 +9,16 @@ const topicAccountById: Record<string, User> = Object.fromEntries(
   topicAccounts.map(u => [u.id, u])
 );
 
-// Maps topic account synthetic IDs to their Bluesky/Mastodon fetcher
+// Maps topic account synthetic IDs to their Bluesky fetcher
 const TOPIC_BLUESKY_MAP: Record<string, string> = {
   'user-ign': 'ign.com',
   'user-gamespot': 'gamespot.com',
   'user-xbox': 'xbox.com',
   'user-itchio': 'itch.io',
   'user-pcgamer': 'pcgamer.com',
+  'user-massivelyop': 'massivelyop.bsky.social',
 };
-const MASTODON_TOPIC_IDS = new Set(['user-massivelyop']);
+const MASTODON_TOPIC_IDS = new Set<string>(); // MassivelyOP migrated to Bluesky
 
 interface AppDataContextType {
   currentUser: any | null;
@@ -31,7 +32,7 @@ interface AppDataContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   hasUnreadNotifications: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -91,6 +92,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const pendingReposts = useRef<Set<string>>(new Set());
   // Ref so followGame/unfollowGame can access currentUser without stale closures
   const currentUserRef = useRef<any>(null);
+  // Ref to capture the users array loaded during refreshFeed, used by the init effect
+  // to detect topic accounts in the follows table without relying on async state updates
+  const lastLoadedUsersRef = useRef<any[]>([]);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
@@ -109,6 +113,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const externalFollowIds = useMemo(() => new Set(externalFollows.map((f: any) => f.id)), [externalFollows]);
 
   const isAuthenticated = !!session;
+
+  // When users load from Supabase, topic accounts have UUID IDs.
+  // followingIds is seeded with synthetic IDs (user-ign, etc.) from _topicFollows.
+  // This effect adds the corresponding UUID for each followed topic account so the
+  // Profile page's followingIds.has(uuid) check returns true without a page reload.
+  useEffect(() => {
+    if (users.length === 0 || followingIds.size === 0) return;
+    const topicUsers = users.filter(u => (u as any).account_type === 'topic');
+    if (topicUsers.length === 0) return;
+    const toAdd: string[] = [];
+    for (const u of topicUsers) {
+      const syntheticId = `user-${(u.handle || '').replace(/^@/, '').toLowerCase()}`;
+      if (followingIds.has(syntheticId) && !followingIds.has(u.id)) {
+        toAdd.push(u.id);
+      }
+    }
+    if (toAdd.length === 0) return;
+    setFollowingIds(prev => new Set([...prev, ...toAdd]));
+  }, [users]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep a ref to session so refreshFeed can always read the latest value
   // without needing session in its dependency array (avoids double-fetch loops)
@@ -175,10 +198,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setHasUnreadNotifications(unreadCount > 0);
       const externalFollowsList: any[] = (profile?.game_lists?._externalFollows) ?? [];
       setExternalFollows(externalFollowsList);
-      return { topicFollows, externalFollows: externalFollowsList };
+      return { topicFollows, externalFollows: externalFollowsList, followingIdList };
     } catch (e) {
       console.error('Error loading user data:', e);
-      return { topicFollows: [], externalFollows: [] };
+      return { topicFollows: [], externalFollows: [], followingIdList: [] };
     }
   }, []);
 
@@ -224,6 +247,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshFeed = useCallback(async () => {
+    let loadedUsers: any[] = [];
     try {
       const userId = sessionRef.current?.user?.id;
       const feed = userId
@@ -235,7 +259,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     try {
       const allUsers = await profiles.getAll();
-      setUsers(allUsers.map(normalizeProfile));
+      loadedUsers = allUsers.map(normalizeProfile);
+      lastLoadedUsersRef.current = loadedUsers;
+      setUsers(loadedUsers);
     } catch (e) {
       console.error('Error loading users:', e);
     }
@@ -280,14 +306,40 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       try {
         await refreshFeed();
+        const loadedUsers: any[] = lastLoadedUsersRef.current;
         if (session?.user) {
           const loadResult = await loadUserData(session.user.id);
           const topicFollows = loadResult?.topicFollows ?? [];
+          const rawFollowingIdList = loadResult?.followingIdList ?? [];
           const loadedExternalFollows = loadResult?.externalFollows ?? [];
-          // Append posts from followed topic accounts into the following feed
-          if (topicFollows && topicFollows.length > 0) {
+
+          // Also detect topic accounts that are in the follows table (UUID-based follows from before
+          // the _topicFollows migration). Convert their UUID → synthetic ID so posts get fetched.
+          const additionalTopicSyntheticIds: string[] = rawFollowingIdList
+            .map((uuid: string) => {
+              const u = loadedUsers.find((u: any) => u.id === uuid);
+              if ((u as any)?.account_type !== 'topic') return null;
+              const handle = (u?.handle || '').replace(/^@/, '').toLowerCase();
+              return handle ? `user-${handle}` : null;
+            })
+            .filter((id: string | null): id is string => id !== null);
+
+          // Merge, deduplicate, and persist any newly discovered topic follows back to _topicFollows
+          const allTopicFollows = [...new Set([...topicFollows, ...additionalTopicSyntheticIds])];
+          if (additionalTopicSyntheticIds.length > 0) {
+            // Persist so future sessions don't need this fallback
             try {
-              const fetchPairs = topicFollows.map((topicId: string) => {
+              const existing = currentUserRef.current?.game_lists ?? {};
+              await profiles.update(session.user.id, {
+                game_lists: { ...existing, _topicFollows: allTopicFollows },
+              });
+            } catch { /* best-effort */ }
+          }
+
+          // Append posts from followed topic accounts into the following feed
+          if (allTopicFollows.length > 0) {
+            try {
+              const fetchPairs = allTopicFollows.map((topicId: string) => {
                 const bskyHandle = TOPIC_BLUESKY_MAP[topicId] ?? topicAccountBlueskyHandles[topicId];
                 const fetchJob = bskyHandle
                   ? fetchBlueskyPosts(bskyHandle, 10)
@@ -366,8 +418,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     init();
   }, [session, loadUserData, refreshFeed]);
 
-  const signIn = async (email: string, password: string) => {
-    await auth.signIn(email, password);
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
+    await auth.signIn(email, password, captchaToken);
   };
 
   const signUp = async (email: string, password: string) => {
@@ -600,28 +652,40 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Any ID that isn't a UUID format is treated as a topic/synthetic account.
   const isTopicId = (id: string) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
+  // Resolve a topic account's canonical synthetic ID (e.g. 'user-ign') from either its synthetic ID
+  // or its Supabase UUID (by deriving from the handle stored in the users array).
+  const resolveTopicSyntheticId = (userId: string): string | null => {
+    if (isTopicId(userId)) return userId; // already a synthetic ID
+    const userObj = (users as any[]).find(u => u.id === userId);
+    if ((userObj as any)?.account_type !== 'topic') return null;
+    const handle = (userObj?.handle || '').replace(/^@/, '').toLowerCase();
+    return handle ? `user-${handle}` : null;
+  };
+
   const followUser = async (userId: string) => {
     if (!session?.user) return;
-    if (isTopicId(userId)) {
+    const syntheticId = resolveTopicSyntheticId(userId);
+    if (syntheticId !== null) {
+      // Topic account — store in game_lists._topicFollows (avoids follows table FK/RLS issues)
       const existing = (currentUser?.game_lists ?? {}) as any;
       const prev: string[] = existing._topicFollows ?? [];
-      if (!prev.includes(userId)) {
-        const updated = [...prev, userId];
+      if (!prev.includes(syntheticId)) {
+        const updated = [...prev, syntheticId];
         await profiles.update(session.user.id, { game_lists: { ...existing, _topicFollows: updated } });
         setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _topicFollows: updated } } : u);
         // Immediately fetch posts for the newly followed topic account
         try {
-          const bskyHandle = TOPIC_BLUESKY_MAP[userId] ?? topicAccountBlueskyHandles[userId];
+          const bskyHandle = TOPIC_BLUESKY_MAP[syntheticId] ?? topicAccountBlueskyHandles[syntheticId];
           const rawPosts = bskyHandle
             ? await fetchBlueskyPosts(bskyHandle, 10)
-            : MASTODON_TOPIC_IDS.has(userId)
+            : MASTODON_TOPIC_IDS.has(syntheticId)
               ? await fetchMassivelyOPPosts(10)
               : [];
           if (rawPosts.length > 0) {
-            const author = topicAccountById[userId];
+            const author = topicAccountById[syntheticId];
             const newPosts = rawPosts.map((post: any) => ({
               ...post,
-              user_id: userId,
+              user_id: syntheticId,
               created_at: post.timestamp instanceof Date
                 ? post.timestamp.toISOString()
                 : (post.timestamp ?? post.created_at),
@@ -634,34 +698,50 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             });
           }
         } catch (e) {
-          console.error('Error fetching posts for newly followed topic account:', userId, e);
+          console.error('Error fetching posts for newly followed topic account:', syntheticId, e);
         }
       }
+      // Add both the synthetic ID and the UUID to followingIds so the Profile page button is correct
+      setFollowingIds(prev => {
+        const updated = new Set(prev);
+        updated.add(syntheticId);
+        if (userId !== syntheticId) updated.add(userId);
+        return updated;
+      });
+      setCurrentUser((prev: any) => prev ? { ...prev, following_count: (prev.following_count ?? 0) + 1 } : prev);
     } else {
       await profiles.follow(session.user.id, userId);
+      setFollowingIds(prev => new Set([...prev, userId]));
+      setUsers(prev => prev.map(u =>
+        u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u
+      ));
+      setCurrentUser((prev: any) => prev ? { ...prev, following_count: (prev.following_count ?? 0) + 1 } : prev);
     }
-    setFollowingIds(prev => new Set([...prev, userId]));
-    setUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u
-    ));
-    setCurrentUser((prev: any) => prev ? { ...prev, following_count: (prev.following_count ?? 0) + 1 } : prev);
   };
 
   const unfollowUser = async (userId: string) => {
     if (!session?.user) return;
-    if (isTopicId(userId)) {
+    const syntheticId = resolveTopicSyntheticId(userId);
+    if (syntheticId !== null) {
       const existing = (currentUser?.game_lists ?? {}) as any;
-      const updated = (existing._topicFollows ?? []).filter((id: string) => id !== userId);
+      const updated = (existing._topicFollows ?? []).filter((id: string) => id !== syntheticId);
       await profiles.update(session.user.id, { game_lists: { ...existing, _topicFollows: updated } });
       setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _topicFollows: updated } } : u);
+      setFollowingIds(prev => {
+        const s = new Set(prev);
+        s.delete(syntheticId);
+        if (userId !== syntheticId) s.delete(userId);
+        return s;
+      });
+      setCurrentUser((prev: any) => prev ? { ...prev, following_count: Math.max(0, (prev.following_count ?? 0) - 1) } : prev);
     } else {
       await profiles.unfollow(session.user.id, userId);
+      setFollowingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
+      setUsers(prev => prev.map(u =>
+        u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u
+      ));
+      setCurrentUser((prev: any) => prev ? { ...prev, following_count: Math.max(0, (prev.following_count ?? 0) - 1) } : prev);
     }
-    setFollowingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
-    setUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u
-    ));
-    setCurrentUser((prev: any) => prev ? { ...prev, following_count: Math.max(0, (prev.following_count ?? 0) - 1) } : prev);
   };
 
   const followExternalUser = async (user: { id: string; platform: string; handle: string; displayName: string; avatar?: string; instance?: string; accountId?: string; did?: string }) => {
