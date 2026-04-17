@@ -913,10 +913,15 @@ export function Explore() {
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {(isSearchActive ? searchLoading : loadingGames) ? (
-                    <div className="col-span-full text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
-                      <p className="mt-4 text-gray-400">Loading games...</p>
-                    </div>
+                    <>
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-2" />
+                          <div className="h-3 bg-muted/50 rounded mb-1.5 w-4/5" />
+                          <div className="h-2.5 bg-muted/30 rounded w-1/3" />
+                        </div>
+                      ))}
+                    </>
                   ) : (isSearchActive ? searchGames : filteredGames).length === 0 ? (
                     <div className="col-span-full text-center py-12 text-gray-500">
                       <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />

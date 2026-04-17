@@ -337,8 +337,23 @@ export function Feed() {
       </div>
 
       {loading && (
-        <div className="py-12">
-          <LoadingSpinner size="lg" text="Loading posts..." />
+        <div className="divide-y divide-border">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-4 animate-pulse">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="flex gap-2">
+                    <div className="h-3 bg-muted/50 rounded w-24" />
+                    <div className="h-3 bg-muted/30 rounded w-16" />
+                  </div>
+                  <div className="h-3 bg-muted/50 rounded w-full" />
+                  <div className="h-3 bg-muted/50 rounded w-4/5" />
+                  <div className="h-3 bg-muted/30 rounded w-1/2" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -566,7 +566,7 @@ export function Profile() {
           </div>
 
           {/* Social proof: mutual followers */}
-          {!isOwnProfile && (isFollowing || mutualFollowers.length > 0) && (
+          {!isOwnProfile && mutualFollowers.length > 0 && (
             <button
               onClick={() => navigate(`/followers/${profileUser.id}?highlight=following`)}
               className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity text-left w-full"
@@ -588,24 +588,12 @@ export function Profile() {
                   const n = mutualFollowers.slice(0, 2).map((u: any) => u.display_name || u.handle);
                   const b = (s: string) => <span className="text-foreground font-medium">{s}</span>;
                   const sep = (s: string) => <span className="font-normal">{s}</span>;
-                  if (isFollowing) {
-                    if (mutualFollowers.length === 0) {
-                      return <>Followed by {b('you')}</>;
-                    } else if (mutualFollowers.length === 1) {
-                      return <>Followed by {b('you')}{sep(' and ')}{b(n[0])}</>;
-                    } else if (mutualFollowers.length === 2) {
-                      return <>Followed by {b('you')}{sep(', ')}{b(n[0])}{sep(', and ')}{b(n[1])}</>;
-                    } else {
-                      return <>Followed by {b('you')}{sep(', ')}{b(n[0])}{sep(', & ')}{b(`${mutualFollowers.length - 1} others`)}</>;
-                    }
+                  if (mutualFollowers.length === 1) {
+                    return <>Followed by {b(n[0])}</>;
+                  } else if (mutualFollowers.length === 2) {
+                    return <>Followed by {b(n[0])}{sep(' and ')}{b(n[1])}</>;
                   } else {
-                    if (mutualFollowers.length === 1) {
-                      return <>Followed by {b(n[0])}</>;
-                    } else if (mutualFollowers.length === 2) {
-                      return <>Followed by {b(n[0])}{sep(' and ')}{b(n[1])}</>;
-                    } else {
-                      return <>Followed by {b(n[0])}{sep(', ')}{b(n[1])}{sep(', and ')}{b(`${mutualFollowers.length - 2} others`)}</>;
-                    }
+                    return <>Followed by {b(n[0])}{sep(', ')}{b(n[1])}{sep(', and ')}{b(`${mutualFollowers.length - 2} others`)}</>;
                   }
                 })()}
               </p>
@@ -1150,8 +1138,23 @@ export function Profile() {
         {effectiveTab === 'likes' && (
           <div className="px-4">
             {likesLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent" />
+              <div className="divide-y divide-border">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="py-4 animate-pulse">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                      <div className="flex-1 space-y-2 pt-1">
+                        <div className="flex gap-2">
+                          <div className="h-3 bg-muted/50 rounded w-24" />
+                          <div className="h-3 bg-muted/30 rounded w-16" />
+                        </div>
+                        <div className="h-3 bg-muted/50 rounded w-full" />
+                        <div className="h-3 bg-muted/50 rounded w-4/5" />
+                        <div className="h-3 bg-muted/30 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : profileLikedPosts.length > 0 ? (
               profileLikedPosts.map(post => {

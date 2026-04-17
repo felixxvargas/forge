@@ -157,10 +157,26 @@ export function Messages() {
     groupAPI.getParticipants(selectedGroupThread.participant_ids ?? []).then(setGroupParticipants).catch(() => {});
   }, [selectedGroupThread?.id]);
 
-  // Scroll to bottom
+  // Scroll to bottom only for new messages, not on initial load
+  const hasInitialScrolledRef = useRef(false);
+  const prevConversationKeyRef = useRef<string | null>(null);
+  const conversationKey = selectedPartnerId ?? selectedGroupThread?.id ?? null;
+
   useEffect(() => {
+    if (conversationKey !== prevConversationKeyRef.current) {
+      // Conversation changed — reset flag so we don't auto-scroll
+      prevConversationKeyRef.current = conversationKey;
+      hasInitialScrolledRef.current = false;
+      return;
+    }
+    if (!hasInitialScrolledRef.current) {
+      // First render of messages — mark as loaded but don't scroll
+      hasInitialScrolledRef.current = true;
+      return;
+    }
+    // Subsequent updates — a new message arrived, scroll to it
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, groupMessages]);
+  }, [messages, groupMessages, conversationKey]);
 
   // Real-time DM
   useEffect(() => {
@@ -372,6 +388,10 @@ export function Messages() {
   const toggleComposeUser = (user: any) => {
     setSelectedComposeUsers(prev => {
       const exists = prev.find(u => u.id === user.id);
+      if (!exists) {
+        setComposeQuery('');
+        setComposeResults([]);
+      }
       return exists ? prev.filter(u => u.id !== user.id) : [...prev, user];
     });
   };
