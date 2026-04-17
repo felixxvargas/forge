@@ -364,6 +364,8 @@ export function Profile() {
       'youtubemusic': 'YouTube Music',
       'soundcloud': 'SoundCloud',
       'patreon': 'Patreon',
+      'battlenet': 'Battle.net',
+      'riot': 'Riot Games',
     };
     return labels[platform] || platform;
   };
@@ -377,8 +379,8 @@ export function Profile() {
   return (
     <div className="min-h-screen pb-20">
       <Header />
-      
-      <div className="w-full max-w-2xl mx-auto">
+
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto">
         {/* Profile Header */}
         <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl mb-4">
           {/* Back button for other users' profiles */}

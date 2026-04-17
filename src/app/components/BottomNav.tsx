@@ -49,7 +49,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
         <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
           <button
             onClick={() => {

@@ -57,7 +57,7 @@ export function EditProfile() {
   const [newLinkUrl, setNewLinkUrl] = useState('');
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
-  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
+  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled', 'battlenet', 'riot'];
 
   const handleSave = async () => {
     setHandleError('');
@@ -264,6 +264,9 @@ export function EditProfile() {
       'spotify': 'Spotify',
       'youtubemusic': 'YouTube Music',
       'soundcloud': 'SoundCloud',
+      'patreon': 'Patreon',
+      'battlenet': 'Battle.net',
+      'riot': 'Riot Games',
     };
     return labels[social] || social;
   };

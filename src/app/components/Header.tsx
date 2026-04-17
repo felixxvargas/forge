@@ -15,7 +15,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
 
   return (
     <header className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border z-40">
-      <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center justify-between relative">
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 h-14 flex items-center justify-between relative">
         <div className="flex items-center gap-3">
           {title && <h1 className="text-xl font-bold">{title}</h1>}
         </div>

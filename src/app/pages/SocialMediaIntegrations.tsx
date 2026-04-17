@@ -4,9 +4,13 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import type { SocialPlatform } from '../data/data';
 import BlueskyIconAsset from '../../assets/icons/bluesky.svg?react';
+import BattlenetIconAsset from '../../assets/icons/battlenet.svg?react';
+import RiotGamesIconAsset from '../../assets/icons/riotgames.svg?react';
 
 // SVG logo components for each social platform
 const BlueskySVG = () => <BlueskyIconAsset className="w-6 h-6" />;
+const BattlenetSVG = () => <BattlenetIconAsset className="w-6 h-6" />;
+const RiotGamesSVG = () => <RiotGamesIconAsset className="w-6 h-6" />;
 
 const MastodonSVG = () => (
   <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
@@ -113,7 +117,7 @@ const PatreonSVG = () => (
 
 const SoundCloudSVG = () => (
   <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-    <path d="M1.175 12.225c-.015 0-.027.006-.04.008L1.1 12.241c-.483.043-.867.452-.867.952 0 .52.41.952.921.952h12.95c.51 0 .921-.432.921-.952V9.01c0-.52-.41-.952-.921-.952a.921.921 0 0 0-.613.231A3.506 3.506 0 0 0 10.505 6a3.49 3.49 0 0 0-2.988 1.699 2.62 2.62 0 0 0-.625-.076 2.666 2.666 0 0 0-2.622 2.383A2.012 2.012 0 0 0 3.187 10c-.55 0-1.012.447-1.012 1.012 0 .564.461 1.012 1.012 1.012.02 0 .039-.003.058-.005a1.004 1.004 0 0 1-.07-.381c0-.552.448-1 1-1s1 .448 1 1-.448 1-1 1h-.04c-.016 0-.032.003-.048.004a.988.988 0 0 1-.912-.617zm.825-1.012a.987.987 0 0 1 .96-.76.992.992 0 0 1 .996.994.992.992 0 0 1-.996.994.987.987 0 0 1-.96-.76zM0 12.193c0-1.105.895-2 2-2 .094 0 .186.007.277.02A3.502 3.502 0 0 1 5.5 8.5c.142 0 .282.01.42.028A4.489 4.489 0 0 1 10 6a4.49 4.49 0 0 1 4.338 3.34c.053-.003.107-.005.162-.005 1.38 0 2.5 1.12 2.5 2.5v2.858c0 1.38-1.12 2.5-2.5 2.5H2c-1.105 0-2-.895-2-2z"/>
+    <path d="M11.56 8.87V17h8.76v.01c2-.01 3.68-1.61 3.68-3.59 0-1.71-1.2-3.14-2.82-3.5a5.07 5.07 0 0 0-9.62-1.05zm-3.73 3.26c-.98 0-1.83.63-2.13 1.5H2.34a2.34 2.34 0 0 0 0 4.68H5.7c.3.87 1.15 1.5 2.13 1.5 1.26 0 2.28-1.02 2.28-2.28V9.85a.77.77 0 0 0-1.54 0v5.5a.74.74 0 0 1-.74.74z"/>
   </svg>
 );
 
@@ -137,6 +141,8 @@ const PLATFORM_ICONS: Record<string, () => React.ReactElement> = {
   youtubemusic: YouTubeMusicSVG,
   soundcloud: SoundCloudSVG,
   patreon: PatreonSVG,
+  battlenet: BattlenetSVG,
+  riot: RiotGamesSVG,
 };
 
 const availableSocialPlatforms: { id: SocialPlatform; name: string; description: string }[] = [
@@ -159,6 +165,8 @@ const availableSocialPlatforms: { id: SocialPlatform; name: string; description:
   { id: 'youtubemusic', name: 'YouTube Music', description: 'Music streaming by Google' },
   { id: 'soundcloud', name: 'SoundCloud', description: 'Audio sharing platform' },
   { id: 'patreon', name: 'Patreon', description: 'Creator membership platform' },
+  { id: 'battlenet', name: 'Battle.net', description: 'Blizzard gaming platform' },
+  { id: 'riot', name: 'Riot Games', description: 'League of Legends, Valorant & more' },
 ];
 
 export function SocialMediaIntegrations() {

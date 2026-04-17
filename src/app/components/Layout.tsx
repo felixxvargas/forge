@@ -1,5 +1,6 @@
 import { Outlet, Navigate, useLocation } from 'react-router';
 import { BottomNav } from './BottomNav';
+import { DesktopSidebar } from './DesktopSidebar';
 import { useAppData } from '../context/AppDataContext';
 import { LoginModule } from './LoginModule';
 import { WhatsNewModal } from './WhatsNew';
@@ -37,7 +38,8 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh bg-background">
-      <div className={`pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)]`}>
+      <DesktopSidebar />
+      <div className={`md:ml-[60px] lg:ml-[220px] pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4`}>
         <Outlet />
       </div>
       <BottomNav />

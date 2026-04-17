@@ -1,4 +1,6 @@
 // SVG icon imports for social platforms (normalized, currentColor-compatible)
+import BattlenetIcon from '../../assets/icons/battlenet.svg?react';
+import RiotGamesIcon from '../../assets/icons/riotgames.svg?react';
 import DiscordIcon from '../../assets/icons/discord.svg?react';
 import TwitterIcon from '../../assets/icons/twitter.svg?react';
 import InstagramIcon from '../../assets/icons/instagram.svg?react';
@@ -34,7 +36,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   // Gaming
   steam: 'Steam', xbox: 'Xbox', playstation: 'PlayStation', epic: 'Epic Games',
   ea: 'EA', nintendo: 'Nintendo', gog: 'GOG', ubisoft: 'Ubisoft',
-  rockstar: 'Rockstar', pc: 'PC', mac: 'Mac Gaming', linux: 'Linux Gaming',
+  rockstar: 'Rockstar', pc: 'PC (Windows)', mac: 'Mac (Apple)', linux: 'Linux',
   // Social
   discord: 'Discord', twitter: 'X (Twitter)', x: 'X (Twitter)',
   instagram: 'Instagram', facebook: 'Facebook', reddit: 'Reddit',
@@ -42,6 +44,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   mastodon: 'Mastodon', spotify: 'Spotify', github: 'GitHub', patreon: 'Patreon',
   bluesky: 'Bluesky', threads: 'Threads', rednote: 'Red Note', upscrolled: 'Upscrolled',
   youtubemusic: 'YouTube Music', soundcloud: 'SoundCloud', apple: 'Apple',
+  battlenet: 'Battle.net', riot: 'Riot Games',
 };
 
 export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, showHandle }: PlatformIconProps) {
@@ -74,6 +77,8 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
           </svg>
         );
       case 'upscrolled':  return <UpscrolledIcon className={cls} />;
+      case 'battlenet':  return <BattlenetIcon className={cls} />;
+      case 'riot':       return <RiotGamesIcon className={cls} />;
       case 'youtubemusic':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
@@ -103,7 +108,8 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
       case 'linux':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
-            <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.117.779.567 1.563 1.182 2.14.614.578 1.361.7 2.063.682 1.175-.024 2.462-.31 3.432-.324 1.032-.02 2.02.203 3.11.208.918.013 1.889-.234 2.614-.751.724-.518 1.224-1.294 1.378-2.114.154-.82-.012-1.667-.28-2.457-.602-1.738-1.815-3.376-2.65-4.408-.783-1.069-1.006-1.872-1.111-2.94-.201-2.017.67-4.977-3.012-6.337C12.948.04 12.717 0 12.504 0zM9 12c0-.552.448-1 1-1s1 .448 1 1-.448 1-1 1-1-.448-1-1zm4 0c0-.552.448-1 1-1s1 .448 1 1-.448 1-1 1-1-.448-1-1zm-6 6c.286-1.143 1.429-2 2.5-2h1c1.071 0 2.214.857 2.5 2H7zm3.5-8.5c-.829 0-1.5-.671-1.5-1.5S9.671 8 10.5 8s1.5.671 1.5 1.5S11.329 9.5 10.5 9.5zm3 0c-.829 0-1.5-.671-1.5-1.5S12.671 8 13.5 8s1.5.671 1.5 1.5S14.329 9.5 13.5 9.5z"/>
+            {/* Sitting Tux penguin silhouette */}
+            <path fillRule="evenodd" clipRule="evenodd" d="M12 2A4 4 0 1 0 12 10A4 4 0 1 0 12 2ZM10.5 4.75A1 1 0 1 0 10.5 6.75A1 1 0 1 0 10.5 4.75ZM13.5 4.75A1 1 0 1 0 13.5 6.75A1 1 0 1 0 13.5 4.75ZM7 11C5 12.3 4 14.3 4 16.5V19C4 20.7 5.3 22 7 22H17C18.7 22 20 20.7 20 19V16.5C20 14.3 19 12.3 17 11L15 12.5C14 14 10 14 9 12.5Z" />
           </svg>
         );
       case 'epic':

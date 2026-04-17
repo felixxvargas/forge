@@ -470,7 +470,7 @@ export function Explore() {
 
       {/* Search Bar */}
       <div className={`sticky top-14 z-20 bg-black border-b border-gray-800 transition-all duration-300 ${hideSearchBar ? '-translate-y-full' : 'translate-y-0'}`}>
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
@@ -540,7 +540,7 @@ export function Explore() {
 
       {/* Tabs — always visible, dimmed when search active (except on games tab) */}
       <div className={`sticky z-10 transition-all duration-300 border-b border-gray-800 bg-black ${hideSearchBar ? 'top-14' : 'top-[118px]'} ${isSearchActive && activeTab !== 'games' ? 'opacity-40 pointer-events-none' : ''}`}>
-        <div className="max-w-2xl mx-auto w-full flex">
+        <div className="max-w-2xl lg:max-w-3xl mx-auto w-full flex">
           {(['posts', 'users', 'games', 'groups'] as ExploreTab[]).map(tab => {
             const icons: Record<ExploreTab, React.ReactNode> = {
               posts: <MessageSquare className="w-5 h-5" />,
@@ -568,7 +568,7 @@ export function Explore() {
 
       {/* Content — onClickCapture saves scroll only when user clicks into a detail view */}
       <div
-        className="max-w-2xl mx-auto px-4 py-4"
+        className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-4"
         onClickCapture={() => sessionStorage.setItem('explore-scroll-y', String(window.scrollY))}
       >
 

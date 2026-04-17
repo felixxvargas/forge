@@ -30,6 +30,7 @@ interface AppDataContextType {
   blockedUsers: Set<string>;
   mutedUsers: Set<string>;
   isLoading: boolean;
+  topicPostsReady: boolean;
   isAuthenticated: boolean;
   hasUnreadNotifications: boolean;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
@@ -102,6 +103,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [topicPostsReady, setTopicPostsReady] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [filteredSocialPlatforms, setFilteredSocialPlatforms] = useState<Set<string>>(() => {
     try {
@@ -304,6 +306,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
+      setTopicPostsReady(false);
       try {
         await refreshFeed();
         const loadedUsers: any[] = lastLoadedUsersRef.current;
@@ -315,24 +318,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
           // Also detect topic accounts that are in the follows table (UUID-based follows from before
           // the _topicFollows migration). Convert their UUID → synthetic ID so posts get fetched.
-          const additionalTopicSyntheticIds: string[] = rawFollowingIdList
+          const topicFollowPairs: { uuid: string; syntheticId: string }[] = rawFollowingIdList
             .map((uuid: string) => {
               const u = loadedUsers.find((u: any) => u.id === uuid);
               if ((u as any)?.account_type !== 'topic') return null;
               const handle = (u?.handle || '').replace(/^@/, '').toLowerCase();
-              return handle ? `user-${handle}` : null;
+              return handle ? { uuid, syntheticId: `user-${handle}` } : null;
             })
-            .filter((id: string | null): id is string => id !== null);
+            .filter((p): p is { uuid: string; syntheticId: string } => p !== null);
+          const additionalTopicSyntheticIds = topicFollowPairs.map(p => p.syntheticId);
 
-          // Merge, deduplicate, and persist any newly discovered topic follows back to _topicFollows
+          // Merge, deduplicate, and persist any newly discovered topic follows back to _topicFollows.
+          // Also remove the UUID-based rows from the follows table so future sessions don't re-add them.
           const allTopicFollows = [...new Set([...topicFollows, ...additionalTopicSyntheticIds])];
           if (additionalTopicSyntheticIds.length > 0) {
-            // Persist so future sessions don't need this fallback
             try {
               const existing = currentUserRef.current?.game_lists ?? {};
               await profiles.update(session.user.id, {
                 game_lists: { ...existing, _topicFollows: allTopicFollows },
               });
+              // Clean up UUID-based topic follows so this migration path doesn't run again
+              for (const { uuid } of topicFollowPairs) {
+                profiles.unfollow(session.user.id, uuid).catch(() => {});
+              }
             } catch { /* best-effort */ }
           }
 
@@ -420,6 +428,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setCurrentUser(null);
         }
       } finally {
+        setTopicPostsReady(true);
         setIsLoading(false);
       }
     };
@@ -734,6 +743,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const existing = (currentUser?.game_lists ?? {}) as any;
       const updated = (existing._topicFollows ?? []).filter((id: string) => id !== syntheticId);
       await profiles.update(session.user.id, { game_lists: { ...existing, _topicFollows: updated } });
+      // Also remove any UUID-based follow row for this topic account so the migration
+      // doesn't re-add it on the next session load.
+      const syntheticHandle = syntheticId.replace(/^user-/, '');
+      const topicUser = users.find((u: any) =>
+        u.account_type === 'topic' &&
+        (u.handle || '').replace(/^@/, '').toLowerCase() === syntheticHandle
+      );
+      if (topicUser) {
+        profiles.unfollow(session.user.id, topicUser.id).catch(() => {});
+      }
       setCurrentUser((u: any) => u ? { ...u, game_lists: { ...(u.game_lists ?? {}), _topicFollows: updated } } : u);
       setFollowingIds(prev => {
         const s = new Set(prev);
@@ -974,6 +993,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       blockedUsers,
       mutedUsers,
       isLoading,
+      topicPostsReady,
       isAuthenticated,
       hasUnreadNotifications,
       signIn,

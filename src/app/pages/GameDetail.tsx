@@ -334,7 +334,7 @@ export function GameDetail() {
     <div className="min-h-screen pb-20 bg-background">
       <Header />
 
-      <div className="w-full max-w-2xl mx-auto px-4 pt-4">
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 pt-4">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
@@ -345,7 +345,7 @@ export function GameDetail() {
       </div>
 
       {/* Hero: blurred background + portrait cover */}
-      <div className="relative w-full max-w-2xl mx-auto mb-6 rounded-2xl overflow-hidden">
+      <div className="relative w-full max-w-2xl lg:max-w-3xl mx-auto mb-6 rounded-2xl overflow-hidden">
         {bgUrl ? (
           <div
             className="absolute inset-0 bg-cover bg-center scale-110"
@@ -370,7 +370,7 @@ export function GameDetail() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto px-4">
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4">
         {/* Title + Year + Genres */}
         <div className="mb-4">
           <h1 className="text-3xl font-bold mb-1">{game.title}</h1>

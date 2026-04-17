@@ -33,7 +33,9 @@ export type SocialPlatform =
   | 'spotify'
   | 'youtubemusic'
   | 'soundcloud'
-  | 'patreon';
+  | 'patreon'
+  | 'battlenet'
+  | 'riot';
 
 export type GameListType =
   | 'recently-played'

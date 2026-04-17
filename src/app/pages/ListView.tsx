@@ -134,7 +134,7 @@ export function ListView() {
     return (
       <div className="min-h-screen pb-20 bg-background">
         <div className="bg-card sticky top-0 z-10 border-b border-border">
-          <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -145,7 +145,7 @@ export function ListView() {
           </div>
         </div>
 
-        <div className="w-full max-w-2xl mx-auto px-4 py-4 space-y-4">
+        <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 py-4 space-y-4">
           {allEntries.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
@@ -204,7 +204,7 @@ export function ListView() {
     <div className="min-h-screen pb-20 bg-background">
       {/* Header */}
       <div className="bg-card sticky top-0 z-10 border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 py-4">
+        <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -308,7 +308,7 @@ export function ListView() {
       </div>
 
       {/* Games Grid */}
-      <div className="w-full max-w-2xl mx-auto px-7 py-6">
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-7 py-6">
         <div className="grid grid-cols-2 gap-x-4 gap-y-6">
           {sortedGames.map((game) => (
             <GameCard
