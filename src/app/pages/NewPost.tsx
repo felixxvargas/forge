@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList, Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { useNavigate, useSearchParams, useBlocker } from 'react-router';
+import { useNavigate, useSearchParams, useBlocker, useLocation } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -58,12 +58,18 @@ function getSavedDrafts(): SavedDraft[] {
 
 export function NewPost() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const replyTo = searchParams.get('replyTo') ?? undefined;
   const quotePostId = searchParams.get('quotePostId') ?? undefined;
   const attachListType = searchParams.get('attachListType') ?? undefined;
   const attachListUserId = searchParams.get('attachListUserId') ?? undefined;
   const { createPost, currentUser, users, posts: contextPosts = [], getUserById } = useAppData() as any;
+
+  // Group context passed when navigating from a group page (Post button)
+  const locationState = location.state as { groupId?: string; groupName?: string } | null;
+  const groupId = locationState?.groupId ?? undefined;
+  const groupName = locationState?.groupName ?? undefined;
 
   const LIST_KEY_MAP: Record<string, string> = {
     'recently-played': 'recentlyPlayed', 'played-before': 'playedBefore',
@@ -450,7 +456,7 @@ export function NewPost() {
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
       let lastPostId = await createPost(
-        content, images, linkUrl || undefined, imageAlts, undefined,
+        content, images, linkUrl || undefined, imageAlts, groupId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(),
       );
@@ -576,6 +582,14 @@ export function NewPost() {
           </div>
         </div>
       </div>
+
+      {/* Group context banner */}
+      {groupName && (
+        <div className="flex items-center gap-2 mx-4 mt-4 px-3 py-2 bg-accent/10 border border-accent/25 rounded-lg text-sm text-accent">
+          <Users className="w-4 h-4 shrink-0" />
+          <span>Posting to <span className="font-semibold">{groupName}</span></span>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

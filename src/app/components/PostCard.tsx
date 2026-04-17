@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -101,8 +101,14 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     mutePost = async () => {},
     unmutePost = async () => {},
     likedPosts = new Set(),
-
+    groups: contextGroups = [],
   } = context || {};
+
+  // Group context — shown as a feed indicator when a post belongs to a group
+  const postCommunityId = (post as any).community_id ?? (post as any).communityId;
+  const postGroup = postCommunityId
+    ? (contextGroups as any[]).find((g: any) => g.id === postCommunityId)
+    : null;
 
   // "Replying to" — resolve parent post author from context for feed indicator
   const parentPostInContext = (post as any).reply_to
@@ -262,6 +268,17 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         >
           <Repeat2 className="w-3.5 h-3.5 shrink-0" />
           <span>{reposter.display_name || reposter.handle} reposted</span>
+        </button>
+      )}
+
+      {/* Group indicator — shown in the following feed when the post was made in a group */}
+      {postGroup && !isDetailView && (
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/community/${postGroup.id}`); }}
+          className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
+        >
+          <Users className="w-3.5 h-3.5 shrink-0" />
+          <span>in <span className="font-medium">{postGroup.name}</span></span>
         </button>
       )}
 

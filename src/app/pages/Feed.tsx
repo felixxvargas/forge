@@ -3,6 +3,7 @@ import { Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lu
 import { Link, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
+import { GroupIcon } from '../components/GroupIcon';
 import { WritePostButton } from '../components/WritePostButton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LoginModule } from '../components/LoginModule';
@@ -322,7 +323,7 @@ export function Feed() {
                         className="w-full px-4 py-3 flex items-center justify-between hover:bg-secondary transition-colors text-left"
                       >
                         <div className="flex items-center gap-2">
-                          <span>{group.icon}</span>
+                          <GroupIcon iconKey={group.icon} className="w-4 h-4" />
                           <span className="font-medium">{group.name}</span>
                         </div>
                         {isMode({ type: 'group', id: group.id }) && <Check className="w-4 h-4 text-accent" />}

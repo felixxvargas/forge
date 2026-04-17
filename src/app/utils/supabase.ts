@@ -317,7 +317,7 @@ export const posts = {
     return (data ?? []).filter((p: any) => !p.reply_to);
   },
 
-  async getFollowingFeed(userId: string, limit = 30, offset = 0, followedGameIds: string[] = []) {
+  async getFollowingFeed(userId: string, limit = 30, offset = 0, followedGameIds: string[] = [], memberGroupIds: string[] = []) {
     // Get posts from people the user follows + own posts
     const { data: followingData } = await supabase
       .from('follows')
@@ -327,37 +327,61 @@ export const posts = {
     const followingIds = (followingData ?? []).map((r: any) => r.following_id);
     followingIds.push(userId);
 
-    const queries: Promise<any>[] = [
-      supabase
-        .from('posts')
-        .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
-        .in('user_id', followingIds)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1),
-      supabase
-        .from('reposts')
-        .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
-        .in('user_id', followingIds)
-        .order('created_at', { ascending: false })
-        .limit(limit),
+    const namedQueries: { key: string; query: Promise<any> }[] = [
+      {
+        key: 'posts',
+        query: supabase
+          .from('posts')
+          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+          .in('user_id', followingIds)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1),
+      },
+      {
+        key: 'reposts',
+        query: supabase
+          .from('reposts')
+          .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+          .in('user_id', followingIds)
+          .order('created_at', { ascending: false })
+          .limit(limit),
+      },
     ];
 
     // Fetch posts tagged with followed games (if any)
     if (followedGameIds.length > 0) {
-      queries.push(
-        supabase
+      namedQueries.push({
+        key: 'gamePosts',
+        query: supabase
           .from('posts')
           .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
           .in('game_id', followedGameIds)
           .order('created_at', { ascending: false })
-          .limit(limit)
-      );
+          .limit(limit),
+      });
     }
 
-    const results = await Promise.all(queries);
-    const { data: postsData, error } = results[0];
-    const { data: repostsData } = results[1];
-    const gamePostsData: any[] = followedGameIds.length > 0 ? (results[2]?.data ?? []) : [];
+    // Fetch posts from groups the user is a member of
+    if (memberGroupIds.length > 0) {
+      namedQueries.push({
+        key: 'groupPosts',
+        query: supabase
+          .from('posts')
+          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+          .in('community_id', memberGroupIds)
+          .order('created_at', { ascending: false })
+          .limit(limit),
+      });
+    }
+
+    const results = await Promise.all(namedQueries.map(q => q.query));
+    const resultMap: Record<string, any> = {};
+    namedQueries.forEach((q, i) => { resultMap[q.key] = results[i]; });
+
+    const { data: postsData, error } = resultMap.posts ?? {};
+    const { data: repostsData } = resultMap.reposts ?? {};
+    const gamePostsData: any[] = resultMap.gamePosts?.data ?? [];
+    const groupPostsData: any[] = resultMap.groupPosts?.data ?? [];
 
     if (error) throw new Error(error.message);
 
@@ -366,7 +390,7 @@ export const posts = {
       .map((r: any) => ({ ...r.post, repostedBy: r.user_id, repostedAt: r.created_at }));
 
     // Merge all candidates and sort newest-first (reposts use repostedAt for freshness)
-    const all = [...(postsData ?? []), ...repostItems, ...gamePostsData];
+    const all = [...(postsData ?? []), ...repostItems, ...gamePostsData, ...groupPostsData];
     all.sort((a: any, b: any) =>
       new Date(b.repostedAt || b.created_at).getTime() - new Date(a.repostedAt || a.created_at).getTime()
     );

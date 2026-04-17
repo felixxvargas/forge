@@ -143,6 +143,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Both a state (exposed to UI) and a ref (used in refreshFeed closure)
   const [followedGameIds, setFollowedGameIds] = useState<Set<string>>(new Set());
   const followedGameIdsRef = useRef<string[]>([]);
+  const memberGroupIdsRef = useRef<string[]>([]);
 
   const loadUserData = useCallback(async (userId: string) => {
     try {
@@ -187,6 +188,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const followedGameIds: string[] = profile?.game_lists?._followedGames ?? [];
       followedGameIdsRef.current = followedGameIds;
       setFollowedGameIds(new Set(followedGameIds));
+      memberGroupIdsRef.current = (memberships ?? []).map((m: any) => m.community_id).filter(Boolean);
       const normalizedUser = { ...normalizeProfile(profile), communities: memberships };
       currentUserRef.current = normalizedUser;
       setCurrentUser(normalizedUser);
@@ -253,7 +255,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     try {
       const userId = sessionRef.current?.user?.id;
       const feed = userId
-        ? await postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current)
+        ? await postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current, memberGroupIdsRef.current)
         : await postsAPI.getFeed(50);
       setPostList(feed);
     } catch (e) {
@@ -312,6 +314,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const loadedUsers: any[] = lastLoadedUsersRef.current;
         if (session?.user) {
           const loadResult = await loadUserData(session.user.id);
+          // Re-fetch the feed now that game/group IDs are populated in refs
+          if (followedGameIdsRef.current.length > 0 || memberGroupIdsRef.current.length > 0) {
+            await refreshFeed();
+          }
           const topicFollows = loadResult?.topicFollows ?? [];
           const rawFollowingIdList = loadResult?.followingIdList ?? [];
           const loadedExternalFollows = loadResult?.externalFollows ?? [];
