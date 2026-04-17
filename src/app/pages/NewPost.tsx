@@ -221,8 +221,16 @@ export function NewPost() {
       };
       const updated = [newDraft, ...drafts].slice(0, 20);
       localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
+      setSavedDrafts(updated);
     }
     localStorage.removeItem(AUTO_DRAFT_KEY);
+    // Clear form state so isDirty becomes false — prevents the navigation blocker
+    // from re-firing and showing the "Save your post?" dialog a second time,
+    // which would create a duplicate draft entry.
+    setContent('');
+    setSelectedGames([]);
+    setImageUrl('');
+    setLinkUrl('');
     setShowCancelConfirm(false);
     if (blocker.state === 'blocked') {
       blocker.proceed();

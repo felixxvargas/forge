@@ -955,64 +955,72 @@ export function Messages() {
               )}
             </>
           ) : (
-            /* Confirm step */
-            <div className="p-4 flex-1 overflow-y-auto">
-              {selectedComposeUsers.length === 1 ? (
-                /* 1 person → direct message */
-                <div className="flex flex-col items-center py-10 gap-4">
-                  <ProfileAvatar
-                    username={selectedComposeUsers[0].display_name || selectedComposeUsers[0].handle || '?'}
-                    profilePicture={selectedComposeUsers[0].profile_picture ?? null}
-                    size="xl"
-                    userId={selectedComposeUsers[0].id}
-                  />
-                  <div className="text-center">
-                    <p className="text-xl font-semibold">{selectedComposeUsers[0].display_name || selectedComposeUsers[0].handle}</p>
-                    <p className="text-muted-foreground">@{(selectedComposeUsers[0].handle || '').replace(/^@/, '')}</p>
+            /* Confirm step — scroll area + sticky footer so button is always visible on mobile */
+            <>
+              <div className="p-4 flex-1 overflow-y-auto">
+                {selectedComposeUsers.length === 1 ? (
+                  /* 1 person → direct message */
+                  <div className="flex flex-col items-center py-10 gap-4">
+                    <ProfileAvatar
+                      username={selectedComposeUsers[0].display_name || selectedComposeUsers[0].handle || '?'}
+                      profilePicture={selectedComposeUsers[0].profile_picture ?? null}
+                      size="xl"
+                      userId={selectedComposeUsers[0].id}
+                    />
+                    <div className="text-center">
+                      <p className="text-xl font-semibold">{selectedComposeUsers[0].display_name || selectedComposeUsers[0].handle}</p>
+                      <p className="text-muted-foreground">@{(selectedComposeUsers[0].handle || '').replace(/^@/, '')}</p>
+                    </div>
+                    <button
+                      onClick={handleOpenDm}
+                      className="mt-4 px-8 py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"
+                    >
+                      Open Chat
+                    </button>
                   </div>
-                  <button
-                    onClick={handleOpenDm}
-                    className="mt-4 px-8 py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"
-                  >
-                    Open Chat
-                  </button>
-                </div>
-              ) : (
-                /* 2+ people → group thread */
-                <div className="space-y-4">
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="Group name..."
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-secondary rounded-lg border border-transparent focus:border-accent focus:outline-none transition-colors text-sm"
-                  />
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Participants ({selectedComposeUsers.length + 1})</p>
-                    <div className="space-y-2">
-                      {/* Current user */}
-                      <div className="flex items-center gap-3 px-3 py-2 bg-secondary rounded-lg">
-                        <ProfileAvatar
-                          username={currentUser?.display_name || currentUser?.handle || '?'}
-                          profilePicture={(currentUser as any)?.profile_picture ?? null}
-                          size="sm"
-                          userId={currentUser?.id ?? ''}
-                        />
-                        <span className="text-sm font-medium">{currentUser?.display_name || currentUser?.handle}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">You</span>
-                      </div>
-                      {selectedComposeUsers.map(u => (
-                        <div key={u.id} className="flex items-center gap-3 px-3 py-2 bg-secondary rounded-lg">
-                          <ProfileAvatar username={u.display_name || u.handle || '?'} profilePicture={u.profile_picture ?? null} size="sm" userId={u.id} />
-                          <span className="text-sm font-medium">{u.display_name || u.handle}</span>
-                          <button onClick={() => toggleComposeUser(u)} className="ml-auto p-1 hover:bg-secondary/80 rounded transition-colors">
-                            <X className="w-3.5 h-3.5 text-muted-foreground" />
-                          </button>
+                ) : (
+                  /* 2+ people → group thread (button lives in footer below) */
+                  <div className="space-y-4">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Group name..."
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-secondary rounded-lg border border-transparent focus:border-accent focus:outline-none transition-colors text-sm"
+                    />
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Participants ({selectedComposeUsers.length + 1})</p>
+                      <div className="space-y-2">
+                        {/* Current user */}
+                        <div className="flex items-center gap-3 px-3 py-2 bg-secondary rounded-lg">
+                          <ProfileAvatar
+                            username={currentUser?.display_name || currentUser?.handle || '?'}
+                            profilePicture={(currentUser as any)?.profile_picture ?? null}
+                            size="sm"
+                            userId={currentUser?.id ?? ''}
+                          />
+                          <span className="text-sm font-medium">{currentUser?.display_name || currentUser?.handle}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">You</span>
                         </div>
-                      ))}
+                        {selectedComposeUsers.map(u => (
+                          <div key={u.id} className="flex items-center gap-3 px-3 py-2 bg-secondary rounded-lg">
+                            <ProfileAvatar username={u.display_name || u.handle || '?'} profilePicture={u.profile_picture ?? null} size="sm" userId={u.id} />
+                            <span className="text-sm font-medium">{u.display_name || u.handle}</span>
+                            <button onClick={() => toggleComposeUser(u)} className="ml-auto p-1 hover:bg-secondary/80 rounded transition-colors">
+                              <X className="w-3.5 h-3.5 text-muted-foreground" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                )}
+              </div>
+
+              {/* Sticky footer: Create Group button — always visible above the keyboard */}
+              {selectedComposeUsers.length > 1 && (
+                <div className="px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] border-t border-border shrink-0">
                   <button
                     onClick={handleCreateGroup}
                     disabled={!groupName.trim() || creatingGroup}
@@ -1023,7 +1031,7 @@ export function Messages() {
                   </button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       )}

@@ -291,10 +291,23 @@ export function GameDetail() {
   });
 
   const handleLikeToggle = (postId: string) => {
-    likedPosts.has(postId) ? unlikePost(postId) : likePost(postId);
+    const isLiked = likedPosts.has(postId);
+    isLiked ? unlikePost(postId) : likePost(postId);
+    // Update local taggedPosts count so the number updates immediately without a refetch
+    setTaggedPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, like_count: isLiked ? Math.max(0, (p.like_count ?? 0) - 1) : (p.like_count ?? 0) + 1 }
+        : p
+    ));
   };
   const handleRepostToggle = (postId: string) => {
-    repostedPosts.has(postId) ? unrepostPost(postId) : repostPost(postId);
+    const isReposted = repostedPosts.has(postId);
+    isReposted ? unrepostPost(postId) : repostPost(postId);
+    setTaggedPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, repost_count: isReposted ? Math.max(0, (p.repost_count ?? 0) - 1) : (p.repost_count ?? 0) + 1 }
+        : p
+    ));
   };
 
   // Add-to-list tray helpers

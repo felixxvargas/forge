@@ -22,6 +22,31 @@ for (const [topicId, handle] of Object.entries(topicAccountBlueskyHandles)) {
 
 type FeedMode = 'following' | 'for-you' | 'trending' | { type: 'group'; id: string } | { type: 'game'; id: string; title: string };
 
+const FEED_MODE_KEY = 'forge-feed-mode';
+
+/** Restore the last chosen feed mode if it was saved today; otherwise default to 'following'. */
+function loadPersistedFeedMode(): FeedMode {
+  try {
+    const raw = localStorage.getItem(FEED_MODE_KEY);
+    if (!raw) return 'following';
+    const { mode, savedAt } = JSON.parse(raw);
+    const savedDate = new Date(savedAt);
+    const today = new Date();
+    if (savedDate.toDateString() !== today.toDateString()) return 'following';
+    if (mode === 'for-you' || mode === 'trending') return mode;
+  } catch { /* ignore */ }
+  return 'following';
+}
+
+/** Returns true when a topic-account post has no real content (URL-only text, no images). */
+function isUsableTopicPost(p: any): boolean {
+  const hasImages = (p.images?.length ?? 0) > 0 || (p.image_urls?.length ?? 0) > 0;
+  const text = (p.content ?? '').trim();
+  // Treat posts whose entire text is a bare URL (with nothing else) as empty
+  const hasRealText = text.length >= 5 && !/^https?:\/\/\S+\s*$/.test(text);
+  return hasImages || hasRealText;
+}
+
 export function Feed() {
   const { posts: contextPosts, currentUser, isAuthenticated, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading, followedGameIds, signInWithGoogle } = useAppData() as any;
   const [searchParams] = useSearchParams();
@@ -29,12 +54,21 @@ export function Feed() {
     const tab = searchParams.get('tab');
     if (tab === 'trending') return 'trending';
     if (tab === 'for-you') return 'for-you';
-    return 'following';
+    return loadPersistedFeedMode();
   });
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
   const [dynamicLoading, setDynamicLoading] = useState(false);
+
+  // Persist the selected feed mode for the rest of the day so it survives page reloads
+  useEffect(() => {
+    if (feedMode === 'for-you' || feedMode === 'trending') {
+      localStorage.setItem(FEED_MODE_KEY, JSON.stringify({ mode: feedMode, savedAt: Date.now() }));
+    } else if (feedMode === 'following') {
+      localStorage.removeItem(FEED_MODE_KEY);
+    }
+  }, [feedMode]);
 
   // Guest: first-visit popup
   const [showGuestPopup, setShowGuestPopup] = useState(false);
@@ -117,15 +151,41 @@ export function Feed() {
                 repost_count: p.reposts ?? 0,
                 comment_count: p.comments ?? 0,
               };
-            }).filter(Boolean)
+            }).filter((p): p is NonNullable<typeof p> => !!p && isUsableTopicPost(p))
           : [];
         const merged = [...trending, ...live].sort((a: any, b: any) =>
           new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()
         );
         setDynamicPosts(merged);
       } else if (feedMode === 'for-you') {
-        const data = await postsAPI.getForYouFeed(currentUser?.id ?? '', Array.from(followedGameIds), 40);
-        setDynamicPosts(data);
+        const [nativeRes, topicRes] = await Promise.allSettled([
+          postsAPI.getForYouFeed(currentUser?.id ?? '', Array.from(followedGameIds), 35),
+          fetchAllGamingMediaPosts(6),
+        ]);
+        const native: any[] = nativeRes.status === 'fulfilled' ? nativeRes.value : [];
+        const topicRaw: any[] = topicRes.status === 'fulfilled' ? (topicRes.value as any[]) : [];
+        const topic = topicRaw.map(p => {
+          const topicAccount = BSKY_HANDLE_TO_TOPIC[p.userId];
+          if (!topicAccount) return null;
+          return {
+            ...p,
+            author: topicAccount,
+            user_id: topicAccount.id,
+            created_at: p.timestamp instanceof Date ? p.timestamp.toISOString() : (p.timestamp ?? p.created_at),
+            like_count: p.likes ?? 0,
+            repost_count: p.reposts ?? 0,
+            comment_count: p.comments ?? 0,
+          };
+        }).filter((p): p is NonNullable<typeof p> => !!p && isUsableTopicPost(p));
+        // Interleave: ~1 topic post per 6 native posts so native content stays dominant
+        const merged: any[] = [];
+        let ti = 0;
+        native.forEach((post, i) => {
+          merged.push(post);
+          if ((i + 1) % 6 === 0 && ti < topic.length) merged.push(topic[ti++]);
+        });
+        while (ti < topic.length) merged.push(topic[ti++]);
+        setDynamicPosts(merged);
       } else if (typeof feedMode === 'object' && feedMode.type === 'game') {
         const data = await postsAPI.getGameFeed(feedMode.id, 40);
         setDynamicPosts(data);

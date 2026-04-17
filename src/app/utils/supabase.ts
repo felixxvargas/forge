@@ -139,11 +139,12 @@ export const profiles = {
       .from('follows')
       .insert({ follower_id: followerId, following_id: followingId });
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Sync counters from the follows table (count is authoritative, no read-modify-write race)
+    // Sync counters using inner join so external/topic-account follows (no profiles row)
+    // don't inflate the displayed count beyond what the Following list actually shows.
     Promise.allSettled([
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId)
+      supabase.from('follows').select('profiles!follower_id!inner(id)', { count: 'exact', head: true }).eq('following_id', followingId)
         .then(({ count }) => supabase.from('profiles').update({ follower_count: count ?? 0 }).eq('id', followingId)),
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', followerId)
+      supabase.from('follows').select('profiles!following_id!inner(id)', { count: 'exact', head: true }).eq('follower_id', followerId)
         .then(({ count }) => supabase.from('profiles').update({ following_count: count ?? 0 }).eq('id', followerId)),
     ]).catch(() => {});
   },
@@ -155,11 +156,12 @@ export const profiles = {
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
     if (error) throw new Error(error.message);
-    // Sync counters from the follows table (count is authoritative, no read-modify-write race)
+    // Sync counters using inner join so external/topic-account follows (no profiles row)
+    // don't inflate the displayed count beyond what the Following list actually shows.
     Promise.allSettled([
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId)
+      supabase.from('follows').select('profiles!follower_id!inner(id)', { count: 'exact', head: true }).eq('following_id', followingId)
         .then(({ count }) => supabase.from('profiles').update({ follower_count: count ?? 0 }).eq('id', followingId)),
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', followerId)
+      supabase.from('follows').select('profiles!following_id!inner(id)', { count: 'exact', head: true }).eq('follower_id', followerId)
         .then(({ count }) => supabase.from('profiles').update({ following_count: count ?? 0 }).eq('id', followerId)),
     ]).catch(() => {});
   },
@@ -179,7 +181,9 @@ export const profiles = {
       .select('following:profiles!following_id(*)')
       .eq('follower_id', userId);
     if (error) throw new Error(error.message);
-    return (data ?? []).map((r: any) => r.following);
+    // Filter out nulls — external/topic account follows have no profiles row
+    // and would otherwise show up as blank entries in the Following list.
+    return (data ?? []).map((r: any) => r.following).filter(Boolean);
   },
 
   async getFollowingCount(userId: string): Promise<number> {
@@ -792,14 +796,34 @@ export const groups = {
   },
 
   async updateGroupImage(groupId: string, file: File): Promise<string> {
-    const ext = file.name.split('.').pop();
-    const path = `groups/${groupId}.${ext}`;
-    const { error } = await supabase.storage
-      .from('forge-avatars')
-      .upload(path, file, { upsert: true });
-    if (error) throw new Error(error.message);
-    const { data } = supabase.storage.from('forge-avatars').getPublicUrl(path);
-    const url = `${data.publicUrl}?t=${Date.now()}`;
+    // Get user session to build a user-ID-prefixed path, which satisfies the
+    // storage RLS policy (policies typically require path starts with auth.uid()).
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const userId = session.user.id;
+    const ext = file.name.split('.').pop() || 'bin';
+    const timestamp = Date.now();
+    const bucket = 'forge-community-icons';
+    const path = `${userId}/group-${groupId}-${timestamp}.${ext}`;
+
+    // Upload via REST API with Bearer token (same approach as uploadAPI in api.ts)
+    const storageUrl = `https://${projectId}.supabase.co/storage/v1/object/${bucket}/${path}`;
+    const res = await fetch(storageUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.error || 'Upload failed');
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    const url = `${data.publicUrl}?t=${timestamp}`;
     const { error: updateError } = await supabase.from('communities').update({ profile_picture: url }).eq('id', groupId);
     if (updateError) throw new Error(updateError.message);
     return url;

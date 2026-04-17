@@ -1246,6 +1246,34 @@ export function Profile() {
               );
             })()}
 
+            {/* Gaming Platforms with gamertags */}
+            {profileUser.platforms && profileUser.platforms.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gaming Platforms</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {profileUser.platforms.map((platform: string) => {
+                    const platformHandle =
+                      profileUser.platformHandles?.[platform] ??
+                      (profileUser as any).platform_handles?.[platform];
+                    const showHandle =
+                      profileUser.showPlatformHandles?.[platform] ??
+                      (profileUser as any).show_platform_handles?.[platform];
+                    return (
+                      <PlatformIcon
+                        key={platform}
+                        platform={platform}
+                        userHandle={showHandle && platformHandle ? platformHandle : undefined}
+                        showHandle={true}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Social Accounts */}
             {(() => {
               const selectedPlatforms: SocialPlatform[] = (profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? [];

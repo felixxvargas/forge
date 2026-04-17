@@ -353,14 +353,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 if (r.status !== 'fulfilled') return [];
                 const { topicId } = fetchPairs[i];
                 const author = topicAccountById[topicId];
-                return (r as any).value.map((post: any) => ({
-                  ...post,
-                  user_id: topicId,
-                  created_at: post.timestamp instanceof Date
-                    ? post.timestamp.toISOString()
-                    : (post.timestamp ?? post.created_at),
-                  author,
-                }));
+                return (r as any).value
+                  .filter((post: any) => {
+                    // Drop URL-only posts that have no images — they render as blank/broken
+                    const hasImages = (post.images?.length ?? 0) > 0 || (post.image_urls?.length ?? 0) > 0;
+                    const text = (post.content ?? '').trim();
+                    const hasRealText = text.length >= 5 && !/^https?:\/\/\S+\s*$/.test(text);
+                    return hasImages || hasRealText;
+                  })
+                  .map((post: any) => ({
+                    ...post,
+                    user_id: topicId,
+                    created_at: post.timestamp instanceof Date
+                      ? post.timestamp.toISOString()
+                      : (post.timestamp ?? post.created_at),
+                    author,
+                  }));
               });
               if (topicPosts.length > 0) {
                 setTopicPosts(topicPosts);
@@ -833,10 +841,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setMutedUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
   };
 
-  const getUserById = (userId: string) => users.find(u => u.id === userId);
+  const getUserById = (userId: string) =>
+    users.find(u => u.id === userId) ?? topicAccountById[userId] ?? undefined;
   const getUserByHandle = (handle: string) => {
     const normalized = handle.replace(/^@/, '').toLowerCase();
-    return users.find(u => (u.handle || '').replace(/^@/, '').toLowerCase() === normalized);
+    return (
+      users.find(u => (u.handle || '').replace(/^@/, '').toLowerCase() === normalized) ??
+      topicAccounts.find(u => (u.handle || '').replace(/^@/, '').toLowerCase() === normalized)
+    );
   };
 
   const updateGameList = async (listType: GameListType, games: any[]) => {
