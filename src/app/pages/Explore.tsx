@@ -38,6 +38,7 @@ export function Explore() {
   const [hideSearchBar, setHideSearchBar] = useState(false);
   const [dbGames, setDbGames] = useState<any[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
+  const [loadingTrendingCounts, setLoadingTrendingCounts] = useState(false);
   const [trendingCounts, setTrendingCounts] = useState<Record<string, number>>({});
   const [listCounts, setListCounts] = useState<Record<string, number>>({});
   const [lfgPlayers, setLfgPlayers] = useState<LFGFlare[]>([]);
@@ -158,6 +159,7 @@ export function Explore() {
     if (activeTab !== 'games') return;
 
     // Post tag counts per game
+    setLoadingTrendingCounts(true);
     (async () => {
       try {
         const { data } = await supabase.from('posts').select('game_id').not('game_id', 'is', null);
@@ -168,6 +170,9 @@ export function Explore() {
         }
         setTrendingCounts(counts);
       } catch {}
+      finally {
+        setLoadingTrendingCounts(false);
+      }
     })();
   }, [activeTab]);
 
@@ -912,7 +917,7 @@ export function Explore() {
                   </p>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {(isSearchActive ? searchLoading : loadingGames) ? (
+                  {(isSearchActive ? searchLoading : (loadingGames || loadingTrendingCounts)) ? (
                     <>
                       {Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} className="animate-pulse">
@@ -943,7 +948,9 @@ export function Explore() {
                               <img
                                 src={coverArt}
                                 alt={game.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                className="w-full h-full object-cover group-hover:scale-105"
+                                style={{ opacity: 0, transition: 'opacity 0.25s ease, transform 0.3s ease' }}
+                                onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
