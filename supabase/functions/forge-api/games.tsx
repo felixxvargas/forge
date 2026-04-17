@@ -55,6 +55,7 @@ export async function listGames(limit = 50, offset = 0) {
       *,
       artwork:forge_game_artwork_17285bd7(*)
     `)
+    .or('hidden.is.null,hidden.eq.false')
     .order('id')
     .range(offset, offset + limit - 1);
 
@@ -75,6 +76,7 @@ export async function searchGames(query: string, limit = 20) {
     .from('forge_games_17285bd7')
     .select(`*, artwork:forge_game_artwork_17285bd7(*)`)
     .ilike('title', `%${query}%`)
+    .or('hidden.is.null,hidden.eq.false')
     .order('title')
     .limit(limit);
 
@@ -255,6 +257,7 @@ export async function getSimilarGames(gameId: string, genres: string[], limit = 
       .from('forge_games_17285bd7')
       .select('*, artwork:forge_game_artwork_17285bd7(*)')
       .neq('id', gameId)
+      .or('hidden.is.null,hidden.eq.false')
       .order('year', { ascending: false })
       .limit(limit);
     return data ?? [];
@@ -266,6 +269,7 @@ export async function getSimilarGames(gameId: string, genres: string[], limit = 
     .select('*, artwork:forge_game_artwork_17285bd7(*)')
     .contains('genres', [genres[0]])
     .neq('id', gameId)
+    .or('hidden.is.null,hidden.eq.false')
     .order('year', { ascending: false })
     .limit(limit);
 
@@ -276,6 +280,7 @@ export async function getSimilarGames(gameId: string, genres: string[], limit = 
     .from('forge_games_17285bd7')
     .select('*, artwork:forge_game_artwork_17285bd7(*)')
     .neq('id', gameId)
+    .or('hidden.is.null,hidden.eq.false')
     .order('year', { ascending: false })
     .limit(limit);
   return fallback ?? [];
@@ -300,6 +305,7 @@ export async function getGameVersions(gameId: string, title: string, limit = 6) 
     .select('*, artwork:forge_game_artwork_17285bd7(*)')
     .ilike('title', `%${words}%`)
     .neq('id', gameId)
+    .or('hidden.is.null,hidden.eq.false')
     .limit(limit);
   return data ?? [];
 }

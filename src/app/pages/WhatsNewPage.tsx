@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Sparkles, Clock } from 'lucide-react';
 import { RELEASES } from '../components/WhatsNew';
 
 export function WhatsNewPage() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, []);
   const [current, ...past] = RELEASES;
 
   return (

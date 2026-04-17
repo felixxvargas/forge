@@ -57,7 +57,7 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
   return (
     <div
       className={`${sizeClasses[size]} rounded-full flex items-center justify-center font-semibold
-        bg-purple-600 text-white dark:bg-purple-700 dark:text-white
+        bg-[#6b5a7e] text-white/90
         ${className}`}
     >
       {initials}
