@@ -4,6 +4,7 @@ import { DesktopSidebar } from './DesktopSidebar';
 import { useAppData } from '../context/AppDataContext';
 import { LoginModule } from './LoginModule';
 import { WhatsNewModal } from './WhatsNew';
+import { LoadingScreen } from './LoadingScreen';
 
 // Pages that require authentication — show login module instead of redirecting
 const AUTH_REQUIRED_PATHS = [
@@ -15,10 +16,17 @@ export function Layout() {
   const { isAuthenticated, isLoading, currentUser } = useAppData();
   const location = useLocation();
 
-  if (isLoading) return null;
-
-  // If authenticated but profile not loaded yet, wait
-  if (isAuthenticated && !currentUser) return null;
+  if (isLoading || (isAuthenticated && !currentUser)) {
+    return (
+      <div className="min-h-dvh bg-background relative">
+        <DesktopSidebar />
+        <div className="md:ml-[60px] lg:ml-[220px]">
+          <LoadingScreen />
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   // If authenticated but no handle set, redirect to onboarding
   const isOnboarding = location.pathname === '/onboarding' || location.pathname === '/splash';

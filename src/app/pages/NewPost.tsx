@@ -489,9 +489,9 @@ export function NewPost() {
       const imageAlts = imageUrl ? [imageAlt.trim()] : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
-      const communityId = selectedGroup?.id ?? groupId;
+      const activeCommunityId = selectedGroup?.id ?? groupId;
       let lastPostId = await createPost(
-        content, images, linkUrl || undefined, imageAlts, communityId,
+        content, images, linkUrl || undefined, imageAlts, activeCommunityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(),
       );
@@ -505,7 +505,12 @@ export function NewPost() {
         );
       }
       localStorage.removeItem(AUTO_DRAFT_KEY);
-      navigate('/feed', { replace: true });
+      // After posting to a group, go back to the group page so the post appears immediately
+      if (activeCommunityId) {
+        navigate(`/group/${activeCommunityId}`, { replace: true });
+      } else {
+        navigate('/feed', { replace: true });
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to create post. Please try again.');
       setIsPosting(false);

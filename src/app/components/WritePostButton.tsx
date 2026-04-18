@@ -7,7 +7,7 @@ export function WritePostButton() {
   return (
     <button
       onClick={() => navigate('/new-post')}
-      className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-accent text-accent-foreground rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110 flex items-center justify-center md:bottom-24"
+      className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-accent text-accent-foreground rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110 flex items-center justify-center md:bottom-8"
       aria-label="Write post"
     >
       {/* Quill/Feather icon */}

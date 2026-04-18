@@ -228,13 +228,37 @@ export function Profile() {
     return <LoginModule variant="page" />;
   }
 
-  // If own profile but currentUser hasn't loaded, wait
+  // If profile not loaded yet, show skeleton
   if (!profileUser) {
     return (
       <div className="min-h-screen pb-20">
         <Header />
-        <div className="w-full max-w-2xl mx-auto px-4 py-12 text-center">
-          <p className="text-muted-foreground">Loading profile...</p>
+        <div className="w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
+          {/* Avatar + name */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-20 h-20 rounded-full bg-muted/50 shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-muted/50 rounded w-36" />
+              <div className="h-3 bg-muted/30 rounded w-24" />
+            </div>
+          </div>
+          {/* Bio */}
+          <div className="space-y-2 mb-6">
+            <div className="h-3 bg-muted/40 rounded w-full" />
+            <div className="h-3 bg-muted/40 rounded w-4/5" />
+          </div>
+          {/* Post skeletons */}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="py-4 border-b border-border/50">
+              <div className="flex gap-3">
+                <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-3 bg-muted/40 rounded w-full" />
+                  <div className="h-3 bg-muted/30 rounded w-3/4" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -293,6 +317,12 @@ export function Profile() {
     const newPinnedId = pinnedPostId === postId ? null : postId;
     setPinnedPostId(newPinnedId);
     await updateCurrentUser({ pinned_post_id: newPinnedId });
+  };
+
+  // Wrap deletePost to also remove the post from local profileUserPosts immediately
+  const handleDeletePost = async (postId: string) => {
+    await deletePost(postId);
+    setProfileUserPosts(prev => prev.filter(p => p.id !== postId));
   };
 
   const handleSaveGameList = async (games: any[]) => {
@@ -1042,7 +1072,7 @@ export function Profile() {
                             user={post.author || profileUser}
                             onLike={handleLikeToggle}
                             onRepost={handleRepostToggle}
-                            onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
+                            onDelete={isOwnProfile && !post.repostedBy ? handleDeletePost : undefined}
                             onPin={isOwnProfile && !post.repostedBy ? handlePinPost : undefined}
                             isPinned={!!pinnedPostId && post.id === pinnedPostId && !post.repostedBy}
                             isLiked={likedPosts.has(post.id)}
@@ -1104,7 +1134,7 @@ export function Profile() {
                     user={post.author || profileUser}
                     onLike={handleLikeToggle}
                     onRepost={handleRepostToggle}
-                    onDelete={isOwnProfile && !post.repostedBy ? deletePost : undefined}
+                    onDelete={isOwnProfile && !post.repostedBy ? handleDeletePost : undefined}
                     onPin={isOwnProfile && !post.repostedBy ? handlePinPost : undefined}
                     isPinned={!!pinnedPostId && post.id === pinnedPostId && !post.repostedBy}
                     isLiked={likedPosts.has(post.id)}

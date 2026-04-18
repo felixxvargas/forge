@@ -1006,7 +1006,20 @@ export function Explore() {
                   </div>
                   <p className="text-sm text-gray-500 mb-3">Players looking to group up right now</p>
                   {loadingLfg ? (
-                    <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
+                    <div className="space-y-2">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="p-3 bg-gray-900 border border-gray-800 rounded-lg animate-pulse">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-9 h-9 rounded-full bg-gray-700 shrink-0" />
+                            <div className="flex-1 space-y-1.5">
+                              <div className="h-3 bg-gray-700 rounded w-28" />
+                              <div className="h-2.5 bg-gray-800 rounded w-20" />
+                            </div>
+                          </div>
+                          <div className="h-2.5 bg-gray-800 rounded w-full" />
+                        </div>
+                      ))}
+                    </div>
                   ) : lfgPlayers.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <Flame className="w-10 h-10 mx-auto mb-3 opacity-40" />

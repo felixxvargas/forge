@@ -69,8 +69,16 @@ export function FollowersList() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Loading...</p>
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-xl p-4 flex items-center gap-3 animate-pulse">
+                <div className="w-12 h-12 rounded-full bg-muted/50 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-muted/50 rounded w-32" />
+                  <div className="h-3 bg-muted/30 rounded w-24" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="text-center py-12">
