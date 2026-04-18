@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -51,7 +51,7 @@ function LinkifyMentions({ text }: { text: string }) {
   );
 }
 
-type ProfileTab = 'lists' | 'posts' | 'likes' | 'about';
+type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media';
 
 // List type selection state type
 type ListTypeOption = 'recently-played' | 'favorite' | 'wishlist' | 'library';
@@ -409,13 +409,180 @@ export function Profile() {
   const profileHasLists = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
   const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists') ? 'posts' : activeTab;
 
+  // Posts that contain at least one image or a video
+  const mediaPosts = useMemo(() =>
+    profileUserPosts.filter(p => !p.repostedBy && ((p as any).images?.length > 0 || (p as any).video)),
+    [profileUserPosts]
+  );
+
+  // About tab content — rendered in both desktop left column and mobile About tab
+  const renderAboutContent = () => (
+    <div className="pb-4">
+      {profileUser.interests && profileUser.interests.length > 0 && (() => {
+        const playstyleInterests = profileUser.interests!.filter(i => i.category === 'playstyle');
+        const genreInterests = profileUser.interests!.filter(i => i.category === 'genre');
+        const platformInterests = profileUser.interests!.filter(i => i.category === 'platform');
+        return (
+          <>
+            {playstyleInterests.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Trophy className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Playstyle</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {playstyleInterests.map(interest => (
+                    <span key={interest.id} className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium">{interest.label}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {genreInterests.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Genres</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {genreInterests.map(interest => (
+                    <span key={interest.id} className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium">{interest.label}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {platformInterests.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Monitor className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Platforms</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {platformInterests.map(interest => (
+                    <span key={interest.id} className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium">{interest.label}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {profileUser.platforms && profileUser.platforms.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gaming Platforms</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {profileUser.platforms.map((platform: string) => {
+              const platformHandle = profileUser.platformHandles?.[platform] ?? (profileUser as any).platform_handles?.[platform];
+              const showHandle = profileUser.showPlatformHandles?.[platform] ?? (profileUser as any).show_platform_handles?.[platform];
+              return (
+                <PlatformIcon key={platform} platform={platform} userHandle={showHandle && platformHandle ? platformHandle : undefined} showHandle={true} />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {(() => {
+        const selectedPlatforms: SocialPlatform[] = (profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? [];
+        if (selectedPlatforms.length === 0) return null;
+        return (
+          <div className="mb-6">
+            <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Social Accounts</h3>
+            <div className="flex flex-wrap gap-2">
+              {selectedPlatforms.map(platform => {
+                const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
+                const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
+                return (
+                  <div key={platform} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm">
+                    <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{getSocialPlatformLabel(platform)}</span>
+                    {showHandle && handle && <span className="text-muted-foreground">· @{handle}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {isUnclaimedAccount && (() => {
+        const handle = (profileUser.handle || '').replace(/^@/, '');
+        if (!handle) return null;
+        const links: { label: string; url: string }[] = [];
+        const isMastodon = (profileUser as any).platform === 'mastodon';
+        if (isMastodon) {
+          links.push({ label: 'Mastodon', url: `https://mastodon.social/@${handle}` });
+        } else {
+          links.push({ label: 'Bluesky', url: `https://bsky.app/profile/${handle}` });
+        }
+        return (
+          <div className="mb-6">
+            <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">External Links</h3>
+            <div className="space-y-2">
+              {links.map(link => (
+                <a key={link.label} href={link.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg hover:bg-secondary/70 transition-colors">
+                  <span className="text-sm font-medium">{link.label}</span>
+                  <span className="text-sm text-accent text-xs">View profile →</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        const links: { url: string; title: string }[] = profileUser.profile_links ?? (profileUser as any).profileLinks ?? [];
+        if (links.length === 0) return null;
+        return (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <ExternalLink className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h3>
+            </div>
+            <div className="space-y-2">
+              {links.slice(1, 4).map((link, i) => {
+                let domain = link.url;
+                try { domain = new URL(link.url).hostname.replace('www.', ''); } catch {}
+                const label = link.title || domain;
+                return (
+                  <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors group">
+                    <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-accent shrink-0 transition-colors" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate group-hover:text-accent transition-colors">{label}</p>
+                      {link.title && <p className="text-xs text-muted-foreground truncate">{domain}</p>}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {profileUser.about && (
+        <div>
+          <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">About</h3>
+          <p className="text-sm leading-relaxed">{profileUser.about}</p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen pb-20">
       <Header />
 
-      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto">
+      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto">
+        <div className="lg:flex lg:gap-6 lg:items-start">
+        {/* LEFT COLUMN — profile header + about (desktop) */}
+        <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
-        <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl mb-4">
+        <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl lg:rounded-2xl mb-4">
           {/* Back button for other users' profiles */}
           {!isOwnProfile && (
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -717,6 +884,28 @@ export function Profile() {
           )}
         </div>
 
+        {/* About — desktop only, shown below profile header in left column */}
+        {(() => {
+          const hasAboutContent = (
+            (profileUser.interests && profileUser.interests.length > 0) ||
+            (profileUser.platforms && profileUser.platforms.length > 0) ||
+            ((profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? []).length > 0 ||
+            isUnclaimedAccount ||
+            ((profileUser.profile_links ?? (profileUser as any).profileLinks ?? []) as any[]).length > 0 ||
+            profileUser.about
+          );
+          if (!hasAboutContent) return null;
+          return (
+            <div className="hidden lg:block bg-card rounded-2xl px-6 py-4 mb-4">
+              {renderAboutContent()}
+            </div>
+          );
+        })()}
+        </div>{/* end left column */}
+
+        {/* RIGHT COLUMN — LFG, tabs, tab content */}
+        <div className="lg:flex-1 lg:min-w-0">
+
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
           <div className="px-4 mb-3 space-y-2">
@@ -823,11 +1012,23 @@ export function Profile() {
           >
             Likes
           </button>
+          {mediaPosts.length > 0 && (
+            <button
+              onClick={() => setActiveTab('media')}
+              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                activeTab === 'media'
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Media
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('about')}
-            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'about' 
-                ? 'border-accent text-accent' 
+            className={`lg:hidden px-4 py-3 font-medium transition-colors border-b-2 ${
+              activeTab === 'about'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -1057,6 +1258,44 @@ export function Profile() {
                   )}
 
 
+                  {/* Media collage — up to 4 preview images/videos above Recent Posts */}
+                  {mediaPosts.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Media</h3>
+                        <button onClick={() => setActiveTab('media')} className="text-xs text-accent hover:underline">
+                          View all {mediaPosts.length} media
+                        </button>
+                      </div>
+                      <div className={`grid gap-1 mb-2 ${mediaPosts.slice(0, 4).length === 1 ? 'grid-cols-1' : mediaPosts.slice(0, 4).length === 2 ? 'grid-cols-2' : mediaPosts.slice(0, 4).length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                        {mediaPosts.slice(0, 4).map((post, idx) => {
+                          const images: string[] = (post as any).images ?? [];
+                          const video: string | undefined = (post as any).video;
+                          const src = images[0] ?? video;
+                          const isVideo = !images[0] && !!video;
+                          return (
+                            <div
+                              key={post.id}
+                              onClick={() => navigate(`/post/${post.id}`)}
+                              className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-square ${mediaPosts.slice(0, 4).length === 3 && idx === 2 ? 'col-span-1' : ''}`}
+                            >
+                              {isVideo ? (
+                                <video src={video} className="w-full h-full object-cover" muted />
+                              ) : (
+                                <img src={src} alt="" className="w-full h-full object-cover" />
+                              )}
+                              {isVideo && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <PlayCircle className="w-8 h-8 text-white drop-shadow" />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Posts below lists */}
                   {profileUserPosts.length > 0 && (
                     <div className="mt-4">
@@ -1213,8 +1452,52 @@ export function Profile() {
           </div>
         )}
 
-        {effectiveTab === 'about' && (
+        {effectiveTab === 'media' && (
           <div className="px-4 pb-24">
+            {mediaPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <ImageIcon className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No photos or videos yet</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-1">
+                {mediaPosts.map(post => {
+                  const images: string[] = (post as any).images ?? [];
+                  const video: string | undefined = (post as any).video;
+                  const src = images[0] ?? video;
+                  const isVideo = !images[0] && !!video;
+                  const tag = (post as any).game_title || (post as any).community_name;
+                  return (
+                    <div
+                      key={post.id}
+                      onClick={() => navigate(`/post/${post.id}`)}
+                      className="relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-square group"
+                    >
+                      {isVideo ? (
+                        <video src={video} className="w-full h-full object-cover" muted />
+                      ) : (
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                      )}
+                      {isVideo && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <PlayCircle className="w-7 h-7 text-white drop-shadow" />
+                        </div>
+                      )}
+                      {tag && (
+                        <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-white text-[10px] font-medium truncate">{tag}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {effectiveTab === 'about' && (
+          <div className="lg:hidden px-4 pb-24">
             {profileUser.interests && profileUser.interests.length > 0 && (() => {
               const playstyleInterests = profileUser.interests!.filter(i => i.category === 'playstyle');
               const genreInterests = profileUser.interests!.filter(i => i.category === 'genre');
@@ -1424,6 +1707,8 @@ export function Profile() {
             )}
           </div>
         )}
+        </div>{/* end right column */}
+        </div>{/* end lg:flex wrapper */}
       </div>
 
       {/* Drag ghost — floats under cursor while reordering lists */}

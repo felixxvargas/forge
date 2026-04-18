@@ -478,7 +478,7 @@ export function Explore() {
 
       {/* Search Bar */}
       <div className={`sticky top-14 z-20 bg-black border-b border-gray-800 transition-all duration-300 ${hideSearchBar ? '-translate-y-full' : 'translate-y-0'}`}>
-        <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-3">
+        <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
@@ -549,7 +549,7 @@ export function Explore() {
       {/* Tabs — always visible, dimmed when search active (except on games tab) */}
       {/* top-[130px] = h-14 header (56px) + search bar container (~74px) when visible */}
       <div className={`sticky z-10 transition-all duration-300 border-b border-gray-800 bg-black ${hideSearchBar ? 'top-14' : 'top-[130px]'} ${isSearchActive && activeTab !== 'games' ? 'opacity-40 pointer-events-none' : ''}`}>
-        <div className="max-w-2xl lg:max-w-3xl mx-auto w-full flex">
+        <div className="max-w-2xl lg:max-w-5xl mx-auto w-full flex">
           {(['posts', 'users', 'games', 'groups'] as ExploreTab[]).map(tab => {
             const icons: Record<ExploreTab, React.ReactNode> = {
               posts: <MessageSquare className="w-5 h-5" />,
@@ -577,7 +577,7 @@ export function Explore() {
 
       {/* Content — onClickCapture saves scroll only when user clicks into a detail view */}
       <div
-        className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-4"
+        className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-4"
         onClickCapture={() => sessionStorage.setItem('explore-scroll-y', String(window.scrollY))}
       >
 
@@ -899,9 +899,9 @@ export function Explore() {
             )}
 
             {activeTab === 'users' && (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {filteredUsers.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="col-span-full text-center py-12 text-gray-500">
                     <UserIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No users found</p>
                   </div>
@@ -994,9 +994,11 @@ export function Explore() {
                     <p>No groups found</p>
                   </div>
                 ) : (
-                  filteredGroups.map(group => (
-                    <GroupCard key={group.id} group={group} gameTitles={groupGameTitles} />
-                  ))
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {filteredGroups.map(group => (
+                      <GroupCard key={group.id} group={group} gameTitles={groupGameTitles} />
+                    ))}
+                  </div>
                 )}
 
                 {/* Active Flares — LFG flare branding */}

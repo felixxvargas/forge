@@ -204,7 +204,7 @@ export function ListView() {
     <div className="min-h-screen pb-20 bg-background">
       {/* Header */}
       <div className="bg-card sticky top-0 z-10 border-b border-border">
-        <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 py-4">
+        <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -308,46 +308,49 @@ export function ListView() {
       </div>
 
       {/* Games Grid */}
-      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-7 py-6">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-          {sortedGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              showHours={listType === 'recently-played'}
-              fullWidth
-            />
-          ))}
-        </div>
-
-        {games.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No games in this list yet</p>
-            <button
-              onClick={openEditModal}
-              className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
-            >
-              Add Games
-            </button>
-          </div>
-        )}
-
-        {/* Other users with this list */}
-        {usersWithList.length > 0 && (
-          <div className="mt-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{title} Lists</h2>
-              {usersWithList.length > 3 && (
-                <button
-                  onClick={() => navigate(`/list?type=${listType}&browse=true`)}
-                  className="text-sm text-accent hover:underline"
-                >
-                  See all ({usersWithList.length})
-                </button>
-              )}
+      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 lg:px-7 py-6">
+        <div className="lg:flex lg:gap-6 lg:items-start">
+          {/* Main — games grid */}
+          <div className="lg:flex-1 lg:min-w-0">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
+              {sortedGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  showHours={listType === 'recently-played'}
+                  fullWidth
+                />
+              ))}
             </div>
-            <div className="space-y-3">
-              {usersWithList.slice(0, 3).map(u => {
+
+            {games.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No games in this list yet</p>
+                <button
+                  onClick={openEditModal}
+                  className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
+                >
+                  Add Games
+                </button>
+              </div>
+            )}
+
+            {/* Other users with this list — mobile only (below games) */}
+            {usersWithList.length > 0 && (
+              <div className="mt-10 lg:hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">{title} Lists</h2>
+                  {usersWithList.length > 3 && (
+                    <button
+                      onClick={() => navigate(`/list?type=${listType}&browse=true`)}
+                      className="text-sm text-accent hover:underline"
+                    >
+                      See all ({usersWithList.length})
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {usersWithList.slice(0, 3).map(u => {
                 const ul = u.game_lists ?? u.gameLists ?? {};
                 const uGames: Game[] = ul[listKey] ?? [];
                 return (
@@ -390,9 +393,70 @@ export function ListView() {
                   </div>
                 );
               })}
+                </div>
+              </div>
+            )}
+          </div>{/* end main col */}
+
+          {/* RIGHT SIDEBAR — desktop only: Others with this list */}
+          {usersWithList.length > 0 && (
+            <div className="hidden lg:block lg:w-[280px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
+              <div className="bg-card rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold">{title} Lists</h2>
+                  {usersWithList.length > 3 && (
+                    <button
+                      onClick={() => navigate(`/list?type=${listType}&browse=true`)}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      See all ({usersWithList.length})
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {usersWithList.slice(0, 5).map(u => {
+                    const ul = u.game_lists ?? u.gameLists ?? {};
+                    const uGames: Game[] = ul[listKey] ?? [];
+                    return (
+                      <div
+                        key={u.id}
+                        className="cursor-pointer hover:bg-secondary rounded-xl p-3 -mx-2 transition-colors"
+                        onClick={() => navigate(`/list?type=${listType}&userId=${u.id}`)}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <ProfileAvatar
+                            username={u.display_name || u.displayName || u.handle || '?'}
+                            profilePicture={u.profile_picture || u.profilePicture}
+                            size="sm"
+                            userId={u.id}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{u.display_name || u.displayName || u.handle}</p>
+                            <p className="text-xs text-muted-foreground">{uGames.length} games</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 overflow-x-auto">
+                          {uGames.slice(0, 5).map(game => {
+                            const cover = (game as any).artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+                              ?? (game as any).artwork?.[0]?.url
+                              ?? game.coverArt;
+                            return cover ? (
+                              <img key={game.id} src={cover} alt={game.title} className="w-8 h-12 object-cover rounded shrink-0" />
+                            ) : (
+                              <div key={game.id} className="w-8 h-12 rounded shrink-0 bg-secondary flex items-center justify-center">
+                                <span className="text-[9px] text-muted-foreground text-center px-0.5 leading-tight">{game.title.slice(0, 4)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>{/* end lg:flex */}
       </div>
 
       {/* Share Tray */}
