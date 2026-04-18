@@ -167,6 +167,16 @@ export const profiles = {
   },
 
   async getFollowers(userId: string) {
+    // Synthetic IDs (e.g. 'user-ign') are not valid UUIDs — querying with .eq('id', syntheticId)
+    // would throw "invalid input syntax for type uuid". Detect them early and query directly.
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .contains('game_lists', { _topicFollows: [userId] });
+      return data ?? [];
+    }
     // Check if this is a topic account — if so, followers are stored in _topicFollows of each follower's profile
     const profileResult = await supabase.from('profiles').select('account_type, handle').eq('id', userId).maybeSingle();
     if (profileResult.data?.account_type === 'topic') {

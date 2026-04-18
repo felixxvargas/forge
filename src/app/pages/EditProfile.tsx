@@ -57,7 +57,7 @@ export function EditProfile() {
   const [newLinkUrl, setNewLinkUrl] = useState('');
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
-  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled', 'battlenet', 'riot'];
+  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
 
   const handleSave = async () => {
     setHandleError('');
@@ -538,6 +538,55 @@ export function EditProfile() {
               </div>
             ))}
           </div>
+
+          {/* Gaming Accounts (Battle.net, Riot) */}
+          {(formData.socialPlatforms || []).some(s => s === 'battlenet' || s === 'riot') && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Gaming Accounts</span>
+                <button
+                  onClick={handleEditSocial}
+                  className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
+                >
+                  <Settings className="w-4 h-4" />
+                  Manage
+                </button>
+              </div>
+              <div className="space-y-3">
+                {(formData.socialPlatforms || []).filter(s => s === 'battlenet' || s === 'riot').map(social => (
+                  <div key={social} className="bg-secondary rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <PlatformIcon platform={social} className="w-4 h-4 shrink-0" />
+                        <span className="font-medium">{getSocialLabel(social)}</span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <span className="text-xs text-muted-foreground">Show on Profile</span>
+                        <input
+                          type="checkbox"
+                          checked={formData.showSocialHandles[social] || false}
+                          onChange={() => toggleShowSocialHandle(social)}
+                          className="w-4 h-4 accent-accent"
+                        />
+                      </label>
+                    </div>
+                    {formData.showSocialHandles[social] && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">@</span>
+                        <input
+                          type="text"
+                          value={formData.socialHandles[social] || ''}
+                          onChange={(e) => updateSocialHandle(social, e.target.value)}
+                          placeholder={`Your ${getSocialLabel(social)} username`}
+                          className="flex-1 px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Social Media */}
@@ -556,7 +605,7 @@ export function EditProfile() {
             Add your social media handles and choose which ones to display on your profile
           </p>
           <div className="space-y-3">
-            {(formData.socialPlatforms || []).map(social => (
+            {(formData.socialPlatforms || []).filter(s => s !== 'battlenet' && s !== 'riot').map(social => (
               <div key={social} className="bg-secondary rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">

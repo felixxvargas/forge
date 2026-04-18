@@ -165,6 +165,9 @@ const availableSocialPlatforms: { id: SocialPlatform; name: string; description:
   { id: 'youtubemusic', name: 'YouTube Music', description: 'Music streaming by Google' },
   { id: 'soundcloud', name: 'SoundCloud', description: 'Audio sharing platform' },
   { id: 'patreon', name: 'Patreon', description: 'Creator membership platform' },
+];
+
+const availableGamingAccountPlatforms: { id: SocialPlatform; name: string; description: string }[] = [
   { id: 'battlenet', name: 'Battle.net', description: 'Blizzard gaming platform' },
   { id: 'riot', name: 'Riot Games', description: 'League of Legends, Valorant & more' },
 ];
@@ -223,40 +226,65 @@ export function SocialMediaIntegrations() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto px-4 py-6">
-        <p className="text-muted-foreground mb-6">
-          Connect your social media accounts to share and discover gaming content
-        </p>
+      <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-8">
+        {/* Gaming Accounts */}
+        <div>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Gaming Accounts</h2>
+          <div className="space-y-2">
+            {availableGamingAccountPlatforms.map((platform) => {
+              const isSelected = selectedPlatforms.includes(platform.id);
+              return (
+                <button
+                  key={platform.id}
+                  onClick={() => togglePlatform(platform.id)}
+                  className={`w-full px-4 py-4 flex items-center gap-4 rounded-xl transition-colors ${
+                    isSelected
+                      ? 'bg-accent/20 border-2 border-accent'
+                      : 'bg-card border-2 border-transparent hover:bg-secondary'
+                  }`}
+                >
+                  <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                    {(() => { const Icon = PLATFORM_ICONS[platform.id]; return Icon ? <Icon /> : null; })()}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold">{platform.name}</h3>
+                    <p className="text-sm text-muted-foreground">{platform.description}</p>
+                  </div>
+                  {isSelected && <Check className="w-6 h-6 text-accent flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-        <div className="space-y-2">
-          {availableSocialPlatforms.map((platform) => {
-            const isSelected = selectedPlatforms.includes(platform.id);
-
-            return (
-              <button
-                key={platform.id}
-                onClick={() => togglePlatform(platform.id)}
-                className={`w-full px-4 py-4 flex items-center gap-4 rounded-xl transition-colors ${
-                  isSelected
-                    ? 'bg-accent/20 border-2 border-accent'
-                    : 'bg-card border-2 border-transparent hover:bg-secondary'
-                }`}
-              >
-                <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                  {(() => { const Icon = PLATFORM_ICONS[platform.id]; return Icon ? <Icon /> : null; })()}
-                </div>
-                <div className="flex-1 text-left">
-                  <h3 className="font-semibold">{platform.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {platform.description}
-                  </p>
-                </div>
-                {isSelected && (
-                  <Check className="w-6 h-6 text-accent flex-shrink-0" />
-                )}
-              </button>
-            );
-          })}
+        {/* Social Media */}
+        <div>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Social Media</h2>
+          <div className="space-y-2">
+            {availableSocialPlatforms.map((platform) => {
+              const isSelected = selectedPlatforms.includes(platform.id);
+              return (
+                <button
+                  key={platform.id}
+                  onClick={() => togglePlatform(platform.id)}
+                  className={`w-full px-4 py-4 flex items-center gap-4 rounded-xl transition-colors ${
+                    isSelected
+                      ? 'bg-accent/20 border-2 border-accent'
+                      : 'bg-card border-2 border-transparent hover:bg-secondary'
+                  }`}
+                >
+                  <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                    {(() => { const Icon = PLATFORM_ICONS[platform.id]; return Icon ? <Icon /> : null; })()}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold">{platform.name}</h3>
+                    <p className="text-sm text-muted-foreground">{platform.description}</p>
+                  </div>
+                  {isSelected && <Check className="w-6 h-6 text-accent flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

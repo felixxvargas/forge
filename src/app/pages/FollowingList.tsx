@@ -5,6 +5,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { useState, useEffect } from 'react';
 import { profiles } from '../utils/supabase';
+import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 
 export function FollowingList() {
   const navigate = useNavigate();
@@ -16,6 +17,15 @@ export function FollowingList() {
   const [targetHandle, setTargetHandle] = useState('');
 
   const viewingUserId = userId || currentUser?.id || '';
+
+  // For topic accounts, derive the synthetic ID used as profileCache key
+  const topicIdFor = (u: any) =>
+    u.account_type === 'topic'
+      ? `user-${(u.handle || '').replace(/^@/, '').toLowerCase()}`
+      : u.id;
+
+  // Pre-populate Bluesky avatar cache for any topic accounts in the list
+  useTopicAccountProfiles(following.map(topicIdFor));
 
   useEffect(() => {
     if (!viewingUserId) return;
@@ -79,6 +89,7 @@ export function FollowingList() {
                     username={user.display_name || user.handle || '?'}
                     profilePicture={user.profile_picture}
                     size="lg"
+                    userId={topicIdFor(user)}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
