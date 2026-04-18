@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, PenSquare } from 'lucide-react';
+import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, PenSquare, AlertTriangle } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -244,11 +244,13 @@ export function CommunityDetail() {
   const otherMembers = allMembers.filter((m: any) => !m.isFollowing);
 
   const [removedPostIds, setRemovedPostIds] = useState<Set<string>>(new Set());
+  const [postToConfirmRemove, setPostToConfirmRemove] = useState<string | null>(null);
   const communityPosts = posts.filter(
     p => (p.communityId === communityId || p.community_id === communityId) && !removedPostIds.has(p.id)
   );
 
   const handleRemovePostFromGroup = async (postId: string) => {
+    setPostToConfirmRemove(null);
     setRemovedPostIds(prev => new Set([...prev, postId]));
     try {
       await postsAPI.removeFromGroup(postId);
@@ -569,6 +571,36 @@ export function CommunityDetail() {
           )}
         </div>
 
+        {/* Remove post confirmation */}
+        {postToConfirmRemove && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setPostToConfirmRemove(null)}
+          >
+            <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Remove from group?</h2>
+              <p className="text-muted-foreground mb-6">This post will be removed from the group feed but not deleted. The author's profile will still show it.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPostToConfirmRemove(null)}
+                  className="flex-1 px-4 py-2.5 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleRemovePostFromGroup(postToConfirmRemove)}
+                  className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Flare Modal */}
         <LFGFlareModal
           isOpen={showFlareModal}
@@ -586,25 +618,16 @@ export function CommunityDetail() {
                 const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
                 if (!postUser) return null;
                 return (
-                  <div key={post.id} className="relative group/postrow">
-                    <PostCard
-                      post={post}
-                      user={postUser}
-                      onLike={handleLikeToggle}
-                      onRepost={handleRepostToggle}
-                      isLiked={likedPosts.has(post.id)}
-                      isReposted={repostedPosts.has(post.id)}
-                    />
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleRemovePostFromGroup(post.id)}
-                        title="Remove from group"
-                        className="absolute top-3 right-3 p-1.5 bg-secondary/80 rounded-lg opacity-0 group-hover/postrow:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive text-muted-foreground"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    user={postUser}
+                    onLike={handleLikeToggle}
+                    onRepost={handleRepostToggle}
+                    isLiked={likedPosts.has(post.id)}
+                    isReposted={repostedPosts.has(post.id)}
+                    onRemoveFromGroup={isAdmin ? () => setPostToConfirmRemove(post.id) : undefined}
+                  />
                 );
               })
             ) : (

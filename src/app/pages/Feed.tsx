@@ -431,8 +431,8 @@ export function Feed() {
           {feedContent}
         </div>
 
-        {/* Right rail — xl+ only */}
-        <aside className="hidden xl:flex flex-col gap-4 pt-6 pr-4 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+        {/* Right rail — xl+ only. pt matches feedContent's py-6 + selector (~2rem line-height) + mb-6 so the first box top-aligns with the first post. */}
+        <aside className="hidden xl:flex flex-col gap-4 pt-20 pr-4 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
           {isAuthenticated ? (
             <>
               {followedGames.length > 0 && (

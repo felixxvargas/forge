@@ -39,6 +39,7 @@ export function Explore() {
   const [dbGames, setDbGames] = useState<any[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const [loadingTrendingCounts, setLoadingTrendingCounts] = useState(false);
+  const [loadingExtraGames, setLoadingExtraGames] = useState(false);
   const [trendingCounts, setTrendingCounts] = useState<Record<string, number>>({});
   const [listCounts, setListCounts] = useState<Record<string, number>>({});
   const [lfgPlayers, setLfgPlayers] = useState<LFGFlare[]>([]);
@@ -236,6 +237,7 @@ export function Explore() {
     const missing = [...countedIds].filter(id => !existingIds.has(id) && !fetchedExtraGameIds.current.has(id));
     if (missing.length === 0) return;
     for (const id of missing) fetchedExtraGameIds.current.add(id);
+    setLoadingExtraGames(true);
     gamesAPI.getGames(missing)
       .then((res: any) => {
         const list: any[] = Array.isArray(res) ? res : res?.games ?? [];
@@ -246,7 +248,8 @@ export function Explore() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingExtraGames(false));
   }, [activeTab, trendingCounts, listCounts, dbGames, loadingGames]);
 
   useEffect(() => {
@@ -917,7 +920,7 @@ export function Explore() {
                   </p>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {(isSearchActive ? searchLoading : (loadingGames || loadingTrendingCounts)) ? (
+                  {(isSearchActive ? searchLoading : (loadingGames || loadingTrendingCounts || loadingExtraGames)) ? (
                     <>
                       {Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} className="animate-pulse">

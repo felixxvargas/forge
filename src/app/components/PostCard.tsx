@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -41,9 +41,10 @@ interface PostCardProps {
   replyToHandle?: string;
   onReplyToClick?: () => void;
   noBacker?: boolean;
+  onRemoveFromGroup?: () => void;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -378,6 +379,18 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete post
+                </DropdownMenuItem>
+              </>
+            )}
+            {onRemoveFromGroup && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onRemoveFromGroup(); }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <XIcon className="w-4 h-4 mr-2" />
+                  Remove from group
                 </DropdownMenuItem>
               </>
             )}

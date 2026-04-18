@@ -15,15 +15,16 @@ export function Header({ title, showNotifications = true, showSettings = true }:
 
   return (
     <header className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border z-40">
-      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 h-14 flex items-center justify-between relative">
-        <div className="flex items-center gap-3">
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 h-14 flex items-center">
+        {/* Left zone */}
+        <div className="flex-1 flex items-center">
           {title && <h1 className="text-xl font-bold">{title}</h1>}
         </div>
-        
-        {/* Centered Logo */}
+
+        {/* Center — logo (hidden when title is shown) */}
         {!title && (
           <button
-            className="absolute left-1/2 -translate-x-1/2 p-2 rounded-lg hover:bg-secondary/60 transition-colors"
+            className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
             onClick={() => { navigate('/feed'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             aria-label="Go to feed"
           >
@@ -33,10 +34,11 @@ export function Header({ title, showNotifications = true, showSettings = true }:
             </div>
           </button>
         )}
-        
-        <div className="flex items-center gap-1">
+
+        {/* Right zone */}
+        <div className="flex-1 flex items-center justify-end gap-1">
           {showNotifications && (
-            <button 
+            <button
               onClick={() => navigate('/notifications')}
               className="p-2 hover:bg-secondary rounded-lg transition-colors relative"
             >
@@ -47,7 +49,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
             </button>
           )}
           {showSettings && (
-            <button 
+            <button
               onClick={() => navigate('/settings')}
               className="p-2 hover:bg-secondary rounded-lg transition-colors"
             >
