@@ -7,7 +7,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GroupIcon } from '../components/GroupIcon';
 import { LFGFlareModal } from '../components/LFGFlareModal';
 import { gamesAPI } from '../utils/api';
-import { groups as groupsAPI, profiles as profilesAPI, lfgFlares as flaresAPI } from '../utils/supabase';
+import { groups as groupsAPI, profiles as profilesAPI, lfgFlares as flaresAPI, posts as postsAPI } from '../utils/supabase';
 
 function getCoverUrl(game: any): string | null {
   return game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
@@ -243,7 +243,19 @@ export function CommunityDetail() {
   const friends = allMembers.filter((m: any) => m.isFollowing);
   const otherMembers = allMembers.filter((m: any) => !m.isFollowing);
 
-  const communityPosts = posts.filter(p => p.communityId === communityId || p.community_id === communityId);
+  const [removedPostIds, setRemovedPostIds] = useState<Set<string>>(new Set());
+  const communityPosts = posts.filter(
+    p => (p.communityId === communityId || p.community_id === communityId) && !removedPostIds.has(p.id)
+  );
+
+  const handleRemovePostFromGroup = async (postId: string) => {
+    setRemovedPostIds(prev => new Set([...prev, postId]));
+    try {
+      await postsAPI.removeFromGroup(postId);
+    } catch {
+      setRemovedPostIds(prev => { const s = new Set(prev); s.delete(postId); return s; });
+    }
+  };
 
   const [joiningCommunity, setJoiningCommunity] = useState(false);
   const [localMemberCount, setLocalMemberCount] = useState<number>(
@@ -574,15 +586,25 @@ export function CommunityDetail() {
                 const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
                 if (!postUser) return null;
                 return (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    user={postUser}
-                    onLike={handleLikeToggle}
-                    onRepost={handleRepostToggle}
-                    isLiked={likedPosts.has(post.id)}
-                    isReposted={repostedPosts.has(post.id)}
-                  />
+                  <div key={post.id} className="relative group/postrow">
+                    <PostCard
+                      post={post}
+                      user={postUser}
+                      onLike={handleLikeToggle}
+                      onRepost={handleRepostToggle}
+                      isLiked={likedPosts.has(post.id)}
+                      isReposted={repostedPosts.has(post.id)}
+                    />
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleRemovePostFromGroup(post.id)}
+                        title="Remove from group"
+                        className="absolute top-3 right-3 p-1.5 bg-secondary/80 rounded-lg opacity-0 group-hover/postrow:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive text-muted-foreground"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 );
               })
             ) : (

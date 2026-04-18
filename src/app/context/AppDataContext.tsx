@@ -116,25 +116,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!session;
 
-  // When users load from Supabase, topic accounts have UUID IDs.
-  // followingIds is seeded with synthetic IDs (user-ign, etc.) from _topicFollows.
-  // This effect adds the corresponding UUID for each followed topic account so the
-  // Profile page's followingIds.has(uuid) check returns true without a page reload.
-  useEffect(() => {
-    if (users.length === 0 || followingIds.size === 0) return;
-    const topicUsers = users.filter(u => (u as any).account_type === 'topic');
-    if (topicUsers.length === 0) return;
-    const toAdd: string[] = [];
-    for (const u of topicUsers) {
-      const syntheticId = `user-${(u.handle || '').replace(/^@/, '').toLowerCase()}`;
-      if (followingIds.has(syntheticId) && !followingIds.has(u.id)) {
-        toAdd.push(u.id);
-      }
-    }
-    if (toAdd.length === 0) return;
-    setFollowingIds(prev => new Set([...prev, ...toAdd]));
-  }, [users]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Keep a ref to session so refreshFeed can always read the latest value
   // without needing session in its dependency array (avoids double-fetch loops)
   const sessionRef = useRef(session);

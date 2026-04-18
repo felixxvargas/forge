@@ -158,13 +158,16 @@ export function Profile() {
     profilePicture: profilePicture ?? undefined,
   });
 
-  // Sync follow state from followingIds — covers both regular follows (follows table) and topic
-  // account follows stored in game_lists._topicFollows. This ensures Koop and other topic accounts
-  // show the correct following state without querying the follows table directly.
+  // Sync follow state from followingIds. For topic accounts, followingIds stores the synthetic ID
+  // (e.g. "user-ign") rather than the UUID, so we check both.
   useEffect(() => {
     if (isOwnProfile || !profileUser?.id) return;
-    setIsFollowing(followingIds.has(profileUser.id));
-  }, [isOwnProfile, profileUser?.id, followingIds]);
+    const syntheticId = `user-${(profileUser.handle || '').replace(/^@/, '').toLowerCase()}`;
+    setIsFollowing(
+      followingIds.has(profileUser.id) ||
+      ((profileUser as any).account_type === 'topic' && followingIds.has(syntheticId))
+    );
+  }, [isOwnProfile, profileUser?.id, profileUser?.handle, followingIds]);
 
   // Fetch fresh follower/following counts from the follows table (source of truth — avoids stale counters)
   useEffect(() => {

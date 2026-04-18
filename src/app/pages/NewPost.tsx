@@ -64,7 +64,7 @@ export function NewPost() {
   const quotePostId = searchParams.get('quotePostId') ?? undefined;
   const attachListType = searchParams.get('attachListType') ?? undefined;
   const attachListUserId = searchParams.get('attachListUserId') ?? undefined;
-  const { createPost, currentUser, users, posts: contextPosts = [], getUserById } = useAppData() as any;
+  const { createPost, currentUser, users, groups: contextGroups = [], posts: contextPosts = [], getUserById } = useAppData() as any;
 
   // Group context passed when navigating from a group page (Post button)
   const locationState = location.state as { groupId?: string; groupName?: string } | null;
@@ -107,9 +107,14 @@ export function NewPost() {
   const [error, setError] = useState('');
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
   const [atGameResults, setAtGameResults] = useState<any[]>([]);
+  const [atGroupResults, setAtGroupResults] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [hashGameResults, setHashGameResults] = useState<any[]>([]);
   const [showHashGames, setShowHashGames] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(
+    groupId && groupName ? { id: groupId, name: groupName } : null
+  );
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
 
   // Drafts panel
   const [showDrafts, setShowDrafts] = useState(false);
@@ -298,6 +303,18 @@ export function NewPost() {
         })
         .slice(0, 4);
       setMentionSuggestions(filtered);
+
+      // Also search groups
+      if (query.length >= 1) {
+        const normQuery2 = norm(query);
+        const groupMatches = (contextGroups as any[])
+          .filter((g: any) => norm(g.name || '').includes(normQuery2))
+          .slice(0, 3);
+        setAtGroupResults(groupMatches);
+      } else {
+        setAtGroupResults([]);
+      }
+
       setShowMentions(true);
       setShowHashGames(false);
       // Also search games
@@ -360,6 +377,7 @@ export function NewPost() {
     setShowMentions(false);
     setShowHashGames(false);
     setAtGameResults([]);
+    setAtGroupResults([]);
     mentionStartRef.current = -1;
   };
 
@@ -383,6 +401,7 @@ export function NewPost() {
     setShowMentions(false);
     setMentionSuggestions([]);
     setAtGameResults([]);
+    setAtGroupResults([]);
     placeCursor(startIdx + handle.length + 1);
   };
 
@@ -401,6 +420,21 @@ export function NewPost() {
     setMentionSuggestions([]);
     setAtGameResults([]);
     placeCursor(startIdx + game.title.length + 1);
+  };
+
+  const handleAtGroupSelect = (group: any) => {
+    const startIdx = mentionStartRef.current;
+    if (startIdx < 0) { setShowMentions(false); setAtGroupResults([]); return; }
+    const curPos = textareaRef.current?.selectionStart ?? content.length;
+    const newContent = content.slice(0, startIdx) + group.name + ' ' + content.slice(curPos);
+    setContent(newContent);
+    setSelectedGroup({ id: group.id, name: group.name });
+    mentionStartRef.current = -1;
+    setShowMentions(false);
+    setMentionSuggestions([]);
+    setAtGameResults([]);
+    setAtGroupResults([]);
+    placeCursor(startIdx + group.name.length + 1);
   };
 
   const handleHashGameSelect = (game: any) => {
@@ -455,8 +489,9 @@ export function NewPost() {
       const imageAlts = imageUrl ? [imageAlt.trim()] : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
+      const communityId = selectedGroup?.id ?? groupId;
       let lastPostId = await createPost(
-        content, images, linkUrl || undefined, imageAlts, groupId,
+        content, images, linkUrl || undefined, imageAlts, communityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(),
       );
@@ -584,10 +619,15 @@ export function NewPost() {
       </div>
 
       {/* Group context banner */}
-      {groupName && (
+      {selectedGroup && (
         <div className="flex items-center gap-2 mx-4 mt-4 px-3 py-2 bg-accent/10 border border-accent/25 rounded-lg text-sm text-accent">
           <Users className="w-4 h-4 shrink-0" />
-          <span>Posting to <span className="font-semibold">{groupName}</span></span>
+          <span className="flex-1">Posting to <span className="font-semibold">{selectedGroup.name}</span></span>
+          {!groupId && (
+            <button type="button" onClick={() => setSelectedGroup(null)} className="shrink-0 hover:text-accent/60 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       )}
 
@@ -638,8 +678,8 @@ export function NewPost() {
           />
         </div>
 
-        {/* @Mention + @Game suggestions — fixed above the OSK */}
-        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0) && (
+        {/* @Mention + @Game + @Group suggestions — fixed above the OSK */}
+        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0 || atGroupResults.length > 0) && (
           <div
             className="fixed left-2 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
             style={{ bottom: viewportBottom + 4 }}
@@ -685,6 +725,22 @@ export function NewPost() {
                       <p className="font-medium text-sm">{game.title}</p>
                       {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
                     </div>
+                  </button>
+                ))}
+              </>
+            )}
+            {atGroupResults.length > 0 && (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">Groups</div>
+                {atGroupResults.map((group: any) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleAtGroupSelect(group); }}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
+                  >
+                    <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <p className="font-medium text-sm">{group.name}</p>
                   </button>
                 ))}
               </>
@@ -815,6 +871,17 @@ export function NewPost() {
           >
             <LayoutList className="w-5 h-5" aria-hidden="true" />
           </button>
+          {(contextGroups as any[]).length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowGroupPicker(v => !v)}
+              className={`p-2 rounded-lg transition-colors ${(showGroupPicker || selectedGroup) ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+              aria-label="Tag a group"
+              aria-pressed={showGroupPicker || !!selectedGroup}
+            >
+              <Users className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}
           </span>
@@ -950,6 +1017,25 @@ export function NewPost() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Group picker */}
+        {showGroupPicker && (
+          <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
+            <label className="text-sm font-medium mb-2 block">Post to a group</label>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {(contextGroups as any[]).map((group: any) => (
+                <button
+                  key={group.id}
+                  onClick={() => { setSelectedGroup({ id: group.id, name: group.name }); setShowGroupPicker(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 ${selectedGroup?.id === group.id ? 'bg-accent/20 text-accent' : 'hover:bg-secondary'}`}
+                >
+                  <Users className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span>{group.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

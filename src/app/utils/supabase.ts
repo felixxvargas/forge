@@ -167,6 +167,17 @@ export const profiles = {
   },
 
   async getFollowers(userId: string) {
+    // Check if this is a topic account — if so, followers are stored in _topicFollows of each follower's profile
+    const profileResult = await supabase.from('profiles').select('account_type, handle').eq('id', userId).maybeSingle();
+    if (profileResult.data?.account_type === 'topic') {
+      const rawHandle = (profileResult.data.handle || '').replace(/^@/, '').toLowerCase();
+      const syntheticId = `user-${rawHandle}`;
+      const { data: followerProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .contains('game_lists', { _topicFollows: [syntheticId] });
+      return followerProfiles ?? [];
+    }
     const { data, error } = await supabase
       .from('follows')
       .select('follower:profiles!follower_id(*)')
@@ -176,22 +187,39 @@ export const profiles = {
   },
 
   async getFollowing(userId: string) {
-    const { data, error } = await supabase
-      .from('follows')
-      .select('following:profiles!following_id(*)')
-      .eq('follower_id', userId);
-    if (error) throw new Error(error.message);
-    // Filter out nulls — external/topic account follows have no profiles row
-    // and would otherwise show up as blank entries in the Following list.
-    return (data ?? []).map((r: any) => r.following).filter(Boolean);
+    const [followsResult, profileResult] = await Promise.all([
+      supabase.from('follows').select('following:profiles!following_id(*)').eq('follower_id', userId),
+      supabase.from('profiles').select('game_lists').eq('id', userId).maybeSingle(),
+    ]);
+    if (followsResult.error) throw new Error(followsResult.error.message);
+    const realFollowing = (followsResult.data ?? []).map((r: any) => r.following).filter(Boolean);
+
+    // Also include topic accounts stored in _topicFollows (not in follows table)
+    const topicFollowIds: string[] = profileResult.data?.game_lists?._topicFollows ?? [];
+    let topicFollowing: any[] = [];
+    if (topicFollowIds.length > 0) {
+      const handles = topicFollowIds.map((id: string) => id.replace(/^user-/, ''));
+      const { data: allTopicProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('account_type', 'topic');
+      topicFollowing = (allTopicProfiles ?? []).filter((p: any) => {
+        const h = (p.handle || '').replace(/^@/, '').toLowerCase();
+        return handles.includes(h);
+      });
+    }
+    return [...realFollowing, ...topicFollowing];
   },
 
   async getFollowingCount(userId: string): Promise<number> {
-    const { count } = await supabase
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('follower_id', userId);
-    return count ?? 0;
+    const [followsResult, profileResult] = await Promise.all([
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+      supabase.from('profiles').select('game_lists').eq('id', userId).maybeSingle(),
+    ]);
+    const followsCount = followsResult.count ?? 0;
+    const topicFollows: string[] = profileResult.data?.game_lists?._topicFollows ?? [];
+    const externalFollows: any[] = profileResult.data?.game_lists?._externalFollows ?? [];
+    return followsCount + topicFollows.length + externalFollows.length;
   },
 
   async getFollowerCount(userId: string): Promise<number> {
@@ -616,6 +644,14 @@ export const posts = {
     const { error } = await supabase
       .from('posts')
       .delete()
+      .eq('id', postId);
+    if (error) throw new Error(error.message);
+  },
+
+  async removeFromGroup(postId: string) {
+    const { error } = await supabase
+      .from('posts')
+      .update({ community_id: null })
       .eq('id', postId);
     if (error) throw new Error(error.message);
   },
