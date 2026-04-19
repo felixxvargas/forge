@@ -11,6 +11,10 @@ export function NotificationsSettings() {
     const saved = localStorage.getItem('forge-toast-notifications');
     return saved !== 'false';
   });
+  const [dmEmailEnabled, setDmEmailEnabled] = useState(() => {
+    const saved = localStorage.getItem('forge-dm-email-notifications');
+    return saved !== 'false';
+  });
   const [emailNotifications, setEmailNotifications] = useState<'off' | 'weekly' | 'all'>(() => {
     const saved = currentUser?.email_notifications;
     if (saved === 'off' || saved === 'all') return saved;
@@ -20,6 +24,10 @@ export function NotificationsSettings() {
   useEffect(() => {
     localStorage.setItem('forge-toast-notifications', String(toastNotificationsEnabled));
   }, [toastNotificationsEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('forge-dm-email-notifications', String(dmEmailEnabled));
+  }, [dmEmailEnabled]);
 
   const handleEmailNotificationsChange = async (value: 'off' | 'weekly' | 'all') => {
     setEmailNotifications(value);
@@ -59,6 +67,28 @@ export function NotificationsSettings() {
               </div>
               <div className={`w-11 h-6 rounded-full transition-colors relative ${toastNotificationsEnabled ? 'bg-accent' : 'bg-muted'}`}>
                 <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${toastNotificationsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Direct message email notifications */}
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Direct Messages</h2>
+          <div className="bg-card rounded-xl overflow-hidden">
+            <button
+              onClick={() => setDmEmailEnabled(!dmEmailEnabled)}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Mail className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Email on new message</p>
+                <p className="text-sm text-muted-foreground">
+                  {dmEmailEnabled ? 'Receive an email when you get a new DM' : 'No email for new DMs'}
+                </p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${dmEmailEnabled ? 'bg-accent' : 'bg-muted'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${dmEmailEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
             </button>
           </div>

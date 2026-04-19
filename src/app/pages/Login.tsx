@@ -87,21 +87,52 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background">
-      <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-20 sm:pt-0">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0d0818 0%, #110c1e 40%, #0a0612 100%)' }}>
+
+      {/* Ambient glow orbs */}
+      <div className="pointer-events-none absolute inset-0 -z-0" aria-hidden="true">
+        <div className="absolute top-[-15%] left-[5%] w-[700px] h-[700px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.35) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        <div className="absolute bottom-[-10%] right-[0%] w-[600px] h-[600px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(109,40,217,0.28) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+        <div className="absolute top-[35%] right-[15%] w-[450px] h-[450px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)', filter: 'blur(100px)' }} />
+        <div className="absolute bottom-[15%] left-[-5%] w-[400px] h-[400px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(88,28,135,0.22) 0%, transparent 70%)', filter: 'blur(70px)' }} />
+      </div>
+
+      <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-20 sm:pt-0 relative z-10">
+
+        {/* Logo section with subtle backdrop */}
         <div className="text-center mb-8">
-          <div className="w-20 h-16 mx-auto mb-4 flex items-center justify-center">
-            <ForgeSVG width="80" height="64" aria-hidden="true" />
+          <div className="inline-block px-6 pt-5 pb-4 rounded-2xl mb-1"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+
+            {/* Icon with glow */}
+            <div className="relative w-20 h-16 mx-auto mb-3 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full"
+                style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.6) 0%, transparent 70%)', filter: 'blur(18px)', transform: 'scale(1.4)' }} />
+              <ForgeSVG width="80" height="64" aria-hidden="true" className="relative" />
+            </div>
+
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h1 className="text-4xl font-black tracking-tight text-accent">Forge</h1>
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
+            </div>
+            <span className="sm:hidden inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-1">Beta</span>
+            <p className="text-muted-foreground text-sm">Your gaming social network</p>
           </div>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <h1 className="text-4xl font-black tracking-tight text-accent">Forge</h1>
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
-          </div>
-          <span className="sm:hidden inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-2">Beta</span>
-          <p className="text-muted-foreground">Your gaming social network</p>
         </div>
 
-        <div className="bg-card rounded-2xl p-8 shadow-xl">
+        {/* Glass card */}
+        <div className="rounded-2xl p-8 shadow-2xl"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid rgba(255,255,255,0.11)',
+          }}>
           {showForgot ? (
             <>
               <div className="flex items-center gap-3 mb-6">
@@ -144,7 +175,7 @@ export function Login() {
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                         <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
                           placeholder="your@email.com" required disabled={forgotLoading} autoFocus
-                          className="w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent" />
+                          className="w-full pl-10 pr-4 py-3 bg-white/[0.07] rounded-lg border border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent" />
                       </div>
                     </div>
                     <button type="submit" disabled={forgotLoading}
@@ -179,8 +210,10 @@ export function Login() {
               <SocialAuthButtons disabled={isLoading} />
 
               <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"/></div>
-                <div className="relative flex justify-center text-sm"><span className="px-4 bg-card text-muted-foreground">or</span></div>
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.12]"/></div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 text-muted-foreground" style={{ background: 'transparent' }}>or</span>
+                </div>
               </div>
 
               <form onSubmit={handleEmailLogin} className="space-y-4">
@@ -190,7 +223,7 @@ export function Login() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground"/>
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                       placeholder="your@email.com" required disabled={isLoading}
-                      className="w-full pl-10 pr-4 py-3 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent"/>
+                      className="w-full pl-10 pr-4 py-3 bg-white/[0.07] rounded-lg border border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent"/>
                   </div>
                 </div>
                 <div>
@@ -204,7 +237,7 @@ export function Login() {
                   <div className="relative">
                     <input type={showPassword ? 'text' : 'password'} value={password}
                       onChange={e => setPassword(e.target.value)} placeholder="••••••••" required disabled={isLoading}
-                      className="w-full px-4 py-3 pr-11 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent"/>
+                      className="w-full px-4 py-3 pr-11 bg-white/[0.07] rounded-lg border border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-accent"/>
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                       {showPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
@@ -248,16 +281,13 @@ export function Login() {
       </div>
 
       {/* App Store Badges */}
-      <div className="w-full max-w-md mt-8 mb-6">
+      <div className="w-full max-w-md mt-8 mb-6 relative z-10">
         <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
         <div className="flex items-center justify-center gap-6 pb-4">
-          {/* Google Play — coming soon */}
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
           </div>
-
-          {/* Apple App Store — coming soon */}
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-10 grayscale" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>

@@ -75,6 +75,8 @@ export function Messages() {
   const composeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addPeopleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Plaintext cache for conversation list previews (partner_id → latest plaintext)
+  const conversationPreviewCache = useRef<Record<string, string>>({});
 
   // E2E encryption: partner's public key JWK (fetched when a DM conversation opens)
   const partnerPublicKeyRef = useRef<JsonWebKey | null>(null);
@@ -147,6 +149,12 @@ export function Messages() {
         return plain !== null ? { ...msg, _plaintext: plain } : msg;
       }));
       setMessages(decrypted);
+      // Cache the last message plaintext for conversation list preview
+      const last = decrypted[decrypted.length - 1];
+      if (last && selectedPartnerId) {
+        const text = (last as any)._plaintext ?? (last.encrypted ? null : last.content);
+        if (text) conversationPreviewCache.current[selectedPartnerId] = text;
+      }
     }).catch(() => {});
   }, [currentUser?.id, selectedPartnerId]);
 
@@ -191,8 +199,10 @@ export function Messages() {
         if (msg.sender_id !== selectedPartnerId) return;
         if (msg.encrypted && msg.iv && partnerPublicKeyRef.current) {
           const plain = await decryptMessage(msg.content, msg.iv, partnerPublicKeyRef.current);
+          if (plain) conversationPreviewCache.current[selectedPartnerId] = plain;
           setMessages(prev => [...prev, { ...msg, _plaintext: plain ?? undefined }]);
         } else {
+          conversationPreviewCache.current[selectedPartnerId] = msg.content;
           setMessages(prev => [...prev, msg]);
         }
       })
@@ -297,9 +307,24 @@ export function Messages() {
       }
 
       const msg = await dmAPI.send(currentUser.id, selectedPartnerId, content, opts);
+      // Cache plaintext for the conversation list preview
+      conversationPreviewCache.current[selectedPartnerId] = plaintext;
       // For the sender's own view, display the original plaintext
       setMessages(prev => [...prev, { ...msg, _plaintext: plaintext }]);
       dmAPI.getConversations(currentUser.id).then(setConversations).catch(() => {});
+      // Fire-and-forget DM email notification (respects recipient's preference server-side)
+      if (localStorage.getItem('forge-dm-email-notifications') !== 'false') {
+        supabase.functions.invoke('notify-dm', {
+          body: {
+            recipientId: selectedPartnerId,
+            senderId: currentUser.id,
+            senderName: (currentUser as any).display_name || currentUser.handle || 'Someone',
+            senderHandle: currentUser.handle,
+            // Only include preview for non-encrypted messages (plaintext safe to email)
+            messagePreview: opts?.encrypted ? undefined : plaintext,
+          },
+        }).catch(() => {});
+      }
     } catch { setMessageInput(plaintext); }
     finally { setIsSending(false); }
   };
@@ -423,9 +448,9 @@ export function Messages() {
   // ── GROUP THREAD CHAT VIEW ──────────────────────────────────────
   if (selectedGroupThread) {
     return (
-      <div className="min-h-screen bg-background pb-20 flex flex-col">
+      <div className="flex flex-col bg-background" style={{ height: '100dvh' }}>
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-card border-b border-border">
+        <div className="shrink-0 bg-card border-b border-border z-10">
           <div className="w-full max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               onClick={() => { setSelectedGroupThread(null); setGroupMessages([]); setShowGroupInfo(false); }}
@@ -496,7 +521,7 @@ export function Messages() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 w-full max-w-2xl mx-auto px-4 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto min-h-0 w-full max-w-2xl mx-auto px-4 py-4 space-y-3">
           {groupMessages.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
@@ -538,7 +563,7 @@ export function Messages() {
         </div>
 
         {/* Input */}
-        <div className="sticky bottom-20 w-full max-w-2xl mx-auto px-4 pb-4">
+        <div className="shrink-0 w-full max-w-2xl mx-auto px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+80px)]">
           <div className="bg-card border border-border rounded-full px-4 py-3 flex items-center gap-3">
             <input
               type="text"
@@ -659,8 +684,8 @@ export function Messages() {
   // ── DM CHAT VIEW ──────────────────────────────────────────────
   if (selectedPartnerId && partner) {
     return (
-      <div className="min-h-screen bg-background pb-20 flex flex-col">
-        <div className="sticky top-0 z-10 bg-card border-b border-border">
+      <div className="flex flex-col bg-background" style={{ height: '100dvh' }}>
+        <div className="shrink-0 bg-card border-b border-border z-10">
           <div className="w-full max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               onClick={() => { setSelectedPartnerId(null); setPartner(null); setMessages([]); }}
@@ -686,7 +711,7 @@ export function Messages() {
           </div>
         </div>
 
-        <div className="flex-1 w-full max-w-2xl mx-auto px-4 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto min-h-0 w-full max-w-2xl mx-auto px-4 py-4 space-y-3">
           {messages.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
@@ -706,7 +731,7 @@ export function Messages() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="sticky bottom-20 w-full max-w-2xl mx-auto px-4 pb-4">
+        <div className="shrink-0 w-full max-w-2xl mx-auto px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+80px)]">
           <div className="bg-card border border-border rounded-full px-4 py-3 flex items-center gap-3">
             <input
               type="text"
@@ -816,7 +841,9 @@ export function Messages() {
                               </button>
                               <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatTime(item.created_at)}</span>
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">{(item as any).encrypted ? '🔒 Encrypted message' : item.content}</p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conversationPreviewCache.current[partnerId] ?? ((item as any).encrypted ? 'New message' : item.content)}
+                            </p>
                           </div>
                         </button>
                         <button
