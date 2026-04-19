@@ -597,6 +597,7 @@ export const posts = {
     replyTo?: string;
     quotePostId?: string;
     attachedList?: object;
+    poll?: object;
   } = {}) {
     // Content moderation check
     if (content && content.trim().length >= 3) {
@@ -628,6 +629,7 @@ export const posts = {
         ...(options.replyTo ? { reply_to: options.replyTo } : {}),
         ...(options.quotePostId ? { quote_post_id: options.quotePostId } : {}),
         ...(options.attachedList ? { attached_list: options.attachedList } : {}),
+        ...(options.poll ? { poll: options.poll } : {}),
       })
       .select(`
         *,
@@ -1767,4 +1769,39 @@ export const storage = {
     const { data } = supabase.storage.from('forge-post-media').getPublicUrl(path);
     return data.publicUrl;
   }
+};
+
+// ============================================================
+// POLL VOTES
+// ============================================================
+export const pollAPI = {
+  async vote(postId: string, userId: string, optionIndex: number) {
+    const { error } = await supabase
+      .from('poll_votes')
+      .upsert({ post_id: postId, user_id: userId, option_index: optionIndex }, { onConflict: 'post_id,user_id' });
+    if (error) throw new Error(error.message);
+  },
+
+  async getVotes(postId: string): Promise<{ option_index: number; count: number }[]> {
+    const { data, error } = await supabase
+      .from('poll_votes')
+      .select('option_index')
+      .eq('post_id', postId);
+    if (error) return [];
+    const counts: Record<number, number> = {};
+    for (const row of data ?? []) {
+      counts[row.option_index] = (counts[row.option_index] ?? 0) + 1;
+    }
+    return Object.entries(counts).map(([k, v]) => ({ option_index: Number(k), count: v }));
+  },
+
+  async getUserVote(postId: string, userId: string): Promise<number | null> {
+    const { data } = await supabase
+      .from('poll_votes')
+      .select('option_index')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.option_index ?? null;
+  },
 };

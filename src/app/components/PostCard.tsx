@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -12,6 +12,7 @@ import { useBlueskyData } from '../hooks/useBlueskyData';
 import { ShareModal } from './ShareModal';
 import { gameCoverCache } from '../utils/mentionHighlight';
 import { gamesAPI } from '../utils/api';
+import { pollAPI } from '../utils/supabase';
 import { LinkPreview } from './LinkPreview';
 import { BlurredImage } from './BlurredImage';
 import {
@@ -55,6 +56,63 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   };
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [showRepostTray, setShowRepostTray] = useState(false);
+
+  // Poll state
+  const currentUser = (context as any)?.currentUser;
+  const poll = (post as any).poll as { options: string[]; end_date: string } | null | undefined;
+  const [pollVoteCounts, setPollVoteCounts] = useState<Record<number, number>>({});
+  const [myVote, setMyVote] = useState<number | null>(null);
+  const [pollVoting, setPollVoting] = useState(false);
+  const [pollNotified, setPollNotified] = useState(false);
+
+  useEffect(() => {
+    if (!poll) return;
+    pollAPI.getVotes(post.id).then(votes => {
+      const counts: Record<number, number> = {};
+      votes.forEach(v => { counts[v.option_index] = v.count; });
+      setPollVoteCounts(counts);
+    }).catch(() => {});
+    if (currentUser?.id) {
+      pollAPI.getUserVote(post.id, currentUser.id).then(v => setMyVote(v)).catch(() => {});
+    }
+  }, [post.id, poll, currentUser?.id]);
+
+  const pollEnded = poll ? new Date(poll.end_date) <= new Date() : false;
+  const totalVotes = Object.values(pollVoteCounts).reduce((s, c) => s + c, 0);
+
+  // Notify once when viewing an ended poll the user voted on
+  useEffect(() => {
+    if (!pollEnded || myVote === null || pollNotified || !currentUser?.id) return;
+    setPollNotified(true);
+    // Create an in-app notification for the current user with poll results
+    import('../utils/supabase').then(({ supabase }) => {
+      void (async () => {
+        await supabase.from('notifications').insert({
+          type: 'poll_ended',
+          user_id: currentUser.id,
+          actor_id: (post as any).user_id,
+          post_id: post.id,
+          read: false,
+        });
+      })();
+    });
+  }, [pollEnded, myVote, pollNotified, currentUser?.id, post.id, (post as any).user_id]);
+
+  const handlePollVote = useCallback(async (optionIndex: number) => {
+    if (!currentUser?.id || pollEnded || pollVoting) return;
+    setPollVoting(true);
+    try {
+      await pollAPI.vote(post.id, currentUser.id, optionIndex);
+      setMyVote(optionIndex);
+      setPollVoteCounts(prev => {
+        const next = { ...prev };
+        if (myVote !== null) next[myVote] = Math.max(0, (next[myVote] ?? 0) - 1);
+        next[optionIndex] = (next[optionIndex] ?? 0) + 1;
+        return next;
+      });
+    } catch { /* ignore */ }
+    finally { setPollVoting(false); }
+  }, [post.id, currentUser?.id, pollEnded, pollVoting, myVote]);
 
   // External posts (AT Proto / ActivityPub) — engagement is read-only
   const isExternalPost = post?.platform === 'bluesky' || post?.platform === 'mastodon';
@@ -532,6 +590,50 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           </div>
         );
       })()}
+
+      {/* Poll */}
+      {poll && (
+        <div className="mb-3 rounded-xl border border-border bg-secondary/20 overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="px-3 pt-3 pb-1 flex items-center gap-1.5">
+            <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground font-medium">
+              {pollEnded ? 'Poll ended' : `Ends ${new Date(poll.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+              {totalVotes > 0 && ` · ${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`}
+            </span>
+          </div>
+          <div className="px-3 pb-3 space-y-2 mt-1">
+            {poll.options.map((option, i) => {
+              const count = pollVoteCounts[i] ?? 0;
+              const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+              const isMyChoice = myVote === i;
+              const showResults = myVote !== null || pollEnded;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={pollEnded || myVote !== null || pollVoting || !currentUser?.id}
+                  onClick={() => handlePollVote(i)}
+                  className={`relative w-full text-left px-3 py-2.5 rounded-lg border overflow-hidden transition-colors text-sm font-medium
+                    ${isMyChoice ? 'border-accent text-accent' : 'border-border text-foreground'}
+                    ${!showResults && !pollEnded && myVote === null ? 'hover:bg-secondary cursor-pointer' : 'cursor-default'}
+                  `}
+                >
+                  {showResults && (
+                    <div
+                      className={`absolute inset-0 rounded-lg transition-all ${isMyChoice ? 'bg-accent/20' : 'bg-secondary/60'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  )}
+                  <span className="relative flex items-center justify-between gap-2">
+                    <span className="truncate">{option}</span>
+                    {showResults && <span className="shrink-0 text-xs text-muted-foreground">{pct}%</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Quoted post embed */}
       {post.quotedPost && (() => {

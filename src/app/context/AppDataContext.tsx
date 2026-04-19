@@ -39,7 +39,7 @@ interface AppDataContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUser: (data: Partial<any>) => Promise<void>;
-  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string, quotePostId?: string, attachedList?: object) => Promise<string | undefined>;
+  createPost: (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string, quotePostId?: string, attachedList?: object, poll?: object) => Promise<string | undefined>;
   addPosts: (newPosts: any[]) => void;
   deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
@@ -527,9 +527,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string, quotePostId?: string, attachedList?: object): Promise<string | undefined> => {
+  const createPost = async (content: string, images?: string[], url?: string, imageAlts?: string[], communityId?: string, gameId?: string, gameTitle?: string, gameIds?: string[], gameTitles?: string[], flareId?: string, commentsDisabled?: boolean, repostsDisabled?: boolean, replyTo?: string, quotePostId?: string, attachedList?: object, poll?: object): Promise<string | undefined> => {
     if (!session?.user) return undefined;
-    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled, replyTo, quotePostId, attachedList });
+    const post = await postsAPI.create(session.user.id, content, { images, url, imageAlts, communityId, gameId, gameTitle, gameIds, gameTitles, flareId, commentsDisabled, repostsDisabled, replyTo, quotePostId, attachedList, poll });
     if (!replyTo) {
       setPostList(prev => [post, ...prev]);
     } else {

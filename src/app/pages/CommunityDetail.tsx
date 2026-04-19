@@ -146,8 +146,8 @@ export function CommunityDetail() {
     const file = e.target.files?.[0];
     if (!file || !communityId) return;
     setImageUploadError('');
-    if (file.size > 5 * 1024 * 1024) {
-      setImageUploadError('Image must be 5 MB or less.');
+    if (file.size > 10 * 1024 * 1024) {
+      setImageUploadError('Image must be 10 MB or less.');
       if (imageInputRef.current) imageInputRef.current.value = '';
       return;
     }
@@ -718,7 +718,7 @@ export function CommunityDetail() {
                   {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                   {uploadingImage ? 'Uploading…' : 'Change Photo'}
                 </button>
-                <p className="text-xs text-muted-foreground">Max 5 MB</p>
+                <p className="text-xs text-muted-foreground">Max 10 MB</p>
                 {imageUploadError && (
                   <p className="text-xs text-destructive text-center">{imageUploadError}</p>
                 )}

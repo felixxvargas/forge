@@ -110,16 +110,6 @@ export function Messages() {
     });
   }, [currentUser?.id]);
 
-  // Fetch partner's public key when a DM conversation is opened
-  useEffect(() => {
-    partnerPublicKeyRef.current = null;
-    if (!selectedPartnerId) return;
-    profiles.getPublicKey(selectedPartnerId).then(raw => {
-      if (raw) {
-        try { partnerPublicKeyRef.current = JSON.parse(raw); } catch { /* ignore */ }
-      }
-    }).catch(() => {});
-  }, [selectedPartnerId]);
 
   // Load conversations + group threads
   useEffect(() => {
@@ -134,28 +124,45 @@ export function Messages() {
     }).finally(() => setLoadingConvos(false));
   }, [currentUser?.id]);
 
-  // Load DM messages, decrypting any E2E-encrypted ones
+  // Fetch partner public key then load & decrypt DM messages (sequential to avoid race condition)
   useEffect(() => {
-    if (!currentUser?.id || !selectedPartnerId) return;
-    dmAPI.getMessages(currentUser.id, selectedPartnerId).then(async rawMsgs => {
-      const decrypted = await Promise.all(rawMsgs.map(async (msg: any) => {
-        if (!msg.encrypted || !msg.iv) return msg;
-        // Need the *sender's* public key to derive the shared secret
-        const senderKey = msg.sender_id === currentUser.id
-          ? partnerPublicKeyRef.current  // I sent it: I used partner's key
-          : partnerPublicKeyRef.current; // I received it: sender is partner
-        if (!senderKey) return msg;
-        const plain = await decryptMessage(msg.content, msg.iv, senderKey);
-        return plain !== null ? { ...msg, _plaintext: plain } : msg;
-      }));
-      setMessages(decrypted);
-      // Cache the last message plaintext for conversation list preview
-      const last = decrypted[decrypted.length - 1];
-      if (last && selectedPartnerId) {
-        const text = (last as any)._plaintext ?? (last.encrypted ? null : last.content);
-        if (text) conversationPreviewCache.current[selectedPartnerId] = text;
-      }
-    }).catch(() => {});
+    if (!currentUser?.id || !selectedPartnerId) {
+      partnerPublicKeyRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      // 1. Fetch partner's public key first so decryption is ready
+      partnerPublicKeyRef.current = null;
+      try {
+        const raw = await profiles.getPublicKey(selectedPartnerId);
+        if (raw) {
+          try { partnerPublicKeyRef.current = JSON.parse(raw); } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+
+      if (cancelled) return;
+
+      // 2. Load messages and decrypt using the now-available key
+      try {
+        const rawMsgs = await dmAPI.getMessages(currentUser.id, selectedPartnerId);
+        if (cancelled) return;
+        const key = partnerPublicKeyRef.current;
+        const decrypted = await Promise.all(rawMsgs.map(async (msg: any) => {
+          if (!msg.encrypted || !msg.iv || !key) return msg;
+          const plain = await decryptMessage(msg.content, msg.iv, key);
+          return plain !== null ? { ...msg, _plaintext: plain } : msg;
+        }));
+        setMessages(decrypted);
+        // Cache the last message plaintext for conversation list preview
+        const last = decrypted[decrypted.length - 1];
+        if (last && selectedPartnerId) {
+          const text = (last as any)._plaintext ?? (last.encrypted ? null : last.content);
+          if (text) conversationPreviewCache.current[selectedPartnerId] = text;
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [currentUser?.id, selectedPartnerId]);
 
   // Load group messages + participants

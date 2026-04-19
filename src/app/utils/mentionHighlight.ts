@@ -22,14 +22,16 @@ function escapeHtml(s: string): string {
  * Converts plain post text into HTML where:
  *  - @KnownHandle (matching a user in `users`) → bold accent span
  *  - GameTitle    (matching selectedGame.title, bare — no @ prefix) → bold accent span
+ *  - GroupName    (matching a tagged group's name) → bold light-green span
  *  - everything else → escaped plain text (displayed in the container's foreground color)
  */
 export function buildHighlightedHtml(
   text: string,
   users: any[],
   selectedGame: { id: string; title: string } | null,
+  taggedGroups?: { id: string; name: string }[],
 ): string {
-  type Range = { start: number; end: number };
+  type Range = { start: number; end: number; type: 'accent' | 'group' };
   const ranges: Range[] = [];
 
   // 1. Highlight bare GameTitle (no @ — game is tagged via chip, title appears as plain text)
@@ -38,11 +40,27 @@ export function buildHighlightedHtml(
     const re = new RegExp(escaped, 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
-      ranges.push({ start: m.index, end: m.index + m[0].length });
+      ranges.push({ start: m.index, end: m.index + m[0].length, type: 'accent' });
     }
   }
 
-  // 2. Highlight @userHandle (single-word, not already covered)
+  // 2. Highlight tagged group names (bare, no @ — inserted by handleAtGroupSelect)
+  if (taggedGroups?.length) {
+    for (const group of taggedGroups) {
+      if (!group.name) continue;
+      const escaped = group.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(escaped, 'g');
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        const alreadyCovered = ranges.some(r => m!.index < r.end && m!.index + m![0].length > r.start);
+        if (!alreadyCovered) {
+          ranges.push({ start: m.index, end: m.index + m[0].length, type: 'group' });
+        }
+      }
+    }
+  }
+
+  // 3. Highlight @userHandle (single-word, not already covered)
   const handleRe = /@(\w+)/g;
   let m: RegExpExecArray | null;
   while ((m = handleRe.exec(text)) !== null) {
@@ -54,7 +72,7 @@ export function buildHighlightedHtml(
       const isKnown = users.some(
         u => (u.handle || '').replace(/^@/, '').toLowerCase() === handle,
       );
-      if (isKnown) ranges.push({ start, end });
+      if (isKnown) ranges.push({ start, end, type: 'accent' });
     }
   }
 
@@ -62,9 +80,13 @@ export function buildHighlightedHtml(
 
   let html = '';
   let cursor = 0;
-  for (const { start, end } of ranges) {
+  for (const { start, end, type } of ranges) {
     html += escapeHtml(text.slice(cursor, start));
-    html += `<span style="color:var(--accent);-webkit-text-stroke:0.4px var(--accent)">${escapeHtml(text.slice(start, end))}</span>`;
+    if (type === 'group') {
+      html += `<span style="color:#86efac;font-weight:700">${escapeHtml(text.slice(start, end))}</span>`;
+    } else {
+      html += `<span style="color:var(--accent);-webkit-text-stroke:0.4px var(--accent)">${escapeHtml(text.slice(start, end))}</span>`;
+    }
     cursor = end;
   }
   html += escapeHtml(text.slice(cursor));

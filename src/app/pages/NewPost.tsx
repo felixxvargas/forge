@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList, Users } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList, Users, BarChart2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,9 +92,7 @@ export function NewPost() {
   const [imageAlt, setImageAlt] = useState('');
   const [showAltInput, setShowAltInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState(autoDraft.current.linkUrl);
-  const [showImageUpload, setShowImageUpload] = useState(!!autoDraft.current.imageUrl);
-  const [showLinkInput, setShowLinkInput] = useState(!!autoDraft.current.linkUrl);
-  const [showGamePicker, setShowGamePicker] = useState(false);
+  const [openPanel, setOpenPanel] = useState<'image' | 'link' | 'game' | 'group' | 'list' | 'poll' | null>(null);
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
   const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>(autoDraft.current.games);
@@ -115,15 +113,16 @@ export function NewPost() {
   const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(
     groupId && groupName ? { id: groupId, name: groupName } : null
   );
-  const [showGroupPicker, setShowGroupPicker] = useState(false);
 
   // Drafts panel
   const [showDrafts, setShowDrafts] = useState(false);
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>(getSavedDrafts);
   // Cancel confirmation
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // Poll state
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const [pollEndDate, setPollEndDate] = useState('');
   // List picker
-  const [showListPicker, setShowListPicker] = useState(false);
   const [pickedListType, setPickedListType] = useState<string | undefined>(attachListType);
   const [pickedListUserId, setPickedListUserId] = useState<string | undefined>(attachListUserId);
 
@@ -256,8 +255,6 @@ export function NewPost() {
     setSelectedGames(draft.games);
     setImageUrl(draft.imageUrl);
     setLinkUrl(draft.linkUrl);
-    if (draft.imageUrl) setShowImageUpload(true);
-    if (draft.linkUrl) setShowLinkInput(true);
     // Remove from saved drafts
     const updated = savedDrafts.filter(d => d.id !== draft.id);
     setSavedDrafts(updated);
@@ -476,7 +473,6 @@ export function NewPost() {
     setSelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
     const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
     if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
-    setShowGamePicker(false);
     setGameQuery('');
     setGameResults([]);
   };
@@ -487,7 +483,7 @@ export function NewPost() {
       setError('Please wait for your image to finish uploading.');
       return;
     }
-    if (showImageUpload && !imageUrl) {
+    if (openPanel === 'image' && !imageUrl) {
       setError('Your image failed to upload. Please try again or remove the image to post without it.');
       return;
     }
@@ -499,10 +495,14 @@ export function NewPost() {
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
       const activeCommunityId = selectedGroup?.id ?? groupId;
+      const filledOptions = pollOptions.filter(o => o.trim());
+      const pollData = filledOptions.length >= 2 && pollEndDate
+        ? { options: filledOptions, end_date: new Date(pollEndDate).toISOString(), votes: {} }
+        : undefined;
       let lastPostId = await createPost(
         content, images, linkUrl || undefined, imageAlts, activeCommunityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
-        disableComments, disableReposts, replyTo, quotePostId, attachedListData(),
+        disableComments, disableReposts, replyTo, quotePostId, attachedListData(), pollData,
       );
       // Chain thread continuation posts as replies to the previous post
       for (const threadContent of threadPosts.filter(p => p.trim())) {
@@ -674,7 +674,7 @@ export function NewPost() {
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: 0 }}
             dangerouslySetInnerHTML={{
               __html: content
-                ? buildHighlightedHtml(content, users, selectedGames[0] ?? null)
+                ? buildHighlightedHtml(content, users, selectedGames[0] ?? null, selectedGroup ? [selectedGroup] : [])
                 : '<span style="color:var(--muted-foreground)">What\'s on your mind? @mention people or games, #game to tag</span>',
             }}
           />
@@ -849,53 +849,76 @@ export function NewPost() {
         })()}
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1 pt-3 border-t border-border mt-2" role="toolbar" aria-label="Post formatting options">
-          <button
-            type="button"
-            onClick={() => setShowImageUpload(!showImageUpload)}
-            className={`p-2 rounded-lg transition-colors ${showImageUpload ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            aria-label="Add image"
-            aria-pressed={showImageUpload}
-          >
-            <ImageIcon className="w-5 h-5" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowLinkInput(!showLinkInput)}
-            className={`p-2 rounded-lg transition-colors ${showLinkInput ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            aria-label="Add link"
-            aria-pressed={showLinkInput}
-          >
-            <LinkIcon className="w-5 h-5" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowGamePicker(!showGamePicker)}
-            className={`p-2 rounded-lg transition-colors ${(showGamePicker || selectedGames.length > 0) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            aria-label="Tag a game"
-            aria-pressed={showGamePicker || selectedGames.length > 0}
-          >
-            <Gamepad2 className="w-5 h-5" aria-hidden="true" />
-          </button>
-          {(contextGroups as any[]).length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowGroupPicker(v => !v)}
-              className={`p-2 rounded-lg transition-colors ${(showGroupPicker || selectedGroup) ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-              aria-label="Tag a group"
-              aria-pressed={showGroupPicker || !!selectedGroup}
-            >
-              <Users className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowListPicker(v => !v)}
-            className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            aria-label="Attach a game list"
-          >
-            <LayoutList className="w-5 h-5" aria-hidden="true" />
-          </button>
+        {/* togglePanel: opens a panel if none is open, closes if same, ignores if different open */}
+        {(() => {
+          const togglePanel = (p: typeof openPanel) => {
+            if (openPanel === p) setOpenPanel(null);
+            else if (openPanel === null) setOpenPanel(p);
+            // else: blocked — a different panel is open
+          };
+          const blocked = (p: typeof openPanel) => openPanel !== null && openPanel !== p;
+          return (
+            <div className="flex items-center gap-1 pt-3 border-t border-border mt-2" role="toolbar" aria-label="Post formatting options">
+              <button
+                type="button"
+                onClick={() => togglePanel('image')}
+                disabled={blocked('image')}
+                className={`p-2 rounded-lg transition-colors ${openPanel === 'image' || imageUrl ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                aria-label="Add image"
+                aria-pressed={openPanel === 'image'}
+              >
+                <ImageIcon className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => togglePanel('link')}
+                disabled={blocked('link')}
+                className={`p-2 rounded-lg transition-colors ${openPanel === 'link' || linkUrl ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                aria-label="Add link"
+                aria-pressed={openPanel === 'link'}
+              >
+                <LinkIcon className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => togglePanel('game')}
+                disabled={blocked('game')}
+                className={`p-2 rounded-lg transition-colors ${(openPanel === 'game' || selectedGames.length > 0) ? 'bg-primary/20 text-primary' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                aria-label="Tag a game"
+                aria-pressed={openPanel === 'game' || selectedGames.length > 0}
+              >
+                <Gamepad2 className="w-5 h-5" aria-hidden="true" />
+              </button>
+              {(contextGroups as any[]).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => togglePanel('group')}
+                  disabled={blocked('group')}
+                  className={`p-2 rounded-lg transition-colors ${(openPanel === 'group' || selectedGroup) ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                  aria-label="Tag a group"
+                  aria-pressed={openPanel === 'group' || !!selectedGroup}
+                >
+                  <Users className="w-5 h-5" aria-hidden="true" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => togglePanel('list')}
+                disabled={blocked('list')}
+                className={`p-2 rounded-lg transition-colors ${(openPanel === 'list' || pickedListType) ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                aria-label="Attach a game list"
+              >
+                <LayoutList className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => togglePanel('poll')}
+                disabled={blocked('poll')}
+                className={`p-2 rounded-lg transition-colors ${openPanel === 'poll' ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                aria-label="Create a poll"
+              >
+                <BarChart2 className="w-5 h-5" aria-hidden="true" />
+              </button>
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}
           </span>
@@ -925,127 +948,126 @@ export function NewPost() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+            </div>
+          );
+        })()}
 
-        {/* Image upload */}
-        {showImageUpload && (
-          <div className="mt-3">
-            <ImageUpload
-              onUpload={(url) => { setImageUrl(url); setShowAltInput(true); setError(''); }}
-              onRemove={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); setError(''); }}
-              existingUrl={imageUrl}
-              accept="image/*,video/*"
-              maxSizeMB={50}
-              bucketType="post"
-              onUploadingChange={setIsImageUploading}
-            />
-            {/* ALT text badge + input — shown once an image is uploaded */}
-            {imageUrl && (
-              <div className="mt-2">
-                {!showAltInput ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAltInput(true)}
-                    aria-label="Add alt text to image"
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border transition-colors ${imageAlt.trim() ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-accent/40'}`}
-                  >
-                    <span>ALT</span>
-                    {imageAlt.trim() && <span className="max-w-[120px] truncate ml-1 font-normal opacity-80">{imageAlt}</span>}
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground shrink-0">ALT</span>
-                    <input
-                      type="text"
-                      value={imageAlt}
-                      onChange={e => setImageAlt(e.target.value)}
-                      onBlur={() => setShowAltInput(false)}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setShowAltInput(false); }}
-                      placeholder="Describe this image for screen readers…"
-                      maxLength={500}
-                      autoFocus
-                      aria-label="Image alt text"
-                      className="flex-1 bg-secondary/60 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-accent text-xs"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+        {/* ── Attachment Trays — only one open at a time ── */}
+
+        {/* Image tray */}
+        {openPanel === 'image' && (
+          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <span className="text-sm font-semibold flex items-center gap-1.5"><ImageIcon className="w-4 h-4" /> Photo / Video</span>
+              <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-3">
+              <ImageUpload
+                onUpload={(url) => { setImageUrl(url); setShowAltInput(true); setError(''); setOpenPanel(null); }}
+                onRemove={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); setError(''); }}
+                existingUrl={imageUrl}
+                accept="image/*,video/*"
+                maxSizeMB={10}
+                bucketType="post"
+                onUploadingChange={setIsImageUploading}
+              />
+              {imageUrl && (
+                <div className="mt-2">
+                  {!showAltInput ? (
+                    <button type="button" onClick={() => setShowAltInput(true)} aria-label="Add alt text to image"
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border transition-colors ${imageAlt.trim() ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-accent/40'}`}>
+                      <span>ALT</span>
+                      {imageAlt.trim() && <span className="max-w-[120px] truncate ml-1 font-normal opacity-80">{imageAlt}</span>}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground shrink-0">ALT</span>
+                      <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)}
+                        onBlur={() => setShowAltInput(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setShowAltInput(false); }}
+                        placeholder="Describe this image for screen readers…" maxLength={500} autoFocus aria-label="Image alt text"
+                        className="flex-1 bg-secondary/60 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-accent text-xs" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Link input */}
-        {showLinkInput && (
-          <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
-            <label className="text-sm font-medium mb-2 block">Link URL</label>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') setShowLinkInput(false); }}
+        {/* Image attached chip (when tray closed but image exists) */}
+        {imageUrl && openPanel !== 'image' && (
+          <div className="mt-3 flex items-center gap-2 p-2 bg-secondary/40 rounded-lg">
+            <img src={imageUrl} alt={imageAlt || ''} className="w-10 h-10 object-cover rounded shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Image attached</p>
+              {imageAlt && <p className="text-xs truncate text-foreground/70">{imageAlt}</p>}
+            </div>
+            <button type="button" onClick={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); }} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
+
+        {/* Link tray */}
+        {openPanel === 'link' && (
+          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <span className="text-sm font-semibold flex items-center gap-1.5"><LinkIcon className="w-4 h-4" /> Add Link</span>
+              <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-3 flex gap-2">
+              <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && linkUrl.trim()) setOpenPanel(null); }}
                 placeholder="https://example.com"
-                className="flex-1 bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
-                autoFocus
-              />
-              <button
-                onClick={() => setShowLinkInput(false)}
-                disabled={!linkUrl.trim()}
-                className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-40"
-              >
+                className="flex-1 bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm" autoFocus />
+              <button onClick={() => setOpenPanel(null)} disabled={!linkUrl.trim()}
+                className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-40">
                 Add
               </button>
             </div>
           </div>
         )}
 
-        {/* Game picker */}
-        {showGamePicker && (
-          <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
-            <label className="text-sm font-medium mb-2 block">Tag a game</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={gameQuery}
-                onChange={(e) => handleGameSearch(e.target.value)}
-                placeholder="Search for a game..."
-                className="w-full pl-9 pr-3 py-2 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
-                autoFocus
-              />
+        {/* Game tray */}
+        {openPanel === 'game' && (
+          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <span className="text-sm font-semibold flex items-center gap-1.5"><Gamepad2 className="w-4 h-4" /> Tag a Game</span>
+              <button type="button" onClick={() => { setOpenPanel(null); setGameQuery(''); setGameResults([]); }} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
-            {isSearchingGames && (
-              <p className="text-xs text-muted-foreground mt-2">Searching...</p>
-            )}
-            {gameResults.length > 0 && (
-              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-                {gameResults.map((game: any, i) => (
-                  <button
-                    key={game.id ?? i}
-                    onClick={() => handleSelectGame(game)}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-sm flex items-center gap-2"
-                  >
-                    <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span>{game.title}</span>
-                    {game.year && <span className="text-muted-foreground text-xs ml-auto">{game.year}</span>}
-                  </button>
-                ))}
+            <div className="p-3">
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="text" value={gameQuery} onChange={(e) => handleGameSearch(e.target.value)}
+                  placeholder="Search for a game…"
+                  className="w-full pl-9 pr-3 py-2 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm" autoFocus />
               </div>
-            )}
+              {isSearchingGames && <p className="text-xs text-muted-foreground">Searching…</p>}
+              {gameResults.length > 0 && (
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {gameResults.map((game: any, i) => (
+                    <button key={game.id ?? i} onClick={() => { handleSelectGame(game); setOpenPanel(null); setGameQuery(''); setGameResults([]); }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-sm flex items-center gap-2">
+                      <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>{game.title}</span>
+                      {game.year && <span className="text-muted-foreground text-xs ml-auto">{game.year}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Group picker */}
-        {showGroupPicker && (
-          <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
-            <label className="text-sm font-medium mb-2 block">Post to a group</label>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
+        {/* Group tray */}
+        {openPanel === 'group' && (
+          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <span className="text-sm font-semibold flex items-center gap-1.5"><Users className="w-4 h-4" /> Post to Group</span>
+              <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-3 space-y-1 max-h-48 overflow-y-auto">
               {(contextGroups as any[]).map((group: any) => (
-                <button
-                  key={group.id}
-                  onClick={() => { setSelectedGroup({ id: group.id, name: group.name }); setShowGroupPicker(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 ${selectedGroup?.id === group.id ? 'bg-accent/20 text-accent' : 'hover:bg-secondary'}`}
-                >
+                <button key={group.id} onClick={() => { setSelectedGroup({ id: group.id, name: group.name }); setOpenPanel(null); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 ${selectedGroup?.id === group.id ? 'bg-accent/20 text-accent' : 'hover:bg-secondary'}`}>
                   <Users className="w-4 h-4 shrink-0 text-muted-foreground" />
                   <span>{group.name}</span>
                 </button>
@@ -1054,11 +1076,14 @@ export function NewPost() {
           </div>
         )}
 
-        {/* List picker inline panel */}
-        {showListPicker && (
-          <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
-            <label className="text-sm font-medium mb-2 block">Attach a Game List</label>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
+        {/* List tray */}
+        {openPanel === 'list' && (
+          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <span className="text-sm font-semibold flex items-center gap-1.5"><LayoutList className="w-4 h-4" /> Attach Game List</span>
+              <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-3 space-y-1 max-h-48 overflow-y-auto">
               {Object.entries(LIST_LABELS).map(([type, label]) => {
                 const listKey = LIST_KEY_MAP[type] ?? type;
                 const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
@@ -1068,24 +1093,13 @@ export function NewPost() {
                   g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
                 ).filter(Boolean);
                 return (
-                  <button
-                    key={type}
-                    onClick={() => {
-                      setPickedListType(type);
-                      setPickedListUserId(currentUser?.id ?? '');
-                      setShowListPicker(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${
-                      pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'
-                    }`}
-                  >
+                  <button key={type} onClick={() => { setPickedListType(type); setPickedListUserId(currentUser?.id ?? ''); setOpenPanel(null); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'}`}>
                     <div className="flex gap-0.5 shrink-0">
                       {covers.length > 0 ? covers.map((c, i) => (
                         <img key={i} src={c} alt="" className="w-6 h-9 object-cover rounded" />
                       )) : (
-                        <div className="w-6 h-9 rounded bg-secondary flex items-center justify-center">
-                          <Gamepad2 className="w-3 h-3 text-muted-foreground" />
-                        </div>
+                        <div className="w-6 h-9 rounded bg-secondary flex items-center justify-center"><Gamepad2 className="w-3 h-3 text-muted-foreground" /></div>
                       )}
                     </div>
                     <div className="min-w-0">
@@ -1095,6 +1109,48 @@ export function NewPost() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Poll tray */}
+        {openPanel === 'poll' && (
+          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <span className="text-sm font-semibold flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> Create Poll</span>
+              <button type="button" onClick={() => { setOpenPanel(null); setPollOptions(['', '']); setPollEndDate(''); }} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-3 space-y-2">
+              {pollOptions.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="text" value={opt} onChange={e => { const o = [...pollOptions]; o[i] = e.target.value; setPollOptions(o); }}
+                    placeholder={`Option ${i + 1}${i < 2 ? ' (required)' : ''}`}
+                    maxLength={80}
+                    className="flex-1 bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                    autoFocus={i === 0} />
+                  {pollOptions.length > 2 && (
+                    <button type="button" onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 4 && (
+                <button type="button" onClick={() => setPollOptions(prev => [...prev, ''])}
+                  className="flex items-center gap-1.5 text-sm text-accent hover:text-accent/80 transition-colors">
+                  <Plus className="w-4 h-4" /> Add option
+                </button>
+              )}
+              <div className="pt-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Poll ends</label>
+                <input type="datetime-local" value={pollEndDate} onChange={e => setPollEndDate(e.target.value)}
+                  min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                  className="w-full bg-background px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm" />
+              </div>
+              <button type="button"
+                disabled={pollOptions.filter(o => o.trim()).length < 2 || !pollEndDate}
+                onClick={() => setOpenPanel(null)}
+                className="w-full py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-40">
+                Set Poll
+              </button>
             </div>
           </div>
         )}
