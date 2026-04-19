@@ -13,7 +13,8 @@ export function NotificationsSettings() {
   });
   const [dmEmailEnabled, setDmEmailEnabled] = useState(() => {
     const saved = localStorage.getItem('forge-dm-email-notifications');
-    return saved !== 'false';
+    if (saved !== null) return saved !== 'false';
+    return currentUser?.dm_email_notifications !== false;
   });
   const [emailNotifications, setEmailNotifications] = useState<'off' | 'weekly' | 'all'>(() => {
     const saved = currentUser?.email_notifications;
@@ -27,6 +28,7 @@ export function NotificationsSettings() {
 
   useEffect(() => {
     localStorage.setItem('forge-dm-email-notifications', String(dmEmailEnabled));
+    updateCurrentUser({ dm_email_notifications: dmEmailEnabled } as any).catch(() => {});
   }, [dmEmailEnabled]);
 
   const handleEmailNotificationsChange = async (value: 'off' | 'weekly' | 'all') => {
