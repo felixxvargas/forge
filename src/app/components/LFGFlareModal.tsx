@@ -28,7 +28,7 @@ const EXPIRY_OPTIONS = [
 ];
 
 export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, prefilledCommunity, onCreated }: LFGFlareModalProps) {
-  const { session, createPost } = useAppData() as any;
+  const { session, createPost, currentUser } = useAppData() as any;
 
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
@@ -239,8 +239,19 @@ export function LFGFlareModal({ isOpen, onClose, prefilledGame, prefilledType, p
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {s === 'personal' ? <Flame className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
-                  {s === 'personal' ? 'Personal' : 'Group Flare'}
+                  {s === 'personal' ? (
+                    (() => {
+                      const pic = currentUser?.profile_picture ?? currentUser?.profilePicture;
+                      return pic ? (
+                        <img src={pic} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0 text-[9px] font-bold">
+                          {(currentUser?.display_name || currentUser?.handle || '?').charAt(0).toUpperCase()}
+                        </div>
+                      );
+                    })()
+                  ) : <Users className="w-3.5 h-3.5" />}
+                  {s === 'personal' ? 'My Profile' : 'My Groups'}
                 </button>
               ))}
             </div>

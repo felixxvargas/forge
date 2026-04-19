@@ -5,7 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GroupIcon } from '../components/GroupIcon';
-import { LFGFlareModal } from '../components/LFGFlareModal';
+
 import { gamesAPI } from '../utils/api';
 import { groups as groupsAPI, profiles as profilesAPI, lfgFlares as flaresAPI, posts as postsAPI } from '../utils/supabase';
 
@@ -55,7 +55,7 @@ export function CommunityDetail() {
   // Group flares
   const [groupFlares, setGroupFlares] = useState<any[]>([]);
   const [loadingFlares, setLoadingFlares] = useState(false);
-  const [showFlareModal, setShowFlareModal] = useState(false);
+
 
   // Community games
   const [communityGames, setCommunityGames] = useState<any[]>([]);
@@ -552,7 +552,7 @@ export function CommunityDetail() {
             </div>
             {isAdmin && (
               <button
-                onClick={() => setShowFlareModal(true)}
+                onClick={() => navigate(`/create-flare?communityId=${communityId}&communityName=${encodeURIComponent(community?.name ?? '')}`)}
                 className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -620,14 +620,6 @@ export function CommunityDetail() {
             </div>
           </div>
         )}
-
-        {/* Flare Modal */}
-        <LFGFlareModal
-          isOpen={showFlareModal}
-          onClose={() => setShowFlareModal(false)}
-          prefilledCommunity={community ? { id: communityId!, name: community.name } : undefined}
-          onCreated={(flare) => setGroupFlares(prev => [flare, ...prev])}
-        />
 
         {/* Group Feed */}
         <div className="px-4 py-6">

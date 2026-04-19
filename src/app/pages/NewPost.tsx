@@ -881,7 +881,7 @@ export function NewPost() {
           )}
           <button
             type="button"
-            onClick={() => setShowListPicker(true)}
+            onClick={() => setShowListPicker(v => !v)}
             className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
             aria-label="Attach a game list"
           >
@@ -1044,6 +1044,51 @@ export function NewPost() {
           </div>
         )}
 
+        {/* List picker inline panel */}
+        {showListPicker && (
+          <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
+            <label className="text-sm font-medium mb-2 block">Attach a Game List</label>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {Object.entries(LIST_LABELS).map(([type, label]) => {
+                const listKey = LIST_KEY_MAP[type] ?? type;
+                const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
+                const games: any[] = gameLists[listKey] ?? [];
+                if (games.length === 0) return null;
+                const covers = games.slice(0, 3).map((g: any) =>
+                  g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+                ).filter(Boolean);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setPickedListType(type);
+                      setPickedListUserId(currentUser?.id ?? '');
+                      setShowListPicker(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${
+                      pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'
+                    }`}
+                  >
+                    <div className="flex gap-0.5 shrink-0">
+                      {covers.length > 0 ? covers.map((c, i) => (
+                        <img key={i} src={c} alt="" className="w-6 h-9 object-cover rounded" />
+                      )) : (
+                        <div className="w-6 h-9 rounded bg-secondary flex items-center justify-center">
+                          <Gamepad2 className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{label}</p>
+                      <p className="text-xs text-muted-foreground">{games.length} games</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Selected game tags */}
         {selectedGames.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1129,59 +1174,6 @@ export function NewPost() {
         </div>
       )}
 
-      {/* List picker tray */}
-      {showListPicker && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
-          onClick={() => setShowListPicker(false)}
-        >
-          <div
-            className="w-full max-w-lg bg-card rounded-t-2xl p-4 pb-8"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
-            <h3 className="font-semibold mb-3 text-center">Attach a Game List</h3>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {Object.entries(LIST_LABELS).map(([type, label]) => {
-                const listKey = LIST_KEY_MAP[type] ?? type;
-                const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
-                const games: any[] = gameLists[listKey] ?? [];
-                if (games.length === 0) return null;
-                const covers = games.slice(0, 4).map((g: any) =>
-                  g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
-                ).filter(Boolean);
-                return (
-                  <button
-                    key={type}
-                    onClick={() => {
-                      setPickedListType(type);
-                      setPickedListUserId(currentUser?.id ?? '');
-                      setShowListPicker(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${
-                      pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'
-                    }`}
-                  >
-                    <div className="flex gap-0.5 shrink-0">
-                      {covers.length > 0 ? covers.slice(0, 3).map((c, i) => (
-                        <img key={i} src={c} alt="" className="w-7 h-10 object-cover rounded" />
-                      )) : (
-                        <div className="w-7 h-10 rounded bg-secondary flex items-center justify-center">
-                          <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{label}</p>
-                      <p className="text-xs text-muted-foreground">{games.length} games</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Cancel confirmation dialog */}
       {showCancelConfirm && (

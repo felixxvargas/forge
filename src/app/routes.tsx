@@ -53,6 +53,7 @@ const ResetPassword         = lazy(() => import('./pages/ResetPassword').then(m 
 const BlueskyCallback       = lazy(() => import('./pages/BlueskyCallback').then(m => ({ default: m.BlueskyCallback })));
 const MastodonCallback      = lazy(() => import('./pages/MastodonCallback').then(m => ({ default: m.MastodonCallback })));
 const SocialClaimAccount    = lazy(() => import('./pages/SocialClaimAccount').then(m => ({ default: m.SocialClaimAccount })));
+const CreateLFGFlarePage    = lazy(() => import('./pages/CreateLFGFlarePage').then(m => ({ default: m.CreateLFGFlarePage })));
 
 export const router = createBrowserRouter([
   { path: '/login',                    element: <Login />,              errorElement: <ErrorBoundary /> },
@@ -108,6 +109,7 @@ export const router = createBrowserRouter([
       { path: 'trending-games',        element: <TrendingGames />,           errorElement: <ErrorBoundary /> },
       { path: 'flare/:flareId',        element: <FlareDetail />,             errorElement: <ErrorBoundary /> },
       { path: 'flares/:userId',        element: <UserFlares />,              errorElement: <ErrorBoundary /> },
+      { path: 'create-flare',          element: <CreateLFGFlarePage />,      errorElement: <ErrorBoundary /> },
       { path: 'privacy',              element: <PrivacyPolicy />,            errorElement: <ErrorBoundary /> },
       { path: 'terms',                element: <TermsOfService />,           errorElement: <ErrorBoundary /> },
       { path: 'privacy-security',     element: <PrivacySettings />,          errorElement: <ErrorBoundary /> },

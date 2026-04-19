@@ -5,7 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
-import { LFGFlareModal } from '../components/LFGFlareModal';
+
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
 import { toast } from 'sonner';
 import type { LFGFlare } from '../utils/supabase';
@@ -64,8 +64,6 @@ export function GameDetail() {
   const [myFlare, setMyFlare] = useState<LFGFlare | null>(null);
   const [gameFlares, setGameFlares] = useState<LFGFlare[]>([]);
   const [loadingFlares, setLoadingFlares] = useState(false);
-  const [showLFGModal, setShowLFGModal] = useState(false);
-  const [lfgModalType, setLfgModalType] = useState<'lfg' | 'lfm'>('lfg');
 
   useEffect(() => {
     if (!gameId) return;
@@ -560,7 +558,7 @@ export function GameDetail() {
                 </div>
               ) : (
                 <button
-                  onClick={() => { setLfgModalType('lfg'); setShowLFGModal(true); }}
+                  onClick={() => navigate(`/create-flare?type=lfg&gameId=${gameId}&gameTitle=${encodeURIComponent(game?.title ?? '')}`)}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
                 >
                   <Flame className="w-4 h-4" />
@@ -855,19 +853,7 @@ export function GameDetail() {
         </div>
       )}
 
-      {/* LFG Flare Modal */}
-      {game && (
-        <LFGFlareModal
-          isOpen={showLFGModal}
-          onClose={() => setShowLFGModal(false)}
-          prefilledGame={{ id: gameId!, title: game.title }}
-          prefilledType={lfgModalType}
-          onCreated={flare => {
-            setMyFlare(flare);
-            setGameFlares(prev => [{ ...flare, user: currentUser } as any, ...prev]);
-          }}
-        />
-      )}
+
     </div>
   );
 }

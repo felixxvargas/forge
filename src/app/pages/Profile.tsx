@@ -19,7 +19,7 @@ import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
 import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
-import { LFGFlareModal } from '../components/LFGFlareModal';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +109,7 @@ export function Profile() {
 
   // LFG Flare state
   const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
-  const [showLFGFlareModal, setShowLFGFlareModal] = useState(false);
+
 
   // Always scroll to top when the profile page loads or the target user changes
   useEffect(() => {
@@ -964,7 +964,7 @@ export function Profile() {
         {isOwnProfile && (
           <div className="px-4 mb-3">
             <button
-              onClick={() => setShowLFGFlareModal(true)}
+              onClick={() => navigate('/create-flare')}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
             >
               <Flame className="w-4 h-4" />
@@ -1757,13 +1757,6 @@ export function Profile() {
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         user={profileUser}
-      />
-
-      {/* LFG Flare Modal */}
-      <LFGFlareModal
-        isOpen={showLFGFlareModal}
-        onClose={() => setShowLFGFlareModal(false)}
-        onCreated={flare => setActiveFlares(prev => [flare, ...prev])}
       />
 
       {/* Report Modal */}
