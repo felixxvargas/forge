@@ -41,6 +41,7 @@ export function CommunityDetail() {
   const [memberActionLoading, setMemberActionLoading] = useState<string | null>(null);
   const [groupImageUrl, setGroupImageUrl] = useState<string | null>(community?.profile_picture ?? null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(community?.name ?? '');
@@ -144,13 +145,19 @@ export function CommunityDetail() {
   const handleGroupImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !communityId) return;
+    setImageUploadError('');
+    if (file.size > 5 * 1024 * 1024) {
+      setImageUploadError('Image must be 5 MB or less.');
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      return;
+    }
     setUploadingImage(true);
     try {
       const url = await groupsAPI.updateGroupImage(communityId, file);
       setGroupImageUrl(url);
       await refreshGroups();
     } catch (err: any) {
-      alert(err.message || 'Failed to upload image.');
+      setImageUploadError(err.message || 'Failed to upload image. Please try again.');
     } finally {
       setUploadingImage(false);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -704,13 +711,17 @@ export function CommunityDetail() {
                   </div>
                 )}
                 <button
-                  onClick={() => imageInputRef.current?.click()}
+                  onClick={() => { setImageUploadError(''); imageInputRef.current?.click(); }}
                   disabled={uploadingImage}
                   className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
                 >
                   {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                   {uploadingImage ? 'Uploading…' : 'Change Photo'}
                 </button>
+                <p className="text-xs text-muted-foreground">Max 5 MB</p>
+                {imageUploadError && (
+                  <p className="text-xs text-destructive text-center">{imageUploadError}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Group Name</label>

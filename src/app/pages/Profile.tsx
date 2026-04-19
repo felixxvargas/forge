@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -109,6 +109,9 @@ export function Profile() {
 
   // LFG Flare state
   const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
+
+  // Local override for displayed_communities (About tab group visibility toggles)
+  const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
 
 
   // Always scroll to top when the profile page loads or the target user changes
@@ -234,18 +237,38 @@ export function Profile() {
       <div className="min-h-screen pb-20">
         <Header />
         <div className="w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
-          {/* Avatar + name */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-20 h-20 rounded-full bg-muted/50 shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-muted/50 rounded w-36" />
-              <div className="h-3 bg-muted/30 rounded w-24" />
+          {/* Avatar + name + edit button row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
+              <div className="space-y-2">
+                <div className="h-5 bg-muted/50 rounded w-32" />
+                <div className="h-3.5 bg-muted/30 rounded w-20" />
+              </div>
             </div>
+            <div className="w-9 h-9 rounded-lg bg-muted/30" />
           </div>
           {/* Bio */}
-          <div className="space-y-2 mb-6">
-            <div className="h-3 bg-muted/40 rounded w-full" />
-            <div className="h-3 bg-muted/40 rounded w-4/5" />
+          <div className="space-y-2 mb-4">
+            <div className="h-3.5 bg-muted/40 rounded w-full" />
+            <div className="h-3.5 bg-muted/40 rounded w-3/4" />
+          </div>
+          {/* Stats row */}
+          <div className="flex items-center gap-6 mb-5">
+            <div className="space-y-1">
+              <div className="h-5 bg-muted/50 rounded w-10" />
+              <div className="h-3 bg-muted/30 rounded w-16" />
+            </div>
+            <div className="space-y-1">
+              <div className="h-5 bg-muted/50 rounded w-10" />
+              <div className="h-3 bg-muted/30 rounded w-16" />
+            </div>
+          </div>
+          {/* Tabs bar */}
+          <div className="flex gap-1 border-b border-border/50 mb-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-9 bg-muted/30 rounded-t w-16 mr-1" />
+            ))}
           </div>
           {/* Post skeletons */}
           {Array.from({ length: 3 }).map((_, i) => (
@@ -253,6 +276,7 @@ export function Profile() {
               <div className="flex gap-3">
                 <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
                 <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-3 bg-muted/40 rounded w-28" />
                   <div className="h-3 bg-muted/40 rounded w-full" />
                   <div className="h-3 bg-muted/30 rounded w-3/4" />
                 </div>
@@ -1689,6 +1713,79 @@ export function Profile() {
                             {link.title && <p className="text-xs text-muted-foreground truncate">{domain}</p>}
                           </div>
                         </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Groups */}
+            {profileUser.communities && profileUser.communities.length > 0 && (() => {
+              const rawDisplayIds = localDisplayedIds !== undefined
+                ? localDisplayedIds
+                : (profileUser.displayed_communities ?? (profileUser as any).displayedCommunities ?? null);
+
+              const toggleGroupVisibility = async (communityId: string) => {
+                const allIds = profileUser.communities!.map((m: any) => m.community_id);
+                const currentShown = rawDisplayIds ?? allIds;
+                const isShown = currentShown.includes(communityId);
+                const newIds = isShown
+                  ? currentShown.filter((id: string) => id !== communityId)
+                  : [...currentShown, communityId];
+                setLocalDisplayedIds(newIds);
+                try {
+                  await updateCurrentUser({ displayed_communities: newIds } as any);
+                } catch {}
+              };
+
+              return (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Groups</h3>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {profileUser.communities.map((membership: any) => {
+                      const group = groups.find((g: any) => g.id === membership.community_id);
+                      if (!group) return null;
+                      const allIds = profileUser.communities!.map((m: any) => m.community_id);
+                      const currentShown = rawDisplayIds ?? allIds;
+                      const isVisible = currentShown.includes(membership.community_id);
+                      return (
+                        <div
+                          key={membership.community_id}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <button
+                            onClick={() => navigate(`/group/${group.id}`)}
+                            className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
+                          >
+                            {group.profile_picture ? (
+                              <img src={group.profile_picture} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                <Users className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                            )}
+                            <span className="truncate font-medium">{group.name}</span>
+                            {membership.role === 'creator' && (
+                              <Crown className="w-3.5 h-3.5 text-accent shrink-0" />
+                            )}
+                            {membership.role === 'moderator' && (
+                              <Shield className="w-3.5 h-3.5 text-accent shrink-0" />
+                            )}
+                          </button>
+                          {isOwnProfile && (
+                            <button
+                              onClick={() => toggleGroupVisibility(membership.community_id)}
+                              title={isVisible ? 'Hide from profile' : 'Show on profile'}
+                              className={`p-2 rounded-lg transition-colors shrink-0 ${isVisible ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/40 hover:text-muted-foreground'}`}
+                            >
+                              {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                            </button>
+                          )}
+                        </div>
                       );
                     })}
                   </div>

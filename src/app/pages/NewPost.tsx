@@ -105,6 +105,7 @@ export function NewPost() {
   const [threadPosts, setThreadPosts] = useState<string[]>([]);
   const [viewportBottom, setViewportBottom] = useState(0);
   const [error, setError] = useState('');
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
   const [atGameResults, setAtGameResults] = useState<any[]>([]);
   const [atGroupResults, setAtGroupResults] = useState<any[]>([]);
@@ -482,6 +483,14 @@ export function NewPost() {
 
   const handleSubmit = async () => {
     if (!content.trim() || isPosting) return;
+    if (isImageUploading) {
+      setError('Please wait for your image to finish uploading.');
+      return;
+    }
+    if (showImageUpload && !imageUrl) {
+      setError('Your image failed to upload. Please try again or remove the image to post without it.');
+      return;
+    }
     setIsPosting(true);
     setError('');
     try {
@@ -922,12 +931,13 @@ export function NewPost() {
         {showImageUpload && (
           <div className="mt-3">
             <ImageUpload
-              onUpload={(url) => { setImageUrl(url); setShowAltInput(true); }}
-              onRemove={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); }}
+              onUpload={(url) => { setImageUrl(url); setShowAltInput(true); setError(''); }}
+              onRemove={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); setError(''); }}
               existingUrl={imageUrl}
               accept="image/*,video/*"
               maxSizeMB={50}
               bucketType="post"
+              onUploadingChange={setIsImageUploading}
             />
             {/* ALT text badge + input — shown once an image is uploaded */}
             {imageUrl && (
