@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';
-import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut, Flame } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut, Flame, Check, CheckCheck } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
-import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase } from '../utils/supabase';
+import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase, dmReactionsAPI, groupReactionsAPI } from '../utils/supabase';
 import { initEncryptionKeys, getMyPublicKeyJwk, encryptMessage, decryptMessage } from '../utils/crypto';
+
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 interface DmMessage {
   id: string;
@@ -13,7 +15,10 @@ interface DmMessage {
   recipient_id: string;
   content: string;
   created_at: string;
+  read_at?: string | null;
+  deleted?: boolean;
   sender?: any;
+  _plaintext?: string;
 }
 
 interface GroupMessage {
@@ -22,8 +27,11 @@ interface GroupMessage {
   sender_id: string;
   content: string;
   created_at: string;
+  deleted?: boolean;
   sender?: any;
 }
+
+type ReactionMap = Record<string, { emoji: string; userIds: string[] }[]>;
 
 export function Messages() {
   const { currentUser } = useAppData();
@@ -71,6 +79,22 @@ export function Messages() {
   const [selectedComposeUsers, setSelectedComposeUsers] = useState<any[]>([]);
   const [groupName, setGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+
+  // Typing indicator
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const typingChannelRef = useRef<any>(null);
+  const partnerTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const myTypingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Message context menu (reactions + delete)
+  const [messageMenuId, setMessageMenuId] = useState<string | null>(null);
+  const [menuIsGroup, setMenuIsGroup] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressMoved = useRef(false);
+
+  // Emoji reactions: messageId → [{emoji, userIds[]}]
+  const [dmReactions, setDmReactions] = useState<ReactionMap>({});
+  const [groupReactions, setGroupReactions] = useState<ReactionMap>({});
 
   const composeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addPeopleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,7 +241,7 @@ export function Messages() {
     return () => { supabase.removeChannel(channel); };
   }, [currentUser?.id, selectedPartnerId]);
 
-  // Real-time group messages
+  // Real-time group messages (INSERT + UPDATE for deletes)
   useEffect(() => {
     if (!selectedGroupThread) return;
     const channel = supabase
@@ -229,9 +253,89 @@ export function Messages() {
         const msg = payload.new as GroupMessage;
         if (msg.sender_id !== currentUser?.id) setGroupMessages(prev => [...prev, msg]);
       })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'group_messages',
+        filter: `thread_id=eq.${selectedGroupThread.id}`,
+      }, (payload) => {
+        const msg = payload.new as GroupMessage;
+        setGroupMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: msg.content, deleted: msg.deleted } : m));
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedGroupThread?.id, currentUser?.id]);
+
+  // Real-time DM read receipts — update read_at on my sent messages when partner reads them
+  useEffect(() => {
+    if (!currentUser?.id || !selectedPartnerId) return;
+    const channel = supabase
+      .channel(`dm-read-${currentUser.id}-${selectedPartnerId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'direct_messages',
+        filter: `sender_id=eq.${currentUser.id}`,
+      }, (payload) => {
+        const updated = payload.new as any;
+        if (updated.read_at) {
+          setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, read_at: updated.read_at } : m));
+        }
+        if (updated.deleted) {
+          setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, deleted: true, content: '' } : m));
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUser?.id, selectedPartnerId]);
+
+  // Mark incoming DMs as read when the conversation is open
+  useEffect(() => {
+    if (!currentUser?.id || !selectedPartnerId || messages.length === 0) return;
+    dmAPI.markRead(currentUser.id, selectedPartnerId).catch(() => {});
+  }, [currentUser?.id, selectedPartnerId, messages.length]);
+
+  // Typing broadcast channel — DM
+  useEffect(() => {
+    if (!currentUser?.id || !selectedPartnerId) { typingChannelRef.current = null; return; }
+    const name = `typing-${[currentUser.id, selectedPartnerId].sort().join('-')}`;
+    const ch = supabase.channel(name);
+    ch.on('broadcast', { event: 'typing' }, (payload: any) => {
+      if (payload.payload?.userId !== currentUser.id) {
+        setIsPartnerTyping(true);
+        if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
+        partnerTypingTimerRef.current = setTimeout(() => setIsPartnerTyping(false), 3000);
+      }
+    }).subscribe();
+    typingChannelRef.current = ch;
+    return () => { supabase.removeChannel(ch); typingChannelRef.current = null; setIsPartnerTyping(false); };
+  }, [currentUser?.id, selectedPartnerId]);
+
+  // Typing broadcast channel — Group
+  useEffect(() => {
+    if (!currentUser?.id || !selectedGroupThread) { typingChannelRef.current = null; return; }
+    const name = `typing-group-${selectedGroupThread.id}`;
+    const ch = supabase.channel(name);
+    ch.on('broadcast', { event: 'typing' }, (payload: any) => {
+      if (payload.payload?.userId !== currentUser.id) {
+        setIsPartnerTyping(true);
+        if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
+        partnerTypingTimerRef.current = setTimeout(() => setIsPartnerTyping(false), 3000);
+      }
+    }).subscribe();
+    typingChannelRef.current = ch;
+    return () => { supabase.removeChannel(ch); typingChannelRef.current = null; setIsPartnerTyping(false); };
+  }, [currentUser?.id, selectedGroupThread?.id]);
+
+  // Load DM reactions when messages change
+  useEffect(() => {
+    const ids = messages.map(m => m.id);
+    if (!ids.length) return;
+    dmReactionsAPI.getForMessages(ids).then(setDmReactions).catch(() => {});
+  }, [messages.length]);
+
+  // Load group reactions when group messages change
+  useEffect(() => {
+    const ids = groupMessages.map(m => m.id);
+    if (!ids.length) return;
+    groupReactionsAPI.getForMessages(ids).then(setGroupReactions).catch(() => {});
+  }, [groupMessages.length]);
 
   // Debounced compose search
   useEffect(() => {
@@ -289,6 +393,79 @@ export function Messages() {
     setComposeResults([]);
     setSelectedComposeUsers([]);
     setGroupName('');
+  };
+
+  // ── Typing broadcast ─────────────────────────────────────────
+  const broadcastTyping = useCallback(() => {
+    if (!typingChannelRef.current || !currentUser?.id) return;
+    typingChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId: currentUser.id } });
+  }, [currentUser?.id]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+    if (myTypingDebounceRef.current) clearTimeout(myTypingDebounceRef.current);
+    broadcastTyping();
+    // Throttle: don't spam, fire at most once every 2s
+    myTypingDebounceRef.current = setTimeout(() => {}, 2000);
+  };
+
+  // ── Long-press context menu ───────────────────────────────────
+  const startLongPress = (msgId: string, isGroup: boolean) => {
+    longPressMoved.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      if (!longPressMoved.current) {
+        setMessageMenuId(msgId);
+        setMenuIsGroup(isGroup);
+        if ('vibrate' in navigator) navigator.vibrate(30);
+      }
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  };
+
+  // ── Reactions ────────────────────────────────────────────────
+  const handleReaction = async (emoji: string) => {
+    if (!messageMenuId || !currentUser?.id) return;
+    const msgId = messageMenuId;
+    const isGroup = menuIsGroup;
+    setMessageMenuId(null);
+
+    const api = isGroup ? groupReactionsAPI : dmReactionsAPI;
+    const setReactions = isGroup ? setGroupReactions : setDmReactions;
+
+    try {
+      const result = await api.toggle(msgId, currentUser.id, emoji);
+      setReactions(prev => {
+        const existing = [...(prev[msgId] ?? [])];
+        if (result === 'added') {
+          const slot = existing.find(r => r.emoji === emoji);
+          if (slot) slot.userIds = [...slot.userIds, currentUser.id];
+          else existing.push({ emoji, userIds: [currentUser.id] });
+        } else {
+          const slot = existing.find(r => r.emoji === emoji);
+          if (slot) slot.userIds = slot.userIds.filter(id => id !== currentUser.id);
+        }
+        return { ...prev, [msgId]: existing.filter(r => r.userIds.length > 0) };
+      });
+    } catch { /* ignore */ }
+  };
+
+  // ── Delete message ───────────────────────────────────────────
+  const handleDeleteMessage = async () => {
+    if (!messageMenuId) return;
+    const msgId = messageMenuId;
+    const isGroup = menuIsGroup;
+    setMessageMenuId(null);
+    try {
+      if (isGroup) {
+        await groupAPI.deleteMessage(msgId);
+        setGroupMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted: true, content: '' } : m));
+      } else {
+        await dmAPI.deleteMessage(msgId);
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted: true, content: '' } : m));
+      }
+    } catch { /* ignore */ }
   };
 
   const handleSend = async () => {
@@ -528,44 +705,66 @@ export function Messages() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto min-h-0 w-full max-w-2xl mx-auto px-4 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto min-h-0 w-full max-w-2xl mx-auto px-4 py-4 space-y-1">
           {groupMessages.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
           {groupMessages.map((msg) => {
             const isMe = msg.sender_id === currentUser?.id;
             const sender = msg.sender || groupParticipants.find(p => p.id === msg.sender_id);
+            const msgReactions = groupReactions[msg.id] ?? [];
             return (
-              <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} group`}>
                 {!isMe && (
-                  <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="shrink-0 self-end">
-                    <ProfileAvatar
-                      username={sender?.display_name || sender?.handle || '?'}
-                      profilePicture={sender?.profile_picture ?? null}
-                      size="sm"
-                      userId={msg.sender_id}
-                    />
+                  <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="shrink-0 self-end mb-5">
+                    <ProfileAvatar username={sender?.display_name || sender?.handle || '?'} profilePicture={sender?.profile_picture ?? null} size="sm" userId={msg.sender_id} />
                   </button>
                 )}
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   {!isMe && sender && (
-                    <button
-                      onClick={() => navigate(`/profile/${msg.sender_id}`)}
-                      className="text-xs text-muted-foreground mb-1 hover:text-foreground transition-colors"
-                    >
+                    <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="text-xs text-muted-foreground mb-0.5 hover:text-foreground transition-colors">
                       {sender.display_name || sender.handle}
                     </button>
                   )}
-                  <div className={`rounded-2xl px-4 py-2 ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'}`}>
-                    <p className="text-sm">{(msg as any)._plaintext ?? msg.content}</p>
-                    <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
-                      {formatMessageTime(msg.created_at)}
-                    </p>
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 cursor-pointer select-none ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    onMouseDown={() => startLongPress(msg.id, true)}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
+                    onTouchStart={() => startLongPress(msg.id, true)}
+                    onTouchEnd={cancelLongPress}
+                    onTouchMove={() => { longPressMoved.current = true; cancelLongPress(); }}
+                  >
+                    {msg.deleted
+                      ? <p className={`text-sm italic ${isMe ? 'text-accent-foreground/50' : 'text-muted-foreground'}`}>Message deleted</p>
+                      : <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                    }
+                    <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/60' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
                   </div>
+                  {msgReactions.length > 0 && (
+                    <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {msgReactions.map(r => (
+                        <button key={r.emoji} onClick={() => { setMessageMenuId(msg.id); setMenuIsGroup(true); handleReaction(r.emoji); }}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${r.userIds.includes(currentUser?.id ?? '') ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-secondary border-border hover:bg-secondary/70'}`}>
+                          <span>{r.emoji}</span>
+                          <span className="font-medium">{r.userIds.length}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
+          {isPartnerTyping && (
+            <div className="flex gap-2 items-end">
+              <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-2xl w-16">
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -576,7 +775,7 @@ export function Messages() {
               type="text"
               placeholder="Type a message..."
               value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendGroupMessage()}
               className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm"
             />
@@ -684,6 +883,35 @@ export function Messages() {
             </div>
           </div>
         )}
+
+        {/* Context menu overlay — emoji reactions + delete */}
+        {messageMenuId && menuIsGroup && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center pb-24" onClick={() => setMessageMenuId(null)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative bg-card rounded-2xl shadow-xl p-3 mx-4 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-around mb-3">
+                {REACTION_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleReaction(emoji)}
+                    className="text-2xl hover:scale-125 transition-transform p-1 rounded-lg hover:bg-secondary"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {groupMessages.find(m => m.id === messageMenuId)?.sender_id === currentUser?.id && (
+                <button
+                  onClick={handleDeleteMessage}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Message
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -718,23 +946,65 @@ export function Messages() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 w-full max-w-2xl mx-auto px-4 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto min-h-0 w-full max-w-2xl mx-auto px-4 py-4 space-y-1">
           {messages.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
           {messages.map((msg) => {
             const isMe = msg.sender_id === currentUser?.id;
+            const msgReactions = dmReactions[msg.id] ?? [];
             return (
-              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'}`}>
-                  <p className="text-sm">{(msg as any)._plaintext ?? msg.content}</p>
-                  <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
-                    {formatMessageTime(msg.created_at)}
-                  </p>
+              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
+                <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 cursor-pointer select-none ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    onMouseDown={() => startLongPress(msg.id, false)}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
+                    onTouchStart={() => startLongPress(msg.id, false)}
+                    onTouchEnd={cancelLongPress}
+                    onTouchMove={() => { longPressMoved.current = true; cancelLongPress(); }}
+                  >
+                    {msg.deleted
+                      ? <p className={`text-sm italic ${isMe ? 'text-accent-foreground/50' : 'text-muted-foreground'}`}>Message deleted</p>
+                      : <p className="text-sm whitespace-pre-wrap break-words">{(msg as any)._plaintext ?? msg.content}</p>
+                    }
+                    <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <p className={`text-xs ${isMe ? 'text-accent-foreground/60' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
+                      {isMe && (
+                        <span className={`${msg.read_at ? 'text-accent-foreground/80' : 'text-accent-foreground/40'}`}>
+                          {msg.read_at ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {msgReactions.length > 0 && (
+                    <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {msgReactions.map(r => (
+                        <button
+                          key={r.emoji}
+                          onClick={() => { setMessageMenuId(msg.id); setMenuIsGroup(false); handleReaction(r.emoji); }}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${r.userIds.includes(currentUser?.id ?? '') ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-secondary border-border hover:bg-secondary/70'}`}
+                        >
+                          <span>{r.emoji}</span>
+                          <span className="font-medium">{r.userIds.length}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
+          {isPartnerTyping && (
+            <div className="flex gap-2 items-end">
+              <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-2xl w-16">
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -744,7 +1014,7 @@ export function Messages() {
               type="text"
               placeholder="Type a message..."
               value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
               className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm"
             />
@@ -757,6 +1027,35 @@ export function Messages() {
             </button>
           </div>
         </div>
+
+        {/* Context menu overlay — emoji reactions + delete */}
+        {messageMenuId && !menuIsGroup && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center pb-24" onClick={() => setMessageMenuId(null)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative bg-card rounded-2xl shadow-xl p-3 mx-4 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-around mb-3">
+                {REACTION_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleReaction(emoji)}
+                    className="text-2xl hover:scale-125 transition-transform p-1 rounded-lg hover:bg-secondary"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {messages.find(m => m.id === messageMenuId)?.sender_id === currentUser?.id && (
+                <button
+                  onClick={handleDeleteMessage}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Message
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

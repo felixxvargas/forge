@@ -1633,6 +1633,25 @@ export const directMessages = {
       .or(`and(sender_id.eq.${userId},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${userId})`);
     if (error) throw new Error(error.message);
   },
+
+  /** Soft-delete a single message the current user sent. */
+  async deleteMessage(messageId: string) {
+    const { error } = await supabase
+      .from('direct_messages')
+      .update({ content: '', deleted: true })
+      .eq('id', messageId);
+    if (error) throw new Error(error.message);
+  },
+
+  /** Mark all unread messages FROM partnerId TO userId as read. */
+  async markRead(userId: string, partnerId: string) {
+    await supabase
+      .from('direct_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('recipient_id', userId)
+      .eq('sender_id', partnerId)
+      .is('read_at', null);
+  },
 };
 
 // ============================================================
@@ -1743,6 +1762,14 @@ export const groupThreads = {
     const { error } = await supabase.from('group_threads').delete().eq('id', threadId);
     if (error) throw new Error(error.message);
   },
+
+  async deleteMessage(messageId: string) {
+    const { error } = await supabase
+      .from('group_messages')
+      .update({ content: '', deleted: true })
+      .eq('id', messageId);
+    if (error) throw new Error(error.message);
+  },
 };
 
 // ============================================================
@@ -1803,5 +1830,82 @@ export const pollAPI = {
       .eq('user_id', userId)
       .maybeSingle();
     return data?.option_index ?? null;
+  },
+};
+
+// ============================================================
+// MESSAGE REACTIONS  (DM + Group)
+// Table schema expected:
+//   dm_reactions(id, message_id, user_id, emoji, created_at)  UNIQUE(message_id,user_id,emoji)
+//   group_message_reactions(id, message_id, user_id, emoji, created_at)  UNIQUE(message_id,user_id,emoji)
+// ============================================================
+
+type ReactionRow = { message_id: string; user_id: string; emoji: string };
+
+function groupReactions(rows: ReactionRow[]): Record<string, { emoji: string; userIds: string[] }[]> {
+  const map: Record<string, Record<string, string[]>> = {};
+  for (const r of rows) {
+    if (!map[r.message_id]) map[r.message_id] = {};
+    if (!map[r.message_id][r.emoji]) map[r.message_id][r.emoji] = [];
+    map[r.message_id][r.emoji].push(r.user_id);
+  }
+  const result: Record<string, { emoji: string; userIds: string[] }[]> = {};
+  for (const [msgId, emojiMap] of Object.entries(map)) {
+    result[msgId] = Object.entries(emojiMap).map(([emoji, userIds]) => ({ emoji, userIds }));
+  }
+  return result;
+}
+
+export const dmReactionsAPI = {
+  async getForMessages(messageIds: string[]) {
+    if (!messageIds.length) return {};
+    const { data } = await supabase
+      .from('dm_reactions')
+      .select('message_id, user_id, emoji')
+      .in('message_id', messageIds);
+    return groupReactions(data ?? []);
+  },
+
+  async toggle(messageId: string, userId: string, emoji: string) {
+    const { data: existing } = await supabase
+      .from('dm_reactions')
+      .select('id')
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('dm_reactions').delete().eq('id', existing.id);
+      return 'removed';
+    }
+    await supabase.from('dm_reactions').insert({ message_id: messageId, user_id: userId, emoji });
+    return 'added';
+  },
+};
+
+export const groupReactionsAPI = {
+  async getForMessages(messageIds: string[]) {
+    if (!messageIds.length) return {};
+    const { data } = await supabase
+      .from('group_message_reactions')
+      .select('message_id, user_id, emoji')
+      .in('message_id', messageIds);
+    return groupReactions(data ?? []);
+  },
+
+  async toggle(messageId: string, userId: string, emoji: string) {
+    const { data: existing } = await supabase
+      .from('group_message_reactions')
+      .select('id')
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('group_message_reactions').delete().eq('id', existing.id);
+      return 'removed';
+    }
+    await supabase.from('group_message_reactions').insert({ message_id: messageId, user_id: userId, emoji });
+    return 'added';
   },
 };
