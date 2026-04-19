@@ -37,8 +37,8 @@ export function GameCard({ game, showHours = false, fullWidth = false }: GameCar
         )}
       </div>
       <h4 className="text-sm font-medium line-clamp-2 mb-1">{game.title}</h4>
-      {showHours && game.hoursPlayed && (
-        <p className="text-xs text-muted-foreground">{game.hoursPlayed}h played</p>
+      {showHours && (game as any).hoursPlayed && (
+        <p className="text-xs text-muted-foreground">{(game as any).hoursPlayed}h played</p>
       )}
     </div>
   );

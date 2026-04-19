@@ -69,6 +69,7 @@ interface AppDataContextType {
   externalFollowIds: Set<string>;
   followExternalUser: (user: { id: string; platform: string; handle: string; displayName: string; avatar?: string; instance?: string; accountId?: string; did?: string }) => Promise<void>;
   unfollowExternalUser: (id: string) => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);

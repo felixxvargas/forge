@@ -304,13 +304,13 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
                       onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(user); }}
                     >
                       <ProfileAvatar
-                        username={user.display_name || (user as any).displayName || user.handle || '?'}
-                        profilePicture={user.profile_picture || (user as any).profilePicture}
+                        username={(user as any).display_name || (user as any).displayName || user.handle || '?'}
+                        profilePicture={(user as any).profile_picture || (user as any).profilePicture}
                         userId={user.id}
                         size="sm"
                       />
                       <div>
-                        <p className="font-medium text-sm">{user.display_name || (user as any).displayName || user.handle}</p>
+                        <p className="font-medium text-sm">{(user as any).display_name || (user as any).displayName || user.handle}</p>
                         <p className="text-xs text-muted-foreground">@{(user.handle || '').replace(/^@/, '')}</p>
                       </div>
                     </button>

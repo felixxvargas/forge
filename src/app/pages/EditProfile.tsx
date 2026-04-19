@@ -676,10 +676,10 @@ export function EditProfile() {
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{community.name}</p>
                         {membership.role === 'creator' && (
-                          <Crown className="w-4 h-4 text-accent" title="Creator" />
+                          <span title="Creator"><Crown className="w-4 h-4 text-accent" /></span>
                         )}
                         {membership.role === 'moderator' && (
-                          <Shield className="w-4 h-4 text-accent" title="Moderator" />
+                          <span title="Moderator"><Shield className="w-4 h-4 text-accent" /></span>
                         )}
                       </div>
                     </div>

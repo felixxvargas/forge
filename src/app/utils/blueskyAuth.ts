@@ -16,7 +16,7 @@ export function getBlueskyOAuthClient(): BrowserOAuthClient {
   return new BrowserOAuthClient({
     clientId: CLIENT_ID,
     handleResolver: 'https://bsky.social',
-  });
+  } as any);
 }
 
 /**

@@ -18,7 +18,7 @@ export function UserCard({ user }: UserCardProps) {
   const isTopicAccount = (user as any).account_type === 'topic';
   const blueskyData = useBlueskyData(user);
   const resolvedPicture = (isTopicAccount ? blueskyData.avatar : undefined)
-    || user.profile_picture || user.profilePicture;
+    || (user as any).profile_picture || (user as any).profilePicture;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -34,14 +34,14 @@ export function UserCard({ user }: UserCardProps) {
     >
       <div className="flex items-start gap-3 mb-3">
         <ProfileAvatar
-          username={user.display_name || user.displayName || user.handle || '?'}
+          username={(user as any).display_name || (user as any).displayName || user.handle || '?'}
           profilePicture={resolvedPicture}
           size="md"
           userId={user.id}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="font-medium">{user.display_name || user.displayName || user.handle}</h3>
+            <h3 className="font-medium">{(user as any).display_name || (user as any).displayName || user.handle}</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-1">@{(user.handle || '').replace(/^@/, '')}</p>
           {user.pronouns && (
@@ -64,7 +64,7 @@ export function UserCard({ user }: UserCardProps) {
       {/* Stats & Follow */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {formatNumber(user.follower_count ?? user.followerCount ?? 0)} followers
+          {formatNumber((user as any).follower_count ?? user.followerCount ?? 0)} followers
         </span>
         <FollowButton
           userId={user.id}

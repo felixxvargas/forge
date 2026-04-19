@@ -53,10 +53,10 @@ export function UserCommunities() {
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-medium">{item.name}</h3>
                     {item.role === 'creator' && (
-                      <Crown className="w-4 h-4 text-accent" title="Creator" />
+                      <span title="Creator"><Crown className="w-4 h-4 text-accent" /></span>
                     )}
                     {item.role === 'moderator' && (
-                      <Shield className="w-4 h-4 text-accent" title="Moderator" />
+                      <span title="Moderator"><Shield className="w-4 h-4 text-accent" /></span>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2 line-clamp-2">

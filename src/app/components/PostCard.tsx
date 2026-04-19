@@ -88,7 +88,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   // then camelCase (topic account User objects from data.ts), then undefined.
   const blueskyData = useBlueskyData(user);
   const resolvedProfilePicture = blueskyData.avatar
-    || user?.profile_picture
+    || (user as any)?.profile_picture
     || (user as any)?.profilePicture
     || undefined;
 
@@ -99,11 +99,11 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
     repostedPosts = new Set(),
     mutedUsers = new Set(),
     mutedPosts = new Set(),
-    mutePost = async () => {},
-    unmutePost = async () => {},
+    mutePost = async (_id: string) => {},
+    unmutePost = async (_id: string) => {},
     likedPosts = new Set(),
     groups: contextGroups = [],
-  } = context || {};
+  } = (context as any) || {};
 
   // Group context — shown as a feed indicator when a post belongs to a group
   const postCommunityId = (post as any).community_id ?? (post as any).communityId;
@@ -298,7 +298,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       <div className="flex items-start gap-3 mb-3">
         <div onClick={handleUserClick} className="cursor-pointer hover:opacity-80 transition-opacity">
           <ProfileAvatar
-            username={user.display_name || user.handle || '?'}
+            username={(user as any).display_name || user.handle || '?'}
             profilePicture={resolvedProfilePicture}
             size="md"
             userId={user.id}
@@ -310,7 +310,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
               onClick={handleUserClick}
               className="font-medium hover:underline truncate max-w-[200px]"
             >
-              {user.display_name || user.handle}
+              {(user as any).display_name || user.handle}
             </button>
             <button
               onClick={handleUserClick}

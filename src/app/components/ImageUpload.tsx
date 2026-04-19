@@ -15,7 +15,7 @@ interface ImageUploadProps {
   className?: string;
   accept?: string; // Allow customization of accepted file types
   maxSizeMB?: number; // Allow customization of max file size
-  bucketType?: 'avatar' | 'banner' | 'post' | 'community-icon' | 'community-banner'; // Specify which bucket to upload to
+  bucketType?: 'avatar' | 'post' | 'community-icon' | 'community-banner'; // Specify which bucket to upload to
 }
 
 export function ImageUpload({
@@ -72,7 +72,7 @@ export function ImageUpload({
 
       // Upload to backend (bucketType is the short key; api.ts maps it to the real bucket name)
       console.log('[ImageUpload] Starting upload, bucketType:', bucketType);
-      const result = await uploadAPI.uploadFile(file, bucketType);
+      const result = await uploadAPI.uploadFile(file, bucketType) as { url: string; blurred?: boolean; reason?: string };
 
       console.log('[ImageUpload] Upload result:', result);
 

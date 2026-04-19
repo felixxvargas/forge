@@ -255,10 +255,10 @@ export function EditProfileModal({ user, isOpen, onClose, onSave }: EditProfileM
                       <span>{community.name}</span>
                       {isSelected && <Check className="w-3.5 h-3.5 text-accent" />}
                       {membership.role === 'creator' && (
-                        <Crown className="w-3.5 h-3.5 text-accent" title="Creator" />
+                        <span title="Creator"><Crown className="w-3.5 h-3.5 text-accent" /></span>
                       )}
                       {membership.role === 'moderator' && (
-                        <Shield className="w-3.5 h-3.5 text-accent" title="Moderator" />
+                        <span title="Moderator"><Shield className="w-3.5 h-3.5 text-accent" /></span>
                       )}
                     </button>
                   );

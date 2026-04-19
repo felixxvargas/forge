@@ -9,7 +9,7 @@ interface UserActionMenuProps {
 }
 
 export function UserActionMenu({ userId, userName }: UserActionMenuProps) {
-  const { blockUser, muteUser, reportUser, blockedUsers, mutedUsers, unblockUser, unmuteUser } = useAppData();
+  const { blockUser, muteUser, reportUser, blockedUsers, mutedUsers, unblockUser, unmuteUser } = useAppData() as any;
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);

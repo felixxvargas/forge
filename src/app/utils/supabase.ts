@@ -365,7 +365,7 @@ export const posts = {
     const followingIds = (followingData ?? []).map((r: any) => r.following_id);
     followingIds.push(userId);
 
-    const namedQueries: { key: string; query: Promise<any> }[] = [
+    const namedQueries: { key: string; query: PromiseLike<any> }[] = [
       {
         key: 'posts',
         query: supabase
@@ -975,9 +975,10 @@ export const groups = {
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
     // Decrement member count — fire-and-forget
-    supabase.from('communities').select('member_count').eq('id', communityId).single()
-      .then(({ data }) => supabase.from('communities').update({ member_count: Math.max(0, (data?.member_count ?? 0) - 1) }).eq('id', communityId))
-      .catch(() => {});
+    Promise.resolve(
+      supabase.from('communities').select('member_count').eq('id', communityId).single()
+        .then(({ data }) => supabase.from('communities').update({ member_count: Math.max(0, (data?.member_count ?? 0) - 1) }).eq('id', communityId))
+    ).catch(() => {});
   },
 
   async banMember(communityId: string, userId: string) {
@@ -995,9 +996,10 @@ export const groups = {
       await supabase.from('communities').update({ banned_member_ids: [...current, userId] }).eq('id', communityId);
     }
     // Decrement member count — fire-and-forget
-    supabase.from('communities').select('member_count').eq('id', communityId).single()
-      .then(({ data: d }) => supabase.from('communities').update({ member_count: Math.max(0, (d?.member_count ?? 0) - 1) }).eq('id', communityId))
-      .catch(() => {});
+    Promise.resolve(
+      supabase.from('communities').select('member_count').eq('id', communityId).single()
+        .then(({ data: d }) => supabase.from('communities').update({ member_count: Math.max(0, (d?.member_count ?? 0) - 1) }).eq('id', communityId))
+    ).catch(() => {});
   },
 
   async addMember(communityId: string, userId: string) {

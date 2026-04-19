@@ -700,13 +700,13 @@ export function NewPost() {
                     className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
                   >
                     <ProfileAvatar
-                      username={user.display_name || user.handle || '?'}
-                      profilePicture={user.profile_picture}
+                      username={(user as any).display_name || user.handle || '?'}
+                      profilePicture={(user as any).profile_picture}
                       userId={user.id}
                       size="sm"
                     />
                     <div>
-                      <p className="font-medium text-sm">{user.display_name || user.handle}</p>
+                      <p className="font-medium text-sm">{(user as any).display_name || user.handle}</p>
                       <p className="text-xs text-muted-foreground">@{(user.handle || '').replace(/^@/, '')}</p>
                     </div>
                   </button>

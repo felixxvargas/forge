@@ -144,7 +144,7 @@ export function Explore() {
   // Fetch game titles for all unique game IDs across all groups
   useEffect(() => {
     if (activeTab !== 'groups') return;
-    const allIds = [...new Set(groups.flatMap((g: any) => g.game_ids ?? []))];
+    const allIds = [...new Set(groups.flatMap((g: any) => g.game_ids ?? []))] as string[];
     if (allIds.length === 0) return;
     gamesAPI.getGames(allIds)
       .then((res: any) => {
@@ -1095,7 +1095,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
     currentUser?.communities?.some(m => m.community_id === group.id) ?? false
   );
   const [localMemberCount, setLocalMemberCount] = useState<number>(
-    group.member_count ?? group.memberCount ?? 0
+    (group as any).member_count ?? group.memberCount ?? 0
   );
 
   const handleJoinClick = async (e: React.MouseEvent) => {
@@ -1134,8 +1134,8 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
     >
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 flex items-center justify-center bg-secondary rounded-full text-accent flex-shrink-0 overflow-hidden">
-          {group.profile_picture ? (
-            <img src={group.profile_picture} alt={group.name} className="w-full h-full object-cover" />
+          {(group as any).profile_picture ? (
+            <img src={(group as any).profile_picture} alt={group.name} className="w-full h-full object-cover" />
           ) : (
             <GroupIcon iconKey={group.icon} className="w-5 h-5" />
           )}

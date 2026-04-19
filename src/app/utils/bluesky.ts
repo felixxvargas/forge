@@ -3,6 +3,7 @@ interface BlueskyProfile {
   handle: string;
   displayName: string;
   avatar: string;
+  banner?: string;
   description: string;
   followersCount: number;
   followsCount: number;
@@ -46,6 +47,7 @@ export async function fetchBlueskyProfile(handle: string): Promise<BlueskyProfil
       handle: raw.handle,
       displayName: raw.displayName ?? raw.handle,
       avatar: raw.avatar || undefined,
+      banner: raw.banner || undefined,
       description: raw.description ?? '',
       followersCount: raw.followersCount ?? 0,
       followsCount: raw.followsCount ?? 0,
@@ -314,7 +316,7 @@ export async function getAtProtoSession(): Promise<{ agent: Agent; did: string }
   try {
     const IS_DEV = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     const CLIENT_ID = IS_DEV ? 'http://localhost' : 'https://forge-social.app/client-metadata.json';
-    const client = new BrowserOAuthClient({ clientId: CLIENT_ID, handleResolver: 'https://bsky.social' });
+    const client = new BrowserOAuthClient({ clientId: CLIENT_ID, handleResolver: 'https://bsky.social' } as any);
     const result = await client.init();
     if (!result) return null;
     const agent = new Agent(result.session);
