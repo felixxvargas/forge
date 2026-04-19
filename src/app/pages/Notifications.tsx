@@ -70,7 +70,7 @@ export function Notifications() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'like':    return <Heart className="w-5 h-5 text-red-500 fill-red-500" />;
+      case 'like':    return <Heart className="w-5 h-5 text-accent fill-accent" />;
       case 'comment': return <MessageCircle className="w-5 h-5 text-blue-500" />;
       case 'follow':  return <UserPlus className="w-5 h-5 text-accent" />;
       case 'repost':  return <Repeat2 className="w-5 h-5 text-green-500" />;

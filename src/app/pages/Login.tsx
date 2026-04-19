@@ -117,7 +117,7 @@ export function Login() {
             </div>
 
             <div className="flex items-center justify-center gap-2 mb-1">
-              <h1 className="text-4xl font-black tracking-tight text-accent">Forge</h1>
+              <h1 className="text-4xl font-black tracking-tight text-accent font-sora">Forge</h1>
               <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
             </div>
             <span className="sm:hidden inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-1">Beta</span>

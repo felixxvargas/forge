@@ -114,7 +114,7 @@ export function SignUp() {
             </svg>
           </div>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-3">Beta</span>
-          <h1 className="text-4xl font-black tracking-tight text-accent mb-1">Forge</h1>
+          <h1 className="text-4xl font-black tracking-tight text-accent font-sora mb-1">Forge</h1>
           <p className="text-muted-foreground">Connect with gamers across all platforms</p>
         </div>
 
