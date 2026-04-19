@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, PenSquare, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, AlertTriangle } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -26,11 +26,14 @@ export function CommunityDetail() {
   const [isMember, setIsMember] = useState(
     currentUser?.communities?.some((c: any) => c.community_id === groupId) ?? false
   );
+  const [isMemberChecked, setIsMemberChecked] = useState(false);
 
   // Verify membership from DB (communities may not be populated in currentUser yet)
   useEffect(() => {
-    if (!currentUser?.id || !groupId) return;
-    groupsAPI.isMember(currentUser.id, groupId).then(setIsMember).catch(() => {});
+    if (!currentUser?.id || !groupId) { setIsMemberChecked(true); return; }
+    groupsAPI.isMember(currentUser.id, groupId)
+      .then(result => { setIsMember(result); setIsMemberChecked(true); })
+      .catch(() => setIsMemberChecked(true));
   }, [currentUser?.id, groupId]);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [dbMembers, setDbMembers] = useState<any[]>([]);
@@ -66,22 +69,12 @@ export function CommunityDetail() {
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [savingGames, setSavingGames] = useState(false);
 
-  if (!community) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="w-full max-w-2xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-2xl font-bold">Group not found</h2>
-        </div>
-      </div>
-    );
-  }
-
-  const isCreator = (community.creator_id ?? community.creatorId) === currentUser?.id;
-  const isModerator = (community.moderatorIds ?? []).includes(currentUser?.id);
+  // These must stay above ALL useEffect/useState hooks — computed from community (may be undefined)
+  const isCreator = (community?.creator_id ?? community?.creatorId) === currentUser?.id;
+  const isModerator = (community?.moderatorIds ?? []).includes(currentUser?.id);
   const isAdmin = isCreator || isModerator;
-
-  const adminUser = getUserById(community.creator_id ?? community.creatorId ?? '');
-  const creatorId = community.creator_id ?? community.creatorId ?? '';
+  const adminUser = getUserById(community?.creator_id ?? community?.creatorId ?? '');
+  const creatorId = community?.creator_id ?? community?.creatorId ?? '';
 
   // Load members from DB when modal opens
   useEffect(() => {
@@ -281,7 +274,7 @@ export function CommunityDetail() {
 
   const [joiningCommunity, setJoiningCommunity] = useState(false);
   const [localMemberCount, setLocalMemberCount] = useState<number>(
-    community.member_count ?? community.memberCount ?? 0
+    community?.member_count ?? community?.memberCount ?? 0
   );
 
   const handleJoinCommunity = async () => {
@@ -323,6 +316,17 @@ export function CommunityDetail() {
   const handleRepostToggle = (postId: string) => {
     if (repostedPosts.has(postId)) { unrepostPost(postId); } else { repostPost(postId); }
   };
+
+  // Early return AFTER all hooks so React hook order is consistent
+  if (!community) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <div className="w-full max-w-2xl mx-auto px-4 py-12 text-center">
+          <h2 className="text-2xl font-bold">Group not found</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -448,16 +452,6 @@ export function CommunityDetail() {
             ) : null}
 
             {/* Post to Group — visible to all members */}
-            {isMember && (
-              <button
-                onClick={() => navigate('/new-post', { state: { groupId: communityId, groupName: community.name } })}
-                className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium flex items-center gap-2"
-              >
-                <PenSquare className="w-4 h-4" />
-                Post
-              </button>
-            )}
-
             {/* Message Admin — invite-only groups only; respects admin's DM setting (on by default) */}
             {community.type === 'invite' && !isAdmin && adminUser && (adminUser as any).allow_dms !== false && (
               <button
@@ -624,23 +618,24 @@ export function CommunityDetail() {
         {/* Group Feed */}
         <div className="px-4 py-6">
           <h3 className="text-lg font-semibold mb-4">Group Posts</h3>
-          {isMember ? (
-            loadingGroupPosts ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
-                      <div className="flex-1 space-y-2 pt-1">
-                        <div className="h-3 bg-muted/50 rounded w-32" />
-                        <div className="h-3 bg-muted/50 rounded w-full" />
-                        <div className="h-3 bg-muted/30 rounded w-4/5" />
-                      </div>
+          {/* Show skeleton while either posts or membership check is still loading */}
+          {(loadingGroupPosts || !isMemberChecked) ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <div className="h-3 bg-muted/50 rounded w-32" />
+                      <div className="h-3 bg-muted/50 rounded w-full" />
+                      <div className="h-3 bg-muted/30 rounded w-4/5" />
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : communityPosts.length > 0 ? (
+                </div>
+              ))}
+            </div>
+          ) : isMember ? (
+            communityPosts.length > 0 ? (
               communityPosts.map(post => {
                 const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
                 if (!postUser) return null;
@@ -670,6 +665,21 @@ export function CommunityDetail() {
           )}
         </div>
       </div>
+
+      {/* Floating compose button — members only */}
+      {isMember && (
+        <button
+          onClick={() => navigate('/new-post', { state: { groupId: communityId, groupName: community.name } })}
+          className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-accent text-accent-foreground rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110 flex items-center justify-center md:bottom-8"
+          aria-label="Post to group"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+            <line x1="16" y1="8" x2="2" y2="22" />
+            <line x1="17.5" y1="15" x2="9" y2="15" />
+          </svg>
+        </button>
+      )}
 
       {/* Members — now a full-screen page at /group/:groupId/members */}
 

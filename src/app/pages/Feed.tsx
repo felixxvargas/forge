@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowRight, Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { GroupIcon } from '../components/GroupIcon';
@@ -61,6 +61,21 @@ export function Feed() {
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
   const [dynamicLoading, setDynamicLoading] = useState(false);
+  const navigate = useNavigate();
+
+  // Scroll direction for group banner hide/show
+  const [scrolledDown, setScrolledDown] = useState(false);
+  const lastScrollY = useRef(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const current = window.scrollY;
+      if (Math.abs(current - lastScrollY.current) < 4) return;
+      setScrolledDown(current > lastScrollY.current && current > 60);
+      lastScrollY.current = current;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Persist the selected feed mode for the rest of the day so it survives page reloads
   useEffect(() => {
@@ -424,6 +439,35 @@ export function Feed() {
   return (
     <div className={`min-h-screen ${!isAuthenticated ? 'pb-36 md:pb-20' : 'pb-20'}`}>
       <Header />
+
+      {/* Group feed sticky navigation banner */}
+      {typeof feedMode === 'object' && feedMode.type === 'group' && (() => {
+        const grp = groups.find((g: any) => g.id === (feedMode as any).id);
+        return grp ? (
+          <div
+            className={`sticky top-14 z-20 transition-transform duration-200 ${scrolledDown ? '-translate-y-full' : 'translate-y-0'}`}
+            style={{ background: 'rgba(var(--card)/0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid hsl(var(--border))' }}
+          >
+            <div className="w-full max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center shrink-0 overflow-hidden">
+                  {grp.profile_picture
+                    ? <img src={grp.profile_picture} alt="" className="w-full h-full object-cover" />
+                    : <GroupIcon iconKey={grp.icon} className="w-3.5 h-3.5 text-accent" />}
+                </div>
+                <span className="text-sm font-semibold truncate">{grp.name}</span>
+              </div>
+              <button
+                onClick={() => navigate(`/group/${grp.id}`)}
+                className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors shrink-0 font-medium"
+              >
+                View Group
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Desktop 2-col layout: feed + right rail */}
       <div className="xl:grid xl:grid-cols-[1fr_264px] xl:gap-6 xl:max-w-[1024px] xl:mx-auto">

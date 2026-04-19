@@ -49,6 +49,7 @@ export function GameDetail() {
   const [gameRank, setGameRank] = useState<number | null>(null);
   const [showAddToListTray, setShowAddToListTray] = useState(false);
   const [showPlayedTray, setShowPlayedTray] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   // Load trending rank using fast rank-map-only path (no cover-art batch fetch)
   useEffect(() => {
@@ -405,7 +406,14 @@ export function GameDetail() {
             </div>
           )}
           {game.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">{game.description}</p>
+            <button
+              type="button"
+              onClick={() => setDescExpanded(v => !v)}
+              className={`text-sm text-muted-foreground leading-relaxed text-left w-full ${descExpanded ? '' : 'line-clamp-4'}`}
+            >
+              {game.description}
+              {!descExpanded && <span className="text-accent/70 ml-1">more</span>}
+            </button>
           )}
         </div>
 
