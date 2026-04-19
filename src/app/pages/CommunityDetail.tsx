@@ -245,9 +245,29 @@ export function CommunityDetail() {
 
   const [removedPostIds, setRemovedPostIds] = useState<Set<string>>(new Set());
   const [postToConfirmRemove, setPostToConfirmRemove] = useState<string | null>(null);
-  const communityPosts = posts.filter(
-    p => (p.communityId === communityId || p.community_id === communityId) && !removedPostIds.has(p.id)
-  );
+  const [dbGroupPosts, setDbGroupPosts] = useState<any[]>([]);
+  const [loadingGroupPosts, setLoadingGroupPosts] = useState(true);
+
+  // Fetch group posts directly from DB (context feed may miss them if the user
+  // isn't subscribed yet or the post was created before the session loaded)
+  useEffect(() => {
+    if (!communityId) return;
+    setLoadingGroupPosts(true);
+    postsAPI.getByCommunity(communityId)
+      .then(setDbGroupPosts)
+      .catch(() => setDbGroupPosts([]))
+      .finally(() => setLoadingGroupPosts(false));
+  }, [communityId]);
+
+  // Merge DB-fetched posts with any newly created posts still only in context state
+  const communityPosts = (() => {
+    const dbIds = new Set(dbGroupPosts.map((p: any) => p.id));
+    const ctxExtra = posts.filter(
+      p => (p.communityId === communityId || p.community_id === communityId)
+        && !dbIds.has(p.id)
+    );
+    return [...ctxExtra, ...dbGroupPosts].filter(p => !removedPostIds.has(p.id));
+  })();
 
   const handleRemovePostFromGroup = async (postId: string) => {
     setPostToConfirmRemove(null);
@@ -613,7 +633,22 @@ export function CommunityDetail() {
         <div className="px-4 py-6">
           <h3 className="text-lg font-semibold mb-4">Group Posts</h3>
           {isMember ? (
-            communityPosts.length > 0 ? (
+            loadingGroupPosts ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                      <div className="flex-1 space-y-2 pt-1">
+                        <div className="h-3 bg-muted/50 rounded w-32" />
+                        <div className="h-3 bg-muted/50 rounded w-full" />
+                        <div className="h-3 bg-muted/30 rounded w-4/5" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : communityPosts.length > 0 ? (
               communityPosts.map(post => {
                 const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
                 if (!postUser) return null;

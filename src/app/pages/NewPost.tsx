@@ -868,14 +868,6 @@ export function NewPost() {
           >
             <Gamepad2 className="w-5 h-5" aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            onClick={() => setShowListPicker(true)}
-            className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
-            aria-label="Attach a game list"
-          >
-            <LayoutList className="w-5 h-5" aria-hidden="true" />
-          </button>
           {(contextGroups as any[]).length > 0 && (
             <button
               type="button"
@@ -887,6 +879,14 @@ export function NewPost() {
               <Users className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setShowListPicker(true)}
+            className={`p-2 rounded-lg transition-colors ${pickedListType ? 'bg-accent/20 text-accent' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}`}
+            aria-label="Attach a game list"
+          >
+            <LayoutList className="w-5 h-5" aria-hidden="true" />
+          </button>
           <span className={`text-xs tabular-nums ml-auto mr-2 ${content.length >= POST_MAX_LENGTH ? 'text-red-500' : content.length >= POST_MAX_LENGTH * 0.9 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
             {content.length}/{POST_MAX_LENGTH}
           </span>

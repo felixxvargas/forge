@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
+import { toast } from 'sonner';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
@@ -283,6 +284,50 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
     const id = setInterval(poll, 60_000);
     return () => clearInterval(id);
+  }, [session?.user?.id]);
+
+  // Real-time notification toasts via Supabase Realtime
+  useEffect(() => {
+    if (!session?.user) return;
+    const userId = session.user.id;
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        async (payload) => {
+          setHasUnreadNotifications(true);
+          // Check user preference before showing toast
+          if (localStorage.getItem('forge-toast-notifications') === 'false') return;
+          const notif = payload.new as any;
+          const typeLabels: Record<string, string> = {
+            like: 'liked your post',
+            follow: 'followed you',
+            mention: 'mentioned you',
+            comment: 'commented on your post',
+            repost: 'reposted your post',
+          };
+          const label = typeLabels[notif.type] ?? 'sent you a notification';
+          // Fetch actor name for a friendlier message
+          let actorName = 'Someone';
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('display_name, handle')
+              .eq('id', notif.actor_id)
+              .single();
+            if (data) actorName = data.display_name || data.handle || 'Someone';
+          } catch { /* fallback to generic */ }
+          toast(`${actorName} ${label}`, {
+            action: {
+              label: 'View',
+              onClick: () => { window.location.href = '/notifications'; },
+            },
+          });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [session?.user?.id]);
 
   // Load data when session changes
