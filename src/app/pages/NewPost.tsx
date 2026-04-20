@@ -66,10 +66,12 @@ export function NewPost() {
   const attachListUserId = searchParams.get('attachListUserId') ?? undefined;
   const { createPost, currentUser, users, groups: contextGroups = [], posts: contextPosts = [], getUserById } = useAppData() as any;
 
-  // Group context passed when navigating from a group page (Post button)
-  const locationState = location.state as { groupId?: string; groupName?: string } | null;
+  // Context passed when navigating from a group or game detail page
+  const locationState = location.state as { groupId?: string; groupName?: string; gameId?: string; gameTitle?: string } | null;
   const groupId = locationState?.groupId ?? undefined;
   const groupName = locationState?.groupName ?? undefined;
+  const stateGameId = locationState?.gameId ?? undefined;
+  const stateGameTitle = locationState?.gameTitle ?? undefined;
 
   const LIST_KEY_MAP: Record<string, string> = {
     'recently-played': 'recentlyPlayed', 'played-before': 'playedBefore',
@@ -95,7 +97,11 @@ export function NewPost() {
   const [openPanel, setOpenPanel] = useState<'image' | 'link' | 'game' | 'group' | 'list' | 'poll' | null>(null);
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
-  const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>(autoDraft.current.games);
+  const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>(() => {
+    if (autoDraft.current.games.length > 0) return autoDraft.current.games;
+    if (stateGameId && stateGameTitle) return [{ id: stateGameId, title: stateGameTitle }];
+    return [];
+  });
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [disableComments, setDisableComments] = useState(() => localStorage.getItem('forge-default-comments-disabled') === 'true');

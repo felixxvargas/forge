@@ -43,9 +43,10 @@ interface PostCardProps {
   onReplyToClick?: () => void;
   noBacker?: boolean;
   onRemoveFromGroup?: () => void;
+  hideGroupTag?: boolean;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -330,17 +331,6 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </button>
       )}
 
-      {/* Group indicator — shown in the following feed when the post was made in a group */}
-      {postGroup && !isDetailView && (
-        <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/community/${postGroup.id}`); }}
-          className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
-        >
-          <Users className="w-3.5 h-3.5 shrink-0" />
-          <span>in <span className="font-medium">{postGroup.name}</span></span>
-        </button>
-      )}
-
       {/* Reply indicator — hidden when the post is a repost in Feed (shown on detail page only) */}
       {(post as any).reply_to && !post.repostedBy && (
         <button
@@ -455,6 +445,25 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Group indicator — below header, above content; hidden on group detail pages */}
+      {postGroup && !hideGroupTag && (
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/community/${postGroup.id}`); }}
+          className="flex items-center gap-1.5 mb-2 -mt-1 text-xs text-muted-foreground hover:text-accent transition-colors"
+        >
+          {(postGroup as any).profile_picture ? (
+            <img
+              src={(postGroup as any).profile_picture}
+              alt=""
+              className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <Users className="w-3.5 h-3.5 shrink-0" />
+          )}
+          <span>in <span className="font-medium">{postGroup.name}</span></span>
+        </button>
+      )}
 
       {/* Content — strip the preview URL from text so it isn't duplicated */}
       {(() => {

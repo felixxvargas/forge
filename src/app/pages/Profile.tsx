@@ -172,12 +172,10 @@ export function Profile() {
     );
   }, [isOwnProfile, profileUser?.id, profileUser?.handle, followingIds]);
 
-  // Fetch fresh follower/following counts from the follows table (source of truth — avoids stale counters)
+  // Fetch fresh follower/following counts from the follows table (source of truth)
+  // No cache seed — the profile's stored follower_count can be stale and causes a flash
   useEffect(() => {
     if (!profileUser?.id) return;
-    // Seed from cached profile value immediately to avoid the "—" flash
-    const cachedFollowers = profileUser?.follower_count ?? (profileUser as any)?.followerCount ?? null;
-    if (cachedFollowers !== null) setFreshFollowerCount(cachedFollowers);
     Promise.all([
       profiles.getFollowerCount(profileUser.id),
       profiles.getFollowingCount(profileUser.id),

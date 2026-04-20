@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';
-import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut, Flame, Check, CheckCheck } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, ChevronDown, ChevronUp, Trash2, UserPlus, LogOut, Flame } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
-import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase, dmReactionsAPI, groupReactionsAPI } from '../utils/supabase';
+import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase, dmReactionsAPI, groupReactionsAPI, groupThreadReadsAPI } from '../utils/supabase';
 import { initEncryptionKeys, getMyPublicKeyJwk, encryptMessage, decryptMessage } from '../utils/crypto';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -95,6 +95,8 @@ export function Messages() {
   // Emoji reactions: messageId → [{emoji, userIds[]}]
   const [dmReactions, setDmReactions] = useState<ReactionMap>({});
   const [groupReactions, setGroupReactions] = useState<ReactionMap>({});
+  // Group thread read receipts: userId → last_read_at (ISO string)
+  const [groupThreadReaders, setGroupThreadReaders] = useState<Record<string, string>>({});
 
   const composeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addPeopleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -211,12 +213,20 @@ export function Messages() {
     return () => { cancelled = true; };
   }, [currentUser?.id, selectedPartnerId]);
 
-  // Load group messages + participants
+  // Load group messages + participants + read receipts; mark current user as read
   useEffect(() => {
     if (!selectedGroupThread) return;
     groupAPI.getMessages(selectedGroupThread.id).then(setGroupMessages).catch(() => {});
     groupAPI.getParticipants(selectedGroupThread.participant_ids ?? []).then(setGroupParticipants).catch(() => {});
-  }, [selectedGroupThread?.id]);
+    groupThreadReadsAPI.getReads(selectedGroupThread.id).then(rows => {
+      const map: Record<string, string> = {};
+      rows.forEach(r => { map[r.user_id] = r.last_read_at; });
+      setGroupThreadReaders(map);
+    }).catch(() => {});
+    if (currentUser?.id) {
+      groupThreadReadsAPI.markRead(selectedGroupThread.id, currentUser.id).catch(() => {});
+    }
+  }, [selectedGroupThread?.id, currentUser?.id]);
 
   // Scroll to bottom only for new messages, not on initial load
   const hasInitialScrolledRef = useRef(false);
@@ -549,6 +559,8 @@ export function Messages() {
       const msg = await groupAPI.sendMessage(selectedGroupThread.id, currentUser.id, content);
       setGroupMessages(prev => [...prev, msg]);
       groupAPI.getForUser(currentUser.id).then(setGroupThreadList).catch(() => {});
+      // Mark thread as read immediately after sending
+      groupThreadReadsAPI.markRead(selectedGroupThread.id, currentUser.id).catch(() => {});
     } catch { setMessageInput(content); }
     finally { setIsSending(false); }
   };
@@ -736,10 +748,21 @@ export function Messages() {
           {groupMessages.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
-          {groupMessages.map((msg) => {
+          {(() => {
+            // Compute who has read the last message (everyone except me whose last_read_at ≥ last msg time)
+            const lastMsg = groupMessages[groupMessages.length - 1];
+            const readersOfLast = lastMsg
+              ? groupParticipants.filter(p =>
+                  p.id !== currentUser?.id &&
+                  groupThreadReaders[p.id] &&
+                  new Date(groupThreadReaders[p.id]) >= new Date(lastMsg.created_at)
+                )
+              : [];
+            return groupMessages.map((msg, idx) => {
             const isMe = msg.sender_id === currentUser?.id;
             const sender = msg.sender || groupParticipants.find(p => p.id === msg.sender_id);
             const msgReactions = groupReactions[msg.id] ?? [];
+            const isLastMessage = idx === groupMessages.length - 1;
             return (
               <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} group`}>
                 {!isMe && (
@@ -779,10 +802,29 @@ export function Messages() {
                       ))}
                     </div>
                   )}
+                  {/* Read receipts — show avatars + "Read" below the last message */}
+                  {isLastMessage && readersOfLast.length > 0 && (
+                    <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div className="flex -space-x-1">
+                        {readersOfLast.slice(0, 5).map(p => (
+                          <ProfileAvatar
+                            key={p.id}
+                            username={p.display_name || p.handle || '?'}
+                            profilePicture={p.profile_picture ?? null}
+                            size="sm"
+                            userId={p.id}
+                            className="border border-background !w-5 !h-5 text-[9px]"
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground">Read</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
-          })}
+            });
+          })()}
           {isPartnerTyping && (
             <div className="flex gap-2 items-end">
               <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-2xl w-16">
@@ -977,9 +1019,13 @@ export function Messages() {
           {messages.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
-          {messages.map((msg) => {
+          {(() => {
+            // ID of the last message sent by me — "Read" label goes here when partner has read it
+            const lastSentId = [...messages].reverse().find(m => m.sender_id === currentUser?.id)?.id ?? null;
+            return messages.map((msg) => {
             const isMe = msg.sender_id === currentUser?.id;
             const msgReactions = dmReactions[msg.id] ?? [];
+            const showRead = isMe && msg.id === lastSentId && !!msg.read_at;
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
@@ -996,14 +1042,7 @@ export function Messages() {
                       ? <p className={`text-sm italic ${isMe ? 'text-accent-foreground/50' : 'text-muted-foreground'}`}>Message deleted</p>
                       : <p className="text-sm whitespace-pre-wrap break-words">{(msg as any)._plaintext ?? msg.content}</p>
                     }
-                    <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <p className={`text-xs ${isMe ? 'text-accent-foreground/60' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
-                      {isMe && (
-                        <span className={`${msg.read_at ? 'text-accent-foreground/80' : 'text-accent-foreground/40'}`}>
-                          {msg.read_at ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                        </span>
-                      )}
-                    </div>
+                    <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/60' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
                   </div>
                   {msgReactions.length > 0 && (
                     <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -1019,10 +1058,14 @@ export function Messages() {
                       ))}
                     </div>
                   )}
+                  {showRead && (
+                    <p className="text-xs text-accent-foreground/50 mt-0.5">Read</p>
+                  )}
                 </div>
               </div>
             );
-          })}
+            });
+          })()}
           {isPartnerTyping && (
             <div className="flex gap-2 items-end">
               <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-2xl w-16">

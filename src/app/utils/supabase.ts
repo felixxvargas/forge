@@ -1909,3 +1909,25 @@ export const groupReactionsAPI = {
     return 'added';
   },
 };
+
+// ============================================================
+// GROUP THREAD READ RECEIPTS
+// Table: group_thread_reads(thread_id, user_id, last_read_at)
+// ============================================================
+export const groupThreadReadsAPI = {
+  async markRead(threadId: string, userId: string) {
+    await supabase
+      .from('group_thread_reads')
+      .upsert(
+        { thread_id: threadId, user_id: userId, last_read_at: new Date().toISOString() },
+        { onConflict: 'thread_id,user_id' }
+      );
+  },
+  async getReads(threadId: string): Promise<{ user_id: string; last_read_at: string }[]> {
+    const { data } = await supabase
+      .from('group_thread_reads')
+      .select('user_id, last_read_at')
+      .eq('thread_id', threadId);
+    return data ?? [];
+  },
+};

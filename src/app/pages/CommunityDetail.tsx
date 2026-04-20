@@ -656,6 +656,7 @@ export function CommunityDetail() {
                     isLiked={likedPosts.has(post.id)}
                     isReposted={repostedPosts.has(post.id)}
                     onRemoveFromGroup={isAdmin ? () => setPostToConfirmRemove(post.id) : undefined}
+                    hideGroupTag
                   />
                 );
               })
