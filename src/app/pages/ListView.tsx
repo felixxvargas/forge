@@ -5,6 +5,8 @@ import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { EditGameListsModal } from '../components/EditGameListsModal';
+import { Header } from '../components/Header';
+import { profiles as profilesAPI } from '../utils/supabase';
 import type { Game, GameListType } from '../data/data';
 
 const LIST_LABELS: Record<GameListType, string> = {
@@ -43,6 +45,12 @@ export function ListView() {
   const [copied, setCopied] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
+  // Holds a user fetched from the DB when not found in context
+  const [fetchedViewUser, setFetchedViewUser] = useState<any>(null);
+  const [loadingViewUser, setLoadingViewUser] = useState(false);
+
+  // Always start at the top of the list
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const EDIT_MODAL_KEY = `forge-edit-list-open-${listType}`;
 
@@ -65,11 +73,27 @@ export function ListView() {
 
   const listKey = LIST_KEY_MAP[listType];
 
-  // If viewing another user's list via userId param
-  const viewUser = viewUserId ? users.find(u => u.id === viewUserId) : null;
-  const sourceUser = viewUser ?? currentUser;
+  // If viewing another user's list via userId param — try context first, then DB
+  const contextViewUser = viewUserId ? users.find(u => u.id === viewUserId) : null;
+  const viewUser = contextViewUser ?? fetchedViewUser;
+
+  useEffect(() => {
+    if (!viewUserId || contextViewUser) return;
+    // Not in context — fetch from DB
+    setLoadingViewUser(true);
+    profilesAPI.getById(viewUserId)
+      .then(u => { if (u) setFetchedViewUser(u); })
+      .catch(() => {})
+      .finally(() => setLoadingViewUser(false));
+  }, [viewUserId, contextViewUser]);
+
+  const isViewingOtherUser = !!viewUserId;
+  // Show skeleton when we're waiting on another user's data
+  const showSkeleton = isViewingOtherUser && !viewUser && loadingViewUser;
+
+  const sourceUser = viewUser ?? (isViewingOtherUser ? null : currentUser);
   const gameLists = (sourceUser as any)?.game_lists ?? (sourceUser as any)?.gameLists ?? {};
-  const games: Game[] = gameLists[listKey] ?? [];
+  const games: Game[] = sourceUser ? (gameLists[listKey] ?? []) : [];
 
   const sortedGames = sortOrder === 'default'
     ? [...games]
@@ -195,6 +219,38 @@ export function ListView() {
               </div>
             ))
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Game-card grid skeleton — shown while loading another user's list
+  if (showSkeleton) {
+    return (
+      <div className="min-h-screen pb-20 bg-background">
+        <Header />
+        <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 lg:px-7 py-6 animate-pulse">
+          {/* Header bar skeleton */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-9 h-9 rounded-lg bg-muted/40 shrink-0" />
+            <div className="space-y-1.5">
+              <div className="h-5 bg-muted/50 rounded w-36" />
+              <div className="h-3 bg-muted/30 rounded w-20" />
+            </div>
+          </div>
+          {/* Game card grid — 2 cols mobile, 3 cols desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                {/* Cover — aspect-[3/4] portrait */}
+                <div className="w-full aspect-[3/4] rounded-lg bg-muted/40" />
+                {/* Title line */}
+                <div className="h-3 bg-muted/40 rounded w-3/4" />
+                {/* Subtitle line */}
+                <div className="h-3 bg-muted/25 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

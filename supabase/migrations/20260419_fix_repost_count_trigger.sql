@@ -2,7 +2,8 @@
 -- Also adds triggers on posts (INSERT/DELETE of quote posts) to keep repost_count accurate.
 -- Run this in the Supabase dashboard SQL editor.
 
--- Step 1: Update the reposts trigger function to include quote posts
+-- Step 1: Update the reposts trigger function to include quote posts.
+-- quote_post_id is stored as TEXT; id is UUID — always cast id::text for the comparison.
 CREATE OR REPLACE FUNCTION public.fn_update_repost_count()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -17,7 +18,7 @@ BEGIN
   SET repost_count = (
     SELECT COUNT(*) FROM public.reposts WHERE post_id = v_post_id
   ) + (
-    SELECT COUNT(*) FROM public.posts WHERE quote_post_id = v_post_id
+    SELECT COUNT(*) FROM public.posts WHERE quote_post_id = v_post_id::text
   )
   WHERE id = v_post_id;
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
@@ -39,23 +40,32 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_quoted_id uuid;
+  v_quoted_text text;
+  v_quoted_id   uuid;
 BEGIN
+  -- quote_post_id is text; cast to uuid to look up the post
   IF TG_OP = 'INSERT' THEN
-    v_quoted_id := NEW.quote_post_id;
+    v_quoted_text := NEW.quote_post_id;
   ELSE
-    v_quoted_id := OLD.quote_post_id;
+    v_quoted_text := OLD.quote_post_id;
   END IF;
 
-  IF v_quoted_id IS NULL THEN
+  IF v_quoted_text IS NULL THEN
     RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
   END IF;
+
+  -- Safe cast: skip if value is not a valid UUID
+  BEGIN
+    v_quoted_id := v_quoted_text::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+  END;
 
   UPDATE public.posts
   SET repost_count = (
     SELECT COUNT(*) FROM public.reposts WHERE post_id = v_quoted_id
   ) + (
-    SELECT COUNT(*) FROM public.posts WHERE quote_post_id = v_quoted_id
+    SELECT COUNT(*) FROM public.posts WHERE quote_post_id = v_quoted_text
   )
   WHERE id = v_quoted_id;
 
@@ -77,10 +87,11 @@ FOR EACH ROW
 WHEN (OLD.quote_post_id IS NOT NULL)
 EXECUTE FUNCTION public.fn_update_repost_count_on_quote();
 
--- Step 3: Resync all existing repost counts to fix any stale values
+-- Step 3: Resync all existing repost counts to fix any stale values.
+-- quote_post_id is TEXT, posts.id is UUID — cast id to text for the comparison.
 UPDATE public.posts p
 SET repost_count = (
   SELECT COUNT(*) FROM public.reposts WHERE post_id = p.id
 ) + (
-  SELECT COUNT(*) FROM public.posts q WHERE q.quote_post_id = p.id
+  SELECT COUNT(*) FROM public.posts q WHERE q.quote_post_id = p.id::text
 );
