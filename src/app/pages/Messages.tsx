@@ -97,6 +97,9 @@ export function Messages() {
   const [groupReactions, setGroupReactions] = useState<ReactionMap>({});
   // Group thread read receipts: userId → last_read_at (ISO string)
   const [groupThreadReaders, setGroupThreadReaders] = useState<Record<string, string>>({});
+  // Sheet showing all readers of the last group message
+  const [showReadReceiptSheet, setShowReadReceiptSheet] = useState(false);
+  const [readReceiptSheetUsers, setReadReceiptSheetUsers] = useState<any[]>([]);
 
   const composeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addPeopleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -802,23 +805,33 @@ export function Messages() {
                       ))}
                     </div>
                   )}
-                  {/* Read receipts — show avatars + "Read" below the last message */}
+                  {/* Read receipts — tappable row; up to 4 avatars, overflow +N on 4th slot */}
                   {isLastMessage && readersOfLast.length > 0 && (
-                    <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className="flex -space-x-1">
-                        {readersOfLast.slice(0, 5).map(p => (
+                    <button
+                      onClick={() => { setReadReceiptSheetUsers(readersOfLast); setShowReadReceiptSheet(true); }}
+                      className={`flex items-center gap-1 mt-1 hover:opacity-80 transition-opacity ${isMe ? 'self-end' : 'self-start'}`}
+                    >
+                      <div className="flex -space-x-1.5">
+                        {readersOfLast.slice(0, readersOfLast.length <= 4 ? 4 : 3).map(p => (
                           <ProfileAvatar
                             key={p.id}
                             username={p.display_name || p.handle || '?'}
                             profilePicture={p.profile_picture ?? null}
                             size="sm"
                             userId={p.id}
-                            className="border border-background !w-5 !h-5 text-[9px]"
+                            className="border-2 border-background !w-5 !h-5 text-[9px]"
                           />
                         ))}
+                        {readersOfLast.length >= 5 && (
+                          <div className="!w-5 !h-5 rounded-full bg-secondary border-2 border-background flex items-center justify-center shrink-0">
+                            <span className="text-[8px] font-bold text-muted-foreground leading-none">
+                              +{readersOfLast.length - 3}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <span className="text-xs text-muted-foreground">Read</span>
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
@@ -948,6 +961,46 @@ export function Messages() {
                   {leavingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Leave
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Read receipt sheet — all users who have read the last message */}
+        {showReadReceiptSheet && (
+          <div className="fixed inset-0 z-[60] flex items-end" onClick={() => setShowReadReceiptSheet(false)}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div
+              className="relative w-full bg-card rounded-t-2xl max-h-[60vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                <h3 className="font-semibold">Read by {readReceiptSheetUsers.length}</h3>
+                <button onClick={() => setShowReadReceiptSheet(false)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 px-4 py-2">
+                {readReceiptSheetUsers.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setShowReadReceiptSheet(false); navigate(p.id === currentUser?.id ? '/profile' : `/profile/${p.id}`); }}
+                    className="w-full flex items-center gap-3 py-3 hover:bg-secondary/50 rounded-xl px-2 transition-colors text-left"
+                  >
+                    <ProfileAvatar
+                      username={p.display_name || p.handle || '?'}
+                      profilePicture={p.profile_picture ?? null}
+                      size="sm"
+                      userId={p.id}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{p.display_name || p.handle}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{(p.handle || '').replace(/^@/, '')}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
