@@ -1208,8 +1208,21 @@ export function Messages() {
         </div>
 
         {loadingConvos ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="space-y-2 animate-pulse">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-xl flex items-center gap-3 p-4">
+                {/* Avatar */}
+                <div className="w-12 h-12 rounded-full bg-muted/50 shrink-0" />
+                {/* Text lines */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-3.5 bg-muted/50 rounded w-28" />
+                    <div className="h-3 bg-muted/30 rounded w-10" />
+                  </div>
+                  <div className="h-3 bg-muted/30 rounded w-48" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : allConvos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">

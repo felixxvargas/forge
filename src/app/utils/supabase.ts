@@ -720,8 +720,7 @@ export const posts = {
       .insert({ user_id: userId, post_id: postId });
     // 23505 = unique violation (already reposted) — treat as a no-op, not an error
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Use SECURITY DEFINER RPC to bypass RLS — direct posts.update() is blocked for cross-user posts
-    await supabase.rpc('sync_repost_count', { p_post_id: postId });
+    // trg_repost_count trigger handles repost_count update automatically (SECURITY DEFINER, bypasses RLS)
   },
 
   async unrepost(userId: string, postId: string) {
@@ -731,8 +730,7 @@ export const posts = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
-    // Use SECURITY DEFINER RPC to bypass RLS
-    await supabase.rpc('sync_repost_count', { p_post_id: postId });
+    // trg_repost_count trigger handles repost_count update automatically
   },
 
   async getRepostedIds(userId: string) {

@@ -235,32 +235,41 @@ export function Profile() {
       <div className="min-h-screen pb-20">
         <Header />
         <div className="w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
-          {/* Avatar + name + edit button row */}
-          <div className="flex items-center justify-between mb-4">
+          {/* Avatar + name + edit/options button */}
+          <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
-              <div className="space-y-2">
-                <div className="h-5 bg-muted/50 rounded w-32" />
-                <div className="h-3.5 bg-muted/30 rounded w-20" />
+              <div className="space-y-2 pt-1">
+                <div className="h-5 bg-muted/50 rounded w-36" />
+                <div className="h-3.5 bg-muted/30 rounded w-24" />
               </div>
             </div>
             <div className="w-9 h-9 rounded-lg bg-muted/30" />
           </div>
           {/* Bio */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-3">
             <div className="h-3.5 bg-muted/40 rounded w-full" />
-            <div className="h-3.5 bg-muted/40 rounded w-3/4" />
+            <div className="h-3.5 bg-muted/40 rounded w-2/3" />
           </div>
-          {/* Stats row */}
-          <div className="flex items-center gap-6 mb-5">
-            <div className="space-y-1">
-              <div className="h-5 bg-muted/50 rounded w-10" />
-              <div className="h-3 bg-muted/30 rounded w-16" />
+          {/* Stats row + follow button */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex gap-5">
+              <div className="space-y-1">
+                <div className="h-5 bg-muted/50 rounded w-8" />
+                <div className="h-3 bg-muted/30 rounded w-16" />
+              </div>
+              <div className="space-y-1">
+                <div className="h-5 bg-muted/50 rounded w-8" />
+                <div className="h-3 bg-muted/30 rounded w-16" />
+              </div>
             </div>
-            <div className="space-y-1">
-              <div className="h-5 bg-muted/50 rounded w-10" />
-              <div className="h-3 bg-muted/30 rounded w-16" />
-            </div>
+            <div className="h-9 bg-muted/40 rounded-full w-24" />
+          </div>
+          {/* Platform badges row */}
+          <div className="flex gap-2 mb-5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-8 bg-muted/30 rounded-full w-20" />
+            ))}
           </div>
           {/* Tabs bar */}
           <div className="flex gap-1 border-b border-border/50 mb-4">

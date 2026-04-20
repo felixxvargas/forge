@@ -449,7 +449,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       {/* Group indicator — below header, above content; hidden on group detail pages */}
       {postGroup && !hideGroupTag && (
         <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/community/${postGroup.id}`); }}
+          onClick={(e) => { e.stopPropagation(); navigate(`/group/${postGroup.id}`); }}
           className="flex items-center gap-1.5 mb-2 -mt-1 text-xs text-muted-foreground hover:text-accent transition-colors"
         >
           {(postGroup as any).profile_picture ? (

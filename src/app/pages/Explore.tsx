@@ -981,13 +981,15 @@ export function Explore() {
 
             {activeTab === 'groups' && (
               <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/create-group')}
-                  className="w-full flex items-center gap-3 p-4 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
-                >
-                  <Plus className="w-5 h-5 shrink-0" />
-                  <span className="font-medium">Create a new group</span>
-                </button>
+                <div className="flex">
+                  <button
+                    onClick={() => navigate('/create-group')}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
+                  >
+                    <Plus className="w-4 h-4 shrink-0" />
+                    <span className="font-medium text-sm">Create a new group</span>
+                  </button>
+                </div>
                 {filteredGroups.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />

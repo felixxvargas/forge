@@ -625,13 +625,29 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 
 ---
 
-**Last Updated**: April 13, 2026
-**Version**: v0.4.0
+**Last Updated**: April 19, 2026
+**Version**: v0.4.1
 **Maintainer**: Forge Development Team
 
 ---
 
 ## Changelog
+
+### v0.4.1 — April 19, 2026
+- **DM read receipts**: Replaced ✓/✓✓ checkmarks with plain "Read" text shown only below the last sent message when read.
+- **Group read receipts**: Added `group_thread_reads` table; last message shows up to 4 reader avatars + overflow badge (+N); tappable to open a full reader list sheet.
+- **Message reactions**: Long-press any DM or group message to open a context menu with emoji reactions and a delete option.
+- **Typing indicators**: Real-time typing indicators for both DM and group chat views.
+- **Group tag on posts**: Moved group indicator below the post header and above content; shows group profile image; tapping navigates to `/group/:groupId` (was `/community/:groupId` — 404 fixed).
+- **Compose auto-tag**: Navigating to New Post from a Game Detail or Group Detail page auto-populates the game/group tag.
+- **Game Detail compose button**: Added floating compose button to Game Detail pages.
+- **Header logo centering**: Forge logo lockup is now centered in the top nav using absolute positioning.
+- **DM preview text**: Decrypts and shows real message previews in the conversation list instead of static "New message".
+- **DM compose modal**: Raised z-index so the CTA button is never hidden by the bottom nav.
+- **Follower count flash fix**: Removed stale cache seed that caused a count flash on profile load.
+- **Repost +2 bug fix**: Removed redundant `sync_repost_count` RPC call from `postsAPI.repost/unrepost`; trigger now handles both regular reposts and quote posts consistently. Run `20260419_fix_repost_count_trigger.sql` migration.
+- **Skeleton loaders**: DM list and Profile skeletons updated to replicate actual UI layout.
+- **Explore groups button**: Create New Group button is now compact (`inline-flex`) instead of full-width on desktop.
 
 ### v0.4.0 — April 13, 2026
 - **Edge function rebuilt (v3)**: Removed ~2100 lines of legacy Figma Make KV-store code (auth, user CRUD, post CRUD, likes, follows, blocks, mutes, admin endpoints). Edge function is now ~270 lines focused exclusively on games (IGDB) and file upload/moderation.

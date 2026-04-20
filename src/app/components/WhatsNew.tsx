@@ -11,6 +11,22 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.2.7',
+    date: 'April 2026',
+    title: "What's New in Forge",
+    summary: "Read receipts, message reactions, group DMs, and feed polish.",
+    highlights: [
+      'Read receipts in direct messages — see when your message was read',
+      'Group chat read receipts — tap the avatar row to see who has read the last message',
+      'Emoji reactions on DMs and group messages — long-press any message to react or delete',
+      'Group-tagged posts now show the group name and icon below the post header',
+      'Tapping a group tag on a post navigates to the group page',
+      'Start a post pre-tagged to a game from the Game Detail page',
+      'New post compose button on Game Detail pages',
+      'Typing indicators in DMs and group chats',
+    ],
+  },
+  {
     version: 'v0.2.6',
     date: 'April 2025',
     title: "What's New in Forge",
