@@ -101,6 +101,8 @@ export function Messages() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Plaintext cache for conversation list previews (partner_id → latest plaintext)
   const conversationPreviewCache = useRef<Record<string, string>>({});
+  // Decrypted preview texts for the conversation list (state so they trigger re-render)
+  const [dmPreviews, setDmPreviews] = useState<Record<string, string>>({});
 
   // E2E encryption: partner's public key JWK (fetched when a DM conversation opens)
   const partnerPublicKeyRef = useRef<JsonWebKey | null>(null);
@@ -142,9 +144,29 @@ export function Messages() {
     Promise.all([
       dmAPI.getConversations(currentUser.id).catch(() => []),
       groupAPI.getForUser(currentUser.id).catch(() => []),
-    ]).then(([dms, groups]) => {
+    ]).then(async ([dms, groups]) => {
       setConversations(dms);
       setGroupThreadList(groups);
+      // Decrypt preview text for encrypted DM conversations
+      const encryptedConvos = (dms as any[]).filter(c => c.encrypted && c.content && c.iv);
+      if (encryptedConvos.length && currentUser?.id) {
+        const userId = currentUser.id;
+        const entries = await Promise.all(
+          encryptedConvos.map(async (convo: any) => {
+            try {
+              const pid = convo.sender_id === userId ? convo.recipient_id : convo.sender_id;
+              const raw = await profiles.getPublicKey(pid);
+              if (!raw) return null;
+              const key = JSON.parse(raw) as JsonWebKey;
+              const plain = await decryptMessage(convo.content, convo.iv, key);
+              return plain ? [pid, plain] as [string, string] : null;
+            } catch { return null; }
+          })
+        );
+        const map: Record<string, string> = {};
+        entries.forEach(e => { if (e) map[e[0]] = e[1]; });
+        setDmPreviews(prev => ({ ...prev, ...map }));
+      }
     }).finally(() => setLoadingConvos(false));
   }, [currentUser?.id]);
 
@@ -230,10 +252,14 @@ export function Messages() {
         if (msg.sender_id !== selectedPartnerId) return;
         if (msg.encrypted && msg.iv && partnerPublicKeyRef.current) {
           const plain = await decryptMessage(msg.content, msg.iv, partnerPublicKeyRef.current);
-          if (plain) conversationPreviewCache.current[selectedPartnerId] = plain;
+          if (plain) {
+            conversationPreviewCache.current[selectedPartnerId] = plain;
+            setDmPreviews(prev => ({ ...prev, [selectedPartnerId]: plain }));
+          }
           setMessages(prev => [...prev, { ...msg, _plaintext: plain ?? undefined }]);
         } else {
           conversationPreviewCache.current[selectedPartnerId] = msg.content;
+          setDmPreviews(prev => ({ ...prev, [selectedPartnerId]: msg.content }));
           setMessages(prev => [...prev, msg]);
         }
       })
@@ -493,6 +519,7 @@ export function Messages() {
       const msg = await dmAPI.send(currentUser.id, selectedPartnerId, content, opts);
       // Cache plaintext for the conversation list preview
       conversationPreviewCache.current[selectedPartnerId] = plaintext;
+      setDmPreviews(prev => ({ ...prev, [selectedPartnerId]: plaintext }));
       // For the sender's own view, display the original plaintext
       setMessages(prev => [...prev, { ...msg, _plaintext: plaintext }]);
       dmAPI.getConversations(currentUser.id).then(setConversations).catch(() => {});
@@ -1148,7 +1175,7 @@ export function Messages() {
                               <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatTime(item.created_at)}</span>
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
-                              {conversationPreviewCache.current[partnerId] ?? ((item as any).encrypted ? 'New message' : item.content)}
+                              {conversationPreviewCache.current[partnerId] ?? dmPreviews[partnerId] ?? ((item as any).encrypted ? '' : item.content) ?? ''}
                             </p>
                           </div>
                         </button>
@@ -1219,7 +1246,7 @@ export function Messages() {
 
       {/* Compose Modal */}
       {showCompose && (
-        <div className="fixed inset-0 bg-background z-50 flex flex-col">
+        <div className="fixed inset-0 bg-background z-[60] flex flex-col">
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
             <button
               onClick={composeStep === 'confirm' ? () => setComposeStep('search') : closeCompose}
@@ -1297,7 +1324,7 @@ export function Messages() {
               </div>
 
               {selectedComposeUsers.length > 0 && (
-                <div className="px-4 pb-6 pt-2 border-t border-border">
+                <div className="px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] border-t border-border shrink-0">
                   <button
                     onClick={() => setComposeStep('confirm')}
                     className="w-full py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"

@@ -15,24 +15,26 @@ export function Header({ title, showNotifications = true, showSettings = true }:
 
   return (
     <header className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border z-40">
-      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 h-14 flex items-center">
+      <div className="relative w-full max-w-2xl lg:max-w-5xl mx-auto px-4 h-14 flex items-center">
         {/* Left zone */}
         <div className="flex-1 flex items-center">
           {title && <h1 className="text-xl font-bold">{title}</h1>}
         </div>
 
-        {/* Center — logo (hidden when title is shown) */}
+        {/* Center — absolutely centered so right-side icon buttons don't shift it */}
         {!title && (
-          <button
-            className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
-            onClick={() => { navigate('/feed'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            aria-label="Go to feed"
-          >
-            <div className="flex items-center gap-1.5">
-              <ForgeLogo width="28" height="22" aria-hidden="true" />
-              <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none">beta</span>
-            </div>
-          </button>
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <button
+              className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
+              onClick={() => { navigate('/feed'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              aria-label="Go to feed"
+            >
+              <div className="flex items-center gap-1.5">
+                <ForgeLogo width="28" height="22" aria-hidden="true" />
+                <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none">beta</span>
+              </div>
+            </button>
+          </div>
         )}
 
         {/* Right zone */}
