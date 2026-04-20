@@ -1,5 +1,5 @@
 -- Fix repost_count trigger to include quote posts in the count, matching sync_repost_count RPC.
--- Also adds a trigger on posts (INSERT/DELETE of quote posts) to keep repost_count accurate.
+-- Also adds triggers on posts (INSERT/DELETE of quote posts) to keep repost_count accurate.
 -- Run this in the Supabase dashboard SQL editor.
 
 -- Step 1: Update the reposts trigger function to include quote posts
@@ -24,8 +24,13 @@ BEGIN
 END;
 $$;
 
--- Step 2: Add a trigger on posts to update repost_count when a quote post is created/deleted
+-- Step 2: Add triggers on posts to update repost_count when a quote post is created/deleted.
+-- Note: TG_OP cannot be used in the WHEN clause of CREATE TRIGGER, so we use two separate triggers.
+
+DROP TRIGGER IF EXISTS trg_quote_repost_count_insert ON public.posts;
+DROP TRIGGER IF EXISTS trg_quote_repost_count_delete ON public.posts;
 DROP TRIGGER IF EXISTS trg_quote_repost_count ON public.posts;
+DROP FUNCTION IF EXISTS public.fn_update_repost_count_on_quote();
 
 CREATE OR REPLACE FUNCTION public.fn_update_repost_count_on_quote()
 RETURNS TRIGGER
@@ -58,13 +63,18 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_quote_repost_count
-AFTER INSERT OR DELETE ON public.posts
+-- Separate INSERT trigger (WHEN clause can only reference NEW for INSERT triggers)
+CREATE TRIGGER trg_quote_repost_count_insert
+AFTER INSERT ON public.posts
 FOR EACH ROW
-WHEN (
-  (TG_OP = 'INSERT' AND NEW.quote_post_id IS NOT NULL) OR
-  (TG_OP = 'DELETE' AND OLD.quote_post_id IS NOT NULL)
-)
+WHEN (NEW.quote_post_id IS NOT NULL)
+EXECUTE FUNCTION public.fn_update_repost_count_on_quote();
+
+-- Separate DELETE trigger (WHEN clause can only reference OLD for DELETE triggers)
+CREATE TRIGGER trg_quote_repost_count_delete
+AFTER DELETE ON public.posts
+FOR EACH ROW
+WHEN (OLD.quote_post_id IS NOT NULL)
 EXECUTE FUNCTION public.fn_update_repost_count_on_quote();
 
 -- Step 3: Resync all existing repost counts to fix any stale values

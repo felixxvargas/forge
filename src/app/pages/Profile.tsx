@@ -1295,35 +1295,42 @@ export function Profile() {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Media</h3>
                         <button onClick={() => setActiveTab('media')} className="text-xs text-accent hover:underline">
-                          View all {mediaPosts.length} media
+                          View all {mediaPosts.length} {mediaPosts.length === 1 ? 'photo/video' : 'photos & videos'}
                         </button>
                       </div>
-                      <div className={`grid gap-1 mb-2 ${mediaPosts.slice(0, 4).length === 1 ? 'grid-cols-1' : mediaPosts.slice(0, 4).length === 2 ? 'grid-cols-2' : mediaPosts.slice(0, 4).length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                        {mediaPosts.slice(0, 4).map((post, idx) => {
-                          const images: string[] = (post as any).images ?? [];
-                          const video: string | undefined = (post as any).video;
-                          const src = images[0] ?? video;
-                          const isVideo = !images[0] && !!video;
-                          return (
-                            <div
-                              key={post.id}
-                              onClick={() => navigate(`/post/${post.id}`)}
-                              className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-square ${mediaPosts.slice(0, 4).length === 3 && idx === 2 ? 'col-span-1' : ''}`}
-                            >
-                              {isVideo ? (
-                                <video src={video} className="w-full h-full object-cover" muted />
-                              ) : (
-                                <img src={src} alt="" className="w-full h-full object-cover" />
-                              )}
-                              {isVideo && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                  <PlayCircle className="w-8 h-8 text-white drop-shadow" />
+                      {(() => {
+                        const preview = mediaPosts.slice(0, 4);
+                        const gridCols = preview.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
+                        return (
+                          <div className={`grid gap-1 mb-2 ${gridCols}`}>
+                            {preview.map((post, idx) => {
+                              const images: string[] = (post as any).images ?? [];
+                              const firstSrc = images[0] ?? '';
+                              const isVideo = /\.(mp4|mov|webm|ogg)(\?|$|#)/i.test(firstSrc);
+                              // 3 items: last spans both columns
+                              const spanFull = preview.length === 3 && idx === 2;
+                              return (
+                                <div
+                                  key={post.id}
+                                  onClick={() => navigate(`/post/${post.id}`)}
+                                  className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-square ${spanFull ? 'col-span-2' : ''}`}
+                                >
+                                  {isVideo ? (
+                                    <video src={firstSrc} className="w-full h-full object-cover" muted playsInline />
+                                  ) : (
+                                    <img src={firstSrc} alt="" className="w-full h-full object-cover" />
+                                  )}
+                                  {isVideo && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                                      <PlayCircle className="w-8 h-8 text-white drop-shadow" />
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -1494,30 +1501,51 @@ export function Profile() {
               <div className="grid grid-cols-3 gap-1">
                 {mediaPosts.map(post => {
                   const images: string[] = (post as any).images ?? [];
-                  const video: string | undefined = (post as any).video;
-                  const src = images[0] ?? video;
-                  const isVideo = !images[0] && !!video;
-                  const tag = (post as any).game_title || (post as any).community_name;
+                  const firstSrc = images[0] ?? '';
+                  const isVideo = /\.(mp4|mov|webm|ogg)(\?|$|#)/i.test(firstSrc);
+                  const gameTitle: string | null = (post as any).game_title ?? ((post as any).game_titles?.[0]) ?? null;
+                  const gameId: string | null = (post as any).game_id ?? ((post as any).game_ids?.[0]) ?? null;
+                  const communityId: string | null = (post as any).community_id ?? null;
+                  const groupObj = communityId ? groups.find((g: any) => g.id === communityId) : null;
+                  const groupName: string | null = groupObj?.name ?? null;
+                  const hasTag = !!(gameTitle || groupName);
                   return (
-                    <div
-                      key={post.id}
-                      onClick={() => navigate(`/post/${post.id}`)}
-                      className="relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-square group"
-                    >
-                      {isVideo ? (
-                        <video src={video} className="w-full h-full object-cover" muted />
-                      ) : (
-                        <img src={src} alt="" className="w-full h-full object-cover" />
-                      )}
-                      {isVideo && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <PlayCircle className="w-7 h-7 text-white drop-shadow" />
-                        </div>
-                      )}
-                      {tag && (
-                        <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                          <p className="text-white text-[10px] font-medium truncate">{tag}</p>
-                        </div>
+                    <div key={post.id} className="relative overflow-hidden rounded-lg bg-muted/30 aspect-square">
+                      {/* Main tile — click → post detail */}
+                      <div
+                        onClick={() => navigate(`/post/${post.id}`)}
+                        className="absolute inset-0 cursor-pointer"
+                      >
+                        {isVideo ? (
+                          <video src={firstSrc} className="w-full h-full object-cover" muted playsInline />
+                        ) : (
+                          <img src={firstSrc} alt="" className="w-full h-full object-cover" />
+                        )}
+                        {isVideo && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <PlayCircle className="w-7 h-7 text-white drop-shadow" />
+                          </div>
+                        )}
+                      </div>
+                      {/* Game/group label — always visible overlay, click → game or group page */}
+                      {hasTag && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (gameId) navigate(`/game/${gameId}`);
+                            else if (communityId) navigate(`/group/${communityId}`);
+                          }}
+                          className="absolute bottom-0 left-0 right-0 px-1.5 py-1.5 bg-gradient-to-t from-black/75 to-transparent flex items-center gap-1 text-left"
+                        >
+                          {gameTitle ? (
+                            <Gamepad2 className="w-2.5 h-2.5 text-white/80 shrink-0" />
+                          ) : (
+                            <Users className="w-2.5 h-2.5 text-white/80 shrink-0" />
+                          )}
+                          <span className="text-white text-[10px] font-medium truncate leading-tight">
+                            {gameTitle ?? groupName}
+                          </span>
+                        </button>
                       )}
                     </div>
                   );
