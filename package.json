@@ -7,7 +7,8 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "generate-icons": "node scripts/generate-icons.mjs"
+    "generate-icons": "node scripts/generate-icons.mjs",
+    "build:android": "vite build && npx cap sync android"
   },
   "dependencies": {
     "@atproto/api": "^0.19.6",

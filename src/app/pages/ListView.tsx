@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ArrowLeft, Edit2, Users, Upload, Copy, Check, X, PenSquare, MoreHorizontal } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
@@ -50,7 +50,7 @@ export function ListView() {
   const [loadingViewUser, setLoadingViewUser] = useState(false);
 
   // Always start at the top of the list
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useLayoutEffect(() => { window.scrollTo(0, 0); }, []);
 
   const EDIT_MODAL_KEY = `forge-edit-list-open-${listType}`;
 
