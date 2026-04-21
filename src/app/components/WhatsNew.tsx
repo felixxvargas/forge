@@ -11,19 +11,18 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: 'v0.2.7',
+    version: 'v0.3.0',
     date: 'April 2026',
     title: "What's New in Forge",
-    summary: "Read receipts, message reactions, group DMs, and feed polish.",
+    summary: "Modernized the messaging experience and Feed updates. Google Play Store build submitted!",
     highlights: [
-      'Read receipts in direct messages — see when your message was read',
-      'Group chat read receipts — tap the avatar row to see who has read the last message',
-      'Emoji reactions on DMs and group messages — long-press any message to react or delete',
-      'Group-tagged posts now show the group name and icon below the post header',
-      'Tapping a group tag on a post navigates to the group page',
-      'Start a post pre-tagged to a game from the Game Detail page',
-      'New post compose button on Game Detail pages',
+      'Read receipts in direct messages; see when your message was read',
+      'Group chat read receipts; tap the avatar stack to see who has read messages',
       'Typing indicators in DMs and group chats',
+      'Add Emoji reactions on DMs and group messages; long-press any message to react or delete',
+      'Tag Groups in posts now. Tapping a group tag on a post navigates to the group page',
+      'Post directly to a game from the game detail page',
+
     ],
   },
   {
@@ -35,10 +34,8 @@ export const RELEASES: Release[] = [
       'Gaming news and media accounts now appear in the Trending and For You feeds',
       'Direct messages are now end-to-end encrypted',
       'Add alt text to images when composing a post',
-      'Forge Premium subscription available — support the app and unlock perks',
-      'hCaptcha verification added to login and signup for improved security',
-      'Visual design updates across profiles, feeds, and settings',
-      'Topic account following integrated into Explore',
+      'Forge Premium subscription available; support the app and unlock perks',
+      'Captcha verification added to login and signup for improved security',
     ],
   },
   {
