@@ -354,18 +354,38 @@ export function Feed() {
 
       {loading && (
         <div className="divide-y divide-border">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {[
+            { lines: ['w-full', 'w-5/6', 'w-3/5'], hasImage: false },
+            { lines: ['w-full', 'w-4/5'], hasImage: true },
+            { lines: ['w-full', 'w-11/12', 'w-2/3'], hasImage: false },
+            { lines: ['w-full', 'w-3/4'], hasImage: false },
+            { lines: ['w-full', 'w-5/6', 'w-1/2'], hasImage: false },
+          ].map((card, i) => (
             <div key={i} className="p-4 animate-pulse">
               <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
-                <div className="flex-1 space-y-2 pt-1">
-                  <div className="flex gap-2">
-                    <div className="h-3 bg-muted/50 rounded w-24" />
-                    <div className="h-3 bg-muted/30 rounded w-16" />
+                <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 space-y-2.5">
+                  {/* Name + handle + timestamp */}
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <div className="h-3.5 bg-muted/60 rounded w-28" />
+                    <div className="h-3 bg-muted/35 rounded w-20" />
+                    <div className="h-3 bg-muted/25 rounded w-8 ml-auto" />
                   </div>
-                  <div className="h-3 bg-muted/50 rounded w-full" />
-                  <div className="h-3 bg-muted/50 rounded w-4/5" />
-                  <div className="h-3 bg-muted/30 rounded w-1/2" />
+                  {/* Text lines */}
+                  {card.lines.map((w, j) => (
+                    <div key={j} className={`h-3.5 bg-muted/50 rounded ${w}`} />
+                  ))}
+                  {/* Image placeholder (some cards) */}
+                  {card.hasImage && (
+                    <div className="h-44 bg-muted/25 rounded-xl" />
+                  )}
+                  {/* Action bar */}
+                  <div className="flex items-center gap-5 pt-0.5">
+                    <div className="h-4 bg-muted/30 rounded w-10" />
+                    <div className="h-4 bg-muted/30 rounded w-10" />
+                    <div className="h-4 bg-muted/30 rounded w-10" />
+                    <div className="h-4 bg-muted/30 rounded w-6 ml-auto" />
+                  </div>
                 </div>
               </div>
             </div>

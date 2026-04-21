@@ -176,6 +176,43 @@ export function NewPost() {
     }
   }, [content, selectedGames, imageUrl, linkUrl]);
 
+  // Flush draft immediately when the page is hidden or unloaded (tab switch, app backgrounded, etc.)
+  // useEffect auto-save is async — this catches any state that hasn't flushed yet.
+  useEffect(() => {
+    const flush = () => {
+      // Read current values via closure (stale ref for content is fine here since
+      // we're just flushing whatever was last rendered to localStorage)
+      const raw = localStorage.getItem(AUTO_DRAFT_KEY);
+      // If nothing is stored yet but the textarea has content, save it now
+      if (!raw) {
+        const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Post content"]');
+        if (el?.value.trim()) {
+          localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify({ content: el.value, games: [], imageUrl: '', linkUrl: '' }));
+        }
+      }
+    };
+    const onHide = () => flush();
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, []);
+
+  // When the page is restored from bfcache (browser back/forward cache), if the blocker
+  // was left in a 'blocked' state it won't auto-recover — show the confirm dialog so the
+  // user isn't left on a frozen, unresponsive screen.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted && blocker.state === 'blocked') {
+        setShowCancelConfirm(true);
+      }
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, [blocker.state]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionStartRef = useRef<number>(-1);
   const hashTriggerIndex = useRef<number>(-1);

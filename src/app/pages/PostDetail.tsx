@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, Heart, MessageCircle, Quote } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, Heart, MessageCircle, Quote, Users, LayoutList } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
@@ -20,7 +20,8 @@ export function PostDetail() {
     likePost, unlikePost, likedPosts,
     repostPost, unrepostPost, repostedPosts,
     createPost, deletePost, addPosts, session,
-  } = useAppData();
+    groups: contextGroups = [],
+  } = useAppData() as any;
 
   const repliesRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +49,18 @@ export function PostDetail() {
   const [parentPost, setParentPost] = useState<any>(null);
   const [showParentContext, setShowParentContext] = useState(false);
 
+  // List type mappings (mirrors NewPost)
+  const LIST_KEY_MAP: Record<string, string> = {
+    'recently-played': 'recentlyPlayed', 'played-before': 'playedBefore',
+    'favorite': 'favorites', 'wishlist': 'wishlist', 'library': 'library',
+    'completed': 'completed', 'custom': 'custom', 'lfg': 'lfg',
+  };
+  const LIST_LABELS: Record<string, string> = {
+    'recently-played': 'Recently Played', 'played-before': "I've Played Before",
+    'favorite': 'Favorite Games', 'wishlist': 'Wishlist', 'library': 'Library',
+    'completed': 'Completed Games', 'custom': 'Custom List', 'lfg': 'Looking for Group',
+  };
+
   // Game tagging in reply
   const [replySelectedGames, setReplySelectedGames] = useState<{ id: string; title: string }[]>([]);
   const [showReplyGamePicker, setShowReplyGamePicker] = useState(false);
@@ -55,6 +68,15 @@ export function PostDetail() {
   const [replyGameResults, setReplyGameResults] = useState<any[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Group tagging in reply
+  const [replySelectedGroup, setReplySelectedGroup] = useState<{ id: string; name: string } | null>(null);
+  const [showReplyGroupPicker, setShowReplyGroupPicker] = useState(false);
+
+  // List attachment in reply
+  const [replyPickedListType, setReplyPickedListType] = useState<string | undefined>(undefined);
+  const [replyPickedListUserId, setReplyPickedListUserId] = useState<string | undefined>(undefined);
+  const [showReplyListPicker, setShowReplyListPicker] = useState(false);
 
   // Sub-replies for each top-level reply (replyId → sub-reply posts)
   const [subRepliesMap, setSubRepliesMap] = useState<Record<string, any[]>>({});
@@ -316,14 +338,33 @@ export function PostDetail() {
         ? `forge-comment:${postId}`
         : (replyLinkUrl || undefined);
       const imagesToStore = replyImageUrl ? [replyImageUrl] : undefined;
+      const communityId = replySelectedGroup?.id ?? undefined;
+
+      // Build list attachment data if one was picked
+      let listData: object | undefined;
+      if (replyPickedListType && replyPickedListUserId) {
+        const listKey = LIST_KEY_MAP[replyPickedListType] ?? replyPickedListType;
+        const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
+        const games: any[] = gameLists[listKey] ?? [];
+        const covers = games.slice(0, 4).map((g: any) =>
+          g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+        ).filter(Boolean);
+        if (games.length > 0) {
+          listData = { listType: replyPickedListType, userId: replyPickedListUserId, title: LIST_LABELS[replyPickedListType] ?? replyPickedListType, gameCount: games.length, covers };
+        }
+      }
+
       const replyId = await createPost(
         newReply.trim(),
         imagesToStore,
         urlToStore,
-        undefined, undefined,
+        undefined,
+        communityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         undefined, undefined,
         isExternalPost ? undefined : postId,
+        undefined,
+        listData,
       );
       if (replyId) {
         try {
@@ -340,9 +381,14 @@ export function PostDetail() {
       setReplySelectedGames([]);
       setReplyImageUrl('');
       setReplyLinkUrl('');
+      setReplySelectedGroup(null);
+      setReplyPickedListType(undefined);
+      setReplyPickedListUserId(undefined);
       setShowReplyTray(false);
       setShowReplyImageUpload(false);
       setShowReplyLinkInput(false);
+      setShowReplyGroupPicker(false);
+      setShowReplyListPicker(false);
     } catch (err) {
       console.error('Failed to post reply:', err);
       setReplyError('Failed to post comment. Please try again.');
@@ -574,7 +620,7 @@ export function PostDetail() {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                   <button
                     type="button"
-                    onClick={() => { setShowReplyTray(false); setShowReplyImageUpload(false); setShowReplyLinkInput(false); setShowReplyGamePicker(false); }}
+                    onClick={() => { setShowReplyTray(false); setShowReplyImageUpload(false); setShowReplyLinkInput(false); setShowReplyGamePicker(false); setShowReplyGroupPicker(false); setShowReplyListPicker(false); }}
                     className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
                   >
                     <XIcon className="w-4 h-4" />
@@ -684,6 +730,53 @@ export function PostDetail() {
                         })}
                       </div>
                     )}
+
+                    {/* Selected group tag */}
+                    {replySelectedGroup && (
+                      <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-accent/10 border border-accent/25 rounded-lg text-sm text-accent">
+                        <Users className="w-4 h-4 shrink-0" />
+                        <span className="flex-1">Posting to <span className="font-semibold">{replySelectedGroup.name}</span></span>
+                        <button type="button" onClick={() => setReplySelectedGroup(null)} className="shrink-0 hover:text-accent/60">
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Attached list preview */}
+                    {replyPickedListType && (() => {
+                      const listKey = LIST_KEY_MAP[replyPickedListType] ?? replyPickedListType;
+                      const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
+                      const games: any[] = gameLists[listKey] ?? [];
+                      const covers = games.slice(0, 4).map((g: any) =>
+                        g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+                      ).filter(Boolean);
+                      return (
+                        <div className="mt-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <LayoutList className="w-3.5 h-3.5 text-accent shrink-0" />
+                              <span className="text-xs text-accent font-medium">Attaching List</span>
+                            </div>
+                            <button type="button" onClick={() => { setReplyPickedListType(undefined); setReplyPickedListUserId(undefined); }} className="p-0.5 text-muted-foreground hover:text-foreground">
+                              <XIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex gap-1 shrink-0">
+                              {covers.length > 0 ? covers.slice(0, 4).map((c: string, i: number) => (
+                                <img key={i} src={c} alt="" className="w-8 h-11 object-cover rounded" />
+                              )) : (
+                                <div className="w-8 h-11 rounded bg-secondary flex items-center justify-center"><Gamepad2 className="w-4 h-4 text-muted-foreground" /></div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm">{LIST_LABELS[replyPickedListType] ?? replyPickedListType}</p>
+                              <p className="text-xs text-muted-foreground">{games.length} games</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -759,11 +852,75 @@ export function PostDetail() {
                   </div>
                 )}
 
+                {/* Group picker panel */}
+                {showReplyGroupPicker && (
+                  <div className="px-4 pb-3 border-t border-border pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold flex items-center gap-1.5"><Users className="w-4 h-4" /> Post to Group</span>
+                      <button type="button" onClick={() => setShowReplyGroupPicker(false)} className="p-1 text-muted-foreground hover:text-foreground"><XIcon className="w-4 h-4" /></button>
+                    </div>
+                    <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                      {(contextGroups as any[]).map((group: any) => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => { setReplySelectedGroup({ id: group.id, name: group.name }); setShowReplyGroupPicker(false); }}
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 ${replySelectedGroup?.id === group.id ? 'bg-accent/20 text-accent' : 'hover:bg-secondary'}`}
+                        >
+                          <Users className="w-4 h-4 shrink-0 text-muted-foreground" />
+                          <span>{group.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* List picker panel */}
+                {showReplyListPicker && (
+                  <div className="px-4 pb-3 border-t border-border pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold flex items-center gap-1.5"><LayoutList className="w-4 h-4" /> Attach Game List</span>
+                      <button type="button" onClick={() => setShowReplyListPicker(false)} className="p-1 text-muted-foreground hover:text-foreground"><XIcon className="w-4 h-4" /></button>
+                    </div>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {Object.entries(LIST_LABELS).map(([type, label]) => {
+                        const listKey = LIST_KEY_MAP[type] ?? type;
+                        const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
+                        const games: any[] = gameLists[listKey] ?? [];
+                        if (games.length === 0) return null;
+                        const covers = games.slice(0, 3).map((g: any) =>
+                          g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+                        ).filter(Boolean);
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => { setReplyPickedListType(type); setReplyPickedListUserId(currentUser?.id ?? ''); setShowReplyListPicker(false); }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left text-sm ${replyPickedListType === type ? 'bg-accent/20 text-accent' : 'hover:bg-secondary'}`}
+                          >
+                            <div className="flex gap-0.5 shrink-0">
+                              {covers.length > 0 ? covers.map((c: string, i: number) => (
+                                <img key={i} src={c} alt="" className="w-6 h-9 object-cover rounded" />
+                              )) : (
+                                <div className="w-6 h-9 rounded bg-secondary flex items-center justify-center"><Gamepad2 className="w-3 h-3 text-muted-foreground" /></div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium">{label}</p>
+                              <p className="text-xs text-muted-foreground">{games.length} games</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Toolbar */}
                 <div className="flex items-center gap-1 px-4 py-3 border-t border-border shrink-0">
                   <button
                     type="button"
-                    onClick={() => { setShowReplyImageUpload(v => !v); setShowReplyLinkInput(false); setShowReplyGamePicker(false); }}
+                    onClick={() => { setShowReplyImageUpload(v => !v); setShowReplyLinkInput(false); setShowReplyGamePicker(false); setShowReplyGroupPicker(false); setShowReplyListPicker(false); }}
                     className={`p-2 rounded-lg transition-colors ${(showReplyImageUpload || replyImageUrl) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                     title="Add image"
                   >
@@ -772,7 +929,7 @@ export function PostDetail() {
                   {!isExternalPost && (
                     <button
                       type="button"
-                      onClick={() => { setShowReplyLinkInput(v => !v); setShowReplyImageUpload(false); setShowReplyGamePicker(false); }}
+                      onClick={() => { setShowReplyLinkInput(v => !v); setShowReplyImageUpload(false); setShowReplyGamePicker(false); setShowReplyGroupPicker(false); setShowReplyListPicker(false); }}
                       className={`p-2 rounded-lg transition-colors ${(showReplyLinkInput || replyLinkUrl) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                       title="Add link"
                     >
@@ -781,12 +938,32 @@ export function PostDetail() {
                   )}
                   <button
                     type="button"
-                    onClick={() => { setShowReplyGamePicker(v => !v); setShowReplyImageUpload(false); setShowReplyLinkInput(false); }}
+                    onClick={() => { setShowReplyGamePicker(v => !v); setShowReplyImageUpload(false); setShowReplyLinkInput(false); setShowReplyGroupPicker(false); setShowReplyListPicker(false); }}
                     className={`p-2 rounded-lg transition-colors ${(showReplyGamePicker || replySelectedGames.length > 0) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                     title="Tag a game"
                   >
                     <Gamepad2 className="w-5 h-5" />
                   </button>
+                  {(contextGroups as any[]).length > 0 && !isExternalPost && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowReplyGroupPicker(v => !v); setShowReplyImageUpload(false); setShowReplyLinkInput(false); setShowReplyGamePicker(false); setShowReplyListPicker(false); }}
+                      className={`p-2 rounded-lg transition-colors ${(showReplyGroupPicker || replySelectedGroup) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                      title="Post to group"
+                    >
+                      <Users className="w-5 h-5" />
+                    </button>
+                  )}
+                  {!isExternalPost && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowReplyListPicker(v => !v); setShowReplyImageUpload(false); setShowReplyLinkInput(false); setShowReplyGamePicker(false); setShowReplyGroupPicker(false); }}
+                      className={`p-2 rounded-lg transition-colors ${(showReplyListPicker || replyPickedListType) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                      title="Attach a game list"
+                    >
+                      <LayoutList className="w-5 h-5" />
+                    </button>
+                  )}
                   {replyError && <p className="ml-2 text-xs text-destructive flex-1">{replyError}</p>}
                 </div>
               </div>
