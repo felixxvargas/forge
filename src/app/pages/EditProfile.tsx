@@ -319,7 +319,7 @@ export function EditProfile() {
                 onUpload={handleProfilePictureUpload}
                 onUploadingChange={setIsImageUploading}
                 accept="image/*"
-                maxSizeMB={10}
+                maxSizeMB={5}
                 bucketType="avatar"
               />
               {formData.profilePicture && (

@@ -110,10 +110,10 @@ export function Login() {
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
 
             {/* Icon with glow */}
-            <div className="relative w-20 h-16 mx-auto mb-3 flex items-center justify-center">
+            <div className="relative w-14 h-11 sm:w-20 sm:h-16 mx-auto mb-3 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.6) 0%, transparent 70%)', filter: 'blur(18px)', transform: 'scale(1.4)' }} />
-              <ForgeSVG width="80" height="64" aria-hidden="true" className="relative" />
+                style={{ background: 'radial-gradient(circle, rgba(231,255,196,0.35) 0%, rgba(167,139,250,0.55) 40%, transparent 70%)', filter: 'blur(20px)', transform: 'scale(1.8)' }} />
+              <ForgeSVG aria-hidden="true" className="relative w-full h-full" />
             </div>
 
             <div className="flex items-center justify-center gap-2 mb-1">

@@ -403,7 +403,7 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
                 onRemove={() => { setImageUrl(''); setAltText(''); }}
                 existingUrl={imageUrl}
                 accept="image/*,video/*"
-                maxSizeMB={50}
+                maxSizeMB={5}
                 bucketType="post"
               />
               {imageUrl && (

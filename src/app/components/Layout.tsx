@@ -21,7 +21,7 @@ export function Layout() {
       <div className="min-h-dvh bg-background relative">
         <DesktopSidebar />
         <div className="md:ml-[60px] lg:ml-[220px]">
-          <LoadingScreen />
+          <LoadingScreen path={location.pathname} />
         </div>
         <BottomNav />
       </div>

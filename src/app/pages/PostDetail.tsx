@@ -39,7 +39,10 @@ export function PostDetail() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [standalonePost, setStandalonePost] = useState<any>(null);
   const [showReplyTray, setShowReplyTray] = useState(false);
-  const [replyImageUrl, setReplyImageUrl] = useState('');
+  const [replyImageUrls, setReplyImageUrls] = useState<string[]>([]);
+  const [replyImageAlts, setReplyImageAlts] = useState<string[]>([]);
+  const [replyActiveAltIndex, setReplyActiveAltIndex] = useState<number | null>(null);
+  const [replyUploadKey, setReplyUploadKey] = useState(0);
   const [replyLinkUrl, setReplyLinkUrl] = useState('');
   const [showReplyImageUpload, setShowReplyImageUpload] = useState(false);
   const [showReplyLinkInput, setShowReplyLinkInput] = useState(false);
@@ -93,6 +96,19 @@ export function PostDetail() {
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
 
   useEffect(() => { window.scrollTo(0, 0); setShowParentContext(false); }, [postId]);
+
+  // Auto-reveal parent context when user scrolls back up to the top
+  useEffect(() => {
+    if (!parentPost) return;
+    let prevY = window.scrollY;
+    const handleScroll = () => {
+      const y = window.scrollY;
+      if (prevY > 60 && y < 60) setShowParentContext(true);
+      prevY = y;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [parentPost]);
 
   // Fetch post by ID if not in context (e.g. navigating directly to a reply post)
   useEffect(() => {
@@ -337,7 +353,7 @@ export function PostDetail() {
       const urlToStore = isExternalPost
         ? `forge-comment:${postId}`
         : (replyLinkUrl || undefined);
-      const imagesToStore = replyImageUrl ? [replyImageUrl] : undefined;
+      const imagesToStore = replyImageUrls.length > 0 ? replyImageUrls : undefined;
       const communityId = replySelectedGroup?.id ?? undefined;
 
       // Build list attachment data if one was picked
@@ -379,7 +395,9 @@ export function PostDetail() {
       }
       setNewReply('');
       setReplySelectedGames([]);
-      setReplyImageUrl('');
+      setReplyImageUrls([]);
+      setReplyImageAlts([]);
+      setReplyActiveAltIndex(null);
       setReplyLinkUrl('');
       setReplySelectedGroup(null);
       setReplyPickedListType(undefined);
@@ -679,17 +697,21 @@ export function PostDetail() {
                       rows={5}
                     />
 
-                    {/* Image preview */}
-                    {replyImageUrl && (
-                      <div className="relative mt-2 inline-block">
-                        <img src={replyImageUrl} alt="" className="max-h-40 rounded-lg object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setReplyImageUrl('')}
-                          className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
-                        >
-                          <XIcon className="w-3 h-3" />
-                        </button>
+                    {/* Image previews */}
+                    {replyImageUrls.length > 0 && (
+                      <div className={`mt-2 grid gap-1.5 ${replyImageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        {replyImageUrls.map((url, i) => (
+                          <div key={i} className="relative rounded-lg overflow-hidden aspect-video bg-muted/30">
+                            <img src={url} alt={replyImageAlts[i] || ''} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => { setReplyImageUrls(p => p.filter((_, j) => j !== i)); setReplyImageAlts(p => p.filter((_, j) => j !== i)); if (replyActiveAltIndex === i) setReplyActiveAltIndex(null); }}
+                              className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
+                            >
+                              <XIcon className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -782,15 +804,29 @@ export function PostDetail() {
 
                 {/* Image upload panel */}
                 {showReplyImageUpload && (
-                  <div className="px-4 pb-3 border-t border-border pt-3">
-                    <ImageUpload
-                      onUpload={(url) => { setReplyImageUrl(url); setShowReplyImageUpload(false); }}
-                      onRemove={() => setReplyImageUrl('')}
-                      existingUrl={replyImageUrl}
-                      accept="image/*,video/*"
-                      maxSizeMB={50}
-                      bucketType="post"
-                    />
+                  <div className="px-4 pb-3 border-t border-border pt-3 space-y-2">
+                    {replyImageUrls.length > 0 && (
+                      <div className={`grid gap-1.5 ${replyImageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        {replyImageUrls.map((url, i) => (
+                          <div key={i} className="relative rounded-lg overflow-hidden aspect-video bg-muted/30">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => { setReplyImageUrls(p => p.filter((_, j) => j !== i)); setReplyImageAlts(p => p.filter((_, j) => j !== i)); }} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"><XIcon className="w-3 h-3" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {replyImageUrls.length < 4 && (
+                      <ImageUpload
+                        key={replyUploadKey}
+                        onUpload={(url) => { setReplyImageUrls(p => [...p, url]); setReplyUploadKey(k => k + 1); }}
+                        onRemove={() => {}}
+                        existingUrl=""
+                        accept="image/*,video/*"
+                        maxSizeMB={5}
+                        bucketType="post"
+                      />
+                    )}
+                    {replyImageUrls.length >= 4 && <p className="text-xs text-muted-foreground text-center py-1">Maximum 4 images</p>}
                   </div>
                 )}
 
@@ -921,7 +957,7 @@ export function PostDetail() {
                   <button
                     type="button"
                     onClick={() => { setShowReplyImageUpload(v => !v); setShowReplyLinkInput(false); setShowReplyGamePicker(false); setShowReplyGroupPicker(false); setShowReplyListPicker(false); }}
-                    className={`p-2 rounded-lg transition-colors ${(showReplyImageUpload || replyImageUrl) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                    className={`p-2 rounded-lg transition-colors ${(showReplyImageUpload || replyImageUrls.length > 0) ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                     title="Add image"
                   >
                     <ImageIcon className="w-5 h-5" />

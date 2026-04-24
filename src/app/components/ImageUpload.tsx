@@ -25,7 +25,7 @@ export function ImageUpload({
   existingUrl,
   className = '',
   accept = 'image/*,video/*',
-  maxSizeMB = 50,
+  maxSizeMB = 5,
   bucketType = 'avatar'
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
