@@ -468,21 +468,18 @@ export function Feed() {
             className={`sticky top-14 z-20 transition-transform duration-200 ${scrolledDown ? '-translate-y-full' : 'translate-y-0'}`}
             style={{ background: 'rgba(var(--card)/0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid hsl(var(--border))' }}
           >
-            <div className="w-full max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="w-full max-w-2xl mx-auto xl:max-w-[1024px] px-4 xl:pr-[calc(264px+24px+16px)] py-2">
+              <button
+                onClick={() => navigate(`/group/${grp.id}`)}
+                className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
+              >
                 <div className="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center shrink-0 overflow-hidden">
                   {grp.profile_picture
                     ? <img src={grp.profile_picture} alt="" className="w-full h-full object-cover" />
                     : <GroupIcon iconKey={grp.icon} className="w-3.5 h-3.5 text-accent" />}
                 </div>
                 <span className="text-sm font-semibold truncate">{grp.name}</span>
-              </div>
-              <button
-                onClick={() => navigate(`/group/${grp.id}`)}
-                className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors shrink-0 font-medium"
-              >
-                View Group
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3.5 h-3.5 text-accent shrink-0 ml-0.5" />
               </button>
             </div>
           </div>

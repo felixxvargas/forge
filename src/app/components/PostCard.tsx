@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2 } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -57,6 +57,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   };
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [showRepostTray, setShowRepostTray] = useState(false);
+  const [carouselIdx, setCarouselIdx] = useState(0);
 
   // Poll state
   const currentUser = (context as any)?.currentUser;
@@ -485,22 +486,66 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         );
       })()}
 
-      {/* Images */}
-      {post.images && post.images.length > 0 && (
-        <div className="mb-3 relative">
-          <BlurredImage
-            src={post.images[0]}
-            alt={post.image_alts?.[0] || 'Post image'}
-            isBlurred={post.is_blurred ?? false}
-          />
-          {/* ALT badge if alt text exists */}
-          {post.image_alts?.[0] && (
-            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
-              ALT
-            </div>
-          )}
-        </div>
-      )}
+      {/* Images — single or carousel */}
+      {post.images && post.images.length > 0 && (() => {
+        const imgs = post.images;
+        const idx = Math.min(carouselIdx, imgs.length - 1);
+        const isMulti = imgs.length > 1;
+        return (
+          <div className="mb-3 relative">
+            <BlurredImage
+              src={imgs[idx]}
+              alt={post.image_alts?.[idx] || 'Post image'}
+              isBlurred={post.is_blurred ?? false}
+            />
+            {isMulti && (
+              <>
+                {/* Prev arrow */}
+                {idx > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCarouselIdx(i => Math.max(0, i - 1)); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors z-10"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white" />
+                  </button>
+                )}
+                {/* Next arrow */}
+                {idx < imgs.length - 1 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCarouselIdx(i => Math.min(imgs.length - 1, i + 1)); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors z-10"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4 text-white" />
+                  </button>
+                )}
+                {/* Counter pill */}
+                <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full font-medium pointer-events-none">
+                  {idx + 1}/{imgs.length}
+                </div>
+                {/* Dot indicators */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                  {imgs.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={(e) => { e.stopPropagation(); setCarouselIdx(i); }}
+                      className={`h-1.5 rounded-full transition-all ${i === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/75'}`}
+                      aria-label={`Go to image ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            {/* ALT badge */}
+            {post.image_alts?.[idx] && (
+              <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
+                ALT
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Video */}
       {post.video && (
@@ -684,18 +729,47 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </button>
 
         {onRepost && !post.reposts_disabled && (
-          <button
-            onClick={isExternalPost ? (e) => e.stopPropagation() : handleRepost}
-            disabled={isExternalPost}
-            title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
-            className={`flex items-center gap-2 text-sm transition-colors ${
-              isExternalPost ? 'opacity-40 cursor-not-allowed text-muted-foreground' :
-              isReposted ? 'text-accent' : 'text-muted-foreground hover:text-accent'
-            }`}
-          >
-            <Repeat2 className="w-5 h-5" />
-            <span>{formatNumber(post.repost_count ?? post.reposts ?? 0)}</span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={isExternalPost ? (e) => e.stopPropagation() : handleRepost}
+              disabled={isExternalPost}
+              title={isExternalPost ? 'Engagement is read-only for imported posts' : undefined}
+              className={`flex items-center gap-2 text-sm transition-colors ${
+                isExternalPost ? 'opacity-40 cursor-not-allowed text-muted-foreground' :
+                isReposted ? 'text-accent' : 'text-muted-foreground hover:text-accent'
+              }`}
+            >
+              <Repeat2 className="w-5 h-5" />
+              <span>{formatNumber(post.repost_count ?? post.reposts ?? 0)}</span>
+            </button>
+            {/* Desktop repost menu — compact dropdown anchored to the button */}
+            {showRepostTray && (
+              <>
+                <div
+                  className="hidden lg:block absolute bottom-full left-0 mb-2 z-[70] bg-popover border border-border rounded-xl shadow-xl min-w-[180px] overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => { setShowRepostTray(false); onRepost?.(post.id); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-secondary transition-colors text-sm text-left"
+                  >
+                    <Repeat2 className={`w-4 h-4 shrink-0 ${isReposted ? 'text-destructive' : 'text-accent'}`} />
+                    <span className="font-medium">{isReposted ? 'Undo Repost' : 'Repost'}</span>
+                  </button>
+                  <div className="h-px bg-border mx-3" />
+                  <button
+                    onClick={() => { setShowRepostTray(false); navigate(`/new-post?quotePostId=${encodeURIComponent(post.id)}`); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-secondary transition-colors text-sm text-left"
+                  >
+                    <MessageCircle className="w-4 h-4 shrink-0 text-accent" />
+                    <span className="font-medium">Quote Post</span>
+                  </button>
+                </div>
+                {/* Backdrop for desktop dropdown */}
+                <div className="hidden lg:block fixed inset-0 z-[60]" onClick={() => setShowRepostTray(false)} />
+              </>
+            )}
+          </div>
         )}
 
         {!post.comments_disabled && (
@@ -732,10 +806,10 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </button>
       </div>
 
-      {/* Repost tray */}
+      {/* Repost tray — mobile only (desktop uses the inline dropdown above the button) */}
       {showRepostTray && (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50"
+          className="lg:hidden fixed inset-0 z-[70] flex items-end justify-center bg-black/50"
           onClick={(e) => { e.stopPropagation(); setShowRepostTray(false); }}
         >
           <div
@@ -745,10 +819,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           >
             <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
             <button
-              onClick={() => {
-                setShowRepostTray(false);
-                onRepost?.(post.id);
-              }}
+              onClick={() => { setShowRepostTray(false); onRepost?.(post.id); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-secondary transition-colors"
             >
               <Repeat2 className={`w-5 h-5 shrink-0 ${isReposted ? 'text-destructive' : 'text-accent'}`} />
@@ -758,10 +829,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
               </div>
             </button>
             <button
-              onClick={() => {
-                setShowRepostTray(false);
-                navigate(`/new-post?quotePostId=${encodeURIComponent(post.id)}`);
-              }}
+              onClick={() => { setShowRepostTray(false); navigate(`/new-post?quotePostId=${encodeURIComponent(post.id)}`); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-secondary transition-colors"
             >
               <MessageCircle className="w-5 h-5 text-accent shrink-0" />

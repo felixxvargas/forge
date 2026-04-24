@@ -21,7 +21,7 @@ const DRAFTS_KEY = 'forge-post-drafts';
 interface DraftData {
   content: string;
   games: { id: string; title: string }[];
-  imageUrl: string;
+  imageUrls: string[];
   linkUrl: string;
 }
 
@@ -33,18 +33,20 @@ interface SavedDraft extends DraftData {
 function parseAutoDraft(): DraftData {
   try {
     const raw = localStorage.getItem(AUTO_DRAFT_KEY);
-    if (!raw) return { content: '', games: [], imageUrl: '', linkUrl: '' };
+    if (!raw) return { content: '', games: [], imageUrls: [], linkUrl: '' };
     // Handle legacy plain-text format
-    if (!raw.startsWith('{')) return { content: raw, games: [], imageUrl: '', linkUrl: '' };
+    if (!raw.startsWith('{')) return { content: raw, games: [], imageUrls: [], linkUrl: '' };
     const parsed = JSON.parse(raw);
+    // Backward compat: old drafts stored imageUrl (string), new ones store imageUrls (array)
+    const imageUrls: string[] = parsed.imageUrls ?? (parsed.imageUrl ? [parsed.imageUrl] : []);
     return {
       content: parsed.content ?? '',
       games: parsed.games ?? [],
-      imageUrl: parsed.imageUrl ?? '',
+      imageUrls,
       linkUrl: parsed.linkUrl ?? '',
     };
   } catch {
-    return { content: '', games: [], imageUrl: '', linkUrl: '' };
+    return { content: '', games: [], imageUrls: [], linkUrl: '' };
   }
 }
 
@@ -90,9 +92,10 @@ export function NewPost() {
   const autoDraft = useRef<DraftData>(parseAutoDraft());
 
   const [content, setContent] = useState(autoDraft.current.content);
-  const [imageUrl, setImageUrl] = useState(autoDraft.current.imageUrl);
-  const [imageAlt, setImageAlt] = useState('');
-  const [showAltInput, setShowAltInput] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>(autoDraft.current.imageUrls);
+  const [imageAlts, setImageAlts] = useState<string[]>([]);
+  const [activeAltIndex, setActiveAltIndex] = useState<number | null>(null);
+  const [uploadKey, setUploadKey] = useState(0);
   const [linkUrl, setLinkUrl] = useState(autoDraft.current.linkUrl);
   const [openPanel, setOpenPanel] = useState<'image' | 'link' | 'game' | 'group' | 'list' | 'poll' | null>(null);
   const [gameQuery, setGameQuery] = useState('');
@@ -168,13 +171,13 @@ export function NewPost() {
 
   // Auto-save to localStorage on every relevant change
   useEffect(() => {
-    const draft: DraftData = { content, games: selectedGames, imageUrl, linkUrl };
-    if (content.trim() || selectedGames.length > 0 || imageUrl || linkUrl) {
+    const draft: DraftData = { content, games: selectedGames, imageUrls, linkUrl };
+    if (content.trim() || selectedGames.length > 0 || imageUrls.length > 0 || linkUrl) {
       localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify(draft));
     } else {
       localStorage.removeItem(AUTO_DRAFT_KEY);
     }
-  }, [content, selectedGames, imageUrl, linkUrl]);
+  }, [content, selectedGames, imageUrls, linkUrl]);
 
   // Flush draft immediately when the page is hidden or unloaded (tab switch, app backgrounded, etc.)
   // useEffect auto-save is async — this catches any state that hasn't flushed yet.
@@ -200,19 +203,6 @@ export function NewPost() {
     };
   }, []);
 
-  // When the page is restored from bfcache (browser back/forward cache), if the blocker
-  // was left in a 'blocked' state it won't auto-recover — show the confirm dialog so the
-  // user isn't left on a frozen, unresponsive screen.
-  useEffect(() => {
-    const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted && blocker.state === 'blocked') {
-        setShowCancelConfirm(true);
-      }
-    };
-    window.addEventListener('pageshow', onShow);
-    return () => window.removeEventListener('pageshow', onShow);
-  }, [blocker.state]);
-
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionStartRef = useRef<number>(-1);
   const hashTriggerIndex = useRef<number>(-1);
@@ -228,7 +218,7 @@ export function NewPost() {
     el.style.height = `${el.scrollHeight}px`;
   }, [content]);
 
-  const isDirty = content.trim() !== '' || selectedGames.length > 0 || !!imageUrl || !!linkUrl;
+  const isDirty = content.trim() !== '' || selectedGames.length > 0 || imageUrls.length > 0 || !!linkUrl;
 
   // Block navigation (browser back, link clicks) when there's unsaved content
   // Do NOT block when posting is in progress — handleSubmit navigates on success
@@ -241,6 +231,17 @@ export function NewPost() {
     if (blocker.state === 'blocked') {
       setShowCancelConfirm(true);
     }
+  }, [blocker.state]);
+
+  // When the page is restored from bfcache, if the blocker is stuck show the confirm dialog
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted && blocker.state === 'blocked') {
+        setShowCancelConfirm(true);
+      }
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
   }, [blocker.state]);
 
   const handleCancel = () => {
@@ -269,7 +270,7 @@ export function NewPost() {
         id: Date.now().toString(),
         content,
         games: selectedGames,
-        imageUrl,
+        imageUrls,
         linkUrl,
         savedAt: new Date().toISOString(),
       };
@@ -283,7 +284,7 @@ export function NewPost() {
     // which would create a duplicate draft entry.
     setContent('');
     setSelectedGames([]);
-    setImageUrl('');
+    setImageUrls([]);
     setLinkUrl('');
     setShowCancelConfirm(false);
     if (blocker.state === 'blocked') {
@@ -296,7 +297,7 @@ export function NewPost() {
   const handleRestoreDraft = (draft: SavedDraft) => {
     setContent(draft.content);
     setSelectedGames(draft.games);
-    setImageUrl(draft.imageUrl);
+    setImageUrls((draft as any).imageUrls ?? ((draft as any).imageUrl ? [(draft as any).imageUrl] : []));
     setLinkUrl(draft.linkUrl);
     // Remove from saved drafts
     const updated = savedDrafts.filter(d => d.id !== draft.id);
@@ -526,15 +527,11 @@ export function NewPost() {
       setError('Please wait for your image to finish uploading.');
       return;
     }
-    if (openPanel === 'image' && !imageUrl) {
-      setError('Your image failed to upload. Please try again or remove the image to post without it.');
-      return;
-    }
     setIsPosting(true);
     setError('');
     try {
-      const images = imageUrl ? [imageUrl] : undefined;
-      const imageAlts = imageUrl ? [imageAlt.trim()] : undefined;
+      const images = imageUrls.length > 0 ? imageUrls : undefined;
+      const imageAltsFinal = imageUrls.length > 0 ? imageAlts.map(a => a.trim()) : undefined;
       const gameIds = selectedGames.map(g => g.id);
       const gameTitles = selectedGames.map(g => g.title);
       const activeCommunityId = selectedGroup?.id ?? groupId;
@@ -543,7 +540,7 @@ export function NewPost() {
         ? { options: filledOptions, end_date: new Date(pollEndDate).toISOString(), votes: {} }
         : undefined;
       let lastPostId = await createPost(
-        content, images, linkUrl || undefined, imageAlts, activeCommunityId,
+        content, images, linkUrl || undefined, imageAltsFinal, activeCommunityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(), pollData,
       );
@@ -906,7 +903,7 @@ export function NewPost() {
                 type="button"
                 onClick={() => togglePanel('image')}
                 disabled={blocked('image')}
-                className={`p-2 rounded-lg transition-colors ${openPanel === 'image' || imageUrl ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
+                className={`p-2 rounded-lg transition-colors ${openPanel === 'image' || imageUrls.length > 0 ? 'bg-accent text-accent-foreground' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'} disabled:opacity-30`}
                 aria-label="Add image"
                 aria-pressed={openPanel === 'image'}
               >
@@ -1004,48 +1001,93 @@ export function NewPost() {
               <span className="text-sm font-semibold flex items-center gap-1.5"><ImageIcon className="w-4 h-4" /> Photo / Video</span>
               <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-3">
-              <ImageUpload
-                onUpload={(url) => { setImageUrl(url); setShowAltInput(true); setError(''); setOpenPanel(null); }}
-                onRemove={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); setError(''); }}
-                existingUrl={imageUrl}
-                accept="image/*,video/*"
-                maxSizeMB={10}
-                bucketType="post"
-                onUploadingChange={setIsImageUploading}
-              />
-              {imageUrl && (
-                <div className="mt-2">
-                  {!showAltInput ? (
-                    <button type="button" onClick={() => setShowAltInput(true)} aria-label="Add alt text to image"
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border transition-colors ${imageAlt.trim() ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-accent/40'}`}>
-                      <span>ALT</span>
-                      {imageAlt.trim() && <span className="max-w-[120px] truncate ml-1 font-normal opacity-80">{imageAlt}</span>}
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground shrink-0">ALT</span>
-                      <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)}
-                        onBlur={() => setShowAltInput(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setShowAltInput(false); }}
-                        placeholder="Describe this image for screen readers…" maxLength={500} autoFocus aria-label="Image alt text"
-                        className="flex-1 bg-secondary/60 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-accent text-xs" />
+            <div className="p-3 space-y-3">
+              {/* Already-uploaded images grid */}
+              {imageUrls.length > 0 && (
+                <div className={`grid gap-2 ${imageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {imageUrls.map((url, i) => (
+                    <div key={i} className="relative rounded-lg overflow-hidden aspect-video bg-muted/30">
+                      <img src={url} alt={imageAlts[i] || ''} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => { setImageUrls(prev => prev.filter((_, j) => j !== i)); setImageAlts(prev => prev.filter((_, j) => j !== i)); if (activeAltIndex === i) setActiveAltIndex(null); }}
+                        className="absolute top-1.5 right-1.5 p-1 bg-black/60 rounded-full hover:bg-black/80 transition-colors"
+                        aria-label="Remove image"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveAltIndex(activeAltIndex === i ? null : i)}
+                        className={`absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${imageAlts[i]?.trim() ? 'bg-accent/80 text-accent-foreground' : 'bg-black/60 text-white hover:bg-black/80'}`}
+                        aria-label={`${activeAltIndex === i ? 'Close' : 'Add'} alt text for image ${i + 1}`}
+                      >
+                        ALT
+                      </button>
                     </div>
-                  )}
+                  ))}
                 </div>
+              )}
+              {/* ALT text input for active image */}
+              {activeAltIndex !== null && activeAltIndex < imageUrls.length && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground shrink-0">ALT {imageUrls.length > 1 ? `${activeAltIndex + 1}` : ''}</span>
+                  <input
+                    type="text"
+                    value={imageAlts[activeAltIndex] ?? ''}
+                    onChange={e => setImageAlts(prev => { const next = [...prev]; next[activeAltIndex] = e.target.value; return next; })}
+                    onBlur={() => setActiveAltIndex(null)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setActiveAltIndex(null); }}
+                    placeholder="Describe this image for screen readers…"
+                    maxLength={500}
+                    autoFocus
+                    aria-label="Image alt text"
+                    className="flex-1 bg-secondary/60 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-accent text-xs"
+                  />
+                </div>
+              )}
+              {/* Add image upload widget — up to 4 images */}
+              {imageUrls.length < 4 && (
+                <ImageUpload
+                  key={uploadKey}
+                  onUpload={(url) => {
+                    setImageUrls(prev => [...prev, url]);
+                    setActiveAltIndex(imageUrls.length); // open ALT for the new image
+                    setUploadKey(k => k + 1);
+                    setError('');
+                  }}
+                  onRemove={() => {}}
+                  existingUrl=""
+                  accept="image/*,video/*"
+                  maxSizeMB={5}
+                  bucketType="post"
+                  onUploadingChange={setIsImageUploading}
+                />
+              )}
+              {imageUrls.length >= 4 && (
+                <p className="text-xs text-muted-foreground text-center py-1">Maximum 4 images per post</p>
               )}
             </div>
           </div>
         )}
 
-        {/* Image attached chip (when tray closed but image exists) */}
-        {imageUrl && openPanel !== 'image' && (
+        {/* Image attached chip (when tray closed but images exist) */}
+        {imageUrls.length > 0 && openPanel !== 'image' && (
           <div className="mt-3 flex items-center gap-2 p-2 bg-secondary/40 rounded-lg">
-            <img src={imageUrl} alt={imageAlt || ''} className="w-10 h-10 object-cover rounded shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Image attached</p>
-              {imageAlt && <p className="text-xs truncate text-foreground/70">{imageAlt}</p>}
+            <div className="flex gap-1 shrink-0">
+              {imageUrls.slice(0, 3).map((url, i) => (
+                <img key={i} src={url} alt="" className="w-10 h-10 object-cover rounded" />
+              ))}
+              {imageUrls.length > 3 && (
+                <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center text-xs text-muted-foreground">+{imageUrls.length - 3}</div>
+              )}
             </div>
-            <button type="button" onClick={() => { setImageUrl(''); setImageAlt(''); setShowAltInput(false); }} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">{imageUrls.length} image{imageUrls.length > 1 ? 's' : ''} attached</p>
+            </div>
+            <button type="button" onClick={() => { setImageUrls([]); setImageAlts([]); setActiveAltIndex(null); }} className="p-1 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 
