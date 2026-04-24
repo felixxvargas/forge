@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, PenSquare } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -234,8 +234,8 @@ export function Profile() {
     return (
       <div className="min-h-screen pb-20">
         <Header />
-        <div className="w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
-          {/* Avatar + name + edit/options button */}
+        {/* Mobile skeleton */}
+        <div className="lg:hidden w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
@@ -246,12 +246,10 @@ export function Profile() {
             </div>
             <div className="w-9 h-9 rounded-lg bg-muted/30" />
           </div>
-          {/* Bio */}
           <div className="space-y-2 mb-3">
             <div className="h-3.5 bg-muted/40 rounded w-full" />
             <div className="h-3.5 bg-muted/40 rounded w-2/3" />
           </div>
-          {/* Stats row + follow button */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-5">
               <div className="space-y-1">
@@ -265,19 +263,16 @@ export function Profile() {
             </div>
             <div className="h-9 bg-muted/40 rounded-full w-24" />
           </div>
-          {/* Platform badges row */}
           <div className="flex gap-2 mb-5">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-8 bg-muted/30 rounded-full w-20" />
             ))}
           </div>
-          {/* Tabs bar */}
           <div className="flex gap-1 border-b border-border/50 mb-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-9 bg-muted/30 rounded-t w-16 mr-1" />
             ))}
           </div>
-          {/* Post skeletons */}
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="py-4 border-b border-border/50">
               <div className="flex gap-3">
@@ -290,6 +285,62 @@ export function Profile() {
               </div>
             </div>
           ))}
+        </div>
+        {/* Desktop skeleton — 2-column layout */}
+        <div className="hidden lg:flex w-full max-w-5xl mx-auto px-6 py-8 gap-6 items-start animate-pulse">
+          {/* Left col: profile card */}
+          <div className="w-[300px] shrink-0 space-y-4">
+            <div className="rounded-2xl border border-border/50 p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-5 bg-muted/50 rounded w-32" />
+                  <div className="h-3.5 bg-muted/30 rounded w-20" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3.5 bg-muted/40 rounded w-full" />
+                <div className="h-3.5 bg-muted/40 rounded w-5/6" />
+                <div className="h-3.5 bg-muted/40 rounded w-2/3" />
+              </div>
+              <div className="flex gap-5">
+                <div className="space-y-1">
+                  <div className="h-5 bg-muted/50 rounded w-8" />
+                  <div className="h-3 bg-muted/30 rounded w-16" />
+                </div>
+                <div className="space-y-1">
+                  <div className="h-5 bg-muted/50 rounded w-8" />
+                  <div className="h-3 bg-muted/30 rounded w-16" />
+                </div>
+              </div>
+              <div className="h-9 bg-muted/40 rounded-full w-full" />
+              <div className="flex gap-2 flex-wrap">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-8 bg-muted/30 rounded-full w-20" />
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Right col: tabs + posts */}
+          <div className="flex-1 min-w-0 space-y-4">
+            <div className="flex gap-1 border-b border-border/50 pb-0">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-9 bg-muted/30 rounded-t w-16 mr-1" />
+              ))}
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="py-4 border-b border-border/50">
+                <div className="flex gap-3">
+                  <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                  <div className="flex-1 space-y-2 pt-1">
+                    <div className="h-3 bg-muted/40 rounded w-28" />
+                    <div className="h-3 bg-muted/40 rounded w-full" />
+                    <div className="h-3 bg-muted/30 rounded w-3/4" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -635,7 +686,7 @@ export function Profile() {
                 {currentUser && (
                   <button
                     onClick={() => navigate(`/messages?to=${profileUser.id}`)}
-                    className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                    className="lg:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
                     title="Send message"
                   >
                     <Mail className="w-5 h-5 text-muted-foreground" />
@@ -991,9 +1042,9 @@ export function Profile() {
           </div>
         )}
 
-        {/* Create LFG Flare button (own profile only, shown above tabs) */}
+        {/* Create LFG Flare button (own profile only, shown above tabs, mobile only) */}
         {isOwnProfile && (
-          <div className="px-4 mb-3">
+          <div className="lg:hidden px-4 mb-3">
             <button
               onClick={() => navigate('/create-flare')}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
@@ -1295,7 +1346,7 @@ export function Profile() {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Media</h3>
                         <button onClick={() => setActiveTab('media')} className="text-xs text-accent hover:underline">
-                          View all {mediaPosts.length} {mediaPosts.length === 1 ? 'photo/video' : 'photos & videos'}
+                          View all media ({mediaPosts.length})
                         </button>
                       </div>
                       {(() => {
@@ -1313,7 +1364,7 @@ export function Profile() {
                                 <div
                                   key={post.id}
                                   onClick={() => navigate(`/post/${post.id}`)}
-                                  className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-square ${spanFull ? 'col-span-2' : ''}`}
+                                  className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-[3/2] ${spanFull ? 'col-span-2' : ''}`}
                                 >
                                   {isVideo ? (
                                     <video src={firstSrc} className="w-full h-full object-cover" muted playsInline />
@@ -1362,7 +1413,7 @@ export function Profile() {
                           onClick={() => setActiveTab('posts')}
                           className="w-full py-3 text-sm text-accent hover:underline"
                         >
-                          View all {profileUserPosts.length} posts
+                          View all posts ({profileUserPosts.length})
                         </button>
                       )}
                     </div>
@@ -1948,6 +1999,26 @@ export function Profile() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Floating desktop action menu — own profile only */}
+      {isOwnProfile && isAuthenticated && (
+        <div className="hidden lg:flex fixed bottom-6 right-6 z-40 flex-col gap-2 items-end">
+          <button
+            onClick={() => navigate('/new-post')}
+            className="flex items-center gap-2 px-4 py-3 bg-accent text-accent-foreground rounded-xl shadow-lg hover:bg-accent/90 transition-all font-medium text-sm"
+          >
+            <PenSquare className="w-4 h-4" />
+            Compose
+          </button>
+          <button
+            onClick={() => navigate('/create-flare')}
+            className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl shadow-lg hover:opacity-90 transition-all font-medium text-sm"
+          >
+            <Flame className="w-4 h-4" />
+            {activeFlares.length > 0 ? 'Add LFG Flare' : 'Create LFG Flare'}
+          </button>
         </div>
       )}
     </div>
