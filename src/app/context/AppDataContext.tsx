@@ -796,6 +796,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setCurrentUser((prev: any) => prev ? { ...prev, following_count: Math.max(0, (prev.following_count ?? 0) - 1) } : prev);
     } else {
       await profiles.unfollow(session.user.id, userId);
+      notificationsAPI.deleteFollowNotification(session.user.id, userId).catch(() => {});
       setFollowingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
       setUsers(prev => prev.map(u =>
         u.id === userId ? { ...u, follower_count: Math.max(0, (u.follower_count ?? 0) - 1) } : u

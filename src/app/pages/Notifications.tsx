@@ -104,8 +104,17 @@ export function Notifications() {
         <h1 className="text-2xl font-bold mb-6">Notifications</h1>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent" />
+          <div className="space-y-1">
+            {['w-3/4', 'w-2/3', 'w-5/6', 'w-3/5', 'w-4/5', 'w-2/3', 'w-3/4'].map((w, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3.5 animate-pulse">
+                <div className="w-5 h-5 rounded-full bg-muted/40 shrink-0 mt-0.5" />
+                <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                <div className="flex-1 min-w-0 space-y-1.5 pt-1">
+                  <div className={`h-3 bg-muted/50 rounded ${w}`} />
+                  <div className="h-2.5 bg-muted/30 rounded w-16" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-1">

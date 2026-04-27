@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Search, MessageCircle, User, X, PenSquare } from 'lucide-react';
+import { Home, Search, MessageCircle, User, X } from 'lucide-react';
 import { useLocation, Link, useNavigate } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
@@ -134,7 +134,11 @@ export function DesktopSidebar() {
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 mt-2 transition-colors text-left w-full
                 text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
-              <PenSquare className="w-5 h-5 shrink-0" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+                <line x1="16" y1="8" x2="2" y2="22" />
+                <line x1="17.5" y1="15" x2="9" y2="15" />
+              </svg>
               <span className="hidden lg:block text-sm whitespace-nowrap">New Post</span>
             </button>
           )}

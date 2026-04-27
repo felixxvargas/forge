@@ -563,7 +563,7 @@ export function Explore() {
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-3 px-2 flex flex-col items-center justify-center gap-1 font-medium transition-colors min-h-[60px] ${
                   activeTab === tab
-                    ? 'text-purple-500 border-b-2 border-purple-500'
+                    ? 'text-accent border-b-2 border-accent'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -1168,7 +1168,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
           <button
             onClick={handleJoinClick}
             disabled={joining}
-            className="px-4 py-2 bg-purple-600 text-white rounded-full text-sm font-medium hover:bg-purple-700 transition-colors flex-shrink-0 disabled:opacity-60"
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors flex-shrink-0 disabled:opacity-60"
           >
             {joining ? (
               <span className="w-4 h-4 inline-block border-2 border-white border-t-transparent rounded-full animate-spin align-middle mr-1" />
@@ -1179,7 +1179,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
           </button>
         )}
         {joined && (
-          <span className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded-full text-xs font-medium flex-shrink-0">
+          <span className="px-3 py-1.5 bg-accent/20 text-accent rounded-lg text-xs font-medium flex-shrink-0">
             Joined ✓
           </span>
         )}

@@ -224,6 +224,12 @@ export function Profile() {
       .finally(() => setLikesLoading(false));
   }, [activeTab, profileUser?.id]);
 
+  // Must be called before any early returns to satisfy rules of hooks
+  const mediaPosts = useMemo(() =>
+    profileUserPosts.filter(p => !p.repostedBy && ((p as any).images?.length > 0 || (p as any).video)),
+    [profileUserPosts]
+  );
+
   // Guest trying to view their own profile — show login module
   if (!isAuthenticated && isOwnProfile) {
     return <LoginModule variant="page" />;
@@ -490,12 +496,6 @@ export function Profile() {
   const _glCheck = (profileUser as any)?.game_lists ?? (profileUser as any)?.gameLists ?? {};
   const profileHasLists = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
   const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists') ? 'posts' : activeTab;
-
-  // Posts that contain at least one image or a video
-  const mediaPosts = useMemo(() =>
-    profileUserPosts.filter(p => !p.repostedBy && ((p as any).images?.length > 0 || (p as any).video)),
-    [profileUserPosts]
-  );
 
   // About tab content — rendered in both desktop left column and mobile About tab
   const renderAboutContent = () => (
@@ -829,14 +829,14 @@ export function Profile() {
                 onClick={() => navigate(isOwnProfile ? '/followers' : `/followers/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{freshFollowerCount !== null ? formatNumber(freshFollowerCount) : '—'}</p>
+                <p className="text-xl font-semibold">{formatNumber(freshFollowerCount ?? profileUser?.follower_count ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Followers</p>
               </button>
               <button
                 onClick={() => navigate(isOwnProfile ? '/following' : `/following/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{isOwnProfile ? formatNumber(followingIds.size) : (freshFollowingCount !== null ? formatNumber(freshFollowingCount) : '—')}</p>
+                <p className="text-xl font-semibold">{isOwnProfile ? formatNumber(followingIds.size) : formatNumber(freshFollowingCount ?? profileUser?.following_count ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">Following</p>
               </button>
             </div>
@@ -1049,7 +1049,7 @@ export function Profile() {
               onClick={() => navigate('/create-flare')}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
             >
-              <Flame className="w-4 h-4" />
+              <Flame className="w-6 h-6" />
               {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
             </button>
           </div>

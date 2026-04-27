@@ -1069,6 +1069,16 @@ export const notifications = {
     if (error) throw new Error(error.message);
   },
 
+  async deleteFollowNotification(actorId: string, userId: string) {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('type', 'follow')
+      .eq('actor_id', actorId)
+      .eq('user_id', userId);
+    if (error) console.error('Failed to delete follow notification:', error.message);
+  },
+
   async createMention(userId: string, actorId: string, postId: string) {
     const { error } = await supabase
       .from('notifications')

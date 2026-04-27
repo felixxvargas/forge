@@ -247,8 +247,53 @@ export function FlareDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background pb-24">
+        {/* header skeleton */}
+        <div className="sticky top-0 z-10 bg-card border-b border-border">
+          <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-3 animate-pulse">
+            <div className="w-9 h-9 rounded-lg bg-muted/30 shrink-0" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-muted/40 shrink-0" />
+              <div className="space-y-1.5">
+                <div className="h-4 bg-muted/50 rounded w-32" />
+                <div className="h-3 bg-muted/30 rounded w-24" />
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* body skeleton */}
+        <div className="w-full max-w-2xl mx-auto px-4 py-5 space-y-5 animate-pulse">
+          {/* flare info card */}
+          <div className="bg-card rounded-2xl p-5 border border-border space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-muted/40 shrink-0" />
+              <div className="space-y-2">
+                <div className="h-4 bg-muted/50 rounded w-40" />
+                <div className="h-5 bg-muted/30 rounded-full w-28" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-4 bg-muted/30 rounded w-full" />
+              <div className="h-4 bg-muted/30 rounded w-full" />
+            </div>
+            <div className="h-9 bg-muted/20 rounded-lg" />
+          </div>
+          {/* members card */}
+          <div className="bg-card rounded-2xl p-5 border border-border space-y-3">
+            <div className="h-4 bg-muted/40 rounded w-24" />
+            {[0, 1, 2].map(i => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 bg-muted/50 rounded w-28" />
+                  <div className="h-3 bg-muted/30 rounded w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* action button */}
+          <div className="h-12 bg-muted/30 rounded-xl" />
+        </div>
       </div>
     );
   }

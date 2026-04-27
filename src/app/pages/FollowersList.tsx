@@ -70,13 +70,15 @@ export function FollowersList() {
 
         {loading ? (
           <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
+            {(['w-36', 'w-28', 'w-40', 'w-32', 'w-36'] as const).map((nw, i) => (
               <div key={i} className="bg-card rounded-xl p-4 flex items-center gap-3 animate-pulse">
                 <div className="w-12 h-12 rounded-full bg-muted/50 shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 bg-muted/50 rounded w-32" />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className={`h-3.5 bg-muted/50 rounded ${nw}`} />
                   <div className="h-3 bg-muted/30 rounded w-24" />
+                  {i % 2 === 0 && <div className="h-3 bg-muted/20 rounded w-48 mt-0.5" />}
                 </div>
+                <div className="h-8 bg-muted/30 rounded-full w-20 shrink-0" />
               </div>
             ))}
           </div>

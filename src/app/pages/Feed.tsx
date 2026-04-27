@@ -468,7 +468,7 @@ export function Feed() {
             className={`sticky top-14 z-20 transition-transform duration-200 ${scrolledDown ? '-translate-y-full' : 'translate-y-0'}`}
             style={{ background: 'rgba(var(--card)/0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid hsl(var(--border))' }}
           >
-            <div className="w-full max-w-2xl mx-auto xl:max-w-[1024px] px-4 xl:pr-[calc(264px+24px+16px)] py-2">
+            <div className="w-full max-w-2xl mx-auto px-4 py-2">
               <button
                 onClick={() => navigate(`/group/${grp.id}`)}
                 className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
@@ -486,56 +486,15 @@ export function Feed() {
         ) : null;
       })()}
 
-      {/* Desktop 2-col layout: feed + right rail */}
-      <div className="xl:grid xl:grid-cols-[1fr_264px] xl:gap-6 xl:max-w-[1024px] xl:mx-auto">
+      {/* Desktop layout: 2-col grid for guests (sign-up rail on right), single centered column for auth */}
+      <div className={!isAuthenticated ? "xl:grid xl:grid-cols-[1fr_264px] xl:gap-6 xl:max-w-[1024px] xl:mx-auto" : ""}>
         <div className="min-w-0">
           {feedContent}
         </div>
 
-        {/* Right rail — xl+ only. pt matches feedContent's py-6 + selector (~2rem line-height) + mb-6 so the first box top-aligns with the first post. */}
-        <aside className="hidden xl:flex flex-col gap-4 pt-20 pr-4 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
-          {isAuthenticated ? (
-            <>
-              {followedGames.length > 0 && (
-                <div className="bg-card rounded-2xl border border-border p-4">
-                  <h3 className="font-semibold text-sm mb-3 text-foreground">Followed Games</h3>
-                  <div className="space-y-0.5">
-                    {followedGames.slice(0, 8).map(game => (
-                      <button
-                        key={game.id}
-                        onClick={() => select({ type: 'game', id: game.id, title: game.title })}
-                        className={`w-full text-left px-2 py-1.5 rounded-lg text-sm transition-colors truncate
-                          ${isMode({ type: 'game', id: game.id, title: game.title })
-                            ? 'text-accent font-medium bg-accent/10'
-                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-                      >
-                        {game.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {userGroups.length > 0 && (
-                <div className="bg-card rounded-2xl border border-border p-4">
-                  <h3 className="font-semibold text-sm mb-3 text-foreground">Your Groups</h3>
-                  <div className="space-y-0.5">
-                    {userGroups.slice(0, 5).map((group: any) => (
-                      <button
-                        key={group.id}
-                        onClick={() => select({ type: 'group', id: group.id })}
-                        className={`w-full text-left px-2 py-1.5 rounded-lg text-sm transition-colors truncate
-                          ${isMode({ type: 'group', id: group.id })
-                            ? 'text-accent font-medium bg-accent/10'
-                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-                      >
-                        {group.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
+        {/* Right rail — guests only at xl+, shows sign-up module */}
+        {!isAuthenticated && (
+          <aside className="hidden xl:flex flex-col gap-4 pt-20 pr-4 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
             <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
               <div className="flex items-center gap-2 mb-3">
                 <ForgeSVG width="24" height="19" aria-hidden="true" />
@@ -566,8 +525,8 @@ export function Feed() {
                 Continue with Google
               </button>
             </div>
-          )}
-        </aside>
+          </aside>
+        )}
       </div>
 
       {isAuthenticated && <WritePostButton />}

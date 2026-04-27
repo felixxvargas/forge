@@ -775,12 +775,13 @@ export function Messages() {
                 )}
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   {!isMe && sender && (
-                    <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="text-xs text-muted-foreground mb-0.5 hover:text-foreground transition-colors">
+                    <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="text-xs mb-0.5 transition-colors" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                       {sender.display_name || sender.handle}
                     </button>
                   )}
                   <div
-                    className={`rounded-2xl px-4 py-2.5 cursor-pointer select-none ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    style={isMe ? { backgroundColor: '#B2B2B2' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, true)}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
@@ -840,7 +841,7 @@ export function Messages() {
           })()}
           {isPartnerTyping && (
             <div className="flex gap-2 items-end">
-              <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-2xl w-16">
+              <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-[16px] w-16">
                 <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -1083,7 +1084,8 @@ export function Messages() {
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   <div
-                    className={`rounded-2xl px-4 py-2.5 cursor-pointer select-none ${isMe ? 'bg-accent text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    style={isMe ? { backgroundColor: '#B2B2B2' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, false)}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
@@ -1121,7 +1123,7 @@ export function Messages() {
           })()}
           {isPartnerTyping && (
             <div className="flex gap-2 items-end">
-              <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-2xl w-16">
+              <div className="flex gap-1 px-4 py-3 bg-card border border-border rounded-[16px] w-16">
                 <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
