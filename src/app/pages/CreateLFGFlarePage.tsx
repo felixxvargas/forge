@@ -408,7 +408,7 @@ export function CreateLFGFlarePage() {
           <button
             onClick={handleSubmit}
             disabled={saving || !selectedGame}
-            className="w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:from-orange-500/90 hover:to-red-500/90 shadow-lg shadow-orange-500/20"
+            className="w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 border-2 border-orange-500/70 bg-orange-950/40 text-orange-300 hover:bg-orange-950/60 hover:border-orange-500/90"
           >
             {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Flame className="w-6 h-6" />}
             {saving ? 'Posting…' : flareType === 'lfg' ? 'Post — Looking for Group' : 'Post — Looking for More'}

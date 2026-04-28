@@ -139,12 +139,11 @@ export const profiles = {
       .from('follows')
       .insert({ follower_id: followerId, following_id: followingId });
     if (error && error.code !== '23505') throw new Error(error.message);
-    // Sync counters using inner join so external/topic-account follows (no profiles row)
-    // don't inflate the displayed count beyond what the Following list actually shows.
+    // Sync stored counters to match actual follows table rows (same query as getFollowerCount/getFollowingCount)
     Promise.allSettled([
-      supabase.from('follows').select('profiles!follower_id!inner(id)', { count: 'exact', head: true }).eq('following_id', followingId)
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId)
         .then(({ count }) => supabase.from('profiles').update({ follower_count: count ?? 0 }).eq('id', followingId)),
-      supabase.from('follows').select('profiles!following_id!inner(id)', { count: 'exact', head: true }).eq('follower_id', followerId)
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', followerId)
         .then(({ count }) => supabase.from('profiles').update({ following_count: count ?? 0 }).eq('id', followerId)),
     ]).catch(() => {});
   },
@@ -156,12 +155,11 @@ export const profiles = {
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
     if (error) throw new Error(error.message);
-    // Sync counters using inner join so external/topic-account follows (no profiles row)
-    // don't inflate the displayed count beyond what the Following list actually shows.
+    // Sync stored counters to match actual follows table rows
     Promise.allSettled([
-      supabase.from('follows').select('profiles!follower_id!inner(id)', { count: 'exact', head: true }).eq('following_id', followingId)
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId)
         .then(({ count }) => supabase.from('profiles').update({ follower_count: count ?? 0 }).eq('id', followingId)),
-      supabase.from('follows').select('profiles!following_id!inner(id)', { count: 'exact', head: true }).eq('follower_id', followerId)
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', followerId)
         .then(({ count }) => supabase.from('profiles').update({ following_count: count ?? 0 }).eq('id', followerId)),
     ]).catch(() => {});
   },

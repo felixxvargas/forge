@@ -1047,7 +1047,7 @@ export function Profile() {
           <div className="lg:hidden px-4 mb-3">
             <button
               onClick={() => navigate('/create-flare')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-950/30 text-orange-300 hover:bg-orange-950/50 hover:border-orange-500/80 transition-all"
             >
               <Flame className="w-6 h-6" />
               {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
@@ -1084,16 +1084,18 @@ export function Profile() {
           >
             Posts
           </button>
-          <button
-            onClick={() => setActiveTab('likes')}
-            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'likes' 
-                ? 'border-accent text-accent' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Likes
-          </button>
+          {(isOwnProfile || profileUser?.likes_public !== false) && (
+            <button
+              onClick={() => setActiveTab('likes')}
+              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                activeTab === 'likes'
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Likes
+            </button>
+          )}
           {mediaPosts.length > 0 && (
             <button
               onClick={() => setActiveTab('media')}
@@ -2014,7 +2016,7 @@ export function Profile() {
           </button>
           <button
             onClick={() => navigate('/create-flare')}
-            className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl shadow-lg hover:opacity-90 transition-all font-medium text-sm"
+            className="flex items-center gap-2 px-4 py-3 border-2 border-orange-500/60 bg-orange-950/30 text-orange-300 rounded-xl hover:bg-orange-950/50 hover:border-orange-500/80 transition-all font-medium text-sm"
           >
             <Flame className="w-4 h-4" />
             {activeFlares.length > 0 ? 'Add LFG Flare' : 'Create LFG Flare'}
