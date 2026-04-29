@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
-import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase } from '../utils/supabase';
+import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
 import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
 
@@ -285,6 +285,61 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
     const id = setInterval(poll, 60_000);
     return () => clearInterval(id);
+  }, [session?.user?.id]);
+
+  // Client-side replacement for pg_cron: check for expiring stream archives on login.
+  // Runs once per session. Creates stream_expiry notifications for archives that are
+  // 1+ year old and don't already have a recent unread notification.
+  useEffect(() => {
+    if (!session?.user) return;
+    const userId = session.user.id;
+    const THROTTLE_KEY = `forge-stream-expiry-checked-${userId}`;
+    const lastChecked = localStorage.getItem(THROTTLE_KEY);
+    // Only run once per 24 hours to avoid hammering the DB on every page load
+    if (lastChecked && Date.now() - parseInt(lastChecked, 10) < 24 * 60 * 60 * 1000) return;
+
+    const check = async () => {
+      try {
+        const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+        // Fetch archives that are 1+ year old and not deleted
+        const { data: archives } = await supabase
+          .from('stream_archives')
+          .select('id, title, duration_seconds')
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .lt('recorded_at', oneYearAgo);
+        if (!archives?.length) return;
+
+        // Fetch existing unread stream_expiry notifications so we don't duplicate
+        const archiveIds = archives.map((a: any) => a.id);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('post_id')
+          .eq('user_id', userId)
+          .eq('type', 'stream_expiry')
+          .eq('read', false)
+          .gte('created_at', sevenDaysAgo)
+          .in('post_id', archiveIds);
+
+        const alreadyNotified = new Set((existing ?? []).map((n: any) => n.post_id));
+        const toNotify = archives.filter((a: any) => !alreadyNotified.has(a.id));
+        if (!toNotify.length) return;
+
+        const rows = toNotify.map((a: any) => ({
+          user_id: userId,
+          actor_id: userId,
+          type: 'stream_expiry',
+          post_id: a.id,
+          read: false,
+          metadata: { archive_id: a.id, archive_title: a.title, duration_seconds: a.duration_seconds },
+        }));
+        await supabase.from('notifications').insert(rows);
+        setHasUnreadNotifications(true);
+        localStorage.setItem(THROTTLE_KEY, String(Date.now()));
+      } catch { /* ignore */ }
+    };
+    check();
   }, [session?.user?.id]);
 
   // Real-time notification toasts via Supabase Realtime
