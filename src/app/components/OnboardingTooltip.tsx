@@ -93,7 +93,7 @@ export function OnboardingTooltip() {
           {tasks.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${tasks[i].done ? 'bg-accent' : 'bg-muted'}`}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${i < completedCount ? 'bg-accent' : 'bg-muted'}`}
             />
           ))}
         </div>

@@ -383,8 +383,8 @@ export function Settings() {
                 return (
                   <>
                     <div className="flex gap-1 mb-2">
-                      {tasks.map((t, i) => (
-                        <div key={i} className={`h-1.5 flex-1 rounded-full ${t.done ? 'bg-accent' : 'bg-muted'}`} />
+                      {tasks.map((_, i) => (
+                        <div key={i} className={`h-1.5 flex-1 rounded-full ${i < completedCount ? 'bg-accent' : 'bg-muted'}`} />
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground mb-4">{completedCount} of {tasks.length} complete</p>
