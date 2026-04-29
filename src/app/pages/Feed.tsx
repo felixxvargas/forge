@@ -352,6 +352,23 @@ export function Feed() {
         )}
       </div>
 
+      {/* Desktop-only compose bar */}
+      {isAuthenticated && (
+        <button
+          onClick={() => navigate('/new-post')}
+          className="hidden md:flex items-center gap-3 w-full mb-6 px-4 py-3 bg-card border border-border rounded-xl hover:border-accent/40 transition-colors group"
+        >
+          <div className="flex-1 text-left text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+            What's on your mind?
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors shrink-0">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+            <line x1="16" y1="8" x2="2" y2="22" />
+            <line x1="17.5" y1="15" x2="9" y2="15" />
+          </svg>
+        </button>
+      )}
+
       {loading && (
         <div className="divide-y divide-border">
           {[

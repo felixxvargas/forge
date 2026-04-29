@@ -948,7 +948,7 @@ export const groups = {
     if (error) throw new Error(error.message);
   },
 
-  async updateGroup(communityId: string, updates: { name?: string; description?: string; type?: string }) {
+  async updateGroup(communityId: string, updates: { name?: string; description?: string; type?: string; posts_public?: boolean }) {
     const { error } = await supabase
       .from('communities')
       .update(updates)

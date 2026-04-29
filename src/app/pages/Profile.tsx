@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, PenSquare } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -2011,7 +2011,11 @@ export function Profile() {
             onClick={() => navigate('/new-post')}
             className="flex items-center gap-2 px-4 py-3 bg-accent text-accent-foreground rounded-xl shadow-lg hover:bg-accent/90 transition-all font-medium text-sm"
           >
-            <PenSquare className="w-4 h-4" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+              <line x1="16" y1="8" x2="2" y2="22" />
+              <line x1="17.5" y1="15" x2="9" y2="15" />
+            </svg>
             Compose
           </button>
           <button

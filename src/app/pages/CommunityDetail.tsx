@@ -46,6 +46,7 @@ export function CommunityDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(community?.name ?? '');
   const [editDescription, setEditDescription] = useState(community?.description ?? '');
+  const [editPostsPublic, setEditPostsPublic] = useState(community?.posts_public !== false);
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Invite users
@@ -171,6 +172,7 @@ export function CommunityDetail() {
       await groupsAPI.updateGroup(communityId, {
         name: editName.trim(),
         description: editDescription.trim(),
+        posts_public: editPostsPublic,
       });
       setShowEditModal(false);
     } catch (e: any) {
@@ -481,7 +483,7 @@ export function CommunityDetail() {
                   Invite
                 </button>
                 <button
-                  onClick={() => { setEditName(community.name); setEditDescription(community.description ?? ''); setShowEditModal(true); }}
+                  onClick={() => { setEditName(community.name); setEditDescription(community.description ?? ''); setEditPostsPublic(community.posts_public !== false); setShowEditModal(true); }}
                   className="p-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
                   title="Edit Group"
                 >
@@ -641,7 +643,7 @@ export function CommunityDetail() {
                 </div>
               ))}
             </div>
-          ) : isMember ? (
+          ) : (isMember || community.posts_public !== false) ? (
             communityPosts.length > 0 ? (
               communityPosts.map(post => {
                 const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
@@ -744,6 +746,26 @@ export function CommunityDetail() {
                   className="w-full px-3 py-2.5 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm resize-none"
                 />
               </div>
+
+              {/* Posts visibility toggle — invite-only groups */}
+              {community.type === 'invite' && (
+                <button
+                  type="button"
+                  onClick={() => setEditPostsPublic(v => !v)}
+                  className="w-full flex items-center gap-3 px-3 py-3 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-left"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Posts visible to non-members</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {editPostsPublic ? 'Anyone can view group posts' : 'Only members can view posts'}
+                    </p>
+                  </div>
+                  <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${editPostsPublic ? 'bg-purple-500' : 'bg-muted'}`}>
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${editPostsPublic ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+              )}
+
               <button
                 onClick={handleSaveGroupEdit}
                 disabled={savingEdit || !editName.trim()}
