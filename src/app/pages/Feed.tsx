@@ -24,6 +24,7 @@ for (const [topicId, handle] of Object.entries(topicAccountBlueskyHandles)) {
 type FeedMode = 'following' | 'for-you' | 'trending' | { type: 'group'; id: string } | { type: 'game'; id: string; title: string };
 
 const FEED_MODE_KEY = 'forge-feed-mode';
+const GROUP_LAST_VIEWED_KEY = 'forge-group-last-viewed';
 
 /** Restore the last chosen feed mode if it was saved today; otherwise default to 'following'. */
 function loadPersistedFeedMode(): FeedMode {
@@ -61,6 +62,7 @@ export function Feed() {
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
   const [dynamicLoading, setDynamicLoading] = useState(false);
+  const [groupNewPostCounts, setGroupNewPostCounts] = useState<Record<string, number>>({});
   const navigate = useNavigate();
 
   // Scroll direction for group banner hide/show
@@ -98,6 +100,28 @@ export function Feed() {
     localStorage.setItem('forge-guest-seen', '1');
     setShowGuestPopup(false);
   };
+
+  // Fetch new post counts for each group feed when dropdown opens
+  useEffect(() => {
+    if (!showDropdown || !currentUser) return;
+    const groupIds: string[] = (currentUser?.communities ?? []).map((m: any) => m.community_id).filter(Boolean);
+    if (groupIds.length === 0) return;
+    const lastViewed: Record<string, string> = (() => {
+      try { return JSON.parse(localStorage.getItem(GROUP_LAST_VIEWED_KEY) ?? '{}'); } catch { return {}; }
+    })();
+    Promise.all(
+      groupIds.map(async (id: string) => {
+        const since = lastViewed[id];
+        if (!since) return [id, 0] as [string, number];
+        const count = await postsAPI.getNewPostCountSince(id, since);
+        return [id, count] as [string, number];
+      })
+    ).then(results => {
+      const counts: Record<string, number> = {};
+      for (const [id, count] of results) counts[id] = count;
+      setGroupNewPostCounts(counts);
+    }).catch(() => {});
+  }, [showDropdown]);
 
   const handleLikeToggle = (postId: string) => {
     const isLiked = likedPosts.has(postId);
@@ -266,7 +290,19 @@ export function Feed() {
     return false;
   };
 
-  const select = (m: FeedMode) => { setFeedMode(m); setShowDropdown(false); setDynamicPosts(null); };
+  const select = (m: FeedMode) => {
+    if (typeof m === 'object' && m.type === 'group') {
+      try {
+        const lastViewed = JSON.parse(localStorage.getItem(GROUP_LAST_VIEWED_KEY) ?? '{}');
+        lastViewed[m.id] = new Date().toISOString();
+        localStorage.setItem(GROUP_LAST_VIEWED_KEY, JSON.stringify(lastViewed));
+      } catch {}
+      setGroupNewPostCounts(prev => ({ ...prev, [m.id]: 0 }));
+    }
+    setFeedMode(m);
+    setShowDropdown(false);
+    setDynamicPosts(null);
+  };
 
   const loading = isLoading || dynamicLoading || (feedMode === 'following' && isAuthenticated && !topicPostsReady);
 
@@ -331,6 +367,7 @@ export function Feed() {
                   <div className="px-3 pt-3 pb-1 text-xs text-muted-foreground uppercase tracking-wide font-medium border-t border-border/50">Your Groups</div>
                   {userGroups.map((group: any) => {
                     if (!group) return null;
+                    const newCount = groupNewPostCounts[group.id] ?? 0;
                     return (
                       <button
                         key={group.id}
@@ -340,6 +377,11 @@ export function Feed() {
                         <div className="flex items-center gap-2">
                           <GroupIcon iconKey={group.icon} className="w-4 h-4" />
                           <span className="font-medium">{group.name}</span>
+                          {newCount > 0 && (
+                            <span className="text-xs font-bold text-accent-foreground bg-accent rounded-full px-1.5 py-0.5 leading-none">
+                              {newCount > 99 ? '99+' : newCount}
+                            </span>
+                          )}
                         </div>
                         {isMode({ type: 'group', id: group.id }) && <Check className="w-4 h-4 text-accent" />}
                       </button>

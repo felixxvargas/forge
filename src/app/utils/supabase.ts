@@ -579,6 +579,16 @@ export const posts = {
     return data ?? [];
   },
 
+  async getNewPostCountSince(communityId: string, since: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('community_id', communityId)
+      .gt('created_at', since);
+    if (error) return 0;
+    return count ?? 0;
+  },
+
   async create(userId: string, content: string, options: {
     images?: string[];
     imageAlts?: string[];

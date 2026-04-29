@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Check, X } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -106,6 +106,7 @@ export function Profile() {
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
   const [freshFollowerCount, setFreshFollowerCount] = useState<number | null>(null);
   const [freshFollowingCount, setFreshFollowingCount] = useState<number | null>(null);
+  const [hideOnboarding, setHideOnboarding] = useState(() => localStorage.getItem('forge-hide-onboarding') === '1');
 
   // LFG Flare state
   const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
@@ -229,6 +230,21 @@ export function Profile() {
     profileUserPosts.filter(p => !p.repostedBy && ((p as any).images?.length > 0 || (p as any).video)),
     [profileUserPosts]
   );
+
+  // Auto-set onboarding_complete when all 4 tasks are done
+  useEffect(() => {
+    if (!isOwnProfile || !(currentUser as any) || (currentUser as any).onboarding_complete) return;
+    const glCheck = (currentUser as any)?.game_lists ?? {};
+    const hasList = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some((k: string) => (glCheck[k] ?? []).length > 0);
+    if (
+      !!currentUser?.profile_picture &&
+      hasList &&
+      profileUserPosts.length > 0 &&
+      ((currentUser as any).communities?.length ?? 0) > 0
+    ) {
+      updateCurrentUser({ onboarding_complete: true } as any);
+    }
+  }, [isOwnProfile, currentUser?.id, profileUserPosts.length]);
 
   // Guest trying to view their own profile — show login module
   if (!isAuthenticated && isOwnProfile) {
@@ -652,6 +668,15 @@ export function Profile() {
           <p className="text-sm leading-relaxed">{profileUser.about}</p>
         </div>
       )}
+
+      {(profileUser as any)?.onboarding_complete && (
+        <div className="mt-6 pt-4 border-t border-border/50">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/30 rounded-full">
+            <Trophy className="w-3.5 h-3.5 text-accent" />
+            <span className="text-xs font-semibold text-accent">Forge Pioneer</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1054,6 +1079,49 @@ export function Profile() {
             </button>
           </div>
         )}
+
+        {/* Onboarding progress indicator (own profile only, dismissible) */}
+        {isOwnProfile && !hideOnboarding && (() => {
+          const tasks = [
+            { label: 'Add a profile picture', done: !!currentUser?.profile_picture },
+            { label: 'Create a game list', done: profileHasLists },
+            { label: 'Post for the first time', done: profileUserPosts.length > 0 },
+            { label: 'Join or create a group', done: ((currentUser as any)?.communities?.length ?? 0) > 0 },
+          ];
+          const completedCount = tasks.filter(t => t.done).length;
+          if (completedCount === tasks.length) return null;
+          return (
+            <div className="px-4 mb-4">
+              <div className="bg-card rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold">Get started on Forge</span>
+                  <button
+                    onClick={() => { localStorage.setItem('forge-hide-onboarding', '1'); setHideOnboarding(true); }}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex gap-1 mb-2">
+                  {tasks.map((t, i) => (
+                    <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${t.done ? 'bg-accent' : 'bg-muted'}`} />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">{completedCount} of {tasks.length} complete</p>
+                <div className="space-y-2">
+                  {tasks.map((t, i) => (
+                    <div key={i} className={`flex items-center gap-2.5 text-sm ${t.done ? 'text-muted-foreground' : 'text-foreground'}`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${t.done ? 'border-accent bg-accent' : 'border-muted-foreground/50'}`}>
+                        {t.done && <Check className="w-2.5 h-2.5 text-accent-foreground" />}
+                      </div>
+                      <span className={t.done ? 'line-through' : ''}>{t.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4 border-b border-border px-4">
