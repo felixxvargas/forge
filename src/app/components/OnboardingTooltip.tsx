@@ -78,7 +78,15 @@ export function OnboardingTooltip() {
   if (completedCount === tasks.length) return null;
 
   return (
-    <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[200] w-72 bg-card border border-border rounded-2xl shadow-2xl">
+    <div
+      className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[200] w-72 rounded-2xl shadow-2xl"
+      style={{
+        background: 'rgba(45,31,71,0.6)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.10)',
+      }}
+    >
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold">Get started on Forge</span>

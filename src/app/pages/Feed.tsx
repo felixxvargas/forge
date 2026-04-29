@@ -412,13 +412,13 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="space-y-2 animate-pulse">
-          {[68, 52, 80, 60, 72].map((contentH, i) => (
-            <div key={i} className="bg-card rounded-xl p-4 flex gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
-              <div className="flex-1 space-y-2 pt-0.5">
-                <div className="h-3 bg-muted/50 rounded w-1/3" />
-                <div className={`bg-muted/30 rounded-lg`} style={{ height: contentH }} />
+        <div className="divide-y divide-border animate-pulse -mx-4">
+          {[90, 200, 80, 160, 88, 220, 76, 90].map((contentH, i) => (
+            <div key={i} className="px-4 py-4 flex gap-3">
+              <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0 mt-1" />
+              <div className="flex-1 min-w-0 space-y-2.5 pt-1">
+                <div className="h-3 bg-muted/45 rounded-full w-1/3" />
+                <div className="bg-muted/20 rounded-xl w-full" style={{ height: contentH }} />
               </div>
             </div>
           ))}
