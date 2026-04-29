@@ -412,40 +412,13 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="divide-y divide-border">
-          {[
-            { lines: ['w-full', 'w-5/6', 'w-3/5'], hasImage: false },
-            { lines: ['w-full', 'w-4/5'], hasImage: true },
-            { lines: ['w-full', 'w-11/12', 'w-2/3'], hasImage: false },
-            { lines: ['w-full', 'w-3/4'], hasImage: false },
-            { lines: ['w-full', 'w-5/6', 'w-1/2'], hasImage: false },
-          ].map((card, i) => (
-            <div key={i} className="p-4 animate-pulse">
-              <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0 space-y-2.5">
-                  {/* Name + handle + timestamp */}
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <div className="h-3.5 bg-muted/60 rounded w-28" />
-                    <div className="h-3 bg-muted/35 rounded w-20" />
-                    <div className="h-3 bg-muted/25 rounded w-8 ml-auto" />
-                  </div>
-                  {/* Text lines */}
-                  {card.lines.map((w, j) => (
-                    <div key={j} className={`h-3.5 bg-muted/50 rounded ${w}`} />
-                  ))}
-                  {/* Image placeholder (some cards) */}
-                  {card.hasImage && (
-                    <div className="h-44 bg-muted/25 rounded-xl" />
-                  )}
-                  {/* Action bar */}
-                  <div className="flex items-center gap-5 pt-0.5">
-                    <div className="h-4 bg-muted/30 rounded w-10" />
-                    <div className="h-4 bg-muted/30 rounded w-10" />
-                    <div className="h-4 bg-muted/30 rounded w-10" />
-                    <div className="h-4 bg-muted/30 rounded w-6 ml-auto" />
-                  </div>
-                </div>
+        <div className="space-y-2 animate-pulse">
+          {[68, 52, 80, 60, 72].map((contentH, i) => (
+            <div key={i} className="bg-card rounded-xl p-4 flex gap-3">
+              <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+              <div className="flex-1 space-y-2 pt-0.5">
+                <div className="h-3 bg-muted/50 rounded w-1/3" />
+                <div className={`bg-muted/30 rounded-lg`} style={{ height: contentH }} />
               </div>
             </div>
           ))}

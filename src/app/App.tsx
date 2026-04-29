@@ -5,6 +5,7 @@ import { AppDataProvider } from './context/AppDataContext';
 import { Toaster } from './components/ui/sonner';
 import { Suspense } from 'react';
 import { LoadingScreen } from './components/LoadingScreen';
+import { OnboardingTooltip } from './components/OnboardingTooltip';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <RouterProvider router={router} />
         </Suspense>
         <Toaster />
+        <OnboardingTooltip />
       </AppDataProvider>
     </ThemeProvider>
   );
