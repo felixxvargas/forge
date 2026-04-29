@@ -563,6 +563,23 @@ export function Feed() {
 
       {isAuthenticated && <WritePostButton />}
 
+      {/* Desktop FAB — fixed bottom-right */}
+      {isAuthenticated && (
+        <div className="hidden lg:flex fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => navigate('/new-post')}
+            className="flex items-center gap-2 px-4 py-3 bg-accent text-accent-foreground rounded-xl shadow-lg hover:bg-accent/90 transition-all font-medium text-sm"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+              <line x1="16" y1="8" x2="2" y2="22" />
+              <line x1="17.5" y1="15" x2="9" y2="15" />
+            </svg>
+            New Post
+          </button>
+        </div>
+      )}
+
       {/* Mobile guest sticky CTA — sits above bottom nav */}
       {!isAuthenticated && (
         <div className="md:hidden fixed left-0 right-0 z-40 bg-card/80 backdrop-blur-md backdrop-saturate-150 border-t-2 border-accent/30 px-4 py-3 flex items-center gap-3" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
