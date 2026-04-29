@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2 } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
+import { Top8Friends, Top8Games, AddTopFriendPanel } from '../components/Top8Section';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -18,7 +19,7 @@ import { LoginModule } from '../components/LoginModule';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI, streamArchivesAPI } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI, streamArchivesAPI, top8API } from '../utils/supabase';
 import type { LFGFlare, StreamArchive } from '../utils/supabase';
 
 import {
@@ -115,6 +116,13 @@ export function Profile() {
   const [streamArchives, setStreamArchives] = useState<StreamArchive[]>([]);
   const [retentionDue, setRetentionDue] = useState<StreamArchive[]>([]);
   const [retentionPromptIdx, setRetentionPromptIdx] = useState(0);
+
+  // Top 8
+  const [topFriendIds, setTopFriendIds] = useState<string[]>([]);
+  const [topGameIds, setTopGameIds] = useState<string[]>([]);
+  const [showAddFriendPanel, setShowAddFriendPanel] = useState(false);
+  // Add Content module expansion
+  const [addContentOpen, setAddContentOpen] = useState(false);
 
   // Local override for displayed_communities (About tab group visibility toggles)
   const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
@@ -246,6 +254,14 @@ export function Profile() {
       due.forEach(a => streamArchivesAPI.markRetentionPrompted(a.id));
     }).catch(() => {});
   }, [isOwnProfile, currentUser?.id]);
+
+  // Sync top_friends and top_games from the displayed profile
+  useEffect(() => {
+    const tf: string[] = (profileUser as any)?.top_friends ?? [];
+    const tg: string[] = (profileUser as any)?.top_games ?? [];
+    setTopFriendIds(tf);
+    setTopGameIds(tg);
+  }, [(profileUser as any)?.top_friends, (profileUser as any)?.top_games]);
 
   // Auto-set onboarding_complete when all 4 tasks are done
   useEffect(() => {
@@ -617,12 +633,16 @@ export function Profile() {
 
       {(() => {
         const selectedPlatforms: SocialPlatform[] = (profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? [];
-        if (selectedPlatforms.length === 0) return null;
+        const platformsWithHandles = selectedPlatforms.filter(platform => {
+          const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
+          return !!handle;
+        });
+        if (platformsWithHandles.length === 0) return null;
         return (
           <div className="mb-6">
             <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Social Accounts</h3>
             <div className="flex flex-wrap gap-2">
-              {selectedPlatforms.map(platform => {
+              {platformsWithHandles.map(platform => {
                 const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
                 const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
                 return (
@@ -1197,6 +1217,36 @@ export function Profile() {
         {/* Tab Content */}
         {effectiveTab === 'lists' && (
           <div className="px-4 space-y-6">
+            {/* Top 8 Friends */}
+            <Top8Friends
+              friendIds={topFriendIds}
+              isOwnProfile={isOwnProfile}
+              canAdd={topFriendIds.length < 8}
+              onAdd={() => { setAddContentOpen(false); setShowAddFriendPanel(true); }}
+              onRemove={isOwnProfile ? async (id) => {
+                if (!currentUser?.id) return;
+                await top8API.removeTopFriend(currentUser.id, id);
+                setTopFriendIds(prev => prev.filter(x => x !== id));
+                await updateCurrentUser({ top_friends: topFriendIds.filter(x => x !== id) } as any);
+              } : undefined}
+            />
+
+            {/* Top 8 Games */}
+            <Top8Games
+              gameIds={topGameIds}
+              isOwnProfile={isOwnProfile}
+              onManage={isOwnProfile ? () => setAddContentOpen(true) : undefined}
+            />
+
+            {/* Add Friend panel (inline) */}
+            {showAddFriendPanel && isOwnProfile && currentUser?.id && (
+              <AddTopFriendPanel
+                currentUserId={currentUser.id}
+                existingFriendIds={topFriendIds}
+                onClose={() => setShowAddFriendPanel(false)}
+              />
+            )}
+
             {(() => {
               const ALL_LISTS: { key: 'recentlyPlayed' | 'playedBefore' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [
                 { key: 'recentlyPlayed', listType: 'recently-played', label: 'Recently Played' },
@@ -1326,89 +1376,95 @@ export function Profile() {
                     );
                   })}
 
-                  {/* Single "Create list" button for own profile */}
+                  {/* Add Content module for own profile */}
                   {isOwnProfile && (
                     <div>
-                      {showListTypeSelector ? (
+                      {addContentOpen ? (
                         <div className="bg-card/50 border border-border rounded-xl p-4">
-                          <p className="text-sm font-medium mb-3">Choose list type</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {/* Hidden lists (have games but are hidden) — show on profile */}
+                          <p className="text-sm font-medium mb-3">Add content to your profile</p>
+                          <div className="space-y-2">
+                            {/* Top 8 Friends */}
+                            <button
+                              onClick={() => { setAddContentOpen(false); setShowAddFriendPanel(true); }}
+                              disabled={topFriendIds.length >= 8}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left disabled:opacity-50"
+                            >
+                              <Star className="w-4 h-4 text-yellow-400 shrink-0" />
+                              <div>
+                                <span className="font-medium">Top Friends</span>
+                                <span className="text-muted-foreground ml-2 text-xs">({topFriendIds.length}/8)</span>
+                              </div>
+                            </button>
+                            {/* Top 8 Games */}
+                            <button
+                              onClick={() => { setAddContentOpen(false); handleOpenGameListEdit('recently-played'); }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
+                            >
+                              <Gamepad2 className="w-4 h-4 text-accent shrink-0" />
+                              <div>
+                                <span className="font-medium">Top Games</span>
+                                <span className="text-muted-foreground ml-2 text-xs">({topGameIds.length}/8)</span>
+                              </div>
+                            </button>
+                            {/* Divider */}
+                            <div className="border-t border-border/50 pt-2 mt-1">
+                              <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Game Lists</p>
+                            </div>
+                            {/* Hidden lists — show on profile */}
                             {ALL_LISTS.filter(({ key }) => hiddenListKeys.includes(key) && (gameLists[key] ?? []).length > 0).map(({ key, label }) => (
                               <button
                                 key={`show-${key}`}
-                                onClick={() => { setShowListTypeSelector(false); handleShowList(key); }}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-accent/10 border border-accent/30 rounded-lg hover:bg-accent/20 transition-colors text-sm text-left"
+                                onClick={() => { setAddContentOpen(false); handleShowList(key); }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 bg-accent/10 border border-accent/30 rounded-lg hover:bg-accent/20 transition-colors text-sm text-left"
                               >
                                 <span className="text-accent">{label}</span>
                               </button>
                             ))}
-                            {/* Empty lists — create/add */}
+                            {/* Empty lists */}
                             {ALL_LISTS.filter(({ key }) => (gameLists[key] ?? []).length === 0).map(({ listType, label }) => (
                               <button
                                 key={listType}
-                                onClick={() => { setShowListTypeSelector(false); handleOpenGameListEdit(listType); }}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
+                                onClick={() => { setAddContentOpen(false); handleOpenGameListEdit(listType); }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
                               >
                                 <span>{label}</span>
                               </button>
                             ))}
-                            {/* LFG — only show if no LFG games yet */}
                             {((gameLists as any).lfg ?? []).length === 0 && (
                               <button
-                                onClick={() => { setShowListTypeSelector(false); handleOpenGameListEdit('lfg'); }}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-400/30 rounded-lg hover:border-orange-400/60 transition-colors text-sm text-left"
+                                onClick={() => { setAddContentOpen(false); handleOpenGameListEdit('lfg'); }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-400/30 rounded-lg hover:border-orange-400/60 transition-colors text-sm text-left"
                               >
                                 <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
                                 <span className="text-orange-300">Looking for Group</span>
                               </button>
                             )}
-                            {/* Custom list */}
                             {(() => {
                               const isPremium = (currentUser as any)?.is_premium;
                               return (
                                 <button
-                                  onClick={() => {
-                                    setShowListTypeSelector(false);
-                                    navigate(isPremium ? '/create-custom-list' : '/premium');
-                                  }}
-                                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${
-                                    isPremium
-                                      ? 'bg-secondary hover:bg-secondary/80'
-                                      : 'bg-secondary/40 text-muted-foreground cursor-default'
-                                  }`}
+                                  onClick={() => { setAddContentOpen(false); navigate(isPremium ? '/create-custom-list' : '/premium'); }}
+                                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${isPremium ? 'bg-secondary hover:bg-secondary/80' : 'bg-secondary/40 text-muted-foreground'}`}
                                 >
                                   <span>Custom List</span>
-                                  {!isPremium && (
-                                    <Crown className="w-3.5 h-3.5 text-accent/60 shrink-0 ml-auto" />
-                                  )}
+                                  {!isPremium && <Crown className="w-3.5 h-3.5 text-accent/60 ml-auto shrink-0" />}
                                 </button>
                               );
                             })()}
                           </div>
-                          <button
-                            onClick={() => setShowListTypeSelector(false)}
-                            className="mt-3 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            Cancel
-                          </button>
+                          <button onClick={() => setAddContentOpen(false)} className="mt-3 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
                         </div>
                       ) : (
                         <button
                           onClick={() => {
-                            if (visibleListCount >= 4) {
-                              setShowListLimitTray(true);
-                            } else {
-                              setShowListTypeSelector(true);
-                            }
+                            if (visibleListCount >= 4) { setShowListLimitTray(true); } else { setAddContentOpen(true); }
                           }}
                           className="w-full flex items-center gap-4 p-4 bg-card/50 border-2 border-dashed border-muted rounded-xl hover:border-accent/50 hover:bg-card transition-colors text-left"
                         >
+                          <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
                           <div>
-                            <p className="font-medium text-sm">Create a game list</p>
-                            <p className="text-xs text-muted-foreground">
-                              {visibleListCount >= 4 ? '4/4 lists shown — hide one to add another' : '+ Add games to a new list'}
-                            </p>
+                            <p className="font-medium text-sm">Add content</p>
+                            <p className="text-xs text-muted-foreground">Top Friends, Top Games, game lists & more</p>
                           </div>
                         </button>
                       )}
@@ -1868,14 +1924,18 @@ export function Profile() {
             {/* Social Accounts */}
             {(() => {
               const selectedPlatforms: SocialPlatform[] = (profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? [];
-              if (selectedPlatforms.length === 0) return null;
+              const platformsWithHandles = selectedPlatforms.filter(platform => {
+                const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
+                return !!handle;
+              });
+              if (platformsWithHandles.length === 0) return null;
               return (
                 <div className="mb-6">
                   <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
                     Social Accounts
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {selectedPlatforms.map(platform => {
+                    {platformsWithHandles.map(platform => {
                       const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
                       const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
                       return (

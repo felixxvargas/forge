@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Heart, MessageCircle, Repeat2, UserPlus, Users, AtSign, Flame, ChevronDown, Tv2 } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, UserPlus, Users, AtSign, Flame, ChevronDown, Tv2, Star } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { LFGFlareModal } from '../components/LFGFlareModal';
 import { useAppData } from '../context/AppDataContext';
-import { notifications as notificationsAPI, lfgFlares as lfgFlaresAPI, streamArchivesAPI } from '../utils/supabase';
+import { notifications as notificationsAPI, lfgFlares as lfgFlaresAPI, streamArchivesAPI, top8API } from '../utils/supabase';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
 
 const RENEW_OPTIONS = [
@@ -68,6 +68,21 @@ export function Notifications() {
     }
   };
 
+  const handleTopFriendAccept = async (notif: any) => {
+    const requestId = notif.metadata?.request_id ?? notif.post_id;
+    const requesterId = notif.actor?.id ?? notif.actor_id;
+    if (!requestId || !requesterId || !session?.user) return;
+    await top8API.acceptRequest(requestId, requesterId, session.user.id);
+    setNotifs(prev => prev.filter(n => n.id !== notif.id));
+  };
+
+  const handleTopFriendDecline = async (notif: any) => {
+    const requestId = notif.metadata?.request_id ?? notif.post_id;
+    if (!requestId) return;
+    await top8API.declineRequest(requestId);
+    setNotifs(prev => prev.filter(n => n.id !== notif.id));
+  };
+
   const handleStreamExpiryKeep = async (notif: any) => {
     const archiveId = notif.metadata?.archive_id ?? notif.post_id;
     if (!archiveId) return;
@@ -91,6 +106,7 @@ export function Notifications() {
       case 'mention': return <AtSign className="w-5 h-5 text-accent" />;
       case 'communityInvite': return <Users className="w-5 h-5 text-accent" />;
       case 'stream_expiry': return <Tv2 className="w-5 h-5 text-amber-400" />;
+      case 'top_friend_request': return <Star className="w-5 h-5 text-yellow-400" />;
       default: return null;
     }
   };
@@ -191,6 +207,47 @@ export function Notifications() {
             ) : (
               notifs.map((notif) => {
                 const actor = notif.actor;
+
+                // Top 8 friend request — Accept / Decline
+                if (notif.type === 'top_friend_request') {
+                  const actor = notif.actor;
+                  return (
+                    <div key={notif.id} className="px-4 py-4 bg-card rounded-xl border border-yellow-500/20">
+                      <div className="flex items-start gap-3">
+                        <Star className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
+                        {actor && (
+                          <ProfileAvatar
+                            username={actor.display_name || actor.handle || '?'}
+                            profilePicture={actor.profile_picture}
+                            userId={actor.id}
+                            size="sm"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm">
+                            <span className="font-semibold">{actor?.display_name || actor?.handle || 'Someone'}</span>
+                            {' '}<span className="text-muted-foreground">wants to add you to their Top 8</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(notif.created_at)}</p>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => handleTopFriendAccept(notif)}
+                              className="px-3 py-1.5 bg-accent text-accent-foreground text-xs font-medium rounded-lg"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleTopFriendDecline(notif)}
+                              className="px-3 py-1.5 border border-border text-xs rounded-lg hover:bg-secondary transition-colors"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 // Stream expiry notification — custom card with Keep/Delete actions
                 if (notif.type === 'stream_expiry') {

@@ -46,9 +46,9 @@
   /* Forge Gaming Theme - Dark Mode (default for app) */
   --background: #1c1228;
   --foreground: #f0f4f8;
-  --card: #2d1f47;
+  --card: rgba(45, 31, 71, 0.62);
   --card-foreground: #f0f4f8;
-  --popover: #2d1f47;
+  --popover: rgba(45, 31, 71, 0.92);
   --popover-foreground: #f0f4f8;
   --primary: #f0f4f8;
   --primary-foreground: #1c1228;

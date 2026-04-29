@@ -1949,6 +1949,91 @@ export const groupThreadReadsAPI = {
 };
 
 // ============================================================
+// TOP 8 FRIENDS & GAMES
+// ============================================================
+export const top8API = {
+  async sendFriendRequest(requesterId: string, recipientId: string) {
+    // Upsert and get the request ID
+    const { data, error } = await supabase.from('top_friend_requests').upsert(
+      { requester_id: requesterId, recipient_id: recipientId, status: 'pending' },
+      { onConflict: 'requester_id,recipient_id' }
+    ).select('id').maybeSingle();
+    if (error) throw new Error(error.message);
+    // Remove any stale unread notification for the same pair first (no spam)
+    await supabase.from('notifications')
+      .delete()
+      .eq('user_id', recipientId)
+      .eq('actor_id', requesterId)
+      .eq('type', 'top_friend_request')
+      .eq('read', false);
+    // Notify the recipient
+    await supabase.from('notifications').insert({
+      user_id: recipientId,
+      actor_id: requesterId,
+      type: 'top_friend_request',
+      read: false,
+      metadata: { requester_id: requesterId, request_id: data?.id },
+    });
+  },
+
+  async hasPendingRequest(requesterId: string, recipientId: string): Promise<boolean> {
+    const { data } = await supabase
+      .from('top_friend_requests')
+      .select('id')
+      .eq('requester_id', requesterId)
+      .eq('recipient_id', recipientId)
+      .eq('status', 'pending')
+      .maybeSingle();
+    return !!data;
+  },
+
+  async acceptRequest(requestId: string, requesterId: string, recipientId: string) {
+    await supabase.from('top_friend_requests').update({ status: 'accepted' }).eq('id', requestId);
+    // Add each user to the other's top_friends array (up to 8)
+    const addToTop = async (userId: string, friendId: string) => {
+      const { data } = await supabase.from('profiles').select('top_friends').eq('id', userId).maybeSingle();
+      const current: string[] = data?.top_friends ?? [];
+      if (current.includes(friendId)) return;
+      const updated = [...current, friendId].slice(0, 8);
+      await supabase.from('profiles').update({ top_friends: updated }).eq('id', userId);
+    };
+    await Promise.all([addToTop(requesterId, recipientId), addToTop(recipientId, requesterId)]);
+  },
+
+  async declineRequest(requestId: string) {
+    await supabase.from('top_friend_requests').update({ status: 'declined' }).eq('id', requestId);
+  },
+
+  async removeTopFriend(userId: string, friendId: string) {
+    const { data } = await supabase.from('profiles').select('top_friends').eq('id', userId).maybeSingle();
+    const current: string[] = data?.top_friends ?? [];
+    await supabase.from('profiles').update({ top_friends: current.filter(id => id !== friendId) }).eq('id', userId);
+  },
+
+  async getTopFriendProfiles(userIds: string[]) {
+    if (!userIds.length) return [];
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, handle, display_name, profile_picture, created_at')
+      .in('id', userIds);
+    return data ?? [];
+  },
+
+  async updateTopGames(userId: string, gameIds: string[]) {
+    await supabase.from('profiles').update({ top_games: gameIds.slice(0, 8) }).eq('id', userId);
+  },
+
+  async getPendingRequestsForUser(userId: string) {
+    const { data } = await supabase
+      .from('top_friend_requests')
+      .select('*, requester:profiles!requester_id(id, handle, display_name, profile_picture)')
+      .eq('recipient_id', userId)
+      .eq('status', 'pending');
+    return data ?? [];
+  },
+};
+
+// ============================================================
 // STREAM ARCHIVES (Twitch VOD archiving)
 // ============================================================
 export interface StreamArchive {
