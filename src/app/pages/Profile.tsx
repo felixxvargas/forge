@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2 } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
@@ -18,8 +18,8 @@ import { LoginModule } from '../components/LoginModule';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI } from '../utils/supabase';
-import type { LFGFlare } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI, streamArchivesAPI } from '../utils/supabase';
+import type { LFGFlare, StreamArchive } from '../utils/supabase';
 
 import {
   DropdownMenu,
@@ -110,6 +110,11 @@ export function Profile() {
 
   // LFG Flare state
   const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
+
+  // Stream archives
+  const [streamArchives, setStreamArchives] = useState<StreamArchive[]>([]);
+  const [retentionDue, setRetentionDue] = useState<StreamArchive[]>([]);
+  const [retentionPromptIdx, setRetentionPromptIdx] = useState(0);
 
   // Local override for displayed_communities (About tab group visibility toggles)
   const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
@@ -231,6 +236,17 @@ export function Profile() {
     [profileUserPosts]
   );
 
+  // Load stream archives for own profile
+  useEffect(() => {
+    if (!isOwnProfile || !currentUser?.id) return;
+    streamArchivesAPI.getForUser(currentUser.id).then(setStreamArchives).catch(() => {});
+    streamArchivesAPI.autoDeleteOverdue(currentUser.id).catch(() => {});
+    streamArchivesAPI.getRetentionDue(currentUser.id).then(due => {
+      setRetentionDue(due);
+      due.forEach(a => streamArchivesAPI.markRetentionPrompted(a.id));
+    }).catch(() => {});
+  }, [isOwnProfile, currentUser?.id]);
+
   // Auto-set onboarding_complete when all 4 tasks are done
   useEffect(() => {
     if (!isOwnProfile || !(currentUser as any) || (currentUser as any).onboarding_complete) return;
@@ -258,6 +274,7 @@ export function Profile() {
         <Header />
         {/* Mobile skeleton */}
         <div className="lg:hidden w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
+          {/* Avatar + name + edit button */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
@@ -268,10 +285,12 @@ export function Profile() {
             </div>
             <div className="w-9 h-9 rounded-lg bg-muted/30" />
           </div>
+          {/* Bio */}
           <div className="space-y-2 mb-3">
             <div className="h-3.5 bg-muted/40 rounded w-full" />
             <div className="h-3.5 bg-muted/40 rounded w-2/3" />
           </div>
+          {/* Stats + follow */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-5">
               <div className="space-y-1">
@@ -285,25 +304,32 @@ export function Profile() {
             </div>
             <div className="h-9 bg-muted/40 rounded-full w-24" />
           </div>
+          {/* Platform icons */}
           <div className="flex gap-2 mb-5">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-8 bg-muted/30 rounded-full w-20" />
-            ))}
-          </div>
-          <div className="flex gap-1 border-b border-border/50 mb-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-9 bg-muted/30 rounded-t w-16 mr-1" />
+              <div key={i} className="w-8 h-8 rounded-full bg-muted/30" />
             ))}
           </div>
+          {/* Tab bar */}
+          <div className="flex gap-0 border-b border-border/50 mb-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-10 bg-muted/30 rounded-t w-16 mr-2" />
+            ))}
+          </div>
+          {/* Game lists skeleton */}
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="py-4 border-b border-border/50">
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                <div className="flex-1 space-y-2 pt-1">
-                  <div className="h-3 bg-muted/40 rounded w-28" />
-                  <div className="h-3 bg-muted/40 rounded w-full" />
-                  <div className="h-3 bg-muted/30 rounded w-3/4" />
-                </div>
+            <div key={i} className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-4 bg-muted/50 rounded w-32" />
+                <div className="h-3.5 bg-muted/30 rounded w-16" />
+              </div>
+              <div className="flex gap-3 overflow-hidden">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <div key={j} className="shrink-0 w-16">
+                    <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-1.5" />
+                    <div className="h-2.5 bg-muted/30 rounded w-full" />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -337,28 +363,32 @@ export function Profile() {
               </div>
               <div className="h-9 bg-muted/40 rounded-full w-full" />
               <div className="flex gap-2 flex-wrap">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-8 bg-muted/30 rounded-full w-20" />
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full bg-muted/30" />
                 ))}
               </div>
             </div>
           </div>
-          {/* Right col: tabs + posts */}
-          <div className="flex-1 min-w-0 space-y-4">
+          {/* Right col: tabs + game lists */}
+          <div className="flex-1 min-w-0 space-y-5">
             <div className="flex gap-1 border-b border-border/50 pb-0">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-9 bg-muted/30 rounded-t w-16 mr-1" />
+                <div key={i} className="h-10 bg-muted/30 rounded-t w-16 mr-1" />
               ))}
             </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="py-4 border-b border-border/50">
-                <div className="flex gap-3">
-                  <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                  <div className="flex-1 space-y-2 pt-1">
-                    <div className="h-3 bg-muted/40 rounded w-28" />
-                    <div className="h-3 bg-muted/40 rounded w-full" />
-                    <div className="h-3 bg-muted/30 rounded w-3/4" />
-                  </div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-4 bg-muted/50 rounded w-32" />
+                  <div className="h-3.5 bg-muted/30 rounded w-16" />
+                </div>
+                <div className="flex gap-3 overflow-hidden">
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <div key={j} className="shrink-0 w-18">
+                      <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-1.5 w-16" />
+                      <div className="h-2.5 bg-muted/30 rounded w-16" />
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -1587,12 +1617,96 @@ export function Profile() {
 
         {effectiveTab === 'media' && (
           <div className="px-4 pb-24">
-            {mediaPosts.length === 0 ? (
+            {/* Retention prompts */}
+            {isOwnProfile && retentionDue.length > 0 && retentionPromptIdx < retentionDue.length && (() => {
+              const archive = retentionDue[retentionPromptIdx];
+              return (
+                <div className="mb-4 bg-amber-950/40 border border-amber-600/30 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Tv2 className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-amber-200">Keep this archived stream?</p>
+                      <p className="text-xs text-amber-300/70 mt-0.5 truncate">"{archive.title}"</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This archive is over 1 year old. It will be auto-deleted in 3 months if you don't decide.
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => setRetentionPromptIdx(i => i + 1)}
+                          className="px-3 py-1.5 bg-accent text-accent-foreground text-xs font-medium rounded-lg"
+                        >
+                          Keep it
+                        </button>
+                        <button
+                          onClick={() => {
+                            streamArchivesAPI.softDelete(archive.id);
+                            setStreamArchives(prev => prev.filter(a => a.id !== archive.id));
+                            setRetentionPromptIdx(i => i + 1);
+                          }}
+                          className="px-3 py-1.5 border border-border text-xs rounded-lg hover:bg-secondary transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Twitch stream archives */}
+            {streamArchives.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Tv2 className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-sm font-semibold text-muted-foreground">Stream Archives</h3>
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => navigate('/settings/twitch-archive')}
+                      className="ml-auto text-xs text-accent hover:underline"
+                    >
+                      Manage
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {streamArchives.slice(0, 5).map(archive => {
+                    const h = Math.floor(archive.duration_seconds / 3600);
+                    const m = Math.floor((archive.duration_seconds % 3600) / 60);
+                    const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    return (
+                      <div key={archive.id} className="flex items-center gap-3 bg-card rounded-xl overflow-hidden">
+                        {archive.thumbnail_url ? (
+                          <div className="w-24 h-14 shrink-0 bg-muted overflow-hidden">
+                            <img src={archive.thumbnail_url} alt={archive.title} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-24 h-14 shrink-0 bg-muted flex items-center justify-center">
+                            <Tv2 className="w-5 h-5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 py-2 pr-3">
+                          <p className="text-sm font-medium truncate">{archive.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(archive.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {dur}
+                          </p>
+                          {archive.download_status === 'pending' && (
+                            <span className="text-xs text-amber-400">Pending</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {mediaPosts.length === 0 && streamArchives.length === 0 ? (
               <div className="text-center py-12">
                 <ImageIcon className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm">No photos or videos yet</p>
               </div>
-            ) : (
+            ) : mediaPosts.length === 0 ? null : (
               <div className="grid grid-cols-3 gap-1">
                 {mediaPosts.map(post => {
                   const images: string[] = (post as any).images ?? [];

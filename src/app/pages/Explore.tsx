@@ -850,9 +850,20 @@ export function Explore() {
                   </button>
                 </div>
                 {loadingTopicPosts ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-400">Loading gaming news...</p>
+                  <div className="space-y-0 divide-y divide-border -mx-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="px-4 py-4 animate-pulse">
+                        <div className="flex gap-3">
+                          <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
+                          <div className="flex-1 space-y-2 pt-0.5">
+                            <div className="h-3.5 bg-muted/50 rounded w-32" />
+                            <div className="h-3 bg-muted/40 rounded w-full" />
+                            <div className="h-3 bg-muted/40 rounded w-4/5" />
+                            <div className="h-[140px] bg-muted/30 rounded-xl mt-2 w-full" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : gamingMediaPosts.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
@@ -900,7 +911,34 @@ export function Explore() {
 
             {activeTab === 'users' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {filteredUsers.length === 0 ? (
+                {isLoading ? (
+                  <>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                          <div className="flex-1 space-y-2 pt-0.5">
+                            <div className="h-4 bg-muted/50 rounded w-32" />
+                            <div className="h-3 bg-muted/30 rounded w-20" />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5 mb-3">
+                          <div className="h-3 bg-muted/40 rounded w-full" />
+                          <div className="h-3 bg-muted/30 rounded w-3/4" />
+                        </div>
+                        <div className="flex gap-1.5 mb-3">
+                          {Array.from({ length: 4 }).map((_, j) => (
+                            <div key={j} className="w-6 h-6 rounded-full bg-muted/30" />
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="h-3.5 bg-muted/30 rounded w-24" />
+                          <div className="h-8 bg-muted/40 rounded-full w-20" />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : filteredUsers.length === 0 ? (
                   <div className="col-span-full text-center py-12 text-gray-500">
                     <UserIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No users found</p>
@@ -981,16 +1019,31 @@ export function Explore() {
 
             {activeTab === 'groups' && (
               <div className="space-y-3">
-                <div className="flex">
-                  <button
-                    onClick={() => navigate('/create-group')}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
-                  >
-                    <Plus className="w-4 h-4 shrink-0" />
-                    <span className="font-medium text-sm">Create a new group</span>
-                  </button>
-                </div>
-                {filteredGroups.length === 0 ? (
+                <button
+                  onClick={() => navigate('/create-group')}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
+                >
+                  <Plus className="w-4 h-4 shrink-0" />
+                  <span className="font-medium text-sm">Create a new group</span>
+                </button>
+                {isLoading ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-4 animate-pulse">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-muted/50 rounded w-36" />
+                            <div className="h-3 bg-muted/30 rounded w-full" />
+                            <div className="h-3 bg-muted/30 rounded w-4/5" />
+                            <div className="h-3 bg-muted/20 rounded w-24" />
+                          </div>
+                          <div className="h-8 bg-muted/40 rounded-lg w-16 shrink-0" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredGroups.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No groups found</p>

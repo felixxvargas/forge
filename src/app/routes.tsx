@@ -54,6 +54,7 @@ const BlueskyCallback       = lazy(() => import('./pages/BlueskyCallback').then(
 const MastodonCallback      = lazy(() => import('./pages/MastodonCallback').then(m => ({ default: m.MastodonCallback })));
 const SocialClaimAccount    = lazy(() => import('./pages/SocialClaimAccount').then(m => ({ default: m.SocialClaimAccount })));
 const CreateLFGFlarePage    = lazy(() => import('./pages/CreateLFGFlarePage').then(m => ({ default: m.CreateLFGFlarePage })));
+const TwitchArchiveSettings = lazy(() => import('./pages/TwitchArchiveSettings').then(m => ({ default: m.TwitchArchiveSettings })));
 
 export const router = createBrowserRouter([
   { path: '/login',                    element: <Login />,              errorElement: <ErrorBoundary /> },
@@ -117,6 +118,7 @@ export const router = createBrowserRouter([
       { path: 'settings/notifications', element: <NotificationsSettings />,   errorElement: <ErrorBoundary /> },
       { path: 'settings/feedback',    element: <FeedbackPage />,             errorElement: <ErrorBoundary /> },
       { path: 'settings/whats-new',   element: <WhatsNewPage />,             errorElement: <ErrorBoundary /> },
+      { path: 'settings/twitch-archive', element: <TwitchArchiveSettings />, errorElement: <ErrorBoundary /> },
       { path: 'bsky/:handle',          element: <BlueskyProfilePage />,       errorElement: <ErrorBoundary /> },
       { path: ':handle',               element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },

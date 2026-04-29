@@ -1947,3 +1947,86 @@ export const groupThreadReadsAPI = {
     return data ?? [];
   },
 };
+
+// ============================================================
+// STREAM ARCHIVES (Twitch VOD archiving)
+// ============================================================
+export interface StreamArchive {
+  id: string;
+  user_id: string;
+  twitch_vod_id: string;
+  title: string;
+  duration_seconds: number;
+  thumbnail_url: string | null;
+  storage_path: string | null;
+  download_status: 'pending' | 'downloading' | 'ready' | 'failed';
+  recorded_at: string;
+  created_at: string;
+  retention_prompted_at: string | null;
+  deleted_at: string | null;
+}
+
+export const streamArchivesAPI = {
+  async getForUser(userId: string): Promise<StreamArchive[]> {
+    const { data } = await supabase
+      .from('stream_archives')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .order('recorded_at', { ascending: false });
+    return (data ?? []) as StreamArchive[];
+  },
+
+  async getRetentionDue(userId: string): Promise<StreamArchive[]> {
+    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('stream_archives')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .is('retention_prompted_at', null)
+      .lt('recorded_at', oneYearAgo);
+    return (data ?? []) as StreamArchive[];
+  },
+
+  async markRetentionPrompted(archiveId: string) {
+    await supabase
+      .from('stream_archives')
+      .update({ retention_prompted_at: new Date().toISOString() })
+      .eq('id', archiveId);
+  },
+
+  async softDelete(archiveId: string) {
+    await supabase
+      .from('stream_archives')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', archiveId);
+  },
+
+  async autoDeleteOverdue(userId: string) {
+    // Auto-delete archives where retention prompt was shown > 3 months ago with no response
+    const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from('stream_archives')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .lt('retention_prompted_at', threeMonthsAgo);
+  },
+
+  async syncFromTwitch(userId: string, accessToken: string) {
+    const { projectId } = await import('/utils/supabase/info');
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session) throw new Error('Not authenticated');
+    const res = await fetch(
+      `https://${projectId}.supabase.co/functions/v1/twitch-vod-archive/sync`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ user_id: userId }),
+      }
+    );
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+};
