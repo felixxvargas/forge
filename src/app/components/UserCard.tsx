@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { Sprout } from 'lucide-react';
 import { ProfileAvatar } from './ProfileAvatar';
 import { PlatformIcon } from './PlatformIcon';
 import { FollowButton } from './FollowButton';
@@ -40,8 +41,11 @@ export function UserCard({ user }: UserCardProps) {
           userId={user.id}
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5 mb-1">
             <h3 className="font-medium">{(user as any).display_name || (user as any).displayName || user.handle}</h3>
+            {(user as any).created_at && (Date.now() - new Date((user as any).created_at).getTime()) < 91 * 864e5 && (
+              <Sprout className="w-3.5 h-3.5 text-green-400 shrink-0" />
+            )}
           </div>
           <p className="text-sm text-muted-foreground mb-1">@{(user.handle || '').replace(/^@/, '')}</p>
           {user.pronouns && (

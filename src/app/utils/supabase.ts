@@ -345,7 +345,7 @@ export const posts = {
       .from('posts')
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -368,7 +368,7 @@ export const posts = {
         key: 'posts',
         query: supabase
           .from('posts')
-          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
           .in('user_id', followingIds)
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1),
@@ -377,7 +377,7 @@ export const posts = {
         key: 'reposts',
         query: supabase
           .from('reposts')
-          .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+          .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at))`)
           .in('user_id', followingIds)
           .order('created_at', { ascending: false })
           .limit(limit),
@@ -390,7 +390,7 @@ export const posts = {
         key: 'gamePosts',
         query: supabase
           .from('posts')
-          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
           .in('game_id', followedGameIds)
           .order('created_at', { ascending: false })
           .limit(limit),
@@ -403,7 +403,7 @@ export const posts = {
         key: 'groupPosts',
         query: supabase
           .from('posts')
-          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+          .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
           .in('community_id', memberGroupIds)
           .order('created_at', { ascending: false })
           .limit(limit),
@@ -448,7 +448,7 @@ export const posts = {
     const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .gte('created_at', cutoff)
       .order('like_count', { ascending: false })
       .limit(limit * 3);
@@ -471,14 +471,14 @@ export const posts = {
       followedGameIds.length > 0
         ? supabase
             .from('posts')
-            .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+            .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
             .in('game_id', followedGameIds)
             .order('created_at', { ascending: false })
             .limit(limit)
         : Promise.resolve({ data: [] as any[], error: null }),
       supabase
         .from('posts')
-        .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+        .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
         .gte('created_at', cutoff)
         .neq('user_id', userId)
         .order('like_count', { ascending: false })
@@ -511,7 +511,7 @@ export const posts = {
   async getGameFeed(gameId: string, limit = 30) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .eq('game_id', gameId)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -524,7 +524,7 @@ export const posts = {
       .from('posts')
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .eq('id', postId)
       .single();
@@ -535,7 +535,7 @@ export const posts = {
   async getByReplyTo(postId: string) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .eq('reply_to', postId)
       .order('created_at', { ascending: true });
     if (error) throw new Error(error.message);
@@ -546,7 +546,7 @@ export const posts = {
   async getExternalComments(externalPostId: string) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .eq('url', `forge-comment:${externalPostId}`)
       .order('created_at', { ascending: true });
     if (error) throw new Error(error.message);
@@ -558,7 +558,7 @@ export const posts = {
       .from('posts')
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -571,7 +571,7 @@ export const posts = {
       .from('posts')
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .eq('community_id', communityId)
       .order('created_at', { ascending: false });
@@ -641,7 +641,7 @@ export const posts = {
       })
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .single();
     if (error) throw new Error(error.message);
@@ -715,7 +715,7 @@ export const posts = {
   async getLikedPosts(userId: string) {
     const { data, error } = await supabase
       .from('likes')
-      .select(`post_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+      .select(`post_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at))`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
@@ -772,7 +772,7 @@ export const posts = {
   async getQuotePosts(postId: string) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .eq('quote_post_id', postId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
@@ -782,7 +782,7 @@ export const posts = {
   async getRepostsByUser(userId: string) {
     const { data, error } = await supabase
       .from('reposts')
-      .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture))`)
+      .select(`user_id, created_at, post:posts!post_id(*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at))`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
@@ -796,7 +796,7 @@ export const posts = {
       .from('posts')
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .ilike('content', `%${query}%`)
       .order('created_at', { ascending: false })
@@ -808,7 +808,7 @@ export const posts = {
   async getTopicPosts(limit = 50) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, account_type)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at, account_type)`)
       .in('platform', ['bluesky', 'mastodon'])
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -821,7 +821,7 @@ export const posts = {
       .from('posts')
       .select(`
         *,
-        author:profiles!user_id(id, handle, display_name, profile_picture)
+        author:profiles!user_id(id, handle, display_name, profile_picture, created_at)
       `)
       .eq('game_id', gameId)
       .order('created_at', { ascending: false })
@@ -1118,7 +1118,7 @@ export const commentsAPI = {
   async getByPostId(postId: string) {
     const { data, error } = await supabase
       .from('comments')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
     if (error) throw new Error(error.message);
@@ -1129,7 +1129,7 @@ export const commentsAPI = {
     const { data, error } = await supabase
       .from('comments')
       .insert({ post_id: postId, user_id: userId, content })
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture)`)
+      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
       .single();
     if (error) throw new Error(error.message);
     // Persist comment_count increment atomically via rpc; fall back to read-modify-write
