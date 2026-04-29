@@ -49,7 +49,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t border-border z-50 md:hidden">
         <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
           <button
             onClick={() => {
@@ -112,7 +112,7 @@ export function BottomNav() {
           </button>
         </div>
         {/* Safe-area extension */}
-        <div className="bg-card" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
+        <div className="bg-card/80" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
       </nav>
     </>
   );

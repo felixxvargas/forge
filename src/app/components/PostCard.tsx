@@ -299,6 +299,10 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       } p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer transition-colors' : ''} ${
         isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-secondary/40' : ''
       }`}
+      style={!isFlarePost && !noBacker ? {
+        backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(255,255,255,0.055) 0%, transparent 55%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.18)',
+      } : undefined}
       onClick={handlePostClick}
     >
       {/* Flare header banner */}

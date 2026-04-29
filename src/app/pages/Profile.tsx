@@ -767,7 +767,7 @@ export function Profile() {
         {/* LEFT COLUMN — profile header + about (desktop) */}
         <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
-        <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl lg:rounded-2xl mb-4">
+        <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl lg:rounded-2xl mb-4" style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(255,255,255,0.055) 0%, transparent 55%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.18)' }}>
           {/* Back button for other users' profiles */}
           {!isOwnProfile && (
             <div className="mb-4 flex items-center justify-between gap-3">
