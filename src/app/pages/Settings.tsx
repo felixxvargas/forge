@@ -375,57 +375,42 @@ export function Settings() {
         </div>
 
         {/* Getting Started */}
-        {currentUser && (
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Getting Started</h2>
-            <div className="bg-card rounded-xl p-4">
-              {(() => {
-                const glCheck = (currentUser as any)?.game_lists ?? {};
-                const hasList = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(
-                  (k: string) => (glCheck[k] ?? []).length > 0
-                );
-                const tasks = [
-                  { label: 'Add a profile picture', done: !!(currentUser as any).profile_picture },
-                  { label: 'Create a game list', done: hasList },
-                  { label: 'Post for the first time', done: hasPosted === true },
-                  { label: 'Join or create a group', done: ((currentUser as any).communities?.length ?? 0) > 0 },
-                ];
-                const completedCount = tasks.filter(t => t.done).length;
-                return (
-                  <>
-                    <div className="flex gap-1 mb-2">
-                      {tasks.map((_, i) => (
-                        <div key={i} className={`h-1.5 flex-1 rounded-full ${i < completedCount ? 'bg-accent' : 'bg-muted'}`} />
-                      ))}
+        {currentUser && (() => {
+          const glCheck = (currentUser as any)?.game_lists ?? {};
+          const hasList = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(
+            (k: string) => (glCheck[k] ?? []).length > 0
+          );
+          const tasks = [
+            { label: 'Add a profile picture', done: !!(currentUser as any).profile_picture },
+            { label: 'Create a game list', done: hasList },
+            { label: 'Post for the first time', done: hasPosted === true },
+            { label: 'Join or create a group', done: ((currentUser as any).communities?.length ?? 0) > 0 },
+          ];
+          const remaining = tasks.filter(t => !t.done);
+          if (remaining.length === 0) return null;
+          const completedCount = tasks.length - remaining.length;
+          return (
+            <div className="mb-8">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Getting Started</h2>
+              <div className="bg-card rounded-xl p-4">
+                <div className="flex gap-1 mb-2">
+                  {tasks.map((_, i) => (
+                    <div key={i} className={`h-1.5 flex-1 rounded-full ${i < completedCount ? 'bg-accent' : 'bg-muted'}`} />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">{completedCount} of {tasks.length} complete</p>
+                <div className="space-y-3">
+                  {remaining.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2.5 text-sm text-foreground">
+                      <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/50 flex items-center justify-center shrink-0" />
+                      <span>{t.label}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-4">{completedCount} of {tasks.length} complete</p>
-                    <div className="space-y-3 mb-4">
-                      {tasks.map((t, i) => (
-                        <div key={i} className={`flex items-center gap-2.5 text-sm ${t.done ? 'text-muted-foreground' : 'text-foreground'}`}>
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.done ? 'border-accent bg-accent' : 'border-muted-foreground/50'}`}>
-                            {t.done && <Check className="w-2.5 h-2.5 text-accent-foreground" />}
-                          </div>
-                          <span className={t.done ? 'line-through' : ''}>{t.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {onboardingDismissCount >= 3 && (
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('forge-onboarding-v1', JSON.stringify({ dismissCount: 0, forceServed: false }));
-                          setOnboardingDismissCount(0);
-                        }}
-                        className="w-full py-2 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
-                      >
-                        Re-enable getting started reminder
-                      </button>
-                    )}
-                  </>
-                );
-              })()}
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Subscription */}
         <div className="mb-8">

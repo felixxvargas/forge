@@ -263,7 +263,7 @@ export function Login() {
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{' '}
-                  <Link to="/signup" className="underline hover:text-foreground font-medium">Create one for free</Link>
+                  <Link to="/signup" className="underline hover:text-foreground font-medium">Create one</Link>
                 </p>
               </div>
 

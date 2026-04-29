@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
-import { Top8Friends, Top8Games, AddTopFriendPanel } from '../components/Top8Section';
+import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -121,6 +121,7 @@ export function Profile() {
   const [topFriendIds, setTopFriendIds] = useState<string[]>([]);
   const [topGameIds, setTopGameIds] = useState<string[]>([]);
   const [showAddFriendPanel, setShowAddFriendPanel] = useState(false);
+  const [showTopGamesPicker, setShowTopGamesPicker] = useState(false);
   // Add Content module expansion
   const [addContentOpen, setAddContentOpen] = useState(false);
 
@@ -729,9 +730,20 @@ export function Profile() {
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
             {isForgeSprite && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/30 rounded-full">
-                <Trophy className="w-3.5 h-3.5 text-accent" />
-                <span className="text-xs font-semibold text-accent">Forge Sprite</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 rounded-full">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-violet-300 shrink-0">
+                  {/* Upper wings */}
+                  <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
+                  <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
+                  {/* Lower wings */}
+                  <path d="M11 12c-2 2-6 6-3 8 2 1 4-3 3-8z" opacity="0.7"/>
+                  <path d="M13 12c2 2 6 6 3 8-2 1-4-3-3-8z" opacity="0.7"/>
+                  {/* Body */}
+                  <ellipse cx="12" cy="13" rx="1.2" ry="2.5"/>
+                  {/* Head */}
+                  <circle cx="12" cy="9" r="1.8"/>
+                </svg>
+                <span className="text-xs font-semibold text-violet-300">Forge Sprite</span>
               </div>
             )}
             {isEarlyAdopter && (
@@ -1149,6 +1161,47 @@ export function Profile() {
           </div>
         )}
 
+        {/* Top 8 Friends & Games — always visible above tabs */}
+        {(topFriendIds.length > 0 || topGameIds.length > 0 || isOwnProfile) && (
+          <div className="px-4 mb-2 space-y-0">
+            <Top8Friends
+              friendIds={topFriendIds}
+              isOwnProfile={isOwnProfile}
+              canAdd={topFriendIds.length < 8}
+              onAdd={() => { setShowTopGamesPicker(false); setShowAddFriendPanel(true); }}
+              onRemove={isOwnProfile ? async (id) => {
+                if (!currentUser?.id) return;
+                await top8API.removeTopFriend(currentUser.id, id);
+                setTopFriendIds(prev => prev.filter(x => x !== id));
+                await updateCurrentUser({ top_friends: topFriendIds.filter(x => x !== id) } as any);
+              } : undefined}
+            />
+            <Top8Games
+              gameIds={topGameIds}
+              isOwnProfile={isOwnProfile}
+              onManage={isOwnProfile ? () => { setShowAddFriendPanel(false); setShowTopGamesPicker(true); } : undefined}
+            />
+            {showAddFriendPanel && isOwnProfile && currentUser?.id && (
+              <AddTopFriendPanel
+                currentUserId={currentUser.id}
+                existingFriendIds={topFriendIds}
+                onClose={() => setShowAddFriendPanel(false)}
+              />
+            )}
+            {showTopGamesPicker && isOwnProfile && currentUser?.id && (
+              <ManageTopGamesPanel
+                currentUserId={currentUser.id}
+                currentTopGameIds={topGameIds}
+                onClose={() => setShowTopGamesPicker(false)}
+                onUpdate={(ids) => {
+                  setTopGameIds(ids);
+                  updateCurrentUser({ top_games: ids } as any);
+                }}
+              />
+            )}
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-4 border-b border-border px-4">
           {(() => {
@@ -1217,35 +1270,6 @@ export function Profile() {
         {/* Tab Content */}
         {effectiveTab === 'lists' && (
           <div className="px-4 space-y-6">
-            {/* Top 8 Friends */}
-            <Top8Friends
-              friendIds={topFriendIds}
-              isOwnProfile={isOwnProfile}
-              canAdd={topFriendIds.length < 8}
-              onAdd={() => { setAddContentOpen(false); setShowAddFriendPanel(true); }}
-              onRemove={isOwnProfile ? async (id) => {
-                if (!currentUser?.id) return;
-                await top8API.removeTopFriend(currentUser.id, id);
-                setTopFriendIds(prev => prev.filter(x => x !== id));
-                await updateCurrentUser({ top_friends: topFriendIds.filter(x => x !== id) } as any);
-              } : undefined}
-            />
-
-            {/* Top 8 Games */}
-            <Top8Games
-              gameIds={topGameIds}
-              isOwnProfile={isOwnProfile}
-              onManage={isOwnProfile ? () => setAddContentOpen(true) : undefined}
-            />
-
-            {/* Add Friend panel (inline) */}
-            {showAddFriendPanel && isOwnProfile && currentUser?.id && (
-              <AddTopFriendPanel
-                currentUserId={currentUser.id}
-                existingFriendIds={topFriendIds}
-                onClose={() => setShowAddFriendPanel(false)}
-              />
-            )}
 
             {(() => {
               const ALL_LISTS: { key: 'recentlyPlayed' | 'playedBefore' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [
@@ -1397,7 +1421,7 @@ export function Profile() {
                             </button>
                             {/* Top 8 Games */}
                             <button
-                              onClick={() => { setAddContentOpen(false); handleOpenGameListEdit('recently-played'); }}
+                              onClick={() => { setAddContentOpen(false); setShowTopGamesPicker(true); }}
                               className="w-full flex items-center gap-3 px-3 py-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
                             >
                               <Gamepad2 className="w-4 h-4 text-accent shrink-0" />
@@ -2222,8 +2246,8 @@ export function Profile() {
         </div>
       )}
 
-      {/* Floating desktop action menu — own profile only */}
-      {isOwnProfile && isAuthenticated && (
+      {/* Floating desktop action buttons */}
+      {isAuthenticated && (
         <div className="hidden lg:flex fixed bottom-6 right-6 z-40 flex-col gap-2 items-end">
           <button
             onClick={() => navigate('/new-post')}
@@ -2236,13 +2260,15 @@ export function Profile() {
             </svg>
             Compose
           </button>
-          <button
-            onClick={() => navigate('/create-flare')}
-            className="flex items-center gap-2 px-4 py-3 border-2 border-orange-500/60 bg-orange-950/30 text-orange-300 rounded-xl hover:bg-orange-950/50 hover:border-orange-500/80 transition-all font-medium text-sm"
-          >
-            <Flame className="w-4 h-4" />
-            {activeFlares.length > 0 ? 'Add LFG Flare' : 'Create LFG Flare'}
-          </button>
+          {isOwnProfile && (
+            <button
+              onClick={() => navigate('/create-flare')}
+              className="flex items-center gap-2 px-4 py-3 border-2 border-orange-500/60 bg-orange-950 text-orange-300 rounded-xl hover:bg-orange-900 hover:border-orange-500/80 transition-all font-medium text-sm"
+            >
+              <Flame className="w-4 h-4" />
+              {activeFlares.length > 0 ? 'Add LFG Flare' : 'Create LFG Flare'}
+            </button>
+          )}
         </div>
       )}
     </div>
