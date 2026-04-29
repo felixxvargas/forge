@@ -35,7 +35,9 @@ export type SocialPlatform =
   | 'soundcloud'
   | 'patreon'
   | 'battlenet'
-  | 'riot';
+  | 'riot'
+  | 'kick'
+  | 'trovo';
 
 export type GameListType =
   | 'recently-played'

@@ -2014,6 +2014,14 @@ export const streamArchivesAPI = {
       .lt('retention_prompted_at', threeMonthsAgo);
   },
 
+  async keepForAnotherYear(archiveId: string) {
+    // Reset the recorded_at clock so this archive won't trigger again for another year
+    await supabase
+      .from('stream_archives')
+      .update({ recorded_at: new Date().toISOString(), retention_prompted_at: null })
+      .eq('id', archiveId);
+  },
+
   async syncFromTwitch(userId: string, accessToken: string) {
     const { projectId } = await import('/utils/supabase/info');
     const session = (await supabase.auth.getSession()).data.session;

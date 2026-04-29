@@ -45,6 +45,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   bluesky: 'Bluesky', threads: 'Threads', rednote: 'Red Note', upscrolled: 'Upscrolled',
   youtubemusic: 'YouTube Music', soundcloud: 'SoundCloud', apple: 'Apple',
   battlenet: 'Battle.net', riot: 'Riot Games',
+  kick: 'Kick', trovo: 'Trovo',
 };
 
 export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, showHandle }: PlatformIconProps) {
@@ -79,6 +80,18 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
       case 'upscrolled':  return <UpscrolledIcon className={cls} />;
       case 'battlenet':  return <BattlenetIcon className={cls} />;
       case 'riot':       return <RiotGamesIcon className={cls} />;
+      case 'kick':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
+            <path d="M4 3h4v7l5-7h5L12 12l6 9h-5l-5-7v7H4V3z"/>
+          </svg>
+        );
+      case 'trovo':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
+            <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7L12 2zm0 3.18l6 3.37V12c0 4.07-2.66 7.8-6 9.1-3.34-1.3-6-5.03-6-9.1V8.55l6-3.37zM9 9v6l5-3-5-3z"/>
+          </svg>
+        );
       case 'youtubemusic':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>

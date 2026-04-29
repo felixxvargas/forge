@@ -533,6 +533,8 @@ export function Profile() {
       'patreon': 'Patreon',
       'battlenet': 'Battle.net',
       'riot': 'Riot Games',
+      'kick': 'Kick',
+      'trovo': 'Trovo',
     };
     return labels[platform] || platform;
   };

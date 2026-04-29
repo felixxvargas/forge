@@ -57,7 +57,7 @@ export function EditProfile() {
   const [newLinkUrl, setNewLinkUrl] = useState('');
 
   const allPlatforms: Platform[] = ['steam', 'playstation', 'nintendo', 'xbox', 'pc', 'mac', 'linux'];
-  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled'];
+  const allSocial: SocialPlatform[] = ['bluesky', 'mastodon', 'x', 'instagram', 'tiktok', 'threads', 'discord', 'tumblr', 'rednote', 'upscrolled', 'kick', 'trovo'];
 
   const handleSave = async () => {
     setHandleError('');
@@ -267,6 +267,8 @@ export function EditProfile() {
       'patreon': 'Patreon',
       'battlenet': 'Battle.net',
       'riot': 'Riot Games',
+      'kick': 'Kick',
+      'trovo': 'Trovo',
     };
     return labels[social] || social;
   };

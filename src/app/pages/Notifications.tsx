@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Heart, MessageCircle, Repeat2, UserPlus, Users, AtSign, Flame, ChevronDown } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, UserPlus, Users, AtSign, Flame, ChevronDown, Tv2 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { LFGFlareModal } from '../components/LFGFlareModal';
 import { useAppData } from '../context/AppDataContext';
-import { notifications as notificationsAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
+import { notifications as notificationsAPI, lfgFlares as lfgFlaresAPI, streamArchivesAPI } from '../utils/supabase';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
 
 const RENEW_OPTIONS = [
@@ -68,6 +68,20 @@ export function Notifications() {
     }
   };
 
+  const handleStreamExpiryKeep = async (notif: any) => {
+    const archiveId = notif.metadata?.archive_id ?? notif.post_id;
+    if (!archiveId) return;
+    await streamArchivesAPI.keepForAnotherYear(archiveId);
+    setNotifs(prev => prev.filter(n => n.id !== notif.id));
+  };
+
+  const handleStreamExpiryDelete = async (notif: any) => {
+    const archiveId = notif.metadata?.archive_id ?? notif.post_id;
+    if (!archiveId) return;
+    await streamArchivesAPI.softDelete(archiveId);
+    setNotifs(prev => prev.filter(n => n.id !== notif.id));
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'like':    return <Heart className="w-5 h-5 text-accent fill-accent" />;
@@ -76,6 +90,7 @@ export function Notifications() {
       case 'repost':  return <Repeat2 className="w-5 h-5 text-green-500" />;
       case 'mention': return <AtSign className="w-5 h-5 text-accent" />;
       case 'communityInvite': return <Users className="w-5 h-5 text-accent" />;
+      case 'stream_expiry': return <Tv2 className="w-5 h-5 text-amber-400" />;
       default: return null;
     }
   };
@@ -176,6 +191,45 @@ export function Notifications() {
             ) : (
               notifs.map((notif) => {
                 const actor = notif.actor;
+
+                // Stream expiry notification — custom card with Keep/Delete actions
+                if (notif.type === 'stream_expiry') {
+                  const title = notif.metadata?.archive_title ?? 'Archived stream';
+                  const durSec: number = notif.metadata?.duration_seconds ?? 0;
+                  const h = Math.floor(durSec / 3600);
+                  const m = Math.floor((durSec % 3600) / 60);
+                  const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                  return (
+                    <div key={notif.id} className="px-4 py-4 bg-amber-950/30 border border-amber-600/25 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <Tv2 className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-amber-200">Stream archive expiring</p>
+                          <p className="text-xs text-amber-300/80 mt-0.5 truncate">"{title}" · {dur}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            This archive is over 1 year old. Keep it for another year or delete it now.
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => handleStreamExpiryKeep(notif)}
+                              className="px-3 py-1.5 bg-accent text-accent-foreground text-xs font-medium rounded-lg"
+                            >
+                              Keep another year
+                            </button>
+                            <button
+                              onClick={() => handleStreamExpiryDelete(notif)}
+                              className="px-3 py-1.5 border border-border text-xs rounded-lg hover:bg-secondary transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground shrink-0">{formatTimeAgo(notif.created_at)}</p>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const isFollowNotif = notif.type === 'follow';
                 const alreadyFollowing = actor ? followingIds.has(actor.id) : false;
                 const followBusy = actor ? followingInProgress.has(actor.id) : false;
