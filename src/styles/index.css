@@ -25,9 +25,12 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Dark mode base background */
-.dark body {
-  background-color: #1c1228;
+/* Body is transparent — the fixed GlowBackground layer provides the dark base */
+html {
+  background-color: var(--background);
+}
+body {
+  background: transparent;
 }
 
 /* Prevent iOS Safari from zooming in when focusing text inputs.

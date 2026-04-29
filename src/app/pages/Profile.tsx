@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Sprout } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles } from 'lucide-react';
+import { UserBadgeIcons } from '../components/UserBadgeIcons';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
@@ -816,9 +817,7 @@ export function Profile() {
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h1 className="text-xl font-semibold line-clamp-2 break-words">{profileUser.display_name || profileUser.handle}</h1>
-                  {profileUser.created_at && (Date.now() - new Date(profileUser.created_at).getTime()) < 91 * 864e5 && (
-                    <Sprout className="w-4 h-4 text-green-400 shrink-0" />
-                  )}
+                  <UserBadgeIcons handle={profileUser.handle || ''} createdAt={profileUser.created_at} />
                 </div>
                 <p className="text-muted-foreground">@{(profileUser.handle || '').replace(/^@/, '')}</p>
                 {profileUser.pronouns && (
