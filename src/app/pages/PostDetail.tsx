@@ -432,8 +432,56 @@ export function PostDetail() {
 
   if (loadingBluesky) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
+      <div className="min-h-screen pb-20">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-card border-b border-border">
+          <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-full transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-xl font-semibold">Post</h1>
+          </div>
+        </div>
+        <div className="w-full max-w-2xl mx-auto">
+          {/* Post card skeleton */}
+          <div className="bg-card border-b border-border px-4 pt-4 pb-4">
+            <div className="flex gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2 pt-0.5">
+                <div className="w-32 h-3.5 bg-muted rounded-full animate-pulse" />
+                <div className="w-20 h-3 bg-muted rounded-full animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-2 mb-4">
+              <div className="w-full h-3.5 bg-muted rounded-full animate-pulse" />
+              <div className="w-full h-3.5 bg-muted rounded-full animate-pulse" />
+              <div className="w-2/3 h-3.5 bg-muted rounded-full animate-pulse" />
+            </div>
+            <div className="flex gap-6 pt-3 border-t border-border/50">
+              <div className="w-14 h-3 bg-muted rounded-full animate-pulse" />
+              <div className="w-14 h-3 bg-muted rounded-full animate-pulse" />
+              <div className="w-14 h-3 bg-muted rounded-full animate-pulse" />
+            </div>
+          </div>
+          {/* Reply bar skeleton */}
+          <div className="px-4 py-4">
+            <div className="flex gap-3 items-center">
+              <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 h-10 bg-muted rounded-xl animate-pulse" />
+            </div>
+          </div>
+          {/* Reply skeletons */}
+          {[0, 1, 2].map(i => (
+            <div key={i} className="px-4 py-3 border-t border-border flex gap-3">
+              <div className="w-9 h-9 rounded-full bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2 pt-0.5">
+                <div className="w-28 h-3 bg-muted rounded-full animate-pulse" />
+                <div className="w-full h-3 bg-muted rounded-full animate-pulse" />
+                <div className={`h-3 bg-muted rounded-full animate-pulse ${i === 0 ? 'w-4/5' : i === 1 ? 'w-3/5' : 'w-2/3'}`} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -613,7 +661,7 @@ export function PostDetail() {
         <div ref={repliesRef} id="comments">
           {/* Compact reply trigger */}
           {currentUser && (isExternalPost || !activePost.comments_disabled) && (
-            <div className="px-4 py-4 border-b border-border">
+            <div className="px-4 py-4">
               <div className="flex gap-3 items-center">
                 <ProfileAvatar
                   username={currentUser.display_name || currentUser.handle || '?'}
@@ -1008,8 +1056,17 @@ export function PostDetail() {
 
           {/* Replies List */}
           {isLoadingReplies ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent" />
+            <div>
+              {[0, 1, 2].map(i => (
+                <div key={i} className="px-4 py-3 border-t border-border flex gap-3">
+                  <div className="w-9 h-9 rounded-full bg-muted animate-pulse shrink-0" />
+                  <div className="flex-1 space-y-2 pt-0.5">
+                    <div className="w-28 h-3 bg-muted rounded-full animate-pulse" />
+                    <div className="w-full h-3 bg-muted rounded-full animate-pulse" />
+                    <div className={`h-3 bg-muted rounded-full animate-pulse ${i === 0 ? 'w-4/5' : i === 1 ? 'w-3/5' : 'w-2/3'}`} />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : isExternalPost ? (
             // External post: show Forge comments + native platform replies

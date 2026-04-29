@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, GripVertical, Trash2, Check, Loader2, Search } from 'lucide-react';
+import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send } from 'lucide-react';
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
 import { getGameRank } from '../utils/gameRankings';
+import { supabase } from '../utils/supabase';
 
 // Use a generic game shape compatible with both local Game and IGDB DB games
 interface AnyGame {
@@ -46,6 +47,12 @@ export function EditGameListsModal({
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialGamesRef = useRef<AnyGame[]>([]);
+
+  // Share-prompt state
+  const [shareGames, setShareGames] = useState<AnyGame[] | null>(null);
+  const [shareMessage, setShareMessage] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
 
   // Pointer-based drag state (works on desktop and mobile touch)
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -159,7 +166,10 @@ export function EditGameListsModal({
   // Restore/reset state when opened
   useEffect(() => {
     if (isOpen) {
+      initialGamesRef.current = currentGames;
       setSelectedGames(currentGames);
+      setShareGames(null);
+      setShareMessage('');
       const savedQuery = localStorage.getItem(`forge-game-list-search-${listType}`) || '';
       setSearchQuery(savedQuery);
       if (!savedQuery) setSearchResults([]);
@@ -193,7 +203,42 @@ export function EditGameListsModal({
   const handleSave = () => {
     onSave(selectedGames);
     localStorage.removeItem(`forge-game-list-search-${listType}`);
-    onClose();
+    const newlyAdded = selectedGames.filter(
+      g => !initialGamesRef.current.some(ig => String(ig.id) === String(g.id))
+    );
+    if (newlyAdded.length > 0) {
+      const names = newlyAdded.map(g => g.title);
+      const preview = names.length === 1
+        ? names[0]
+        : names.length === 2
+        ? `${names[0]} and ${names[1]}`
+        : `${names[0]}, ${names[1]}, and ${names.length - 2} more`;
+      setShareMessage(`Just added ${preview} to my ${listTitles[listType]}.`);
+      setShareGames(newlyAdded);
+    } else {
+      onClose();
+    }
+  };
+
+  const handlePost = async () => {
+    if (!shareGames) return;
+    setIsPosting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in');
+      await supabase.from('posts').insert({
+        user_id: session.user.id,
+        content: shareMessage.trim() || `Added to my ${listTitles[listType]}: ${shareGames.map(g => g.title).join(', ')}`,
+        game_id: shareGames[0]?.id ? String(shareGames[0].id) : null,
+        game_title: shareGames[0]?.title ?? null,
+      });
+      setShareGames(null);
+      onClose();
+    } catch (e: any) {
+      alert('Failed to post: ' + e.message);
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   // Pointer-based drag handlers (work on desktop mouse and mobile touch)
@@ -244,7 +289,7 @@ export function EditGameListsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-background z-[60] flex flex-col">
+    <div className="fixed inset-0 bg-background z-[60] flex flex-col relative overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-20">
         <div className="flex items-center gap-3">
@@ -415,6 +460,75 @@ export function EditGameListsModal({
           )}
         </div>
       </div>
+
+      {/* Share prompt overlay — slides up after saving with new games */}
+      {shareGames && (
+        <div className="absolute inset-0 bg-background z-20 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card shrink-0">
+            <div>
+              <h2 className="text-base font-semibold">Share your update</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {shareGames.length === 1 ? '1 game added' : `${shareGames.length} games added`} to {listTitles[listType]}
+              </p>
+            </div>
+            <button
+              onClick={() => { setShareGames(null); onClose(); }}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Game covers preview */}
+          <div className="flex gap-3 px-4 py-4 overflow-x-auto shrink-0">
+            {shareGames.map(game => {
+              const cover = getCoverUrl(game);
+              return (
+                <div key={game.id} className="shrink-0 w-14">
+                  <div className="aspect-[3/4] rounded-lg overflow-hidden bg-muted/50 mb-1.5">
+                    {cover
+                      ? <img src={cover} alt={game.title} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-xs">?</div>
+                    }
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight text-center">{game.title}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Message input */}
+          <div className="flex-1 px-4 pb-4 flex flex-col min-h-0">
+            <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide font-medium">Your message</p>
+            <textarea
+              autoFocus
+              value={shareMessage}
+              onChange={e => setShareMessage(e.target.value)}
+              placeholder="Write something about these games…"
+              className="flex-1 min-h-[120px] w-full bg-secondary rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent border border-border/50 focus:border-accent/60"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="px-4 pb-6 flex gap-3 shrink-0">
+            <button
+              onClick={() => { setShareGames(null); onClose(); }}
+              className="flex-1 py-3 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors"
+            >
+              Skip
+            </button>
+            <button
+              onClick={handlePost}
+              disabled={isPosting || !shareMessage.trim()}
+              className="flex-1 py-3 bg-accent text-accent-foreground rounded-xl text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2 transition-colors hover:bg-accent/90"
+            >
+              {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {isPosting ? 'Posting…' : 'Post'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
