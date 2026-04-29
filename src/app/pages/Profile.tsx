@@ -1163,7 +1163,7 @@ export function Profile() {
 
         {/* Top 8 Friends & Games — always visible above tabs */}
         {(topFriendIds.length > 0 || topGameIds.length > 0 || isOwnProfile) && (
-          <div className="px-4 mb-2 space-y-0">
+          <div className="px-4 mb-2 lg:mt-4 space-y-0">
             <Top8Friends
               friendIds={topFriendIds}
               isOwnProfile={isOwnProfile}

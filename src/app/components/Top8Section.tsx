@@ -29,7 +29,6 @@ export function Top8Friends({ friendIds, isOwnProfile, onRemove, onAdd, canAdd }
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Star className="w-4 h-4 text-yellow-400" />
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top Friends</h3>
       </div>
       <div className="flex flex-wrap gap-3">
@@ -106,9 +105,8 @@ export function Top8Games({ gameIds, isOwnProfile, onManage }: Top8GamesProps) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Star className="w-4 h-4 text-yellow-400" />
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex-1">Top Games</h3>
-        {isOwnProfile && onManage && (
+        {isOwnProfile && onManage && gameIds.length > 0 && (
           <button onClick={onManage} className="text-xs text-accent hover:underline">Edit</button>
         )}
       </div>
