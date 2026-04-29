@@ -520,7 +520,7 @@ export function EditGameListsModal({
             </button>
             <button
               onClick={handlePost}
-              disabled={isPosting || !shareMessage.trim()}
+              disabled={isPosting}
               className="flex-1 py-3 bg-accent text-accent-foreground rounded-xl text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2 transition-colors hover:bg-accent/90"
             >
               {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
