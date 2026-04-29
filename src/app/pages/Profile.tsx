@@ -1090,7 +1090,7 @@ export function Profile() {
           <div className="lg:hidden px-4 mb-3">
             <button
               onClick={() => navigate('/create-flare')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-950/30 text-orange-300 hover:bg-orange-950/50 hover:border-orange-500/80 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-950 text-orange-300 hover:bg-orange-900 hover:border-orange-500/80 transition-all"
             >
               <Flame className="w-6 h-6" />
               {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
