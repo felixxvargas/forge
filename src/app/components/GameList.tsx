@@ -3,6 +3,13 @@ import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal, Flame
 import { useNavigate } from 'react-router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 interface GameListProps {
   title: string;
@@ -81,13 +88,62 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
           ))}
         </div>
         {hasActions && (
-          <button
-            onClick={() => { setShowActionTray(true); setConfirmDelete(false); }}
-            className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-            aria-label="List options"
-          >
-            <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <>
+            {/* Desktop: Radix dropdown (same as post overflow menu) */}
+            <div className="hidden md:block">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
+                    aria-label="List options"
+                  >
+                    <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {listType && games.length > 0 && (
+                    <DropdownMenuItem onClick={handleViewOtherUsers}>
+                      <Users className="w-4 h-4 mr-2" />
+                      See others with this list
+                    </DropdownMenuItem>
+                  )}
+                  {onEdit && (
+                    <DropdownMenuItem onClick={onEdit}>
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit list
+                    </DropdownMenuItem>
+                  )}
+                  {onHide && (
+                    <DropdownMenuItem onClick={onHide}>
+                      <EyeOff className="w-4 h-4 mr-2" />
+                      Hide list
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={onDelete}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete list
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Mobile: opens bottom tray */}
+            <button
+              onClick={() => { setShowActionTray(true); setConfirmDelete(false); }}
+              className="md:hidden p-1.5 hover:bg-secondary rounded-lg transition-colors"
+              aria-label="List options"
+            >
+              <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </>
         )}
       </div>
 
@@ -119,14 +175,14 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
         </button>
       )}
 
-      {/* Action tray */}
+      {/* Mobile action tray — z-[60] so it renders above BottomNav (z-50) */}
       {showActionTray && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/50"
+            className="fixed inset-0 z-[55] bg-black/50"
             onClick={() => { setShowActionTray(false); setConfirmDelete(false); }}
           />
-          <div className="fixed inset-x-0 bottom-0 z-50 bg-card/95 backdrop-blur-xl rounded-t-2xl shadow-xl safe-area-bottom">
+          <div className="fixed inset-x-0 bottom-0 z-[60] bg-card/95 backdrop-blur-xl rounded-t-2xl shadow-xl">
             <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1" />
             {confirmDelete ? (
               <div className="p-4 space-y-3 pb-8">
