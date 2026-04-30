@@ -102,19 +102,19 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {listType && games.length > 0 && (
-                    <DropdownMenuItem onClick={handleViewOtherUsers}>
+                    <DropdownMenuItem onSelect={() => { if (listType) navigate(`/list?type=${listType}&browse=true`); }}>
                       <Users className="w-4 h-4 mr-2" />
                       See others with this list
                     </DropdownMenuItem>
                   )}
                   {onEdit && (
-                    <DropdownMenuItem onClick={onEdit}>
+                    <DropdownMenuItem onSelect={() => onEdit()}>
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit list
                     </DropdownMenuItem>
                   )}
                   {onHide && (
-                    <DropdownMenuItem onClick={onHide}>
+                    <DropdownMenuItem onSelect={() => onHide()}>
                       <EyeOff className="w-4 h-4 mr-2" />
                       Hide list
                     </DropdownMenuItem>
@@ -123,7 +123,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={onDelete}
+                        onSelect={() => onDelete()}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
