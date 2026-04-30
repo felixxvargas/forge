@@ -210,21 +210,31 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
     }
 
     /* ── generic feed (all other paths) ── */
+    const contentWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6'];
     return (
-      <div className="w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
-        <div className="h-6 bg-muted/40 rounded w-32 mb-6" />
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="py-4 border-b border-border/50">
+      <div className="w-full max-w-2xl mx-auto px-4 pt-3 animate-pulse">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-xl mb-3 p-4">
             <div className="flex gap-3">
               <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
-              <div className="flex-1 space-y-2 pt-1">
-                <div className="flex gap-2">
-                  <div className="h-3 bg-muted/40 rounded w-24" />
-                  <div className="h-3 bg-muted/25 rounded w-16" />
+              <div className="flex-1 min-w-0">
+                <div className="flex gap-2 mb-2.5">
+                  <div className="h-3 bg-muted/50 rounded w-24" />
+                  <div className="h-3 bg-muted/30 rounded w-16" />
                 </div>
-                <div className="h-3 bg-muted/40 rounded w-full" />
-                <div className="h-3 bg-muted/40 rounded w-5/6" />
-                <div className="h-3 bg-muted/25 rounded w-1/2" />
+                <div className="space-y-2 mb-3">
+                  <div className={`h-3 bg-muted/40 rounded ${contentWidths[i]}`} />
+                  <div className="h-3 bg-muted/40 rounded w-5/6" />
+                  {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
+                </div>
+                {i % 2 === 0 && (
+                  <div className="h-32 bg-muted/20 rounded-xl mb-3" />
+                )}
+                <div className="flex gap-4 pt-1">
+                  <div className="h-3 bg-muted/25 rounded w-8" />
+                  <div className="h-3 bg-muted/25 rounded w-8" />
+                  <div className="h-3 bg-muted/25 rounded w-8" />
+                </div>
               </div>
             </div>
           </div>
@@ -234,7 +244,7 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
   })();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <div className="h-14 border-b border-border flex items-center justify-center shrink-0">
         {header}
       </div>

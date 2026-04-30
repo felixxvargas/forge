@@ -473,14 +473,14 @@ export function Explore() {
   const searchGameResults = searchGames.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
+    <div className="min-h-screen pb-20">
       <Header title="Explore" />
 
       {/* Search Bar */}
-      <div className={`sticky top-14 z-20 bg-black border-b border-gray-800 transition-all duration-300 ${hideSearchBar ? '-translate-y-full' : 'translate-y-0'}`}>
+      <div className={`sticky top-14 z-20 bg-card/80 backdrop-blur-lg border-b border-border transition-all duration-300 ${hideSearchBar ? '-translate-y-full' : 'translate-y-0'}`}>
         <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               ref={searchInputRef}
               type="text"
@@ -489,42 +489,42 @@ export function Explore() {
               onChange={(e) => { setSearchQuery(e.target.value); setShowSearchHistory(!e.target.value); }}
               onFocus={() => { setIsSearchFocused(true); if (!searchQuery) setShowSearchHistory(true); }}
               onBlur={() => { setIsSearchFocused(false); setTimeout(() => setShowSearchHistory(false), 150); }}
-              className="w-full pl-10 pr-10 py-3 bg-gray-900 border border-gray-800 rounded-full text-white placeholder-gray-500 focus:outline-none focus:border-purple-600"
+              className="w-full pl-10 pr-10 py-3 bg-secondary border border-border rounded-full placeholder-muted-foreground focus:outline-none focus:border-accent"
             />
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             )}
             {showSearchHistory && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden z-30 shadow-2xl">
-                <div className="px-4 py-2 flex items-center justify-between border-b border-gray-800">
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Recent searches</p>
+              <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl overflow-hidden z-30 shadow-2xl">
+                <div className="px-4 py-2 flex items-center justify-between border-b border-border">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Recent searches</p>
                   <button
                     onMouseDown={e => {
                       e.preventDefault();
                       setSearchHistory([]);
                       localStorage.removeItem('forge-search-history');
                     }}
-                    className="text-xs text-gray-500 hover:text-white transition-colors"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Clear all
                   </button>
                 </div>
                 {searchHistory.map((item, i) => (
-                  <div key={i} className="flex items-center border-b border-gray-800/50 last:border-0">
+                  <div key={i} className="flex items-center border-b border-border/50 last:border-0">
                     <button
                       onMouseDown={e => {
                         e.preventDefault();
                         setSearchQuery(item);
                         setShowSearchHistory(false);
                       }}
-                      className="flex-1 px-4 py-3 flex items-center gap-3 hover:bg-gray-800 transition-colors text-left"
+                      className="flex-1 px-4 py-3 flex items-center gap-3 hover:bg-secondary/50 transition-colors text-left"
                     >
-                      <Search className="w-4 h-4 text-gray-600 shrink-0" />
+                      <Search className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="text-sm">{item}</span>
                     </button>
                     <button
@@ -534,7 +534,7 @@ export function Explore() {
                         setSearchHistory(updated);
                         localStorage.setItem('forge-search-history', JSON.stringify(updated));
                       }}
-                      className="px-3 py-3 text-gray-600 hover:text-gray-300 transition-colors"
+                      className="px-3 py-3 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -548,7 +548,7 @@ export function Explore() {
 
       {/* Tabs — always visible, dimmed when search active (except on games tab) */}
       {/* top-[130px] = h-14 header (56px) + search bar container (~74px) when visible */}
-      <div className={`sticky z-10 transition-all duration-300 border-b border-gray-800 bg-black ${hideSearchBar ? 'top-14' : 'top-[130px]'} ${isSearchActive && activeTab !== 'games' ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className={`sticky z-10 transition-all duration-300 border-b border-border bg-card/80 backdrop-blur-lg ${hideSearchBar ? 'top-14' : 'top-[130px]'} ${isSearchActive && activeTab !== 'games' ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="max-w-2xl lg:max-w-5xl mx-auto w-full flex">
           {(['posts', 'users', 'games', 'groups'] as ExploreTab[]).map(tab => {
             const icons: Record<ExploreTab, React.ReactNode> = {
@@ -564,7 +564,7 @@ export function Explore() {
                 className={`flex-1 py-3 px-2 flex flex-col items-center justify-center gap-1 font-medium transition-colors min-h-[60px] ${
                   activeTab === tab
                     ? 'text-accent border-b-2 border-accent'
-                    : 'text-gray-500 hover:text-gray-300'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {icons[tab]}
@@ -594,11 +594,11 @@ export function Explore() {
             {searchGameResults.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-white">Games</h2>
+                  <h2 className="font-semibold">Games</h2>
                   {searchGames.length > 4 && (
                     <button
                       onClick={() => goToTab('games', true)}
-                      className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
+                      className="flex items-center gap-1 text-sm text-accent hover:text-accent/80"
                     >
                       See all <ChevronRight className="w-4 h-4" />
                     </button>
@@ -613,7 +613,7 @@ export function Explore() {
                         className="group cursor-pointer"
                         onClick={() => navigate(`/game/${game.id}`)}
                       >
-                        <div className="aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-gray-900">
+                        <div className="aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-muted/20">
                           {coverArt ? (
                             <img
                               src={coverArt}
@@ -622,11 +622,11 @@ export function Explore() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Gamepad2 className="w-6 h-6 text-gray-700" />
+                              <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
                             </div>
                           )}
                         </div>
-                        <p className="text-xs font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
+                        <p className="text-xs font-medium line-clamp-2 group-hover:text-accent transition-colors">
                           {game.title}
                         </p>
                       </div>
@@ -640,11 +640,11 @@ export function Explore() {
             {(searchUsers.length > 0 || externalUsers.length > 0) && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-white">Users</h2>
+                  <h2 className="font-semibold">Users</h2>
                   {filteredUsers.length > 4 && (
                     <button
                       onClick={() => goToTab('users')}
-                      className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
+                      className="flex items-center gap-1 text-sm text-accent hover:text-accent/80"
                     >
                       See all {filteredUsers.length} <ChevronRight className="w-4 h-4" />
                     </button>
@@ -660,27 +660,27 @@ export function Explore() {
                     <>
                       {searchUsers.length > 0 && (
                         <div className="flex items-center gap-2 py-1">
-                          <div className="flex-1 h-px bg-gray-800" />
-                          <span className="text-xs text-gray-600 font-medium">Also on the web</span>
-                          <div className="flex-1 h-px bg-gray-800" />
+                          <div className="flex-1 h-px bg-border" />
+                          <span className="text-xs text-muted-foreground font-medium">Also on the web</span>
+                          <div className="flex-1 h-px bg-border" />
                         </div>
                       )}
                       {externalUsers.map(u => (
                         <div
                           key={u.id}
                           onClick={() => u.platform === 'bluesky' ? navigate(`/bsky/${u.handle}`) : window.open(u.externalUrl, '_blank', 'noopener,noreferrer')}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-900/60 hover:bg-gray-800/80 transition-colors cursor-pointer"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary/60 hover:bg-secondary/80 transition-colors cursor-pointer"
                         >
                           {u.avatar ? (
                             <img src={u.avatar} alt={u.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                              <UserIcon className="w-5 h-5 text-gray-500" />
+                            <div className="w-10 h-10 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
+                              <UserIcon className="w-5 h-5 text-muted-foreground" />
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-semibold text-white text-sm truncate">{u.displayName}</span>
+                              <span className="font-semibold text-sm truncate">{u.displayName}</span>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
                                 u.platform === 'bluesky'
                                   ? 'bg-sky-500/20 text-sky-400'
@@ -689,10 +689,10 @@ export function Explore() {
                                 {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-500 truncate">@{(u.handle || '').replace(/^@/, '')}</p>
+                            <p className="text-xs text-muted-foreground truncate">@{(u.handle || '').replace(/^@/, '')}</p>
                           </div>
                           {u.followerCount > 0 && (
-                            <span className="text-xs text-gray-600 shrink-0">
+                            <span className="text-xs text-muted-foreground shrink-0">
                               {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
                             </span>
                           )}
@@ -728,8 +728,8 @@ export function Explore() {
                                     ? `bsky-${(u.handle || '').replace(/^@/, '')}`
                                     : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`
                                 )
-                                  ? 'bg-gray-700 text-gray-300 hover:bg-red-900/40 hover:text-red-400'
-                                  : 'bg-purple-600 text-white hover:bg-purple-500'
+                                  ? 'bg-secondary text-muted-foreground hover:bg-red-900/40 hover:text-red-400'
+                                  : 'bg-accent text-white hover:bg-accent/80'
                               }`}
                             >
                               {externalFollowIds?.has(
@@ -751,11 +751,11 @@ export function Explore() {
             {searchPostResults.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-white">Posts</h2>
+                  <h2 className="font-semibold">Posts</h2>
                   {searchPosts.length > 3 && (
                     <button
                       onClick={() => goToTab('posts')}
-                      className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
+                      className="flex items-center gap-1 text-sm text-accent hover:text-accent/80"
                     >
                       See all {searchPosts.length} <ChevronRight className="w-4 h-4" />
                     </button>
@@ -786,11 +786,11 @@ export function Explore() {
             {searchGroupResults.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-white">Groups</h2>
+                  <h2 className="font-semibold">Groups</h2>
                   {filteredGroups.length > 3 && (
                     <button
                       onClick={() => goToTab('groups')}
-                      className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
+                      className="flex items-center gap-1 text-sm text-accent hover:text-accent/80"
                     >
                       See all {filteredGroups.length} <ChevronRight className="w-4 h-4" />
                     </button>
@@ -811,7 +811,7 @@ export function Explore() {
               searchGameResults.length === 0 &&
               searchPostResults.length === 0 &&
               searchGroupResults.length === 0 && (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-muted-foreground">
                 <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
                 <p className="text-lg font-medium mb-1">No results for "{searchQuery}"</p>
                 <p className="text-sm">Try a different search term</p>
@@ -831,8 +831,8 @@ export function Explore() {
                       onClick={() => { setPostSort(s); setPostFilter('all'); }}
                       className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                         postFilter === 'all' && postSort === s
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:text-white'
+                          ? 'bg-accent text-white'
+                          : 'bg-secondary text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {s === 'latest' ? 'Latest' : 'Top'}
@@ -842,8 +842,8 @@ export function Explore() {
                     onClick={() => setPostFilter(postFilter === 'forge' ? 'all' : 'forge')}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       postFilter === 'forge'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:text-white'
+                        ? 'bg-accent text-white'
+                        : 'bg-secondary text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     Forge
@@ -866,7 +866,7 @@ export function Explore() {
                     ))}
                   </div>
                 ) : gamingMediaPosts.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No posts to display</p>
                   </div>
@@ -880,11 +880,11 @@ export function Explore() {
 
                     if (isMuted && !isShown) {
                       return (
-                        <div key={post.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-                          <p className="text-gray-400 text-sm mb-2">Post from muted user</p>
+                        <div key={post.id} className="bg-card border border-border rounded-lg p-4">
+                          <p className="text-muted-foreground text-sm mb-2">Post from muted user</p>
                           <button
                             onClick={() => handleShowMutedPost(post.id)}
-                            className="text-purple-500 text-sm hover:text-purple-400"
+                            className="text-accent text-sm hover:text-accent/80"
                           >
                             Show anyway
                           </button>
@@ -939,7 +939,7 @@ export function Explore() {
                     ))}
                   </>
                 ) : filteredUsers.length === 0 ? (
-                  <div className="col-span-full text-center py-12 text-gray-500">
+                  <div className="col-span-full text-center py-12 text-muted-foreground">
                     <UserIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No users found</p>
                   </div>
@@ -954,8 +954,8 @@ export function Explore() {
             {activeTab === 'games' && (
               <>
                 {isSearchActive && (
-                  <p className="text-sm text-gray-400 mb-3">
-                    Results for "<span className="text-white">{searchQuery}</span>"
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Results for "<span className="text-foreground">{searchQuery}</span>"
                   </p>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -970,7 +970,7 @@ export function Explore() {
                       ))}
                     </>
                   ) : (isSearchActive ? searchGames : filteredGames).length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-gray-500">
+                    <div className="col-span-full text-center py-12 text-muted-foreground">
                       <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>{isSearchActive ? `No games found for "${searchQuery}"` : 'No games found'}</p>
                     </div>
@@ -985,7 +985,7 @@ export function Explore() {
                           className="group cursor-pointer relative"
                           onClick={() => navigate(`/game/${game.id}`)}
                         >
-                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-gray-900">
+                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20">
                             {coverArt ? (
                               <img
                                 src={coverArt}
@@ -996,7 +996,7 @@ export function Explore() {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Gamepad2 className="w-8 h-8 text-gray-700" />
+                                <Gamepad2 className="w-8 h-8 text-muted-foreground/40" />
                               </div>
                             )}
                             {score > 0 && !isSearchActive && (
@@ -1005,10 +1005,10 @@ export function Explore() {
                               </div>
                             )}
                           </div>
-                          <h3 className="text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
+                          <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">
                             {game.title}
                           </h3>
-                          <p className="text-xs text-gray-500 mt-1">{game.year}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{game.year}</p>
                         </div>
                       );
                     })
@@ -1019,17 +1019,19 @@ export function Explore() {
 
             {activeTab === 'groups' && (
               <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/create-group')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
-                >
-                  <Plus className="w-4 h-4 shrink-0" />
-                  <span className="font-medium text-sm">Create a new group</span>
-                </button>
+                <div className="flex lg:justify-start">
+                  <button
+                    onClick={() => navigate('/create-group')}
+                    className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
+                  >
+                    <Plus className="w-4 h-4 shrink-0" />
+                    <span className="font-medium text-sm">Create new group</span>
+                  </button>
+                </div>
                 {isLoading ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-4 animate-pulse">
+                      <div key={i} className="bg-card border border-border rounded-lg p-4 animate-pulse">
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
                           <div className="flex-1 space-y-2">
@@ -1044,7 +1046,7 @@ export function Explore() {
                     ))}
                   </div>
                 ) : filteredGroups.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No groups found</p>
                   </div>
@@ -1060,26 +1062,26 @@ export function Explore() {
                 <div className="mt-6">
                   <div className="flex items-center gap-2 mb-1">
                     <Flame className="w-5 h-5 text-orange-400" />
-                    <h2 className="font-semibold text-white">Active Flares</h2>
+                    <h2 className="font-semibold">Active Flares</h2>
                   </div>
-                  <p className="text-sm text-gray-500 mb-3">Players looking to group up right now</p>
+                  <p className="text-sm text-muted-foreground mb-3">Players looking to group up right now</p>
                   {loadingLfg ? (
                     <div className="space-y-2">
                       {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="p-3 bg-gray-900 border border-gray-800 rounded-lg animate-pulse">
+                        <div key={i} className="p-3 bg-card border border-border rounded-lg animate-pulse">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="w-9 h-9 rounded-full bg-gray-700 shrink-0" />
+                            <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
                             <div className="flex-1 space-y-1.5">
-                              <div className="h-3 bg-gray-700 rounded w-28" />
-                              <div className="h-2.5 bg-gray-800 rounded w-20" />
+                              <div className="h-3 bg-muted/40 rounded w-28" />
+                              <div className="h-2.5 bg-muted/30 rounded w-20" />
                             </div>
                           </div>
-                          <div className="h-2.5 bg-gray-800 rounded w-full" />
+                          <div className="h-2.5 bg-muted/30 rounded w-full" />
                         </div>
                       ))}
                     </div>
                   ) : lfgPlayers.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-muted-foreground">
                       <Flame className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p className="text-sm">No active LFG flares right now</p>
                     </div>
@@ -1092,19 +1094,19 @@ export function Explore() {
                           <div
                             key={flare.id}
                             onClick={() => navigate(`/profile/${player.id}`)}
-                            className="p-3 bg-gray-900 border border-gray-800 rounded-lg hover:border-purple-600 transition-colors cursor-pointer"
+                            className="p-3 bg-card border border-border rounded-lg hover:border-accent transition-colors cursor-pointer"
                           >
                             <div className="flex items-center gap-3 mb-2">
                               {player.profile_picture ? (
                                 <img src={player.profile_picture} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                               ) : (
-                                <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                                  <UserIcon className="w-4 h-4 text-gray-400" />
+                                <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
+                                  <UserIcon className="w-4 h-4 text-muted-foreground" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-white truncate">{player.display_name || player.handle}</p>
-                                <p className="text-xs text-gray-500">@{(player.handle || '').replace(/^@/, '')}</p>
+                                <p className="font-medium text-sm truncate">{player.display_name || player.handle}</p>
+                                <p className="text-xs text-muted-foreground">@{(player.handle || '').replace(/^@/, '')}</p>
                               </div>
                               <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
                                 flare.flare_type === 'lfg'
@@ -1115,8 +1117,8 @@ export function Explore() {
                               </span>
                             </div>
                             <div className="pl-12">
-                              <p className="text-sm text-white font-medium">{flare.game_title}</p>
-                              <p className="text-xs text-gray-400 mt-0.5">
+                              <p className="text-sm font-medium">{flare.game_title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
                                 Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
                                 {flare.game_mode ? ` · ${flare.game_mode}` : ''}
                                 {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
@@ -1185,7 +1187,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
   return (
     <div
       onClick={() => navigate(`/group/${group.id}`)}
-      className="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-purple-600 transition-colors cursor-pointer"
+      className="bg-card border border-border rounded-lg p-4 hover:border-accent transition-colors cursor-pointer"
     >
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 flex items-center justify-center bg-secondary rounded-full text-accent flex-shrink-0 overflow-hidden">
@@ -1197,11 +1199,11 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-white truncate">{group.name}</h3>
+            <h3 className="font-semibold truncate">{group.name}</h3>
             {getTypeIcon()}
           </div>
-          <p className="text-sm text-gray-400 line-clamp-2 mb-2">{group.description}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{group.description}</p>
+          <p className="text-xs text-muted-foreground">
             {localMemberCount.toLocaleString()} members
           </p>
           {(() => {
@@ -1211,7 +1213,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
             if (!firstName) return null;
             const others = gameIds.length - 1;
             return (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
                 {firstName}{others > 0 ? ` and ${others} other game${others !== 1 ? 's' : ''}` : ''}
               </p>
             );

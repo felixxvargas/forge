@@ -412,16 +412,34 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="divide-y divide-border animate-pulse -mx-4">
-          {[90, 200, 80, 160, 88, 220, 76, 90].map((contentH, i) => (
-            <div key={i} className="px-4 py-4 flex gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0 mt-1" />
-              <div className="flex-1 min-w-0 space-y-2.5 pt-1">
-                <div className="h-3 bg-muted/45 rounded-full w-1/3" />
-                <div className="bg-muted/20 rounded-xl w-full" style={{ height: contentH }} />
+        <div className="animate-pulse">
+          {[true, false, true, false, true, true, false, true, false, true].map((hasImage, i) => {
+            const textWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full', 'w-2/3'];
+            return (
+              <div key={i} className="bg-card rounded-xl mb-3 p-4">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex gap-2 mb-2.5">
+                      <div className="h-3 bg-muted/50 rounded w-24" />
+                      <div className="h-3 bg-muted/30 rounded w-16" />
+                    </div>
+                    <div className="space-y-2 mb-3">
+                      <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
+                      <div className="h-3 bg-muted/40 rounded w-5/6" />
+                      {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
+                    </div>
+                    {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
+                    <div className="flex gap-4 pt-1">
+                      <div className="h-3 bg-muted/25 rounded w-8" />
+                      <div className="h-3 bg-muted/25 rounded w-8" />
+                      <div className="h-3 bg-muted/25 rounded w-8" />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
