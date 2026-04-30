@@ -55,6 +55,7 @@ const MastodonCallback      = lazy(() => import('./pages/MastodonCallback').then
 const SocialClaimAccount    = lazy(() => import('./pages/SocialClaimAccount').then(m => ({ default: m.SocialClaimAccount })));
 const CreateLFGFlarePage    = lazy(() => import('./pages/CreateLFGFlarePage').then(m => ({ default: m.CreateLFGFlarePage })));
 const TwitchArchiveSettings = lazy(() => import('./pages/TwitchArchiveSettings').then(m => ({ default: m.TwitchArchiveSettings })));
+const AndroidBeta           = lazy(() => import('./pages/AndroidBeta').then(m => ({ default: m.AndroidBeta })));
 
 export const router = createBrowserRouter([
   { path: '/login',                    element: <Login />,              errorElement: <ErrorBoundary /> },
@@ -119,6 +120,7 @@ export const router = createBrowserRouter([
       { path: 'settings/feedback',    element: <FeedbackPage />,             errorElement: <ErrorBoundary /> },
       { path: 'settings/whats-new',   element: <WhatsNewPage />,             errorElement: <ErrorBoundary /> },
       { path: 'settings/twitch-archive', element: <TwitchArchiveSettings />, errorElement: <ErrorBoundary /> },
+      { path: 'android-beta',            element: <AndroidBeta />,           errorElement: <ErrorBoundary /> },
       { path: 'bsky/:handle',          element: <BlueskyProfilePage />,       errorElement: <ErrorBoundary /> },
       { path: ':handle',               element: <Profile />,                 errorElement: <ErrorBoundary /> },
       { path: '*',                      element: <NotFound /> },

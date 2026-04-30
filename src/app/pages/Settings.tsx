@@ -518,6 +518,24 @@ export function Settings() {
           </div>
         </div>
 
+        {/* Get the App */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Get the App</h2>
+          <div className="bg-card rounded-xl overflow-hidden">
+            <button
+              onClick={() => navigate('/android-beta')}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <Download className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Android Closed Beta</p>
+                <p className="text-sm text-muted-foreground">Sign up to test Forge on Android</p>
+              </div>
+              <span className="text-xs font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-accent/15 text-accent shrink-0">Beta</span>
+            </button>
+          </div>
+        </div>
+
         {/* Sign Out */}
         <div className="mb-8">
           <button

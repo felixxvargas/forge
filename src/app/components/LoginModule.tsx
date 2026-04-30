@@ -264,10 +264,10 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
       <div className="md:hidden w-full mt-8 mb-6">
         <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
         <div className="flex items-center justify-center gap-6 pb-4">
-          <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
-            <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10" />
-            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
-          </div>
+          <Link to="/android-beta" className="relative group">
+            <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10 group-hover:opacity-80 transition-opacity" />
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-accent tracking-wide font-medium">Join Beta</span>
+          </Link>
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-10 grayscale" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
@@ -306,7 +306,7 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
               { icon: Gamepad2, text: 'Connect with gamers across PlayStation, Xbox, Steam, and more' },
               { icon: Megaphone, text: 'Share gaming moments, reviews, and finds with your community' },
               { icon: Search, text: 'Discover groups, LFG flares, and trending games' },
-              { icon: Tv2, text: 'Auto-archive your Twitch streams — up to 6 hours, saved forever' },
+              { icon: Tv2, text: 'Auto-archive your Twitch streams — up to 6-hour streams, saved forever' },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-start gap-3">
                 <Icon className="w-5 h-5 shrink-0 mt-0.5 text-accent" />
@@ -320,10 +320,10 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
         <div className="relative z-10">
           <p className="text-xs text-muted-foreground/50 mb-3 uppercase tracking-wide font-medium">Also available on</p>
           <div className="flex items-center gap-3 pb-4">
-            <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
-              <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-9" />
-              <span className="absolute -bottom-3.5 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
-            </div>
+            <Link to="/android-beta" className="relative group">
+              <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-9 group-hover:opacity-80 transition-opacity" />
+              <span className="absolute -bottom-3.5 left-0 right-0 text-center text-[9px] text-accent tracking-wide font-medium">Join Beta</span>
+            </Link>
             <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
               <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-9 grayscale" />
               <span className="absolute -bottom-3.5 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>

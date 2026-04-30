@@ -32,7 +32,7 @@ const FEATURES = [
   {
     icon: <Tv2 className="w-5 h-5" />,
     label: 'Unlimited Twitch Stream Archives',
-    description: 'Save streams up to 6 hours — no deletion prompts, ever',
+    description: 'Up to 6-hour streams, saved forever — no deletion prompts, ever',
   },
 ];
 
