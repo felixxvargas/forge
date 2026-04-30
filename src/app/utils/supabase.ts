@@ -1693,7 +1693,28 @@ export const groupThreads = {
       .contains('participant_ids', [userId])
       .order('updated_at', { ascending: false });
     if (error) return [];
-    return data ?? [];
+    const threads = data ?? [];
+    if (!threads.length) return threads;
+    const lastMsgs = await Promise.all(
+      threads.map(async (t: any) => {
+        try {
+          const { data: msg } = await supabase
+            .from('group_messages')
+            .select('content, sender_id')
+            .eq('thread_id', t.id)
+            .eq('deleted', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return { id: t.id, msg };
+        } catch {
+          return { id: t.id, msg: null };
+        }
+      })
+    );
+    const lastMsgMap: Record<string, any> = {};
+    lastMsgs.forEach(({ id, msg }) => { if (msg) lastMsgMap[id] = msg; });
+    return threads.map((t: any) => ({ ...t, _lastMessage: lastMsgMap[t.id] ?? null }));
   },
 
   async getMessages(threadId: string) {

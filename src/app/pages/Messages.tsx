@@ -635,6 +635,11 @@ export function Messages() {
     try {
       const msg = await groupAPI.sendMessage(selectedGroupThread.id, currentUser.id, content);
       setGroupMessages(prev => [...prev, msg]);
+      setGroupThreadList(prev => prev.map(t =>
+        t.id === selectedGroupThread.id
+          ? { ...t, _lastMessage: { content, sender_id: currentUser.id } }
+          : t
+      ));
       groupAPI.getForUser(currentUser.id).then(setGroupThreadList).catch(() => {});
       // Mark thread as read immediately after sending
       groupThreadReadsAPI.markRead(selectedGroupThread.id, currentUser.id).catch(() => {});
@@ -871,7 +876,7 @@ export function Messages() {
                       ? <p className={`text-sm italic ${isMe ? 'text-accent-foreground/50' : 'text-muted-foreground'}`}>Message deleted</p>
                       : <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                     }
-                    <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/60' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
+                    <p className={`text-xs mt-1 ${isMe ? 'text-white/70' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
                   </div>
                   {msgReactions.length > 0 && (
                     <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -1175,7 +1180,7 @@ export function Messages() {
                       ? <p className={`text-sm italic ${isMe ? 'text-accent-foreground/50' : 'text-muted-foreground'}`}>Message deleted</p>
                       : <p className="text-sm whitespace-pre-wrap break-words">{(msg as any)._plaintext ?? msg.content}</p>
                     }
-                    <p className={`text-xs mt-1 ${isMe ? 'text-accent-foreground/60' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
+                    <p className={`text-xs mt-1 ${isMe ? 'text-white/70' : 'text-muted-foreground'}`}>{formatMessageTime(msg.created_at)}</p>
                   </div>
                   {msgReactions.length > 0 && (
                     <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -1420,8 +1425,10 @@ export function Messages() {
                               <p className="font-semibold truncate">{item.name}</p>
                               <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatTime(item.updated_at || item.created_at)}</span>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {item.flare_id ? 'LFG Flare · Tap to view' : `${(item.participant_ids?.length ?? 0)} participants`}
+                            <p className="text-sm text-muted-foreground truncate">
+                              {item.flare_id
+                                ? 'LFG Flare · Tap to view'
+                                : item._lastMessage?.content || `${(item.participant_ids?.length ?? 0)} members`}
                             </p>
                           </div>
                         </button>
