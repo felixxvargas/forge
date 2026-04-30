@@ -570,7 +570,7 @@ export function NewPost() {
   if (showDrafts) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <div className="sticky top-0 z-10 bg-card border-b border-border shrink-0">
+        <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border shrink-0">
           <div className="flex items-center gap-4 p-4">
             <button
               onClick={() => setShowDrafts(false)}
@@ -629,7 +629,7 @@ export function NewPost() {
     <div className="sm:fixed sm:inset-0 sm:z-50 sm:flex sm:items-end sm:justify-center md:items-center sm:bg-black/60">
     <div className="w-full min-h-screen bg-background flex flex-col sm:min-h-0 sm:h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl sm:overflow-hidden sm:shadow-2xl">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border shrink-0">
+      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border shrink-0">
         <div className="flex items-center justify-between p-4">
           <button
             onClick={handleCancel}
@@ -735,7 +735,7 @@ export function NewPost() {
         {/* @Mention + @Game + @Group suggestions — fixed above the OSK */}
         {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0 || atGroupResults.length > 0) && (
           <div
-            className="fixed left-2 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+            className="fixed left-2 right-2 z-50 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
             style={{ bottom: viewportBottom + 4 }}
           >
             {mentionSuggestions.length > 0 && (
@@ -805,7 +805,7 @@ export function NewPost() {
         {/* #Game hash suggestions — fixed above the OSK */}
         {showHashGames && hashGameResults.length > 0 && (
           <div
-            className="fixed left-2 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+            className="fixed left-2 right-2 z-50 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
             style={{ bottom: viewportBottom + 4 }}
           >
             {hashGameResults.map((game: any, i) => (

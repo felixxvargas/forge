@@ -249,7 +249,7 @@ export function FlareDetail() {
     return (
       <div className="min-h-screen bg-background pb-24">
         {/* header skeleton */}
-        <div className="sticky top-0 z-10 bg-card border-b border-border">
+        <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
           <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-3 animate-pulse">
             <div className="w-9 h-9 rounded-lg bg-muted/30 shrink-0" />
             <div className="flex items-center gap-2.5">
@@ -314,7 +314,7 @@ export function FlareDetail() {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border">
+      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />

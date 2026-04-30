@@ -340,7 +340,7 @@ export function CommunityDetail() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border">
+      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -697,7 +697,7 @@ export function CommunityDetail() {
       {showEditModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
           <div className="bg-card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl">
-            <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border px-4 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Edit Group</h2>
               <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
                 <X className="w-5 h-5" />
@@ -783,7 +783,7 @@ export function CommunityDetail() {
       {showInviteModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 overflow-y-auto">
           <div className="bg-card w-full max-w-lg rounded-2xl max-h-[calc(100dvh-5rem)] flex flex-col overflow-hidden">
-            <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border px-4 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Invite Users</h2>
               <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
                 <X className="w-5 h-5" />
@@ -856,7 +856,7 @@ export function CommunityDetail() {
       {showGamePicker && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card w-full max-w-lg rounded-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden">
-            <div className="sticky top-0 bg-card border-b border-border px-4 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border px-4 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Add Game ({communityGames.length}/10)</h2>
               <button onClick={() => setShowGamePicker(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
                 <X className="w-5 h-5" />

@@ -996,46 +996,6 @@ export function Profile() {
             </button>
           )}
 
-          {/* Badge strip — shown on mobile so badges are visible without tapping About tab */}
-          {(() => {
-            const isForgeSprite = (profileUser as any)?.onboarding_complete;
-            const joinYear = profileUser?.created_at ? new Date(profileUser.created_at).getFullYear() : null;
-            const isEarlyAdopter = joinYear === 2026;
-            const isMentor = isMentorHandle(profileUser.handle || '');
-            if (!isForgeSprite && !isEarlyAdopter && !isMentor) return null;
-            return (
-              <div className="lg:hidden flex flex-wrap gap-1.5 mb-4">
-                {isForgeSprite && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-500/10 border border-violet-500/30 rounded-full">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-violet-300 shrink-0">
-                      <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
-                      <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
-                      <path d="M11 12c-2 2-6 6-3 8 2 1 4-3 3-8z" opacity="0.7"/>
-                      <path d="M13 12c2 2 6 6 3 8-2 1-4-3-3-8z" opacity="0.7"/>
-                      <ellipse cx="12" cy="13" rx="1.2" ry="2.5"/>
-                      <circle cx="12" cy="9" r="1.8"/>
-                    </svg>
-                    <span className="text-[11px] font-semibold text-violet-300">Forge Sprite</span>
-                  </div>
-                )}
-                {isEarlyAdopter && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full">
-                    <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span className="text-[11px] font-semibold text-amber-400">Early Adopter</span>
-                  </div>
-                )}
-                {isMentor && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-amber-400 shrink-0">
-                      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
-                    </svg>
-                    <span className="text-[11px] font-semibold text-amber-400">Mentor</span>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
           {/* Platforms */}
           {profileUser.platforms && profileUser.platforms.length > 0 && (
             <div className="mb-4">
@@ -2236,7 +2196,7 @@ export function Profile() {
       {/* 4-list limit tray */}
       {showListLimitTray && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-safe" onClick={() => setShowListLimitTray(false)}>
-          <div className="bg-card rounded-t-2xl w-full max-w-lg p-6 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" onClick={e => e.stopPropagation()}>
+          <div className="bg-card/95 backdrop-blur-xl rounded-t-2xl w-full max-w-lg p-6 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-border rounded-full mx-auto -mt-1 mb-2" />
             <h2 className="text-base font-semibold">4-list limit reached</h2>
             <p className="text-sm text-muted-foreground">

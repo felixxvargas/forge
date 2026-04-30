@@ -794,7 +794,7 @@ export function GameDetail() {
         <div className="fixed inset-0 z-50" onClick={() => setShowAddToListTray(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div
-            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl pb-safe"
+            className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl rounded-t-2xl pb-safe"
             onClick={e => e.stopPropagation()}
           >
             <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-4" />
@@ -829,7 +829,7 @@ export function GameDetail() {
         <div className="fixed inset-0 z-50" onClick={() => setShowPlayedTray(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div
-            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl pb-safe"
+            className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl rounded-t-2xl pb-safe"
             onClick={e => e.stopPropagation()}
           >
             <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-4" />

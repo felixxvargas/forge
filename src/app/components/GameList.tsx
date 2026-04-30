@@ -126,7 +126,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
             className="fixed inset-0 z-40 bg-black/50"
             onClick={() => { setShowActionTray(false); setConfirmDelete(false); }}
           />
-          <div className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-2xl shadow-xl safe-area-bottom">
+          <div className="fixed inset-x-0 bottom-0 z-50 bg-card/95 backdrop-blur-xl rounded-t-2xl shadow-xl safe-area-bottom">
             <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1" />
             {confirmDelete ? (
               <div className="p-4 space-y-3 pb-8">

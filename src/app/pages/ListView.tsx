@@ -523,7 +523,7 @@ export function ListView() {
       {/* Share Tray */}
       {showShareTray && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4">
-          <div className="w-full sm:max-w-sm bg-card rounded-2xl p-6 space-y-4">
+          <div className="w-full sm:max-w-sm bg-card/95 backdrop-blur-xl rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Share List</h3>
               <button onClick={() => setShowShareTray(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">

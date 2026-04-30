@@ -184,7 +184,7 @@ export function CreateLFGFlarePage() {
       </AnimatePresence>
 
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border">
+      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}

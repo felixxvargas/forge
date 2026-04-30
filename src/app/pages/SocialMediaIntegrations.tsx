@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import { PlatformIcon } from '../components/PlatformIcon';
 import type { SocialPlatform } from '../data/data';
 import BlueskyIconAsset from '../../assets/icons/bluesky.svg?react';
 import BattlenetIconAsset from '../../assets/icons/battlenet.svg?react';
@@ -193,23 +194,40 @@ export function SocialMediaIntegrations() {
   const location = useLocation();
   const backTo = (location.state as any)?.from === 'settings' ? '/settings' : '/edit-profile';
   const { currentUser, updateCurrentUser } = useAppData();
+
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>(
     currentUser?.social_platforms || currentUser?.socialPlatforms || []
+  );
+  const [socialHandles, setSocialHandles] = useState<Record<string, string>>(
+    currentUser?.social_handles || currentUser?.socialHandles || {}
+  );
+  const [showSocialHandles, setShowSocialHandles] = useState<Record<string, boolean>>(
+    currentUser?.show_social_handles || currentUser?.showSocialHandles || {}
   );
   const [isSaving, setIsSaving] = useState(false);
 
   const togglePlatform = (platform: SocialPlatform) => {
-    if (selectedPlatforms.includes(platform)) {
-      setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform));
-    } else {
-      setSelectedPlatforms([...selectedPlatforms, platform]);
-    }
+    setSelectedPlatforms(prev =>
+      prev.includes(platform) ? prev.filter(p => p !== platform) : [...prev, platform]
+    );
+  };
+
+  const toggleShowHandle = (platform: SocialPlatform) => {
+    setShowSocialHandles(prev => ({ ...prev, [platform]: !prev[platform] }));
+  };
+
+  const updateHandle = (platform: SocialPlatform, value: string) => {
+    setSocialHandles(prev => ({ ...prev, [platform]: value }));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateCurrentUser({ social_platforms: selectedPlatforms });
+      await updateCurrentUser({
+        social_platforms: selectedPlatforms,
+        social_handles: socialHandles,
+        show_social_handles: showSocialHandles,
+      });
       navigate(backTo);
     } catch (err) {
       console.error('Failed to save social platforms:', err);
@@ -218,9 +236,69 @@ export function SocialMediaIntegrations() {
     }
   };
 
+  const renderPlatformRow = (platform: { id: SocialPlatform; name: string }) => {
+    const isSelected = selectedPlatforms.includes(platform.id);
+    const Icon = PLATFORM_ICONS[platform.id];
+    return (
+      <div
+        key={platform.id}
+        className={`bg-secondary rounded-lg transition-colors ${isSelected ? 'ring-1 ring-accent/40' : ''}`}
+      >
+        <div className="flex items-center justify-between p-3">
+          <button
+            onClick={() => togglePlatform(platform.id)}
+            className="flex items-center gap-2.5 flex-1 text-left min-w-0"
+          >
+            {Icon ? (
+              <span className="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4">
+                <Icon />
+              </span>
+            ) : (
+              <PlatformIcon platform={platform.id as any} className="w-4 h-4 shrink-0" />
+            )}
+            <span className={`font-medium text-sm ${isSelected ? '' : 'text-muted-foreground'}`}>
+              {platform.name}
+            </span>
+          </button>
+          <div className="flex items-center gap-3">
+            {isSelected && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs text-muted-foreground">Show Handle</span>
+                <input
+                  type="checkbox"
+                  checked={showSocialHandles[platform.id] || false}
+                  onChange={() => toggleShowHandle(platform.id)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-4 h-4 accent-accent"
+                />
+              </label>
+            )}
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => togglePlatform(platform.id)}
+              className="w-4 h-4 accent-accent shrink-0"
+            />
+          </div>
+        </div>
+        {isSelected && showSocialHandles[platform.id] && (
+          <div className="px-3 pb-3 flex items-center gap-2">
+            <span className="text-muted-foreground text-sm">@</span>
+            <input
+              type="text"
+              value={socialHandles[platform.id] || ''}
+              onChange={e => updateHandle(platform.id, e.target.value)}
+              placeholder={`Your ${platform.name} handle`}
+              className="flex-1 px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen">
-      {/* Header */}
+    <div className="min-h-screen pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -242,64 +320,17 @@ export function SocialMediaIntegrations() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-8">
-        {/* Gaming Accounts */}
+      <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-6">
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Gaming Accounts</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Gaming Accounts</h2>
           <div className="space-y-2">
-            {availableGamingAccountPlatforms.map((platform) => {
-              const isSelected = selectedPlatforms.includes(platform.id);
-              return (
-                <button
-                  key={platform.id}
-                  onClick={() => togglePlatform(platform.id)}
-                  className={`w-full px-4 py-4 flex items-center gap-4 rounded-xl transition-colors ${
-                    isSelected
-                      ? 'bg-accent/20 border-2 border-accent'
-                      : 'bg-card border-2 border-transparent hover:bg-secondary'
-                  }`}
-                >
-                  <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                    {(() => { const Icon = PLATFORM_ICONS[platform.id]; return Icon ? <Icon /> : null; })()}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="font-semibold">{platform.name}</h3>
-                    <p className="text-sm text-muted-foreground">{platform.description}</p>
-                  </div>
-                  {isSelected && <Check className="w-6 h-6 text-accent flex-shrink-0" />}
-                </button>
-              );
-            })}
+            {availableGamingAccountPlatforms.map(p => renderPlatformRow(p))}
           </div>
         </div>
-
-        {/* Social Media */}
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Social Media</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Social Media</h2>
           <div className="space-y-2">
-            {availableSocialPlatforms.map((platform) => {
-              const isSelected = selectedPlatforms.includes(platform.id);
-              return (
-                <button
-                  key={platform.id}
-                  onClick={() => togglePlatform(platform.id)}
-                  className={`w-full px-4 py-4 flex items-center gap-4 rounded-xl transition-colors ${
-                    isSelected
-                      ? 'bg-accent/20 border-2 border-accent'
-                      : 'bg-card border-2 border-transparent hover:bg-secondary'
-                  }`}
-                >
-                  <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                    {(() => { const Icon = PLATFORM_ICONS[platform.id]; return Icon ? <Icon /> : null; })()}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="font-semibold">{platform.name}</h3>
-                    <p className="text-sm text-muted-foreground">{platform.description}</p>
-                  </div>
-                  {isSelected && <Check className="w-6 h-6 text-accent flex-shrink-0" />}
-                </button>
-              );
-            })}
+            {availableSocialPlatforms.map(p => renderPlatformRow(p))}
           </div>
         </div>
       </div>

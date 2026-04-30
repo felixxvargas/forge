@@ -510,85 +510,11 @@ export function EditProfile() {
               Manage
             </button>
           </div>
-          <div className="space-y-3">
-            {(formData.platforms || []).map(platform => (
-              <div key={platform} className="bg-secondary rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
-                    <span className="font-medium">{getPlatformLabel(platform)}</span>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-muted-foreground">Show Handle</span>
-                    <input
-                      type="checkbox"
-                      checked={formData.showPlatformHandles[platform] || false}
-                      onChange={() => toggleShowPlatformHandle(platform)}
-                      className="w-4 h-4 accent-accent"
-                    />
-                  </label>
-                </div>
-                {formData.showPlatformHandles[platform] && (
-                  <input
-                    type="text"
-                    value={formData.platformHandles[platform] || ''}
-                    onChange={(e) => updatePlatformHandle(platform, e.target.value)}
-                    placeholder={`Your ${getPlatformLabel(platform)} username`}
-                    className="w-full px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Gaming Accounts (Battle.net, Riot) */}
-          {(formData.socialPlatforms || []).some(s => s === 'battlenet' || s === 'riot') && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Gaming Accounts</span>
-                <button
-                  onClick={handleEditSocial}
-                  className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
-                >
-                  <Settings className="w-4 h-4" />
-                  Manage
-                </button>
-              </div>
-              <div className="space-y-3">
-                {(formData.socialPlatforms || []).filter(s => s === 'battlenet' || s === 'riot').map(social => (
-                  <div key={social} className="bg-secondary rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <PlatformIcon platform={social} className="w-4 h-4 shrink-0" />
-                        <span className="font-medium">{getSocialLabel(social)}</span>
-                      </div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <span className="text-xs text-muted-foreground">Show Handle</span>
-                        <input
-                          type="checkbox"
-                          checked={formData.showSocialHandles[social] || false}
-                          onChange={() => toggleShowSocialHandle(social)}
-                          className="w-4 h-4 accent-accent"
-                        />
-                      </label>
-                    </div>
-                    {formData.showSocialHandles[social] && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">@</span>
-                        <input
-                          type="text"
-                          value={formData.socialHandles[social] || ''}
-                          onChange={(e) => updateSocialHandle(social, e.target.value)}
-                          placeholder={`Your ${getSocialLabel(social)} username`}
-                          className="flex-1 px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">
+            {(formData.platforms || []).length > 0
+              ? `${(formData.platforms || []).length} platform${(formData.platforms || []).length !== 1 ? 's' : ''} connected — tap Manage to edit handles`
+              : 'No platforms connected yet'}
+          </p>
         </div>
 
         {/* Social Media */}
@@ -603,42 +529,11 @@ export function EditProfile() {
               Manage
             </button>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Add your social media handles and choose which ones to display on your profile
+          <p className="text-xs text-muted-foreground">
+            {(formData.socialPlatforms || []).length > 0
+              ? `${(formData.socialPlatforms || []).length} account${(formData.socialPlatforms || []).length !== 1 ? 's' : ''} connected — tap Manage to edit handles`
+              : 'No social accounts connected yet'}
           </p>
-          <div className="space-y-3">
-            {(formData.socialPlatforms || []).filter(s => s !== 'battlenet' && s !== 'riot').map(social => (
-              <div key={social} className="bg-secondary rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <PlatformIcon platform={social} className="w-4 h-4 shrink-0" />
-                    <span className="font-medium">{getSocialLabel(social)}</span>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-muted-foreground">Show Handle</span>
-                    <input
-                      type="checkbox"
-                      checked={formData.showSocialHandles[social] || false}
-                      onChange={() => toggleShowSocialHandle(social)}
-                      className="w-4 h-4 accent-accent"
-                    />
-                  </label>
-                </div>
-                {formData.showSocialHandles[social] && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">@</span>
-                    <input
-                      type="text"
-                      value={formData.socialHandles[social] || ''}
-                      onChange={(e) => updateSocialHandle(social, e.target.value)}
-                      placeholder={`Your ${getSocialLabel(social)} handle`}
-                      className="flex-1 px-3 py-2 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Groups to Display */}

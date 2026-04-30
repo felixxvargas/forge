@@ -819,7 +819,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           onClick={(e) => { e.stopPropagation(); setShowRepostTray(false); }}
         >
           <div
-            className="w-full max-w-lg bg-card rounded-t-2xl p-4 space-y-2"
+            className="w-full max-w-lg bg-card/95 backdrop-blur-xl rounded-t-2xl p-4 space-y-2"
             style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
             onClick={(e) => e.stopPropagation()}
           >

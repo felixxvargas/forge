@@ -71,13 +71,17 @@ export function Messages() {
   const [loadingConvos, setLoadingConvos] = useState(false);
 
   // Compose modal — unified: select people first, then confirm
-  const [showCompose, setShowCompose] = useState(false);
-  const [composeStep, setComposeStep] = useState<'search' | 'confirm'>('search');
+  const GROUP_DM_DRAFT_KEY = 'forge-group-dm-draft';
+  const composeDraft = (() => {
+    try { return JSON.parse(localStorage.getItem(GROUP_DM_DRAFT_KEY) || 'null'); } catch { return null; }
+  })();
+  const [showCompose, setShowCompose] = useState(!!composeDraft);
+  const [composeStep, setComposeStep] = useState<'search' | 'confirm'>(composeDraft?.step || 'search');
   const [composeQuery, setComposeQuery] = useState('');
   const [composeResults, setComposeResults] = useState<any[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
-  const [selectedComposeUsers, setSelectedComposeUsers] = useState<any[]>([]);
-  const [groupName, setGroupName] = useState('');
+  const [selectedComposeUsers, setSelectedComposeUsers] = useState<any[]>(composeDraft?.users || []);
+  const [groupName, setGroupName] = useState(composeDraft?.groupName || '');
   const [creatingGroup, setCreatingGroup] = useState(false);
 
   // Typing indicator
@@ -113,6 +117,20 @@ export function Messages() {
   const partnerPublicKeyRef = useRef<JsonWebKey | null>(null);
   // Cache of decrypted message content keyed by message id
   const decryptedCache = useRef<Record<string, string>>({});
+
+  // Persist compose state so navigating away doesn't lose group DM progress
+  useEffect(() => {
+    if (!showCompose && selectedComposeUsers.length === 0) return;
+    if (showCompose && (selectedComposeUsers.length > 0 || groupName || composeStep === 'confirm')) {
+      localStorage.setItem(GROUP_DM_DRAFT_KEY, JSON.stringify({
+        step: composeStep,
+        users: selectedComposeUsers,
+        groupName,
+      }));
+    } else if (!showCompose) {
+      localStorage.removeItem(GROUP_DM_DRAFT_KEY);
+    }
+  }, [showCompose, selectedComposeUsers, groupName, composeStep]);
 
   // Handle ?to=userId deep-link
   useEffect(() => {
@@ -426,6 +444,7 @@ export function Messages() {
   };
 
   const closeCompose = () => {
+    clearComposeDraft();
     setShowCompose(false);
     setComposeStep('search');
     setComposeQuery('');
@@ -568,8 +587,11 @@ export function Messages() {
     finally { setIsSending(false); }
   };
 
+  const clearComposeDraft = () => localStorage.removeItem(GROUP_DM_DRAFT_KEY);
+
   const handleOpenDm = () => {
     if (selectedComposeUsers.length !== 1) return;
+    clearComposeDraft();
     openConversation(selectedComposeUsers[0].id, selectedComposeUsers[0]);
   };
 
@@ -578,6 +600,7 @@ export function Messages() {
     setCreatingGroup(true);
     try {
       const thread = await groupAPI.create(currentUser.id, groupName.trim(), selectedComposeUsers.map(u => u.id));
+      clearComposeDraft();
       setGroupThreadList(prev => [thread, ...prev]);
       openGroupThread(thread);
     } catch (err) {
