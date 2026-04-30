@@ -1334,6 +1334,7 @@ export function Messages() {
                             username={partnerProfile.display_name || partnerProfile.handle || '?'}
                             profilePicture={partnerProfile.profile_picture ?? null}
                             size="md"
+                            className="!w-10 !h-10"
                             userId={partnerProfile.id}
                           />
                         </button>
