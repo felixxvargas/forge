@@ -36,7 +36,7 @@ type ReactionMap = Record<string, { emoji: string; userIds: string[] }[]>;
 export function Messages() {
   const { currentUser } = useAppData();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // DM state
   const [conversations, setConversations] = useState<any[]>([]);
@@ -141,10 +141,26 @@ export function Messages() {
     if (!toUserId || !currentUser?.id) return;
     profiles.getById(toUserId)
       .then(profile => {
-        if (profile) { setPartner(profile); setSelectedPartnerId(toUserId); }
+        if (profile) { setPartner(profile); setSelectedPartnerId(toUserId); setSelectedGroupThread(null); }
       })
       .catch(() => {});
   }, [searchParams, currentUser?.id]);
+
+  // Handle ?group=threadId deep-link / refresh
+  useEffect(() => {
+    const groupId = searchParams.get('group');
+    if (!groupId || !currentUser?.id || !groupThreadList.length) return;
+    if (selectedGroupThread?.id === groupId) return;
+    const thread = groupThreadList.find((t: any) => t.id === groupId);
+    if (thread) {
+      setSelectedGroupThread(thread);
+      setGroupMessages([]);
+      setGroupParticipants([]);
+      setSelectedPartnerId(null);
+      setPartner(null);
+      setShowGroupInfo(false);
+    }
+  }, [searchParams, currentUser?.id, groupThreadList]);
 
   // Initialise E2E encryption: generate keypair if needed and publish public key to profile
   useEffect(() => {
@@ -468,6 +484,7 @@ export function Messages() {
     setMessages([]);
     setSelectedGroupThread(null);
     closeCompose();
+    setSearchParams({ to: partnerId });
   };
 
   const openGroupThread = (thread: any) => {
@@ -478,6 +495,7 @@ export function Messages() {
     setPartner(null);
     setShowGroupInfo(false);
     closeCompose();
+    setSearchParams({ group: thread.id });
   };
 
   const closeCompose = () => {
@@ -739,7 +757,7 @@ export function Messages() {
         <div className="shrink-0 bg-card border-b border-border z-10">
           <div className="w-full max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => { setSelectedGroupThread(null); setGroupMessages([]); setShowGroupInfo(false); }}
+              onClick={() => { setSelectedGroupThread(null); setGroupMessages([]); setShowGroupInfo(false); setSearchParams({}); }}
               className="p-2 hover:bg-secondary rounded-full transition-colors shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -840,7 +858,7 @@ export function Messages() {
                     </button>
                   )}
                   <div
-                    className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-accent-foreground' : 'bg-white/[0.06] backdrop-blur-md border border-white/[0.09]'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-white' : 'bg-white/[0.06] backdrop-blur-md border border-white/[0.09]'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
                     style={isMe ? { background: 'linear-gradient(145deg, #2d1552 0%, #180c36 55%, #0d0620 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 10px rgba(0,0,0,0.40)' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, true)}
                     onMouseUp={cancelLongPress}
@@ -1106,7 +1124,7 @@ export function Messages() {
         <div className="shrink-0 bg-card border-b border-border z-10">
           <div className="w-full max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => { setSelectedPartnerId(null); setPartner(null); setMessages([]); }}
+              onClick={() => { setSelectedPartnerId(null); setPartner(null); setMessages([]); setSearchParams({}); }}
               className="p-2 hover:bg-secondary rounded-full transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -1144,7 +1162,7 @@ export function Messages() {
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   <div
-                    className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-accent-foreground' : 'bg-white/[0.06] backdrop-blur-md border border-white/[0.09]'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
+                    className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-white' : 'bg-white/[0.06] backdrop-blur-md border border-white/[0.09]'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
                     style={isMe ? { background: 'linear-gradient(145deg, #2d1552 0%, #180c36 55%, #0d0620 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 10px rgba(0,0,0,0.40)' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, false)}
                     onMouseUp={cancelLongPress}
@@ -1378,14 +1396,16 @@ export function Messages() {
                             return (
                               <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 grid grid-cols-2 grid-rows-2 gap-px bg-border">
                                 {[0, 1, 2, 3].map(i => {
+                                  if (pIds.length === 3 && i === 3) return null;
                                   const id = pIds[i];
                                   const p = id ? participantProfiles[id] : null;
+                                  const spanClass = pIds.length === 3 && i === 2 ? 'col-span-2' : '';
                                   return p?.profile_picture ? (
-                                    <img key={i} src={p.profile_picture} alt="" className="w-full h-full object-cover" />
+                                    <img key={i} src={p.profile_picture} alt="" className={`w-full h-full object-cover ${spanClass}`} />
                                   ) : (
                                     <div
                                       key={i}
-                                      className="w-full h-full flex items-center justify-center text-[7px] font-bold text-white"
+                                      className={`w-full h-full flex items-center justify-center text-[7px] font-bold text-white ${spanClass}`}
                                       style={{ backgroundColor: id ? `hsl(${((id.charCodeAt(0) * 47) + (id.charCodeAt(1) ?? 0) * 31) % 360}deg 40% 32%)` : 'transparent' }}
                                     >
                                       {id ? (p?.display_name || p?.handle || '?')[0].toUpperCase() : ''}
