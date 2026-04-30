@@ -999,7 +999,7 @@ export function Explore() {
                                 <Gamepad2 className="w-8 h-8 text-muted-foreground/40" />
                               </div>
                             )}
-                            {score > 0 && !isSearchActive && (
+                            {score > 0 && !isSearchActive && !loadingTrendingCounts && !loadingExtraGames && (
                               <div className="absolute top-1.5 left-1.5 bg-accent/80 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                                 <Flame className="w-2.5 h-2.5" />{score}
                               </div>

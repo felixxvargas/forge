@@ -257,9 +257,9 @@ export function ListView() {
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
+    <div className="min-h-screen pb-20">
       {/* Header */}
-      <div className="bg-card sticky top-0 z-10 border-b border-border">
+      <div className="bg-card/80 backdrop-blur-lg sticky top-0 z-10 border-b border-border">
         <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -455,21 +455,26 @@ export function ListView() {
           </div>{/* end main col */}
 
           {/* RIGHT SIDEBAR — desktop only: Others with this list */}
-          {usersWithList.length > 0 && (
-            <div className="hidden lg:block lg:w-[280px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
-              <div className="bg-card rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold">{title} Lists</h2>
-                  {usersWithList.length > 3 && (
-                    <button
-                      onClick={() => navigate(`/list?type=${listType}&browse=true`)}
-                      className="text-xs text-accent hover:underline"
-                    >
-                      See all ({usersWithList.length})
-                    </button>
-                  )}
+          <div className="hidden lg:block lg:w-[280px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
+            <div className="bg-card rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold">{title} Lists</h2>
+                {usersWithList.length > 3 && (
+                  <button
+                    onClick={() => navigate(`/list?type=${listType}&browse=true`)}
+                    className="text-xs text-accent hover:underline"
+                  >
+                    See all ({usersWithList.length})
+                  </button>
+                )}
+              </div>
+              {usersWithList.length === 0 ? (
+                <div className="text-center py-6">
+                  <Users className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">No one else has a {title.toLowerCase()} list yet</p>
                 </div>
-                <div className="space-y-3">
+              ) : (
+              <div className="space-y-3">
                   {usersWithList.slice(0, 5).map(u => {
                     const ul = u.game_lists ?? u.gameLists ?? {};
                     const uGames: Game[] = ul[listKey] ?? [];
@@ -509,9 +514,9 @@ export function ListView() {
                     );
                   })}
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>{/* end lg:flex */}
       </div>
 

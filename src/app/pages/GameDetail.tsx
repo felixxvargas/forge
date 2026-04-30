@@ -330,7 +330,7 @@ export function GameDetail() {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
+    <div className="min-h-screen pb-20">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 pt-4">

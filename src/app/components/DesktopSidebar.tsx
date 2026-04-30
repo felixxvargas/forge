@@ -228,11 +228,16 @@ export function DesktopSidebar() {
             </button>
           ))}
 
+          {/* Divider before New Post */}
+          {isAuthenticated && (
+            <hr className="my-1 border-border mx-1" />
+          )}
+
           {/* Write post button */}
           {isAuthenticated && (
             <button
               onClick={() => navigate('/new-post')}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 mt-2 transition-colors text-left w-full
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors text-left w-full
                 text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">

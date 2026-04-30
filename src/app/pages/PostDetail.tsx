@@ -512,10 +512,10 @@ export function PostDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
+        <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-secondary rounded-full transition-colors"
@@ -526,7 +526,9 @@ export function PostDetail() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto">
+      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[1fr_280px] lg:gap-6 lg:items-start">
+      {/* ── MAIN COLUMN ── */}
+      <div>
         {/* Parent post context — revealed with animation when "Replying to" is tapped */}
         <AnimatePresence>
           {showParentContext && parentPost && parentUser && (
@@ -1196,7 +1198,97 @@ export function PostDetail() {
             </div>
           )}
         </div>
-      </div>
+      </div>{/* end main column */}
+
+      {/* ── DESKTOP SIDEBAR ── */}
+      <div className="hidden lg:block lg:sticky lg:top-20 space-y-4">
+        {/* Author card */}
+        <div className="bg-card rounded-2xl p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Author</p>
+          <div
+            className="flex gap-3 items-start cursor-pointer"
+            onClick={() => navigate(`/profile/${activeUser.id}`)}
+          >
+            <ProfileAvatar
+              username={activeUser.display_name || activeUser.handle || '?'}
+              profilePicture={activeUser.profile_picture}
+              userId={activeUser.id}
+              size="md"
+              className="shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm truncate">{activeUser.display_name || activeUser.handle}</p>
+              <p className="text-xs text-muted-foreground truncate">@{(activeUser.handle || '').replace(/^@/, '')}</p>
+              {activeUser.bio && (
+                <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 leading-relaxed">{activeUser.bio}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tagged games */}
+        {((activePost as any).game_titles?.length > 0 || (activePost as any).game_ids?.length > 0) && (
+          <div className="bg-card rounded-2xl p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Games</p>
+            <div className="space-y-2">
+              {((activePost as any).game_ids ?? []).slice(0, 4).map((gid: string, idx: number) => {
+                const title = ((activePost as any).game_titles ?? [])[idx] ?? gid;
+                return (
+                  <button
+                    key={gid}
+                    onClick={() => navigate(`/game/${gid}`)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                  >
+                    <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate">{title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Engagement summary */}
+        {(likers.length > 0 || reposters.length > 0) && (
+          <div className="bg-card rounded-2xl p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Engagement</p>
+            <div className="space-y-2">
+              {likers.length > 0 && (
+                <button
+                  onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=likes`)}
+                  className="w-full flex items-center gap-2 text-sm hover:text-accent transition-colors text-left"
+                >
+                  <Heart className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium">{likers.length}</span>
+                  <span className="text-muted-foreground">{likers.length === 1 ? 'like' : 'likes'}</span>
+                </button>
+              )}
+              {reposters.length > 0 && (
+                <button
+                  onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=reposts`)}
+                  className="w-full flex items-center gap-2 text-sm hover:text-accent transition-colors text-left"
+                >
+                  <Repeat2 className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium">{reposters.length}</span>
+                  <span className="text-muted-foreground">{reposters.length === 1 ? 'repost' : 'reposts'}</span>
+                </button>
+              )}
+              {quotePosts.length > 0 && (
+                <button
+                  onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=quotes`)}
+                  className="w-full flex items-center gap-2 text-sm hover:text-accent transition-colors text-left"
+                >
+                  <Quote className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium">{quotePosts.length}</span>
+                  <span className="text-muted-foreground">{quotePosts.length === 1 ? 'quote' : 'quotes'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>{/* end desktop sidebar */}
+
+      </div>{/* end grid */}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

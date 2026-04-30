@@ -27,6 +27,7 @@ export function TwitchArchiveSettings() {
 
   const isConnected = !!(currentUser as any)?.twitch_user_id;
   const isEnabled = !!(currentUser as any)?.twitch_archive_enabled;
+  const isAutoPost = !!(currentUser as any)?.twitch_archive_auto_post;
   const twitchName = (currentUser as any)?.twitch_display_name;
 
   const [archives, setArchives] = useState<StreamArchive[]>([]);
@@ -139,15 +140,44 @@ export function TwitchArchiveSettings() {
     }
   };
 
+  const handleToggleAutoPost = async () => {
+    if (!currentUser?.id) return;
+    await updateCurrentUser({ twitch_archive_auto_post: !isAutoPost } as any);
+  };
+
+  const createStreamPost = async (archive: StreamArchive) => {
+    if (!currentUser?.id) return;
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session) return;
+    const h = Math.floor(archive.duration_seconds / 3600);
+    const m = Math.floor((archive.duration_seconds % 3600) / 60);
+    const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    const body = `Just finished streaming: ${archive.title} (${dur})`;
+    const images = archive.thumbnail_url ? [archive.thumbnail_url] : [];
+    await supabase.from('posts').insert({
+      user_id: currentUser.id,
+      body,
+      images,
+      post_type: 'stream_archive',
+      stream_archive_id: archive.id,
+    });
+  };
+
   const handleSync = async () => {
     if (!currentUser?.id) return;
     setSyncing(true);
     setSyncResult(null);
     setError(null);
     try {
+      const prevIds = new Set(archives.map(a => a.id));
       const result = await streamArchivesAPI.syncFromTwitch(currentUser.id, '');
       setSyncResult(result);
-      await loadArchives();
+      const updated = await streamArchivesAPI.getForUser(currentUser.id);
+      setArchives(updated);
+      if (isAutoPost) {
+        const newArchives = updated.filter(a => !prevIds.has(a.id) && a.download_status !== 'pending');
+        await Promise.all(newArchives.map(createStreamPost));
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -228,6 +258,22 @@ export function TwitchArchiveSettings() {
                 </button>
               </div>
 
+              {/* Auto-post toggle */}
+              {isEnabled && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">Auto-post when synced</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Create a post on your profile when a new stream is saved</p>
+                  </div>
+                  <button
+                    onClick={handleToggleAutoPost}
+                    className={`w-11 h-6 rounded-full transition-colors relative ${isAutoPost ? 'bg-accent' : 'bg-muted'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isAutoPost ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              )}
+
               {/* Manual sync */}
               <button
                 onClick={handleSync}
@@ -256,7 +302,8 @@ export function TwitchArchiveSettings() {
               {[
                 'Connect your Twitch account to Forge',
                 'Enable auto-archiving — streams under 4 hours are saved automatically',
-                'Archived streams appear on your Forge media tab',
+                'Archived streams appear on your Forge media tab and profile',
+              'Optionally auto-post to your feed when a new stream is saved',
                 "You'll be reminded to review archives after 1 year",
                 'Archives with no response are deleted after 3 months of inactivity',
               ].map((item, i) => (
