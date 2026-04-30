@@ -284,9 +284,9 @@ export function EditProfile() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
+      <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card/80 backdrop-blur-lg">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/profile')}
@@ -563,7 +563,7 @@ export function EditProfile() {
                         <span className="font-medium">{getSocialLabel(social)}</span>
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <span className="text-xs text-muted-foreground">Show on Profile</span>
+                        <span className="text-xs text-muted-foreground">Show Handle</span>
                         <input
                           type="checkbox"
                           checked={formData.showSocialHandles[social] || false}
@@ -615,7 +615,7 @@ export function EditProfile() {
                     <span className="font-medium">{getSocialLabel(social)}</span>
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-muted-foreground">Show on Profile</span>
+                    <span className="text-xs text-muted-foreground">Show Handle</span>
                     <input
                       type="checkbox"
                       checked={formData.showSocialHandles[social] || false}

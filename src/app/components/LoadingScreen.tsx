@@ -11,6 +11,7 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
   const isNotifications = path === '/notifications';
   const isSettings     = path.startsWith('/settings');
   const isMessages     = path === '/messages';
+  const isProfile      = path === '/profile' || path.startsWith('/profile/');
 
   /* ─────────────────────────── header ─────────────────────────── */
   const header = (() => {
@@ -205,6 +206,54 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
               </div>
             </div>
           ))}
+        </div>
+      );
+    }
+
+    /* ── profile ── */
+    if (isProfile) {
+      return (
+        <div className="animate-pulse">
+          {/* profile header card — full bleed on mobile like the real page */}
+          <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl mb-4 max-w-2xl mx-auto lg:rounded-2xl">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
+                <div className="space-y-2 pt-1">
+                  <div className="h-5 bg-muted/50 rounded w-32" />
+                  <div className="h-3.5 bg-muted/30 rounded w-24" />
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-muted/30" />
+            </div>
+            <div className="space-y-2 mb-4">
+              <div className="h-3.5 bg-muted/40 rounded w-full" />
+              <div className="h-3.5 bg-muted/30 rounded w-4/5" />
+            </div>
+            <div className="flex gap-5 mb-4">
+              <div className="space-y-1">
+                <div className="h-6 bg-muted/50 rounded w-10" />
+                <div className="h-3 bg-muted/25 rounded w-16" />
+              </div>
+              <div className="space-y-1">
+                <div className="h-6 bg-muted/50 rounded w-10" />
+                <div className="h-3 bg-muted/25 rounded w-16" />
+              </div>
+            </div>
+            <div className="h-9 bg-muted/30 rounded-xl" />
+          </div>
+          {/* tab bar */}
+          <div className="flex gap-1 px-4 mb-4 max-w-2xl mx-auto">
+            {['w-14', 'w-14', 'w-14', 'w-12'].map((w, i) => (
+              <div key={i} className={`h-8 bg-muted/30 rounded-lg ${w}`} />
+            ))}
+          </div>
+          {/* game grid */}
+          <div className="px-4 grid grid-cols-3 gap-2 max-w-2xl mx-auto">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="aspect-[3/4] bg-card rounded-xl" />
+            ))}
+          </div>
         </div>
       );
     }

@@ -219,13 +219,13 @@ export function SocialMediaIntegrations() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border">
+      <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/edit-profile')}
+              onClick={() => navigate(backTo)}
               className="p-2 hover:bg-secondary rounded-full transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />

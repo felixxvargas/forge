@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
+import { isMentorHandle } from '../utils/mentors';
 import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
@@ -726,21 +727,18 @@ export function Profile() {
         const isForgeSprite = (profileUser as any)?.onboarding_complete;
         const joinYear = profileUser?.created_at ? new Date(profileUser.created_at).getFullYear() : null;
         const isEarlyAdopter = joinYear === 2026;
-        if (!isForgeSprite && !isEarlyAdopter) return null;
+        const isMentor = isMentorHandle(profileUser.handle || '');
+        if (!isForgeSprite && !isEarlyAdopter && !isMentor) return null;
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
             {isForgeSprite && (
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 rounded-full">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-violet-300 shrink-0">
-                  {/* Upper wings */}
                   <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
                   <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
-                  {/* Lower wings */}
                   <path d="M11 12c-2 2-6 6-3 8 2 1 4-3 3-8z" opacity="0.7"/>
                   <path d="M13 12c2 2 6 6 3 8-2 1-4-3-3-8z" opacity="0.7"/>
-                  {/* Body */}
                   <ellipse cx="12" cy="13" rx="1.2" ry="2.5"/>
-                  {/* Head */}
                   <circle cx="12" cy="9" r="1.8"/>
                 </svg>
                 <span className="text-xs font-semibold text-violet-300">Forge Sprite</span>
@@ -750,6 +748,14 @@ export function Profile() {
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-xs font-semibold text-amber-400">Early Adopter</span>
+              </div>
+            )}
+            {isMentor && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-amber-400 shrink-0">
+                  <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                </svg>
+                <span className="text-xs font-semibold text-amber-400">Mentor</span>
               </div>
             )}
           </div>
@@ -990,6 +996,46 @@ export function Profile() {
             </button>
           )}
 
+          {/* Badge strip — shown on mobile so badges are visible without tapping About tab */}
+          {(() => {
+            const isForgeSprite = (profileUser as any)?.onboarding_complete;
+            const joinYear = profileUser?.created_at ? new Date(profileUser.created_at).getFullYear() : null;
+            const isEarlyAdopter = joinYear === 2026;
+            const isMentor = isMentorHandle(profileUser.handle || '');
+            if (!isForgeSprite && !isEarlyAdopter && !isMentor) return null;
+            return (
+              <div className="lg:hidden flex flex-wrap gap-1.5 mb-4">
+                {isForgeSprite && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-500/10 border border-violet-500/30 rounded-full">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-violet-300 shrink-0">
+                      <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
+                      <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
+                      <path d="M11 12c-2 2-6 6-3 8 2 1 4-3 3-8z" opacity="0.7"/>
+                      <path d="M13 12c2 2 6 6 3 8-2 1-4-3-3-8z" opacity="0.7"/>
+                      <ellipse cx="12" cy="13" rx="1.2" ry="2.5"/>
+                      <circle cx="12" cy="9" r="1.8"/>
+                    </svg>
+                    <span className="text-[11px] font-semibold text-violet-300">Forge Sprite</span>
+                  </div>
+                )}
+                {isEarlyAdopter && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    <span className="text-[11px] font-semibold text-amber-400">Early Adopter</span>
+                  </div>
+                )}
+                {isMentor && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-amber-400 shrink-0">
+                      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                    </svg>
+                    <span className="text-[11px] font-semibold text-amber-400">Mentor</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Platforms */}
           {profileUser.platforms && profileUser.platforms.length > 0 && (
             <div className="mb-4">
@@ -1153,7 +1199,7 @@ export function Profile() {
           <div className="lg:hidden px-4 mb-3">
             <button
               onClick={() => navigate('/create-flare')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-950 text-orange-300 hover:bg-orange-900 hover:border-orange-500/80 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/80 transition-all"
             >
               <Flame className="w-6 h-6" />
               {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}

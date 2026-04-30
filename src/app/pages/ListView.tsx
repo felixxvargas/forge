@@ -156,8 +156,8 @@ export function ListView() {
     ];
 
     return (
-      <div className="min-h-screen pb-20 bg-background">
-        <div className="bg-card sticky top-0 z-10 border-b border-border">
+      <div className="min-h-screen pb-20">
+        <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
           <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5" />
