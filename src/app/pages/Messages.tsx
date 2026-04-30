@@ -1217,7 +1217,7 @@ export function Messages() {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen pb-20">
       <Header />
 
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
@@ -1234,7 +1234,7 @@ export function Messages() {
 
         {loadingConvos ? (
           <div className="space-y-2 animate-pulse">
-            {Array.from({ length: 5 }).map((_, i) => (
+            {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="bg-card rounded-xl flex items-center gap-3 p-4">
                 {/* Avatar */}
                 <div className="w-12 h-12 rounded-full bg-muted/50 shrink-0" />

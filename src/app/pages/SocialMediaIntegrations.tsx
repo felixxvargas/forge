@@ -273,12 +273,12 @@ export function SocialMediaIntegrations() {
                 />
               </label>
             )}
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => togglePlatform(platform.id)}
-              className="w-4 h-4 accent-accent shrink-0"
-            />
+            <button
+              onClick={() => togglePlatform(platform.id)}
+              className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${isSelected ? 'bg-accent' : 'bg-muted'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isSelected ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </button>
           </div>
         </div>
         {isSelected && showSocialHandles[platform.id] && (
