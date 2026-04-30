@@ -757,7 +757,7 @@ export function Messages() {
   // ── GROUP THREAD CHAT VIEW ──────────────────────────────────────
   if (selectedGroupThread) {
     return (
-      <div className="flex flex-col bg-background" style={{ height: '100dvh' }}>
+      <div className="flex flex-col" style={{ height: '100dvh' }}>
         {/* Header */}
         <div className="shrink-0 bg-card border-b border-border z-10">
           <div className="w-full max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -1125,7 +1125,7 @@ export function Messages() {
   // ── DM CHAT VIEW ──────────────────────────────────────────────
   if (selectedPartnerId && partner) {
     return (
-      <div className="flex flex-col bg-background" style={{ height: '100dvh' }}>
+      <div className="flex flex-col" style={{ height: '100dvh' }}>
         <div className="shrink-0 bg-card border-b border-border z-10">
           <div className="w-full max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
@@ -1390,9 +1390,10 @@ export function Messages() {
                               <Flame className="w-5 h-5 text-white" />
                             </div>
                           ) : (() => {
-                            const pIds = (item.participant_ids ?? [])
-                              .filter((id: string) => id !== currentUser?.id)
-                              .slice(0, 4);
+                            const totalCount = (item.participant_ids ?? []).length;
+                            const pIds = totalCount <= 4
+                              ? (item.participant_ids ?? []).slice(0, 4)
+                              : (item.participant_ids ?? []).filter((id: string) => id !== currentUser?.id).slice(0, 4);
                             if (pIds.length === 0) return (
                               <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
                                 <Users className="w-5 h-5 text-muted-foreground" />
