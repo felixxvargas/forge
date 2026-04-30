@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { supabase } from '../utils/supabase';
+import { supabase, profiles } from '../utils/supabase';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { toast } from 'sonner';
 
@@ -40,6 +40,9 @@ export function AuthCallback() {
               ...(pending.pronouns ? { pronouns: pending.pronouns } : {}),
               ...(pending.interests?.length ? { interests: pending.interests } : {}),
             }).eq('id', session.user.id);
+            if (pending.following?.length) {
+              await Promise.all(pending.following.map((id: string) => profiles.follow(session.user.id, id)));
+            }
             localStorage.setItem('forge-onboarding-complete', 'true');
             navigate('/feed', { replace: true });
             return;

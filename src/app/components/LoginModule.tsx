@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Mail, Eye, EyeOff, AlertTriangle, Gamepad2, Megaphone, Search } from 'lucide-react';
+import { Mail, Eye, EyeOff, AlertTriangle, Gamepad2, Megaphone, Search, Tv2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { toast } from 'sonner';
 import { SocialAuthButtons } from './SocialAuthButtons';
@@ -306,6 +306,7 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
               { icon: Gamepad2, text: 'Connect with gamers across PlayStation, Xbox, Steam, and more' },
               { icon: Megaphone, text: 'Share gaming moments, reviews, and finds with your community' },
               { icon: Search, text: 'Discover groups, LFG flares, and trending games' },
+              { icon: Tv2, text: 'Auto-archive your Twitch streams — up to 6 hours, saved forever' },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-start gap-3">
                 <Icon className="w-5 h-5 shrink-0 mt-0.5 text-accent" />

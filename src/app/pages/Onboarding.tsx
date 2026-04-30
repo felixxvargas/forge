@@ -130,6 +130,9 @@ export function Onboarding() {
         ...(pronouns ? { pronouns } : {}),
         interests: selectedInterests,
       });
+      if (following.length > 0) {
+        await Promise.all(following.map(id => profiles.follow(userId, id)));
+      }
       localStorage.removeItem('forge-signup-email');
       localStorage.removeItem('forge-signup-password');
       localStorage.setItem('forge-onboarding-complete', 'true');
@@ -178,6 +181,7 @@ export function Onboarding() {
           display_name: displayName,
           pronouns,
           interests: selectedInterests,
+          following,
         }));
         localStorage.removeItem('forge-signup-email');
         localStorage.removeItem('forge-signup-password');
@@ -206,6 +210,7 @@ export function Onboarding() {
           display_name: displayName,
           pronouns,
           interests: selectedInterests,
+          following,
         }));
         localStorage.removeItem('forge-signup-email');
         localStorage.removeItem('forge-signup-password');

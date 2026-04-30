@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Check, Crown, TrendingUp, List, Headphones, Gamepad2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Crown, TrendingUp, List, Headphones, Gamepad2, Tv2, Loader2 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAppData } from '../context/AppDataContext';
@@ -28,6 +28,11 @@ const FEATURES = [
     icon: <TrendingUp className="w-5 h-5" />,
     label: 'Priority Game Placement',
     description: 'Your games get priority placement in Forge\'s game module — coming soon',
+  },
+  {
+    icon: <Tv2 className="w-5 h-5" />,
+    label: 'Unlimited Twitch Stream Archives',
+    description: 'Save streams up to 6 hours — no deletion prompts, ever',
   },
 ];
 
