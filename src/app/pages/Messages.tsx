@@ -864,7 +864,7 @@ export function Messages() {
                   )}
                   <div
                     className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-white' : 'bg-white/[0.06] backdrop-blur-md border border-white/[0.09]'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
-                    style={isMe ? { background: 'linear-gradient(145deg, #2d1552 0%, #180c36 55%, #0d0620 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 10px rgba(0,0,0,0.40)' } : undefined}
+                    style={isMe ? { background: 'linear-gradient(145deg, rgba(45,21,82,0.55) 0%, rgba(24,12,54,0.50) 55%, rgba(13,6,32,0.45) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 10px rgba(0,0,0,0.25)' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, true)}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
@@ -1168,7 +1168,7 @@ export function Messages() {
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   <div
                     className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-white' : 'bg-white/[0.06] backdrop-blur-md border border-white/[0.09]'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
-                    style={isMe ? { background: 'linear-gradient(145deg, #2d1552 0%, #180c36 55%, #0d0620 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 10px rgba(0,0,0,0.40)' } : undefined}
+                    style={isMe ? { background: 'linear-gradient(145deg, rgba(45,21,82,0.55) 0%, rgba(24,12,54,0.50) 55%, rgba(13,6,32,0.45) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 10px rgba(0,0,0,0.25)' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, false)}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
