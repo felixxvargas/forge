@@ -25,7 +25,7 @@ Forge is a mobile-first gaming social application that connects gamers across di
 ## Core Concept
 
 Forge bridges the gap between different gaming ecosystems and social media platforms, allowing gamers to:
-- Connect their gaming platforms (Nintendo, PlayStation, Steam, PC, Battle.net, Riot, Xbox)
+- Connect their gaming platforms (Nintendo, PlayStation, Steam, PC, Battle.net, Riot, Xbox, Kick, Trovo)
 - Follow external gaming accounts from Bluesky (ATProto) and Mastodon (ActivityPub) — e.g., IGN, GameSpot, Xbox, itch.io, PC Gamer
 - Share gaming experiences, game lists, and gaming content
 - Join and create gaming communities
@@ -105,7 +105,8 @@ Forge bridges the gap between different gaming ecosystems and social media platf
     webhook.ts                # Vercel edge function — handles payment_intent.succeeded → sets is_premium
 /supabase
   /functions
-    /forge-api  # Hono edge function — canonical source AND deploy slug
+    /forge-api           # Hono edge function — games (IGDB) + file upload/moderation
+    /twitch-vod-archive  # Twitch OAuth token exchange, VOD sync, archive management
   /migrations              # SQL migration files
 /.github
   /workflows
@@ -190,8 +191,55 @@ Plus: `lfg` (Looking for Group), custom lists (Premium only).
 ### 5. Communities
 Types: Open, Request, Invite-only. Creator/Moderator/Member role system. Crown/Shield icons in profile community chips use `<span title="...">` wrappers (Lucide icons don't accept `title` prop).
 
-### 6. Settings
-Sections: Account, Privacy, Notifications, Theme, Gaming Platforms, Social Integrations, Feed Filtering, QR Code, Subscription (Plan + Premium Support), Indie Games, Feedback, What's New, About
+### 6. Twitch Stream Archive
+Users can connect their Twitch account via OAuth to automatically archive VODs to Forge.
+
+**OAuth flow** (`/settings/twitch-archive`):
+- Connect button initiates Twitch OAuth (scopes: `user:read:email channel:read:subscriptions`)
+- Redirect URI: `https://forge-social.app/settings/twitch-archive`
+- Callback handled inline in `TwitchArchiveSettings.tsx` — reads `?code` + `?state` params
+- `POST /twitch-vod-archive/oauth-callback` edge function exchanges code for tokens, stores in `profiles` table
+
+**Supabase edge function** (`supabase/functions/twitch-vod-archive/`):
+| Route | Purpose |
+|-------|---------|
+| `POST /twitch-vod-archive/oauth-callback` | Exchange Twitch OAuth code for tokens; store in `profiles` |
+| `POST /twitch-vod-archive/sync` | Pull VODs from Twitch API; sync to `stream_archives` table |
+| `POST /twitch-vod-archive/disconnect` | Revoke Twitch connection; clear tokens from profile |
+| `POST /twitch-vod-archive/delete-archive` | Soft-delete individual archive |
+| `POST /twitch-vod-archive/retention-response` | Handle 1-year retention policy response |
+
+**`stream_archives` table** (see `supabase/migrations/20260428_stream_archives.sql`):
+- Stores VOD metadata: `twitch_vod_id`, `title`, `duration_seconds`, `thumbnail_url`, `download_status`, `recorded_at`
+- Soft-delete via `deleted_at`; `retention_prompted_at` tracks 1-year retention prompts
+
+**Profile columns added** (via migration):
+`twitch_user_id`, `twitch_display_name`, `twitch_access_token`, `twitch_refresh_token`, `twitch_token_expires_at`, `twitch_archive_enabled`
+
+**Auto-deletion**: Archives older than 1 year trigger a retention notification; if no response within 3 months the archive is auto-deleted client-side on login (no pg_cron — uses `AppDataContext` 24-hour interval check).
+
+**Deploy command:**
+```bash
+npx supabase functions deploy twitch-vod-archive \
+  --project-ref xmxeafjpscgqprrreulh
+```
+
+**Required secrets** (set via `npx supabase secrets set ... --project-ref xmxeafjpscgqprrreulh`):
+- `TWITCH_CLIENT_ID`
+- `TWITCH_CLIENT_SECRET`
+
+### 7. Top 8 Friends & Games
+Profile section showing up to 8 friends and 8 games the user highlights. Displayed above the game lists tabs. Edit button only visible on own profile. Friends are picked from followers/following; games are free-form IGDB search.
+
+### 8. Badges
+| Badge | Condition |
+|-------|-----------|
+| Sprout 🌱 | Account < 91 days old |
+| Mentor | Manual/admin-assigned |
+| Forge Pioneer | Early adopter designation |
+
+### 9. Settings
+Sections: Account, Privacy, Notifications, Theme, Gaming Platforms, Social Integrations, Feed Filtering, QR Code, Subscription (Plan + Premium Support), Twitch Stream Archive, Indie Games, Feedback, What's New, About
 
 **Premium Support** link (`mailto:support@forge-social.app`) is only visible when `currentUser.is_premium === true`.
 
@@ -357,12 +405,17 @@ Single Hono app at `supabase/functions/forge-api/index.ts`.
 > directly through the Supabase JS client (`supabase.ts`) — not through the edge function.
 > The edge function's sole responsibilities are game data (IGDB) and file upload moderation.
 
-**Deploy command:**
+**Deploy commands:**
 ```bash
+# Main game/upload API
 npx supabase functions deploy forge-api \
   --project-ref xmxeafjpscgqprrreulh \
   --use-api \
   --no-verify-jwt
+
+# Twitch VOD archive
+npx supabase functions deploy twitch-vod-archive \
+  --project-ref xmxeafjpscgqprrreulh
 ```
 
 ### Vercel API Routes (`/api/*`)
@@ -497,6 +550,11 @@ VITE_SENTRY_DSN=https://...@....ingest.sentry.io/...
 # SENTRY_AUTH_TOKEN=     # omit locally; plugin is a no-op without it
 # SENTRY_ORG=
 # SENTRY_PROJECT=
+
+# Twitch Stream Archive — register app at dev.twitch.tv
+# Redirect URI: https://forge-social.app/settings/twitch-archive
+VITE_TWITCH_CLIENT_ID=your_twitch_client_id
+# TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET are set as Supabase secrets (not .env.local)
 ```
 
 ---
@@ -601,7 +659,7 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 
 ### Backend (Supabase)
 - Project ref: `xmxeafjpscgqprrreulh`
-- Edge function: `forge-api`
+- Edge functions: `forge-api` (games/upload), `twitch-vod-archive` (Twitch OAuth + VOD sync)
 - Storage buckets: `forge-avatars`, `forge-banners`, `forge-post-media`, `forge-community-icons`, `forge-community-banners`
 
 ### Environment Variables Reference
@@ -622,16 +680,32 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 | `SENTRY_AUTH_TOKEN` | Vercel + GitHub secrets | Source map upload + release creation |
 | `SENTRY_ORG` | Vercel + GitHub secrets | Sentry organization slug |
 | `SENTRY_PROJECT` | Vercel + GitHub secrets | Sentry project slug |
+| `VITE_TWITCH_CLIENT_ID` | Frontend | Twitch OAuth client ID (initiates auth flow) |
+| `TWITCH_CLIENT_ID` | Supabase secrets | Twitch API — used in `twitch-vod-archive` edge function |
+| `TWITCH_CLIENT_SECRET` | Supabase secrets | Twitch API — used in `twitch-vod-archive` edge function |
 
 ---
 
-**Last Updated**: April 19, 2026
-**Version**: v0.4.1
+**Last Updated**: April 30, 2026
+**Version**: v0.4.2
 **Maintainer**: Forge Development Team
 
 ---
 
 ## Changelog
+
+### v0.3.1 — April 30, 2026
+- **Twitch Stream Archive**: Full Twitch OAuth integration on `/settings/twitch-archive` — connect account, auto-sync VODs, toggle auto-archive/auto-post, manual sync, soft-delete archives, 1-year retention prompts, and client-side auto-deletion after 3 months inactivity.
+- **Kick & Trovo platforms**: Added Kick and Trovo to supported gaming platform badges on profiles.
+- **Top 8 Friends & Games**: New profile section above game lists tabs — highlight up to 8 friends and 8 games; editable on own profile.
+- **Badges**: Sprout badge (accounts < 91 days), Mentor badge, and Forge Pioneer early adopter badge.
+- **Onboarding redesign**: Global tooltip-style onboarding overlay with progress indicator; tasks tracked in AppDataContext.
+- **Stream expiry notifications**: Client-side check (runs once per 24 hours on login) — creates `stream_expiry` notifications for archives approaching 1-year limit. No pg_cron dependency.
+- **Edit list fix**: `updateGameList` now correctly saves the LFG list (was writing to key `undefined`). Modal now loads the correct current games for LFG. `communities` preserved in React state after any list save.
+- **Desktop layout**: Modernized desktop sidebar, New Post FAB on Feed, Quill icon on desktop compose, desktop account switcher.
+- **Group DMs**: Group DM persistence, race condition fix, 3-4 person group avatar, last message preview, group thread refresh persistence.
+- **Post improvements**: Sent bubble gradient, glass received bubbles, invite group post visibility, game-add post prompt.
+- **UI polish**: Bottom nav blur, card lighting effects, badge polish, profile skeleton, LFG gradient fix, nav blur, platform toggle improvements.
 
 ### v0.4.1 — April 19, 2026
 - **DM read receipts**: Replaced ✓/✓✓ checkmarks with plain "Read" text shown only below the last sent message when read.

@@ -968,6 +968,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       'wishlist': 'wishlist',
       'library': 'library',
       'completed': 'completed',
+      'lfg': 'lfg',
     };
     const key = keyMap[listType];
     const existing = currentUser.game_lists ?? {} as any;
@@ -979,7 +980,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       : hiddenLists;
     const updatedLists = { ...existing, [key]: games, hiddenLists: newHiddenLists };
     const updated = await profiles.update(session.user.id, { game_lists: updatedLists });
-    setCurrentUser(normalizeProfile(updated));
+    const normalized = normalizeProfile(updated);
+    currentUserRef.current = { ...normalized, communities: currentUserRef.current?.communities };
+    setCurrentUser((prev: any) => ({ ...normalized, communities: prev?.communities }));
 
     // Sync to user_games table so game popularity rankings reflect list additions
     const statusMap: Record<string, 'played' | 'owned'> = {
