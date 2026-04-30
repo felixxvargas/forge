@@ -70,6 +70,9 @@ export function Messages() {
   const [isSending, setIsSending] = useState(false);
   const [loadingConvos, setLoadingConvos] = useState(false);
 
+  // Participant profile cache for group thread list avatars
+  const [participantProfiles, setParticipantProfiles] = useState<Record<string, any>>({});
+
   // Compose modal — unified: select people first, then confirm
   const GROUP_DM_DRAFT_KEY = 'forge-group-dm-draft';
   const composeDraft = (() => {
@@ -234,11 +237,45 @@ export function Messages() {
     return () => { cancelled = true; };
   }, [currentUser?.id, selectedPartnerId]);
 
+  // Fetch participant profiles for group thread list avatars whenever the list changes
+  useEffect(() => {
+    if (!groupThreadList.length || !currentUser?.id) return;
+    const needed = [...new Set(
+      groupThreadList.flatMap(t =>
+        (t.participant_ids ?? []).filter((id: string) => id !== currentUser.id).slice(0, 4)
+      )
+    )].filter((id: string) => !participantProfiles[id]);
+    if (!needed.length) return;
+    needed.forEach((id: string) => {
+      profiles.getById(id).then(p => {
+        if (p) setParticipantProfiles(prev => ({ ...prev, [id]: p }));
+      }).catch(() => {});
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupThreadList, currentUser?.id]);
+
   // Load group messages + participants + read receipts; mark current user as read
   useEffect(() => {
     if (!selectedGroupThread) return;
-    groupAPI.getMessages(selectedGroupThread.id).then(setGroupMessages).catch(() => {});
-    groupAPI.getParticipants(selectedGroupThread.participant_ids ?? []).then(setGroupParticipants).catch(() => {});
+    groupAPI.getMessages(selectedGroupThread.id).then(fetched => {
+      setGroupMessages(prev => {
+        if (prev.length === 0) return fetched;
+        // Merge server response with any optimistically added messages (race-condition safe)
+        const serverIds = new Set(fetched.map((m: any) => m.id));
+        const localOnly = prev.filter((m: any) => !serverIds.has(m.id));
+        return [...fetched, ...localOnly].sort((a: any, b: any) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      });
+    }).catch(() => {});
+    groupAPI.getParticipants(selectedGroupThread.participant_ids ?? []).then(ps => {
+      setGroupParticipants(ps);
+      setParticipantProfiles(prev => {
+        const map: Record<string, any> = {};
+        ps.forEach((p: any) => { map[p.id] = p; });
+        return { ...prev, ...map };
+      });
+    }).catch(() => {});
     groupThreadReadsAPI.getReads(selectedGroupThread.id).then(rows => {
       const map: Record<string, string> = {};
       rows.forEach(r => { map[r.user_id] = r.last_read_at; });
@@ -804,7 +841,7 @@ export function Messages() {
                   )}
                   <div
                     className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
-                    style={isMe ? { backgroundColor: '#B2B2B2' } : undefined}
+                    style={isMe ? { background: 'linear-gradient(145deg, #6d28d9 0%, #4c1d95 55%, #3b0764 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.25)' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, true)}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
@@ -1108,7 +1145,7 @@ export function Messages() {
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   <div
                     className={`rounded-[16px] px-4 py-2.5 cursor-pointer select-none ${isMe ? 'text-accent-foreground' : 'bg-card border border-border'} ${messageMenuId === msg.id ? 'opacity-70 scale-95' : ''} transition-all`}
-                    style={isMe ? { backgroundColor: '#B2B2B2' } : undefined}
+                    style={isMe ? { background: 'linear-gradient(145deg, #6d28d9 0%, #4c1d95 55%, #3b0764 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.25)' } : undefined}
                     onMouseDown={() => startLongPress(msg.id, false)}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
@@ -1232,24 +1269,7 @@ export function Messages() {
           </button>
         </div>
 
-        {loadingConvos ? (
-          <div className="space-y-2 animate-pulse">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-xl flex items-center gap-3 p-4">
-                {/* Avatar */}
-                <div className="w-12 h-12 rounded-full bg-muted/50 shrink-0" />
-                {/* Text lines */}
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="h-3.5 bg-muted/50 rounded w-28" />
-                    <div className="h-3 bg-muted/30 rounded w-10" />
-                  </div>
-                  <div className="h-3 bg-muted/30 rounded w-48" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : allConvos.length === 0 ? (
+        {allConvos.length === 0 && !loadingConvos ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No messages yet</h3>
@@ -1346,11 +1366,35 @@ export function Messages() {
                             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shrink-0">
                               <Flame className="w-5 h-5 text-white" />
                             </div>
-                          ) : (
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
-                              <Users className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                          )}
+                          ) : (() => {
+                            const pIds = (item.participant_ids ?? [])
+                              .filter((id: string) => id !== currentUser?.id)
+                              .slice(0, 4);
+                            if (pIds.length === 0) return (
+                              <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
+                                <Users className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            );
+                            return (
+                              <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 grid grid-cols-2 grid-rows-2 gap-px bg-border">
+                                {[0, 1, 2, 3].map(i => {
+                                  const id = pIds[i];
+                                  const p = id ? participantProfiles[id] : null;
+                                  return p?.profile_picture ? (
+                                    <img key={i} src={p.profile_picture} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div
+                                      key={i}
+                                      className="w-full h-full flex items-center justify-center text-[7px] font-bold text-white"
+                                      style={{ backgroundColor: id ? `hsl(${((id.charCodeAt(0) * 47) + (id.charCodeAt(1) ?? 0) * 31) % 360}deg 40% 32%)` : 'transparent' }}
+                                    >
+                                      {id ? (p?.display_name || p?.handle || '?')[0].toUpperCase() : ''}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
                               <p className="font-semibold truncate">{item.name}</p>
