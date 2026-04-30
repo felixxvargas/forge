@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, Tv2, Check, AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useAppData } from '../context/AppDataContext';
 import { supabase, streamArchivesAPI, type StreamArchive } from '../utils/supabase';
 import { projectId } from '/utils/supabase/info';
@@ -94,6 +95,10 @@ export function TwitchArchiveSettings() {
   }, [isConnected, loadArchives]);
 
   const handleConnect = () => {
+    if (!TWITCH_CLIENT_ID) {
+      setError('Twitch client ID is not configured. Add VITE_TWITCH_CLIENT_ID to your .env.local file.');
+      return;
+    }
     const params = new URLSearchParams({
       client_id: TWITCH_CLIENT_ID,
       redirect_uri: REDIRECT_URI,
@@ -191,7 +196,7 @@ export function TwitchArchiveSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <button onClick={() => navigate('/settings')} className="p-2 hover:bg-secondary rounded-full transition-colors">
@@ -213,7 +218,7 @@ export function TwitchArchiveSettings() {
         <div className="bg-card rounded-xl p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-              <Tv2 className="w-5 h-5 text-white" />
+              <TwitchIcon className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
               <p className="font-semibold">Twitch</p>
@@ -280,7 +285,7 @@ export function TwitchArchiveSettings() {
                 disabled={syncing || !isEnabled}
                 className="w-full flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm hover:bg-secondary transition-colors disabled:opacity-50"
               >
-                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tv2 className="w-4 h-4" />}
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <TwitchIcon className="w-4 h-4" />}
                 {syncing ? 'Syncing…' : 'Sync now from Twitch'}
               </button>
 
@@ -336,7 +341,7 @@ export function TwitchArchiveSettings() {
               </div>
             ) : archives.length === 0 ? (
               <div className="bg-card rounded-xl p-8 text-center text-muted-foreground">
-                <Tv2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <TwitchIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">No archived streams yet.</p>
                 <p className="text-xs mt-1">{isEnabled ? 'Streams will appear here after you go live.' : 'Enable auto-archiving above to get started.'}</p>
               </div>
