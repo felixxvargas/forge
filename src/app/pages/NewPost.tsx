@@ -23,6 +23,7 @@ interface DraftData {
   games: { id: string; title: string }[];
   imageUrls: string[];
   linkUrl: string;
+  replyTo?: string;
 }
 
 interface SavedDraft extends DraftData {
@@ -44,6 +45,7 @@ function parseAutoDraft(): DraftData {
       games: parsed.games ?? [],
       imageUrls,
       linkUrl: parsed.linkUrl ?? '',
+      replyTo: parsed.replyTo,
     };
   } catch {
     return { content: '', games: [], imageUrls: [], linkUrl: '' };
@@ -171,7 +173,7 @@ export function NewPost() {
 
   // Auto-save to localStorage on every relevant change
   useEffect(() => {
-    const draft: DraftData = { content, games: selectedGames, imageUrls, linkUrl };
+    const draft: DraftData = { content, games: selectedGames, imageUrls, linkUrl, replyTo };
     if (content.trim() || selectedGames.length > 0 || imageUrls.length > 0 || linkUrl) {
       localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify(draft));
     } else {
@@ -190,7 +192,7 @@ export function NewPost() {
       if (!raw) {
         const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Post content"]');
         if (el?.value.trim()) {
-          localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify({ content: el.value, games: [], imageUrl: '', linkUrl: '' }));
+          localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify({ content: el.value, games: [], imageUrls: [], linkUrl: '', replyTo }));
         }
       }
     };
@@ -569,7 +571,7 @@ export function NewPost() {
   // Drafts panel overlay
   if (showDrafts) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen flex flex-col">
         <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border shrink-0">
           <div className="flex items-center gap-4 p-4">
             <button
@@ -627,7 +629,7 @@ export function NewPost() {
 
   return (
     <div className="sm:fixed sm:inset-0 sm:z-50 sm:flex sm:items-end sm:justify-center md:items-center sm:bg-black/60">
-    <div className="w-full min-h-screen bg-background flex flex-col sm:min-h-0 sm:h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl sm:overflow-hidden sm:shadow-2xl">
+    <div className="w-full min-h-screen sm:bg-card flex flex-col sm:min-h-0 sm:h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl sm:overflow-hidden sm:shadow-2xl">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border shrink-0">
         <div className="flex items-center justify-between p-4">
@@ -705,12 +707,12 @@ export function NewPost() {
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="p-4 relative flex-1">
+      {/* Content area — no height constraint on mobile so the page grows with the textarea */}
+      <div className="p-4 relative sm:flex-1 sm:overflow-y-auto">
         <div className="relative">
           <div
             aria-hidden="true"
-            className="absolute inset-0 text-base pointer-events-none select-none overflow-hidden text-foreground"
+            className="absolute inset-0 text-base pointer-events-none select-none overflow-visible text-foreground"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: 0 }}
             dangerouslySetInnerHTML={{
               __html: content
@@ -841,7 +843,7 @@ export function NewPost() {
                     <span className="text-sm font-semibold truncate">{(qUser as any)?.display_name || (qUser as any)?.handle || '—'}</span>
                     <span className="text-xs text-muted-foreground">@{((qUser as any)?.handle || '').replace(/^@/, '')}</span>
                   </div>
-                  <p className="text-sm text-foreground/80 line-clamp-3 whitespace-pre-wrap">{qp.content}</p>
+                  <p className="text-sm text-foreground/80 whitespace-pre-wrap">{qp.content}</p>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">Original post</p>
