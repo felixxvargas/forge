@@ -125,8 +125,9 @@ export function WhatsNewModal() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
-      <div className="bg-card rounded-2xl w-full max-w-md flex flex-col max-h-[85dvh]">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+      <div className="rounded-2xl w-full max-w-md flex flex-col max-h-[85dvh]"
+        style={{ background: 'rgba(35,22,60,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
           <div className="flex items-center gap-2">

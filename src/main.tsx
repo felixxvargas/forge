@@ -9,9 +9,20 @@ if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// Reload the page when Vite fails to load a dynamically imported chunk (stale cache after deploy)
-window.addEventListener('vite:preloadError', () => {
-  window.location.reload();
+// Reload once when a lazy chunk fails to load (stale CDN cache after deploy). Fixes FORGE-3.
+const CHUNK_RELOAD_KEY = 'forge-chunk-reload';
+function reloadOnceForChunkError() {
+  if (!sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+    window.location.reload();
+  }
+}
+window.addEventListener('vite:preloadError', reloadOnceForChunkError);
+window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
+  const msg = (e.reason as any)?.message ?? '';
+  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Failed to load module script')) {
+    reloadOnceForChunkError();
+  }
 });
 
 // Strip OG redirect marker added by middleware loop-breaker (?_r=1)

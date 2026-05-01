@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/android-beta-banner.svg",
+      "destination": "/android-beta",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "forge-social.app" }],
       "destination": "https://www.forge-social.app/:path*",
