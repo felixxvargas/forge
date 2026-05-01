@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Navigate, useLocation, useNavigate } from 'react-router';
+import { Outlet, Navigate, ScrollRestoration, useLocation, useNavigate } from 'react-router';
 import { X, PenSquare } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { DesktopSidebar } from './DesktopSidebar';
@@ -106,6 +106,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh relative">
+      <ScrollRestoration />
       <DesktopSidebar />
       <div className={`md:ml-[60px] lg:ml-[220px] pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4`}>
         <Outlet />

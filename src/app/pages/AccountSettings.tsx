@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Mail, KeyRound } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -95,7 +95,7 @@ export function AccountSettings() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-4">
+        <div className="w-full px-4 h-14 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>

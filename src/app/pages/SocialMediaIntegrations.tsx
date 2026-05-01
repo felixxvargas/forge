@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -275,9 +275,9 @@ export function SocialMediaIntegrations() {
             )}
             <button
               onClick={() => togglePlatform(platform.id)}
-              className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${isSelected ? 'bg-accent' : 'bg-muted'}`}
+              className={`w-11 h-6 rounded-full transition-colors relative shrink-0 overflow-hidden ${isSelected ? 'bg-violet-600' : 'bg-muted'}`}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isSelected ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isSelected ? 'translate-x-[22px]' : 'translate-x-0'}`} />
             </button>
           </div>
         </div>
@@ -300,7 +300,7 @@ export function SocialMediaIntegrations() {
   return (
     <div className="min-h-screen pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="w-full px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(backTo)}

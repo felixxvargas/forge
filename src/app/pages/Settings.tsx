@@ -499,6 +499,13 @@ export function Settings() {
         <div className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">About</h2>
           <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <div className="w-full px-4 py-4 flex items-center gap-3">
+              <Info className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Forge</p>
+                <p className="text-sm text-muted-foreground">{RELEASES[0].version.replace('v', '')}</p>
+              </div>
+            </div>
             <button
               onClick={() => navigate('/settings/whats-new')}
               className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
@@ -509,13 +516,6 @@ export function Settings() {
                 <p className="text-sm text-muted-foreground">See the latest features and fixes</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <button className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors">
-              <Info className="w-5 h-5 text-muted-foreground" />
-              <div className="text-left flex-1">
-                <p className="font-medium">About Forge</p>
-                <p className="text-sm text-muted-foreground">Version {RELEASES[0].version.replace('v', '')}</p>
-              </div>
             </button>
           </div>
         </div>

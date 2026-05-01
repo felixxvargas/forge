@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, AlertTriangle } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -341,7 +341,7 @@ export function CommunityDetail() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-4">
+        <div className="w-full px-4 h-14 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>

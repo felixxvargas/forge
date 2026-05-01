@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { ArrowLeft, MessageCircle, Lock, FileText, User, Filter, Share2, Repeat2, Heart } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -56,7 +56,7 @@ export function PrivacySettings() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-4">
+        <div className="w-full px-4 h-14 flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-secondary rounded-full transition-colors"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   ArrowLeft, Flame, Users, Gamepad2, Clock, Loader2,
@@ -250,7 +250,7 @@ export function FlareDetail() {
       <div className="min-h-screen bg-background pb-24">
         {/* header skeleton */}
         <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-          <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-3 animate-pulse">
+          <div className="w-full px-4 h-14 flex items-center gap-3 animate-pulse">
             <div className="w-9 h-9 rounded-lg bg-muted/30 shrink-0" />
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-muted/40 shrink-0" />
@@ -315,7 +315,7 @@ export function FlareDetail() {
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="w-full px-4 h-14 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>

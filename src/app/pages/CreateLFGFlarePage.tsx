@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Search, Loader2, Flame, Users, Gamepad2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -185,7 +185,7 @@ export function CreateLFGFlarePage() {
 
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="w-full px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground"
