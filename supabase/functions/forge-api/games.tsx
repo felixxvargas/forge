@@ -13,6 +13,8 @@ interface GameData {
   description?: string;
   genres?: string[];
   platforms?: string[];
+  parent_game_id?: string | null;
+  game_category?: number | null;
 }
 
 interface ArtworkData {
@@ -308,6 +310,166 @@ export async function getGameVersions(gameId: string, title: string, limit = 6) 
     .or('hidden.is.null,hidden.eq.false')
     .limit(limit);
   return data ?? [];
+}
+
+/**
+ * Upsert a game fetched from IGDB into the local DB and return it with artwork.
+ */
+async function upsertIGDBGame(g: any): Promise<any> {
+  const gameId = `igdb-${g.id}`;
+  const coverUrl = g.cover?.image_id
+    ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
+    : null;
+  const year = g.first_release_date
+    ? new Date(g.first_release_date * 1000).getFullYear()
+    : null;
+
+  const { data: upserted } = await supabase
+    .from('forge_games_17285bd7')
+    .upsert({
+      id: gameId,
+      title: g.name,
+      igdb_id: g.id,
+      year,
+      description: g.summary ?? null,
+      genres: g.genres?.map((x: any) => x.name) ?? [],
+      platforms: g.platforms?.map((x: any) => x.name) ?? [],
+      game_category: g.category ?? null,
+    }, { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (coverUrl && upserted) {
+    await supabase
+      .from('forge_game_artwork_17285bd7')
+      .upsert({ game_id: gameId, artwork_type: 'cover', url: coverUrl }, { onConflict: 'game_id,artwork_type', ignoreDuplicates: true });
+    return { ...upserted, artwork: [{ artwork_type: 'cover', url: coverUrl }] };
+  }
+  return upserted ? { ...upserted, artwork: [] } : null;
+}
+
+/**
+ * Get expansions of a game, and (if this game is an expansion) its parent game.
+ * Uses IGDB when available; falls back to DB-only for games without an igdb_id.
+ */
+export async function getExpansions(gameId: string): Promise<{ expansions: any[]; parentGame: any | null }> {
+  const { data: dbGame } = await supabase
+    .from('forge_games_17285bd7')
+    .select('*, artwork:forge_game_artwork_17285bd7(*)')
+    .eq('id', gameId)
+    .single();
+
+  if (!dbGame) return { expansions: [], parentGame: null };
+
+  // Check DB-stored relationships first
+  const { data: dbExpansions } = await supabase
+    .from('forge_games_17285bd7')
+    .select('*, artwork:forge_game_artwork_17285bd7(*)')
+    .eq('parent_game_id', gameId)
+    .or('hidden.is.null,hidden.eq.false');
+
+  let parentGame: any | null = null;
+  if (dbGame.parent_game_id) {
+    const { data: p } = await supabase
+      .from('forge_games_17285bd7')
+      .select('*, artwork:forge_game_artwork_17285bd7(*)')
+      .eq('id', dbGame.parent_game_id)
+      .single();
+    parentGame = p ?? null;
+  }
+
+  if (dbExpansions && dbExpansions.length > 0 && (parentGame || !dbGame.parent_game_id)) {
+    return { expansions: dbExpansions ?? [], parentGame };
+  }
+
+  // Fall through to IGDB for richer data
+  const igdbId = dbGame.igdb_id;
+  if (!igdbId) return { expansions: dbExpansions ?? [], parentGame };
+
+  try {
+    const clientId = Deno.env.get('IGDB_CLIENT_ID');
+    const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET');
+    if (!clientId || !clientSecret) return { expansions: dbExpansions ?? [], parentGame };
+
+    const accessToken = await getIGDBAccessToken();
+    const headers = {
+      'Client-ID': clientId,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'text/plain',
+    };
+
+    // Fetch the game itself to get category + parent_game
+    const selfRes = await fetch('https://api.igdb.com/v4/games', {
+      method: 'POST',
+      headers,
+      body: `fields category, parent_game; where id = ${igdbId};`,
+    });
+    const [selfData] = selfRes.ok ? (await selfRes.json() as any[]) : [null];
+
+    const category = selfData?.category ?? null;
+    const igdbParentId = selfData?.parent_game ?? null;
+
+    // Update local record with category
+    if (category !== null && category !== dbGame.game_category) {
+      await supabase
+        .from('forge_games_17285bd7')
+        .update({ game_category: category })
+        .eq('id', gameId);
+    }
+
+    // Fetch parent game from IGDB if this is an expansion
+    if (igdbParentId && !parentGame) {
+      const parentRes = await fetch('https://api.igdb.com/v4/games', {
+        method: 'POST',
+        headers,
+        body: `fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category; where id = ${igdbParentId};`,
+      });
+      if (parentRes.ok) {
+        const [parentData] = (await parentRes.json()) as any[];
+        if (parentData) {
+          const upserted = await upsertIGDBGame(parentData);
+          if (upserted) {
+            // Link parent_game_id on the current game
+            await supabase
+              .from('forge_games_17285bd7')
+              .update({ parent_game_id: upserted.id })
+              .eq('id', gameId);
+            parentGame = upserted;
+          }
+        }
+      }
+    }
+
+    // Fetch expansions of this game from IGDB (category 2=expansion, 4=standalone_expansion)
+    const expansionsRes = await fetch('https://api.igdb.com/v4/games', {
+      method: 'POST',
+      headers,
+      body: `fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category, parent_game; where parent_game = ${igdbId} & category = (2, 4); limit 20;`,
+    });
+    const igdbExpansions: any[] = expansionsRes.ok ? (await expansionsRes.json()) : [];
+
+    const upsertedExpansions: any[] = [];
+    for (const exp of igdbExpansions) {
+      try {
+        const upserted = await upsertIGDBGame(exp);
+        if (upserted) {
+          // Set parent_game_id on the expansion
+          await supabase
+            .from('forge_games_17285bd7')
+            .update({ parent_game_id: gameId, game_category: exp.category ?? null })
+            .eq('id', upserted.id);
+          upsertedExpansions.push(upserted);
+        }
+      } catch { /* skip */ }
+    }
+
+    return {
+      expansions: upsertedExpansions.length > 0 ? upsertedExpansions : (dbExpansions ?? []),
+      parentGame,
+    };
+  } catch {
+    return { expansions: dbExpansions ?? [], parentGame };
+  }
 }
 
 /**

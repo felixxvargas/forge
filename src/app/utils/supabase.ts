@@ -566,6 +566,15 @@ export const posts = {
     return data ?? [];
   },
 
+  async getManyByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const { data } = await supabase
+      .from('posts')
+      .select('*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)')
+      .in('id', ids);
+    return data ?? [];
+  },
+
   async getByCommunity(communityId: string) {
     const { data, error } = await supabase
       .from('posts')

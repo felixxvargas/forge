@@ -61,7 +61,7 @@ interface AppDataContextType {
   getUserByHandle: (handle: string) => any | undefined;
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
   createGroup: (name: string, description: string, icon: string, type: string) => Promise<any>;
-  refreshFeed: () => Promise<void>;
+  refreshFeed: () => Promise<any>;
   refreshGroups: () => Promise<void>;
   markNotificationsAsRead: () => void;
   followGame: (gameId: string) => Promise<void>;
@@ -74,6 +74,48 @@ interface AppDataContextType {
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 AppDataContext.displayName = 'AppDataContext';
+
+// ─── Client-side data cache (localStorage, per-user, 15-min TTL) ─────────────
+// Lets the app show content immediately on mobile "return to app" without a
+// loading screen, while a background refresh keeps data fresh.
+
+const DATA_CACHE_KEY = 'forge-data-v1';
+const DATA_CACHE_TTL = 15 * 60 * 1000;
+
+interface DataCache {
+  userId: string;
+  ts: number;
+  currentUser: any;
+  posts: any[];
+  users: any[];
+  groups: any[];
+  likedPosts: string[];
+  repostedPosts: string[];
+  followingIds: string[];
+  followedGameIds: string[];
+  memberGroupIds: string[];
+  externalFollows: any[];
+}
+
+function readDataCache(userId: string): DataCache | null {
+  try {
+    const raw = localStorage.getItem(DATA_CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw) as DataCache;
+    if (cache.userId !== userId) return null;
+    if (Date.now() - cache.ts > DATA_CACHE_TTL) return null;
+    return cache;
+  } catch { return null; }
+}
+
+function writeDataCache(data: DataCache): void {
+  try { localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+function clearDataCache(): void {
+  try { localStorage.removeItem(DATA_CACHE_KEY); } catch { /* ignore */ }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Ensure profile objects never carry null/undefined on fields the UI depends on. */
 function normalizeProfile(profile: any): any {
@@ -98,6 +140,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Ref to capture the users array loaded during refreshFeed, used by the init effect
   // to detect topic accounts in the follows table without relying on async state updates
   const lastLoadedUsersRef = useRef<any[]>([]);
+  // Refs for sync access to user interaction sets (used for cache writes)
+  const likedPostsRef = useRef<string[]>([]);
+  const repostedPostsRef = useRef<string[]>([]);
+  const followingIdsRef = useRef<string[]>([]);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
@@ -175,17 +221,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const normalizedUser = { ...normalizeProfile(profile), communities: memberships };
       currentUserRef.current = normalizedUser;
       setCurrentUser(normalizedUser);
+      likedPostsRef.current = likedIds;
       setLikedPosts(new Set(likedIds));
+      repostedPostsRef.current = repostedIds;
       setRepostedPosts(new Set(repostedIds));
       setBlockedUsers(new Set(blockedIds));
       setMutedUsers(new Set(mutedIds));
       // Also restore topic account follows stored in game_lists._topicFollows
       const topicFollows: string[] = (profile?.game_lists?._topicFollows) ?? [];
-      setFollowingIds(new Set([...followingIdList, ...topicFollows]));
+      const mergedFollowingIds = [...followingIdList, ...topicFollows];
+      followingIdsRef.current = mergedFollowingIds;
+      setFollowingIds(new Set(mergedFollowingIds));
       setHasUnreadNotifications(unreadCount > 0);
       const externalFollowsList: any[] = (profile?.game_lists?._externalFollows) ?? [];
       setExternalFollows(externalFollowsList);
-      return { topicFollows, externalFollows: externalFollowsList, followingIdList };
+      return { topicFollows, externalFollows: externalFollowsList, followingIdList, likedIds, repostedIds };
     } catch (e) {
       console.error('Error loading user data:', e);
       return { topicFollows: [], externalFollows: [], followingIdList: [] };
@@ -235,12 +285,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const refreshFeed = useCallback(async () => {
     let loadedUsers: any[] = [];
+    let loadedPosts: any[] = [];
+    let loadedGroups: any[] = [];
     try {
       const userId = sessionRef.current?.user?.id;
       const feed = userId
         ? await postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current, memberGroupIdsRef.current)
         : await postsAPI.getFeed(50);
       setPostList(feed);
+      loadedPosts = feed;
     } catch (e) {
       console.error('Error loading feed:', e);
     }
@@ -255,9 +308,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     try {
       const allGroups = await groupsAPI.getAll();
       setGroupsList(allGroups);
+      loadedGroups = allGroups;
     } catch (e) {
       console.error('[AppData] Error loading groups:', e);
     }
+    return { posts: loadedPosts, users: loadedUsers, groups: loadedGroups };
   }, []);
 
   // Listen for auth state changes
@@ -389,16 +444,44 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Load data when session changes
   useEffect(() => {
     const init = async () => {
-      setIsLoading(true);
-      setTopicPostsReady(false);
+      const userId = session?.user?.id;
+
+      // Hydrate from client-side cache instantly so the loading screen is skipped
+      // when the user returns to the app (e.g. after backgrounding on mobile).
+      // A background refresh always runs to keep data current.
+      const cache = userId ? readDataCache(userId) : null;
+      if (cache) {
+        setCurrentUser(cache.currentUser);
+        currentUserRef.current = cache.currentUser;
+        setPostList(cache.posts);
+        setUsers(cache.users);
+        setGroupsList(cache.groups);
+        likedPostsRef.current = cache.likedPosts;
+        setLikedPosts(new Set(cache.likedPosts));
+        repostedPostsRef.current = cache.repostedPosts;
+        setRepostedPosts(new Set(cache.repostedPosts));
+        followingIdsRef.current = cache.followingIds;
+        setFollowingIds(new Set(cache.followingIds));
+        setFollowedGameIds(new Set(cache.followedGameIds));
+        followedGameIdsRef.current = cache.followedGameIds;
+        memberGroupIdsRef.current = cache.memberGroupIds ?? [];
+        setExternalFollows(cache.externalFollows ?? []);
+        lastLoadedUsersRef.current = cache.users;
+        setIsLoading(false); // Show cached content, no loading screen
+        setTopicPostsReady(true);
+      } else {
+        setIsLoading(true);
+        setTopicPostsReady(false);
+      }
+
       try {
-        await refreshFeed();
+        let feedData = await refreshFeed();
         const loadedUsers: any[] = lastLoadedUsersRef.current;
         if (session?.user) {
           const loadResult = await loadUserData(session.user.id);
           // Re-fetch the feed now that game/group IDs are populated in refs
           if (followedGameIdsRef.current.length > 0 || memberGroupIdsRef.current.length > 0) {
-            await refreshFeed();
+            feedData = await refreshFeed();
           }
           const topicFollows = loadResult?.topicFollows ?? [];
           const rawFollowingIdList = loadResult?.followingIdList ?? [];
@@ -512,6 +595,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               console.error('Error loading external follow posts:', e);
             }
           }
+          // Write fresh data to client-side cache for instant hydration on next load
+          if (userId && currentUserRef.current) {
+            writeDataCache({
+              userId,
+              ts: Date.now(),
+              currentUser: currentUserRef.current,
+              posts: feedData.posts,
+              users: feedData.users,
+              groups: feedData.groups,
+              likedPosts: likedPostsRef.current,
+              repostedPosts: repostedPostsRef.current,
+              followingIds: followingIdsRef.current,
+              followedGameIds: followedGameIdsRef.current,
+              memberGroupIds: memberGroupIdsRef.current,
+              externalFollows: loadResult?.externalFollows ?? [],
+            });
+          }
         } else {
           setCurrentUser(null);
         }
@@ -537,6 +637,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await auth.signOut();
+    clearDataCache();
     setCurrentUser(null);
     setPostList([]);
     setTopicPosts([]);

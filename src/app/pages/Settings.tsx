@@ -6,6 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../utils/supabase';
+import { RELEASES } from '../components/WhatsNew';
 
 interface LinkedAccount {
   id: string;
@@ -386,9 +387,8 @@ export function Settings() {
             { label: 'Post for the first time', done: hasPosted === true },
             { label: 'Join or create a group', done: ((currentUser as any).communities?.length ?? 0) > 0 },
           ];
-          const remaining = tasks.filter(t => !t.done);
-          if (remaining.length === 0) return null;
-          const completedCount = tasks.length - remaining.length;
+          const completedCount = tasks.filter(t => t.done).length;
+          if (completedCount === tasks.length) return null;
           return (
             <div className="mb-8">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Getting Started</h2>
@@ -400,10 +400,12 @@ export function Settings() {
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">{completedCount} of {tasks.length} complete</p>
                 <div className="space-y-3">
-                  {remaining.map((t, i) => (
-                    <div key={i} className="flex items-center gap-2.5 text-sm text-foreground">
-                      <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/50 flex items-center justify-center shrink-0" />
-                      <span>{t.label}</span>
+                  {tasks.map((t, i) => (
+                    <div key={i} className={`flex items-center gap-2.5 text-sm ${t.done ? 'text-muted-foreground' : 'text-foreground'}`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${t.done ? 'border-accent bg-accent' : 'border-muted-foreground/50'}`}>
+                        {t.done && <Check className="w-2.5 h-2.5 text-accent-foreground" />}
+                      </div>
+                      <span className={t.done ? 'line-through' : ''}>{t.label}</span>
                     </div>
                   ))}
                 </div>
@@ -512,7 +514,7 @@ export function Settings() {
               <Info className="w-5 h-5 text-muted-foreground" />
               <div className="text-left flex-1">
                 <p className="font-medium">About Forge</p>
-                <p className="text-sm text-muted-foreground">Version 0.2</p>
+                <p className="text-sm text-muted-foreground">Version {RELEASES[0].version.replace('v', '')}</p>
               </div>
             </button>
           </div>

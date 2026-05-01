@@ -215,11 +215,25 @@ export function Profile() {
     Promise.all([
       postsAPI.getByUser(profileUser.id),
       postsAPI.getRepostsByUser(profileUser.id),
-    ]).then(([userPosts, userReposts]) => {
+    ]).then(async ([userPosts, userReposts]) => {
       const all = [...userPosts, ...userReposts];
       all.sort((a, b) =>
-        new Date(b.repostedAt || b.created_at).getTime() - new Date(a.repostedAt || a.created_at).getTime()
+        new Date((b as any).repostedAt || b.created_at).getTime() - new Date((a as any).repostedAt || a.created_at).getTime()
       );
+      // Resolve quotedPost for any post that has quote_post_id
+      const quoteIds = [...new Set(
+        all.filter((p: any) => p.quote_post_id && !p.quotedPost).map((p: any) => p.quote_post_id as string)
+      )];
+      if (quoteIds.length > 0) {
+        try {
+          const quotedPosts = await postsAPI.getManyByIds(quoteIds);
+          const byId = new Map(quotedPosts.map((p: any) => [p.id, p]));
+          setProfileUserPosts(all.map((p: any) =>
+            p.quote_post_id && byId.has(p.quote_post_id) ? { ...p, quotedPost: byId.get(p.quote_post_id) } : p
+          ));
+          return;
+        } catch { /* fall through */ }
+      }
       setProfileUserPosts(all);
     }).catch(() => setProfileUserPosts([]));
   }, [profileUser?.id]);

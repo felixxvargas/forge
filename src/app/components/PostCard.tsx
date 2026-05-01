@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { UserBadgeIcons } from './UserBadgeIcons';
+
 import { useNavigate } from 'react-router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
@@ -366,7 +366,6 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
             >
               {(user as any).display_name || user.handle}
             </button>
-            <UserBadgeIcons handle={user.handle || ''} createdAt={(user as any).created_at} />
             <button
               onClick={handleUserClick}
               className="text-sm text-muted-foreground hover:underline shrink-0"

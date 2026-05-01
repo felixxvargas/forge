@@ -14,36 +14,55 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
   const navigate = useNavigate();
   const { getUserByHandle } = useAppData();
 
-  // Process a segment of text for @user mentions (single-word handles only)
-  const processUserMentions = (segment: string, keyPrefix: string): ReactNode[] => {
-    const mentionRegex = /@(\w+)/g;
+  // Process a text segment for URLs and @mentions
+  const processSegment = (segment: string, keyPrefix: string): ReactNode[] => {
+    const re = /(https?:\/\/[^\s<>"'\])}]+)|(@\w+)/g;
     const parts: ReactNode[] = [];
     let lastIndex = 0;
     let match;
 
-    while ((match = mentionRegex.exec(segment)) !== null) {
+    while ((match = re.exec(segment)) !== null) {
       if (match.index > lastIndex) {
         parts.push(segment.substring(lastIndex, match.index));
       }
-      const handle = match[0];
-      const handleWithoutAt = match[1];
-      parts.push(
-        <button
-          key={`${keyPrefix}-${match.index}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onMentionClick) {
-              onMentionClick(handle);
-            } else {
-              const user = getUserByHandle(handleWithoutAt);
-              if (user) navigate(`/profile/${user.id}`);
-            }
-          }}
-          className="text-accent hover:underline font-bold"
-        >
-          {handle}
-        </button>
-      );
+      if (match[1]) {
+        // URL
+        const url = match[1];
+        const displayUrl = url.length > 60 ? url.slice(0, 57) + '...' : url;
+        parts.push(
+          <a
+            key={`${keyPrefix}-url-${match.index}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="font-bold text-accent hover:underline break-all"
+          >
+            {displayUrl}
+          </a>
+        );
+      } else {
+        // @mention
+        const handle = match[0];
+        const handleWithoutAt = match[2];
+        parts.push(
+          <button
+            key={`${keyPrefix}-${match.index}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onMentionClick) {
+                onMentionClick(handle);
+              } else {
+                const user = getUserByHandle(handleWithoutAt);
+                if (user) navigate(`/profile/${user.id}`);
+              }
+            }}
+            className="text-accent hover:underline font-bold"
+          >
+            {handle}
+          </button>
+        );
+      }
       lastIndex = match.index + match[0].length;
     }
 
@@ -60,9 +79,8 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
     let match;
 
     while ((match = gameRegex.exec(text)) !== null) {
-      // Process any text before this match for user mentions
       if (match.index > lastIndex) {
-        parts.push(...processUserMentions(text.substring(lastIndex, match.index), `pre-${match.index}`));
+        parts.push(...processSegment(text.substring(lastIndex, match.index), `pre-${match.index}`));
       }
       parts.push(
         <button
@@ -76,15 +94,14 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
       lastIndex = match.index + match[0].length;
     }
 
-    // Process remaining text for user mentions
     if (lastIndex < text.length) {
-      parts.push(...processUserMentions(text.substring(lastIndex), 'post'));
+      parts.push(...processSegment(text.substring(lastIndex), 'post'));
     }
 
     return <>{parts}</>;
   }
 
-  // No game — just process user mentions
-  const parts = processUserMentions(text, 'u');
+  // No game — process URLs and @mentions
+  const parts = processSegment(text, 'u');
   return <>{parts.length > 0 ? parts : text}</>;
 }

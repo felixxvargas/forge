@@ -31,7 +31,7 @@ export function buildHighlightedHtml(
   selectedGame: { id: string; title: string } | null,
   taggedGroups?: { id: string; name: string }[],
 ): string {
-  type Range = { start: number; end: number; type: 'accent' | 'group' };
+  type Range = { start: number; end: number; type: 'accent' | 'group' | 'url' };
   const ranges: Range[] = [];
 
   // 1. Highlight bare GameTitle (no @ — game is tagged via chip, title appears as plain text)
@@ -60,9 +60,18 @@ export function buildHighlightedHtml(
     }
   }
 
-  // 3. Highlight @userHandle (single-word, not already covered)
-  const handleRe = /@(\w+)/g;
+  // 3. Highlight URLs (before @mentions so a URL containing @ doesn't get split)
+  const urlRe = /https?:\/\/[^\s<>"'\])}]+/g;
   let m: RegExpExecArray | null;
+  while ((m = urlRe.exec(text)) !== null) {
+    const start = m.index;
+    const end = m.index + m[0].length;
+    const alreadyCovered = ranges.some(r => start < r.end && end > r.start);
+    if (!alreadyCovered) ranges.push({ start, end, type: 'url' });
+  }
+
+  // 4. Highlight @userHandle (single-word, not already covered)
+  const handleRe = /@(\w+)/g;
   while ((m = handleRe.exec(text)) !== null) {
     const start = m.index;
     const end = m.index + m[0].length;
@@ -84,6 +93,8 @@ export function buildHighlightedHtml(
     html += escapeHtml(text.slice(cursor, start));
     if (type === 'group') {
       html += `<span style="color:#86efac;font-weight:700">${escapeHtml(text.slice(start, end))}</span>`;
+    } else if (type === 'url') {
+      html += `<span style="color:var(--accent);font-weight:700">${escapeHtml(text.slice(start, end))}</span>`;
     } else {
       html += `<span style="color:var(--accent);-webkit-text-stroke:0.4px var(--accent)">${escapeHtml(text.slice(start, end))}</span>`;
     }

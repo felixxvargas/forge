@@ -435,7 +435,7 @@ export function PostDetail() {
       <div className="min-h-screen pb-20">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-          <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+          <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-4">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-full transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -515,7 +515,7 @@ export function PostDetail() {
     <div className="min-h-screen pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-secondary rounded-full transition-colors"
@@ -539,46 +539,49 @@ export function PostDetail() {
               transition={{ duration: 0.35, ease: 'easeOut' }}
               className="overflow-hidden"
             >
-              <div className="bg-card border-b border-border">
-                <div className="px-4 pt-4 pb-4">
-                  <PostCard
-                    post={parentPost}
-                    user={parentUser}
-                    onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-                    onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-                    onComment={() => navigate(`/post/${encodeURIComponent(parentPost.id)}#comments`)}
-                    isLiked={likedPosts.has(parentPost.id)}
-                    isReposted={repostedPosts.has(parentPost.id)}
-                  />
-                </div>
+              <div className="px-3 mt-3">
+                <PostCard
+                  post={parentPost}
+                  user={parentUser}
+                  onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                  onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                  onComment={() => navigate(`/post/${encodeURIComponent(parentPost.id)}#comments`)}
+                  isLiked={likedPosts.has(parentPost.id)}
+                  isReposted={repostedPosts.has(parentPost.id)}
+                />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Post + interaction summaries share the same card background */}
-        <div className="bg-card border-b border-border">
-          <div className="px-4 pt-4 pb-4">
-            <PostCard
-              post={detailPost}
-              user={activeUser}
-              onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-              onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-              onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
-              onDelete={currentUser && activePost.user_id === currentUser.id
-                ? async (id) => { await deletePost(id); navigate(-1); }
-                : undefined}
-              isDetailView={true}
-              isReposted={repostedPosts.has(activePost.id)}
-              isLiked={likedPosts.has(activePost.id)}
-              replyToHandle={
-                parentPost
-                  ? ((parentPost.author?.handle ?? getUserById(parentPost.user_id)?.handle ?? '').replace(/^@/, '') || undefined)
-                  : undefined
-              }
-              onReplyToClick={parentPost ? handleReplyToClick : undefined}
-            />
-          </div>
+        {/* Post + interaction summaries — rounded card matching Feed style */}
+        <div
+          className="bg-card rounded-xl overflow-hidden mx-3 mt-3 mb-3"
+          style={{
+            backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(255,255,255,0.055) 0%, transparent 55%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.18)',
+          }}
+        >
+          <PostCard
+            post={detailPost}
+            user={activeUser}
+            onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+            onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+            onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            onDelete={currentUser && activePost.user_id === currentUser.id
+              ? async (id) => { await deletePost(id); navigate(-1); }
+              : undefined}
+            isDetailView={true}
+            noBacker
+            isReposted={repostedPosts.has(activePost.id)}
+            isLiked={likedPosts.has(activePost.id)}
+            replyToHandle={
+              parentPost
+                ? ((parentPost.author?.handle ?? getUserById(parentPost.user_id)?.handle ?? '').replace(/^@/, '') || undefined)
+                : undefined
+            }
+            onReplyToClick={parentPost ? handleReplyToClick : undefined}
+          />
 
           {/* Interaction summaries — likes, reposts, quote posts */}
           {(likers.length > 0 || reposters.length > 0 || quotePosts.length > 0) && (
@@ -1135,17 +1138,30 @@ export function PostDetail() {
               )}
             </div>
           ) : (
-            <div>
-              {replies.map((reply, index) => {
+            <div className="px-3 pt-2">
+              {replies.map((reply) => {
                 const replyUser = reply.author ?? getUserById(reply.user_id);
                 if (!replyUser) return null;
                 const subReplies = subRepliesMap[reply.id] ?? [];
+
+                // Pick the single best sub-reply: highest engagement, tie-break by oldest
+                const bestSubReply = subReplies.length > 0
+                  ? subReplies.reduce((best: any, cur: any) => {
+                      const score = (p: any) => (p.like_count ?? 0) + (p.repost_count ?? 0) + (p.comment_count ?? 0);
+                      const diff = score(cur) - score(best);
+                      if (diff > 0) return cur;
+                      if (diff < 0) return best;
+                      return new Date(cur.created_at) < new Date(best.created_at) ? cur : best;
+                    }, subReplies[0])
+                  : null;
+
+                const hiddenSubReplies = (reply.comment_count ?? 0) > (bestSubReply ? 1 : 0)
+                  ? (reply.comment_count ?? 0) - (bestSubReply ? 1 : 0)
+                  : 0;
+
                 return (
                   <div key={reply.id}>
-                    {/* Horizontal divider between replies — but NOT between post and first reply */}
-                    {index > 0 && <div className="border-t border-border" />}
-
-                    {/* Top-level reply */}
+                    {/* Top-level reply — full card like Feed */}
                     <PostCard
                       post={reply}
                       user={replyUser}
@@ -1157,41 +1173,39 @@ export function PostDetail() {
                         : undefined}
                       isLiked={likedPosts.has(reply.id)}
                       isReposted={repostedPosts.has(reply.id)}
-                      noBacker={true}
                     />
 
-                    {/* Sub-replies — connected with a vertical thread line */}
-                    {subReplies.length > 0 && (
-                      <div className="border-l-2 border-border/60 ml-5">
-                        {subReplies.map((sub) => {
-                          const subUser = sub.author ?? getUserById(sub.user_id);
-                          if (!subUser) return null;
-                          return (
-                            <div key={sub.id} className="border-t border-border cursor-pointer" onClick={() => navigate(`/post/${encodeURIComponent(sub.id)}`)}>
-                              <PostCard
-                                post={sub}
-                                user={subUser}
-                                onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-                                onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-                                onComment={() => navigate(`/post/${encodeURIComponent(sub.id)}#comments`)}
-                                isLiked={likedPosts.has(sub.id)}
-                                isReposted={repostedPosts.has(sub.id)}
-                                noBacker={true}
-                              />
-                            </div>
-                          );
-                        })}
-                        {/* "More replies" link if there are additional sub-replies beyond what's shown */}
-                        {(reply.comment_count ?? 0) > subReplies.length && (
-                          <button
-                            onClick={() => navigate(`/post/${encodeURIComponent(reply.id)}`)}
-                            className="w-full text-left px-4 py-3 text-xs text-accent hover:underline border-t border-border"
+                    {/* Best sub-reply — connected with a vertical thread line */}
+                    {bestSubReply && (() => {
+                      const subUser = bestSubReply.author ?? getUserById(bestSubReply.user_id);
+                      if (!subUser) return null;
+                      return (
+                        <div className="ml-5 pl-3 border-l-2 border-border/50 -mt-1 mb-3">
+                          <div
+                            className="cursor-pointer"
+                            onClick={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}`)}
                           >
-                            View {(reply.comment_count ?? 0) - subReplies.length} more {(reply.comment_count ?? 0) - subReplies.length === 1 ? 'reply' : 'replies'}
-                          </button>
-                        )}
-                      </div>
-                    )}
+                            <PostCard
+                              post={bestSubReply}
+                              user={subUser}
+                              onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                              onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                              onComment={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}#comments`)}
+                              isLiked={likedPosts.has(bestSubReply.id)}
+                              isReposted={repostedPosts.has(bestSubReply.id)}
+                            />
+                          </div>
+                          {hiddenSubReplies > 0 && (
+                            <button
+                              onClick={() => navigate(`/post/${encodeURIComponent(reply.id)}`)}
+                              className="text-xs text-accent hover:underline pb-1 pl-1"
+                            >
+                              View {hiddenSubReplies} more {hiddenSubReplies === 1 ? 'reply' : 'replies'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

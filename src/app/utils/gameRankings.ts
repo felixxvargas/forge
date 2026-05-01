@@ -54,6 +54,21 @@ export async function loadRankMapOnly(): Promise<void> {
       for (const [gId, users] of Object.entries(byGame)) {
         scoredMap[gId] = (scoredMap[gId] ?? 0) + users.size;
       }
+      // Roll up expansion scores to parent games
+      const scoredIds = Object.keys(scoredMap).filter(id => scoredMap[id] > 0);
+      if (scoredIds.length > 0) {
+        const { data: expansionLinks } = await supabase
+          .from('forge_games_17285bd7')
+          .select('id, parent_game_id')
+          .in('id', scoredIds)
+          .not('parent_game_id', 'is', null);
+        for (const row of expansionLinks ?? []) {
+          if (row.parent_game_id) {
+            scoredMap[row.parent_game_id] = (scoredMap[row.parent_game_id] ?? 0) + scoredMap[row.id];
+          }
+        }
+      }
+
       const sorted = Object.entries(scoredMap)
         .filter(([, s]) => s > 0)
         .sort(([, a], [, b]) => b - a)
@@ -95,6 +110,21 @@ export async function loadTrendingRankings(): Promise<RankedGame[]> {
       }
       for (const [gId, users] of Object.entries(byGame)) {
         scoredMap[gId] = (scoredMap[gId] ?? 0) + users.size;
+      }
+
+      // Roll up expansion scores to parent games
+      const scoredIds = Object.keys(scoredMap).filter(id => scoredMap[id] > 0);
+      if (scoredIds.length > 0) {
+        const { data: expansionLinks } = await supabase
+          .from('forge_games_17285bd7')
+          .select('id, parent_game_id')
+          .in('id', scoredIds)
+          .not('parent_game_id', 'is', null);
+        for (const row of expansionLinks ?? []) {
+          if (row.parent_game_id) {
+            scoredMap[row.parent_game_id] = (scoredMap[row.parent_game_id] ?? 0) + scoredMap[row.id];
+          }
+        }
       }
 
       // Sort all active game IDs by score descending, take top 1000

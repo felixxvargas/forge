@@ -81,7 +81,7 @@ export function OnboardingTooltip() {
     <div
       className="fixed left-4 right-4 md:left-auto md:right-4 md:w-72 z-[200] rounded-2xl shadow-2xl"
       style={{
-        top: '57px',
+        top: '70px',
         background: 'rgba(45,31,71,0.65)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',

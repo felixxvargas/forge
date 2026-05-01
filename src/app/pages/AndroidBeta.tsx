@@ -1,26 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ArrowLeft, Smartphone, CheckCircle, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, Smartphone, CheckCircle, Loader2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { supabase } from '../utils/supabase';
+import { ProfileAvatar } from '../components/ProfileAvatar';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
-
-// SQL to create the beta_signups table (run once in Supabase SQL editor):
-//
-// CREATE TABLE IF NOT EXISTS beta_signups (
-//   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-//   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-//   email text NOT NULL,
-//   platform text NOT NULL DEFAULT 'android',
-//   status text NOT NULL DEFAULT 'pending',
-//   created_at timestamptz NOT NULL DEFAULT now(),
-//   UNIQUE(user_id, platform)
-// );
-// ALTER TABLE beta_signups ENABLE ROW LEVEL SECURITY;
-// CREATE POLICY "Users can insert own beta signup" ON beta_signups
-//   FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-// CREATE POLICY "Users can read own beta signup" ON beta_signups
-//   FOR SELECT TO authenticated USING (user_id = auth.uid());
 
 export function AndroidBeta() {
   const navigate = useNavigate();
@@ -44,8 +28,7 @@ export function AndroidBeta() {
       .eq('user_id', currentUser.id)
       .eq('platform', 'android')
       .maybeSingle()
-      .then(({ data }) => { if (data) setSubmitted(true); })
-      .catch(() => {});
+      .then(({ data }) => { if (data) setSubmitted(true); }, () => {});
   }, [isAuthenticated, currentUser?.id]);
 
   const handleSubmit = async () => {
@@ -81,7 +64,7 @@ export function AndroidBeta() {
   return (
     <div className="min-h-screen pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -130,14 +113,23 @@ export function AndroidBeta() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
-              <p className="text-sm font-semibold">Your invite will be sent to</p>
-              <div className="flex items-center gap-3 bg-secondary rounded-xl px-4 py-3">
-                <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium">{userEmail || 'Loading…'}</span>
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <p className="text-sm font-semibold">Signing up as</p>
+              <div className="flex items-center gap-3 p-3 bg-secondary rounded-xl">
+                <ProfileAvatar
+                  username={currentUser?.display_name || currentUser?.handle || '?'}
+                  profilePicture={currentUser?.profile_picture}
+                  size="md"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-sm truncate">{currentUser?.display_name || currentUser?.handle}</p>
+                  <p className="text-xs text-muted-foreground truncate">{currentUser?.handle}</p>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Google Play will send a beta invitation to this address. Accept it to install Forge on your Android device.
+                Google Play will send a beta invitation to{' '}
+                <span className="text-foreground font-medium">{userEmail || '…'}</span>.
+                Accept it to install Forge on your Android device.
               </p>
             </div>
 

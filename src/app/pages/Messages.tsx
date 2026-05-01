@@ -1197,7 +1197,7 @@ export function Messages() {
                     </div>
                   )}
                   {showRead && (
-                    <p className="text-xs text-accent-foreground/50 mt-0.5">Read</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Read</p>
                   )}
                 </div>
               </div>

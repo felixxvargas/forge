@@ -254,6 +254,11 @@ export const gamesAPI = {
   async getGameVersions(gameId: string, title: string, limit = 6) {
     return apiRequest(`/games/${gameId}/versions?title=${encodeURIComponent(title)}&limit=${limit}`);
   },
+
+  async getExpansions(gameId: string): Promise<{ expansions: any[]; parentGame: any | null }> {
+    const res: any = await apiRequest(`/games/${gameId}/expansions`);
+    return { expansions: res?.expansions ?? [], parentGame: res?.parentGame ?? null };
+  },
 };
 
 // ===== RAWG (fallback game search) =====

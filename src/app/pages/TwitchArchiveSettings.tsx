@@ -198,7 +198,7 @@ export function TwitchArchiveSettings() {
   return (
     <div className="min-h-screen pb-20">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="w-full max-w-2xl mx-auto px-4 h-14 flex items-center gap-4">
           <button onClick={() => navigate('/settings')} className="p-2 hover:bg-secondary rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>

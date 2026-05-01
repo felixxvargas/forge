@@ -300,6 +300,17 @@ app.get("/forge-api/games/:gameId/versions", async (c) => {
   }
 });
 
+app.get("/forge-api/games/:gameId/expansions", async (c) => {
+  try {
+    const gameId = c.req.param("gameId");
+    const result = await gamesAPI.getExpansions(gameId);
+    return c.json(result);
+  } catch (err) {
+    console.error("[games/expansions] error:", err);
+    return c.json({ error: "Failed to fetch expansions" }, 500);
+  }
+});
+
 // Players who have this game in their user_games table (played or owned)
 app.get("/forge-api/games/:gameId/players", async (c) => {
   try {

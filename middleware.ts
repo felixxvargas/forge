@@ -14,6 +14,7 @@ const APP_ROUTES = new Set([
   'create-custom-list', 'trending-games', 'flare', 'flares', 'list',
   'new-post', 'onboarding', 'splash', 'login', 'signup', 'auth', 'admin',
   'api', 'handle', 'privacy', 'terms', 'privacy-security', 'data-deletion',
+  'android-beta',
 ]);
 
 export const config = {
@@ -23,17 +24,30 @@ export const config = {
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const url = new URL(request.url);
   const segments = url.pathname.split('/').filter(Boolean);
+  const hasRedirectFlag = url.searchParams.has('_r');
 
-  // Only intercept single-segment paths (potential profile handles)
+  // /post/[postId] — inject post OG tags for social crawlers
+  if (segments.length === 2 && segments[0] === 'post' && !hasRedirectFlag) {
+    const target = new URL(`/api/post-og/${segments[1]}`, url.origin);
+    return fetch(target.toString(), { headers: request.headers });
+  }
+
+  // Only continue for single-segment paths (potential profile handles or known pages)
   if (segments.length !== 1) return undefined;
 
   const segment = segments[0];
+
+  // /android-beta — inject dedicated OG image for the beta sign-up page
+  if (segment === 'android-beta' && !hasRedirectFlag) {
+    const target = new URL('/api/android-beta-og', url.origin);
+    return fetch(target.toString(), { headers: request.headers });
+  }
 
   // Skip known app routes and file-like paths
   if (APP_ROUTES.has(segment) || segment.includes('.')) return undefined;
 
   // Skip if this request was already redirected from profile-og (loop breaker)
-  if (url.searchParams.has('_r')) return undefined;
+  if (hasRedirectFlag) return undefined;
 
   // Proxy the request to the profile-og edge function for all visitors
   // (bots get OG tags; humans get OG tags + JS redirect back to SPA)

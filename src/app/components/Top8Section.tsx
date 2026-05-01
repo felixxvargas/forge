@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Star, Plus, X, Search, Loader2, Gamepad2 } from 'lucide-react';
 import { ProfileAvatar } from './ProfileAvatar';
-import { UserBadgeIcons } from './UserBadgeIcons';
 import { top8API } from '../utils/supabase';
 import { supabase } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';

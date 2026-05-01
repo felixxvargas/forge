@@ -11,6 +11,20 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.3.1',
+    date: 'April 2026',
+    title: "What's New in Forge",
+    summary: "Android closed beta signup, comment threading improvements, and polish.",
+    highlights: [
+      'Android closed beta — sign up from Settings or the login page to get a Google Play invite',
+      'Post detail pages now show full comment threads with connected reply lines',
+      'Game expansion pages link back to the parent game; expansions shown on parent pages',
+      'Expansion activity now boosts parent game rankings',
+      'Sprout badge visible only on profile pages',
+      'Top navigation bars are now consistent in height across all pages',
+    ],
+  },
+  {
     version: 'v0.3.0',
     date: 'April 2026',
     title: "What's New in Forge",

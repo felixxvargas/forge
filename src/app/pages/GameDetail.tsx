@@ -44,6 +44,8 @@ export function GameDetail() {
 
   const [similarGames, setSimilarGames] = useState<any[]>([]);
   const [gameVersions, setGameVersions] = useState<any[]>([]);
+  const [expansions, setExpansions] = useState<any[]>([]);
+  const [parentGame, setParentGame] = useState<any | null>(null);
   const [listCount, setListCount] = useState<number | null>(null);
 
   const [gameRank, setGameRank] = useState<number | null>(null);
@@ -88,6 +90,13 @@ export function GameDetail() {
 
     gamesAPI.getGameVersions(gameId, game.title, 6)
       .then((res: any) => setGameVersions(Array.isArray(res) ? res : res?.games ?? []))
+      .catch(() => {});
+
+    gamesAPI.getExpansions(gameId)
+      .then(({ expansions: exps, parentGame: pg }) => {
+        setExpansions(exps);
+        setParentGame(pg);
+      })
       .catch(() => {});
   }, [game?.id]);
 
@@ -416,6 +425,33 @@ export function GameDetail() {
             </button>
           )}
         </div>
+
+        {/* Parent game module — shown when this game is an expansion */}
+        {parentGame && (
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Part of</h3>
+            <button
+              onClick={() => navigate(`/game/${parentGame.id}`)}
+              className="w-full flex items-center gap-3 p-3 bg-accent/8 border border-accent/20 rounded-xl hover:bg-accent/12 transition-colors text-left"
+            >
+              {(() => {
+                const cover = parentGame.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? parentGame.artwork?.[0]?.url;
+                return cover ? (
+                  <img src={cover} alt={parentGame.title} className="w-12 rounded-lg object-cover shrink-0" style={{ aspectRatio: '3/4' }} />
+                ) : (
+                  <div className="w-12 rounded-lg bg-secondary flex items-center justify-center shrink-0" style={{ aspectRatio: '3/4' }}>
+                    <Gamepad2 className="w-5 h-5 text-muted-foreground/40" />
+                  </div>
+                );
+              })()}
+              <div className="min-w-0">
+                <p className="font-semibold text-sm leading-tight">{parentGame.title}</p>
+                {parentGame.year && <p className="text-xs text-muted-foreground mt-0.5">{parentGame.year}</p>}
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
+            </button>
+          </div>
+        )}
 
         {/* Platform versions (other DB entries with similar title) */}
         {gameVersions.length > 0 && (
@@ -752,6 +788,37 @@ export function GameDetail() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Expansions module — shown on parent game pages */}
+        {expansions.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Expansions & DLC</h2>
+            <div className="grid grid-cols-4 gap-3">
+              {expansions.map((exp: any) => {
+                const expCover = exp.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? exp.artwork?.[0]?.url;
+                return (
+                  <button
+                    key={exp.id}
+                    onClick={() => navigate(`/game/${exp.id}`)}
+                    className="flex flex-col gap-1 group"
+                  >
+                    <div className="rounded-lg overflow-hidden bg-secondary" style={{ aspectRatio: '3/4' }}>
+                      {expCover ? (
+                        <img src={expCover} alt={exp.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium line-clamp-2 leading-tight group-hover:text-accent transition-colors">{exp.title}</p>
+                    {exp.year && <p className="text-xs text-muted-foreground">{exp.year}</p>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

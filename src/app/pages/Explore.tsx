@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
@@ -57,6 +57,18 @@ export function Explore() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks extra game IDs fetched to fill engagement gaps — reset on tab change
   const fetchedExtraGameIds = useRef<Set<string>>(new Set());
+
+  const showGamesSkeleton = useMemo(() => {
+    if (loadingGames || loadingTrendingCounts || loadingExtraGames) return true;
+    if (dbGames.length > 0) {
+      const countedIds = new Set([...Object.keys(trendingCounts), ...Object.keys(listCounts)]);
+      if (countedIds.size > 0) {
+        const existingIds = new Set(dbGames.map((g: any) => String(g.id)));
+        return [...countedIds].some(id => !existingIds.has(id) && !fetchedExtraGameIds.current.has(id));
+      }
+    }
+    return false;
+  }, [loadingGames, loadingTrendingCounts, loadingExtraGames, dbGames, trendingCounts, listCounts]);
 
   const navigate = useNavigate();
   const navType = useNavigationType();
@@ -959,7 +971,7 @@ export function Explore() {
                   </p>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {(isSearchActive ? searchLoading : (loadingGames || loadingTrendingCounts || loadingExtraGames)) ? (
+                  {(isSearchActive ? searchLoading : showGamesSkeleton) ? (
                     <>
                       {Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} className="animate-pulse">

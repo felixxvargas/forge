@@ -9,6 +9,7 @@ import {
 import { useNavigate, useSearchParams, useBlocker, useLocation } from 'react-router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
+import { LinkPreview } from '../components/LinkPreview';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { gamesAPI } from '../utils/api';
 import { gameSearchCache, buildHighlightedHtml, gameCoverCache } from '../utils/mentionHighlight';
@@ -125,6 +126,12 @@ export function NewPost() {
     groupId && groupName ? { id: groupId, name: groupName } : null
   );
 
+  // Link preview state
+  const [detectedUrl, setDetectedUrl] = useState('');
+  // Track which URL's preview was dismissed so it stays hidden until the URL changes
+  const [previewDismissedFor, setPreviewDismissedFor] = useState('');
+  const [detectedUrlDismissedFor, setDetectedUrlDismissedFor] = useState('');
+
   // Drafts panel
   const [showDrafts, setShowDrafts] = useState(false);
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>(getSavedDrafts);
@@ -211,6 +218,7 @@ export function NewPost() {
   const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hashSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const atGameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urlDetectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-resize textarea to fit content
   useEffect(() => {
@@ -317,6 +325,12 @@ export function NewPost() {
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value.slice(0, POST_MAX_LENGTH);
     setContent(newContent);
+
+    // Detect URLs for inline preview (debounced to avoid spamming the preview API)
+    if (urlDetectTimer.current) clearTimeout(urlDetectTimer.current);
+    const urlMatch = newContent.match(/https?:\/\/[^\s<>"'\])}]+/);
+    const foundUrl = urlMatch?.[0] ?? '';
+    urlDetectTimer.current = setTimeout(() => setDetectedUrl(foundUrl), 600);
 
     const cursorPos = e.target.selectionStart ?? newContent.length;
     const before = newContent.slice(0, cursorPos);
@@ -1239,6 +1253,36 @@ export function NewPost() {
                 Set Poll
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Toolbar link preview */}
+        {!!linkUrl && previewDismissedFor !== linkUrl && openPanel !== 'link' && (
+          <div className="mt-3 relative">
+            <button
+              type="button"
+              onClick={() => setPreviewDismissedFor(linkUrl)}
+              className="absolute top-2 right-2 z-10 w-6 h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm hover:bg-secondary transition-colors"
+              aria-label="Remove link preview"
+            >
+              <X className="w-3 h-3" />
+            </button>
+            <LinkPreview url={linkUrl} />
+          </div>
+        )}
+
+        {/* In-text URL preview */}
+        {!!detectedUrl && detectedUrl !== linkUrl && detectedUrlDismissedFor !== detectedUrl && (
+          <div className="mt-3 relative">
+            <button
+              type="button"
+              onClick={() => setDetectedUrlDismissedFor(detectedUrl)}
+              className="absolute top-2 right-2 z-10 w-6 h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm hover:bg-secondary transition-colors"
+              aria-label="Remove link preview"
+            >
+              <X className="w-3 h-3" />
+            </button>
+            <LinkPreview url={detectedUrl} />
           </div>
         )}
 
