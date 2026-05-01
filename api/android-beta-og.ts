@@ -1,9 +1,5 @@
 export const config = { runtime: 'edge' };
 
-function escHtml(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const siteOrigin = `https://${url.host}`;
@@ -11,7 +7,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const title = 'Join the Forge Android Closed Beta';
   const description =
-    'Be among the first to experience Forge natively on Android. Sign up and we'll send you a Google Play invite within a week.';
+    "Be among the first to experience Forge natively on Android. Sign up and we'll send you a Google Play invite within a week.";
   const image = `${siteOrigin}/android-beta.png`;
 
   const html = `<!DOCTYPE html>
@@ -43,4 +39,8 @@ export default async function handler(req: Request): Promise<Response> {
       'Cache-Control': 'public, max-age=3600',
     },
   });
+}
+
+function escHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
