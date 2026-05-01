@@ -555,8 +555,13 @@ export function NewPost() {
       const pollData = filledOptions.length >= 2 && pollEndDate
         ? { options: filledOptions, end_date: new Date(pollEndDate).toISOString(), votes: {} }
         : undefined;
+      // Respect preview dismissals: don't save a URL if the user removed its preview card
+      const effectiveLinkUrl =
+        (linkUrl && previewDismissedFor !== linkUrl) ? linkUrl :
+        (!linkUrl && detectedUrl && detectedUrlDismissedFor !== detectedUrl) ? detectedUrl :
+        undefined;
       let lastPostId = await createPost(
-        content, images, linkUrl || undefined, imageAltsFinal, activeCommunityId,
+        content, images, effectiveLinkUrl, imageAltsFinal, activeCommunityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(), pollData,
       );

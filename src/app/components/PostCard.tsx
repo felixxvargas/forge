@@ -471,19 +471,14 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         </button>
       )}
 
-      {/* Content — strip the preview URL from text so it isn't duplicated */}
+      {/* Content — URL text stays in the copy; link preview card only when post.url is explicitly set */}
       {(() => {
-        // Use explicit url field first; fall back to first https URL found in content
-        const contentUrl = post.content?.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)?.[0];
-        const previewUrl = post.url || contentUrl;
-        const displayContent = previewUrl
-          ? (post.content || '').replace(previewUrl, '').trimEnd()
-          : post.content;
+        const previewUrl = post.url || undefined;
         return (
           <>
-            {displayContent ? (
+            {post.content ? (
               <p className="mb-3 whitespace-pre-wrap">
-                <LinkifyMentions text={displayContent} gameId={post.game_id} gameTitle={post.game_title} />
+                <LinkifyMentions text={post.content} gameId={post.game_id} gameTitle={post.game_title} />
               </p>
             ) : null}
             {previewUrl && <LinkPreview url={previewUrl} />}

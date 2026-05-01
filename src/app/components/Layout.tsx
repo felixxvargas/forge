@@ -45,7 +45,7 @@ function DraftResumeBanner() {
   const preview = draft.content.length > 55 ? draft.content.slice(0, 55) + '…' : draft.content;
 
   return (
-    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-3 md:left-auto md:right-6 md:w-80 z-[45]">
+    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 lg:bottom-36 inset-x-3 md:left-auto md:right-6 md:w-80 z-[45]">
       <div className="flex items-center gap-3 px-4 py-3 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl">
         <PenSquare className="w-4 h-4 text-accent shrink-0" />
         <div className="flex-1 min-w-0">

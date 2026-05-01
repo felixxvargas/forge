@@ -1527,20 +1527,20 @@ export function Profile() {
                       </div>
                       {(() => {
                         const preview = mediaPosts.slice(0, 4);
-                        const gridCols = preview.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
+                        const gridCols = preview.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-4';
                         return (
                           <div className={`grid gap-1 mb-2 ${gridCols}`}>
                             {preview.map((post, idx) => {
                               const images: string[] = (post as any).images ?? [];
                               const firstSrc = images[0] ?? '';
                               const isVideo = /\.(mp4|mov|webm|ogg)(\?|$|#)/i.test(firstSrc);
-                              // 3 items: last spans both columns
+                              // 3 items on mobile: last spans both columns; on desktop all items are in one row
                               const spanFull = preview.length === 3 && idx === 2;
                               return (
                                 <div
                                   key={post.id}
                                   onClick={() => navigate(`/post/${post.id}`)}
-                                  className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-[3/2] ${spanFull ? 'col-span-2' : ''}`}
+                                  className={`relative cursor-pointer overflow-hidden rounded-lg bg-muted/30 aspect-[3/2] md:aspect-video ${spanFull ? 'col-span-2 md:col-span-1' : ''}`}
                                 >
                                   {isVideo ? (
                                     <video src={firstSrc} className="w-full h-full object-cover" muted playsInline />
