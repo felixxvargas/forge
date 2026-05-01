@@ -104,25 +104,14 @@ export function Login() {
 
       <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-20 sm:pt-0 relative z-10">
 
-        {/* Logo section with subtle backdrop */}
+        {/* Logo section */}
         <div className="text-center mb-8">
-          <div className="inline-block px-6 pt-5 pb-4 rounded-2xl mb-1"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-
-            {/* Icon with glow */}
-            <div className="relative w-14 h-11 sm:w-20 sm:h-16 mx-auto mb-3 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(231,255,196,0.35) 0%, rgba(167,139,250,0.55) 40%, transparent 70%)', filter: 'blur(20px)', transform: 'scale(1.8)' }} />
-              <ForgeSVG aria-hidden="true" className="relative w-full h-full" />
-            </div>
-
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <h1 className="text-4xl font-black tracking-tight text-accent font-sora">Forge</h1>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
-            </div>
-            <span className="sm:hidden inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-1">Beta</span>
-            <p className="text-muted-foreground text-sm">Your gaming social network</p>
+          <div className="flex items-center justify-center gap-2.5 mb-2">
+            <ForgeSVG width="28" height="22" aria-hidden="true" />
+            <span className="font-black text-2xl text-accent tracking-tight">Forge</span>
+            <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none">Beta</span>
           </div>
+          <p className="text-sm text-muted-foreground">Your gaming social network</p>
         </div>
 
         {/* Glass card */}
@@ -289,7 +278,7 @@ export function Login() {
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
           </div>
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
-            <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-10 grayscale" />
+            <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-7 grayscale" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
           </div>
         </div>

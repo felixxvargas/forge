@@ -133,6 +133,7 @@ export function WhatsNewModal() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-accent" />
             <h2 className="text-lg font-semibold">{release.title}</h2>
+            <span className="text-xs font-mono text-muted-foreground">{release.version}</span>
           </div>
           <button onClick={dismiss} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />

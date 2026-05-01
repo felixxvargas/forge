@@ -503,7 +503,7 @@ export function Settings() {
               <Info className="w-5 h-5 text-muted-foreground" />
               <div className="text-left flex-1">
                 <p className="font-medium">Forge</p>
-                <p className="text-sm text-muted-foreground">{RELEASES[0].version.replace('v', '')}</p>
+                <p className="text-sm text-muted-foreground">Version {RELEASES[0].version}</p>
               </div>
             </div>
             <button

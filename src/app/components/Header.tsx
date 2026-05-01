@@ -26,7 +26,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
             plain left-1/2 lands at content-area center, not viewport center. We compensate
             by subtracting half the sidebar width: calc(50% - 30px) on md, calc(50% - 110px) on lg. */}
         {!title && (
-          <div className="absolute left-1/2 -translate-x-1/2 md:left-[calc(50%-30px)] lg:left-[calc(50%-110px)]">
+          <div className="md:hidden absolute left-1/2 -translate-x-1/2">
             <button
               className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
               onClick={() => { navigate('/feed'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
