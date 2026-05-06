@@ -204,7 +204,7 @@ export function DesktopSidebar() {
             aria-label="Go to feed"
           >
             <ForgeLogo width="28" height="22" aria-hidden="true" className="shrink-0" />
-            <span className="hidden lg:flex items-center justify-center gap-2 overflow-hidden">
+            <span className="hidden lg:flex items-center gap-1.5 overflow-hidden">
               <span className="font-black text-lg text-accent whitespace-nowrap">Forge</span>
               <span className="inline-flex items-center justify-center align-bottom text-[9px] font-bold tracking-widest uppercase px-1.5 py-1.5 rounded-full bg-accent/15 text-accent leading-none whitespace-nowrap">beta</span>
             </span>
