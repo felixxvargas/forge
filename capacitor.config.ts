@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'app.forge.social',
   appName: 'Forge',
-  webDir: 'dist',
+  webDir: 'out',
   server: {
     androidScheme: 'https',
   },

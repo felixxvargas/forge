@@ -1,6 +1,12 @@
 import type { NextConfig } from 'next';
 
+const isAndroidBuild = process.env.NEXT_ANDROID_BUILD === 'true';
+
 const nextConfig: NextConfig = {
+  ...(isAndroidBuild && {
+    output: 'export',
+  }),
+
   webpack(config, { webpack }) {
     // SVG imports with ?react query (Vite-style) → SVGR React components
     config.module.rules.push({
@@ -40,6 +46,7 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    unoptimized: isAndroidBuild,
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
       { protocol: 'https', hostname: '*.supabase.in' },
