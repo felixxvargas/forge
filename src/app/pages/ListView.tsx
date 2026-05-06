@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ArrowLeft, Edit2, Users, Upload, Copy, Check, X, PenSquare, MoreHorizontal } from 'lucide-react';
-import { useSearchParams, useNavigate } from 'react-router';
+import { useSearchParams, useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';

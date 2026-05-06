@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { GAMING_PLATFORMS } from '../../constants/platforms';
 import { 
   Gamepad2, 

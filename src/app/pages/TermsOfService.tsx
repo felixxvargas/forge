@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft } from 'lucide-react';
 
 const LAST_UPDATED = 'March 30, 2026';

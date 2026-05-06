@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 
 export function WritePostButton() {
   const navigate = useNavigate();

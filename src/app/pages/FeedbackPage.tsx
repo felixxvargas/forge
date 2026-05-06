@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Send, Loader2, CheckCircle, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';

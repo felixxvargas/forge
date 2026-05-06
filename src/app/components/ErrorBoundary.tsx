@@ -1,4 +1,4 @@
-import { useRouteError, useNavigate, isRouteErrorResponse } from 'react-router';
+import { useRouteError, useNavigate, isRouteErrorResponse } from '@/compat/router';
 import * as Sentry from '@sentry/react';
 import { AlertCircle, Home, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';

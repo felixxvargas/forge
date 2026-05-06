@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation } from '@/compat/router';
 import { ArrowLeft } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PlatformIcon } from '../components/PlatformIcon';

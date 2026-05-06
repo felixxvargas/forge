@@ -3,6 +3,7 @@ import { ExternalLink } from 'lucide-react';
 
 interface LinkPreviewProps {
   url: string;
+  noImage?: boolean;
 }
 
 interface LinkMetadata {
@@ -12,7 +13,7 @@ interface LinkMetadata {
   siteName?: string;
 }
 
-export function LinkPreview({ url }: LinkPreviewProps) {
+export function LinkPreview({ url, noImage = false }: LinkPreviewProps) {
   const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -57,7 +58,7 @@ export function LinkPreview({ url }: LinkPreviewProps) {
     );
   }
 
-  if (failed || !metadata) {
+  if (failed || !metadata || noImage) {
     return (
       <a
         href={url}

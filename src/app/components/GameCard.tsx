@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import type { Game } from '../data/data';
 
 interface GameCardProps {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Navigate, ScrollRestoration, useLocation, useNavigate } from 'react-router';
+import type { ReactNode } from 'react';
+import { Link, Navigate, ScrollRestoration, useLocation, useNavigate } from '@/compat/router';
 import { X, PenSquare } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { DesktopSidebar } from './DesktopSidebar';
@@ -45,7 +46,7 @@ function DraftResumeBanner() {
   const preview = draft.content.length > 55 ? draft.content.slice(0, 55) + '…' : draft.content;
 
   return (
-    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 lg:bottom-36 inset-x-3 md:left-auto md:right-6 md:w-80 z-[45]">
+    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-3 md:left-[calc(60px+1rem)] lg:left-[calc(220px+1rem)] md:right-auto md:w-80 z-[45]">
       <div className="flex items-center gap-3 px-4 py-3 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl">
         <PenSquare className="w-4 h-4 text-accent shrink-0" />
         <div className="flex-1 min-w-0">
@@ -72,7 +73,7 @@ const AUTH_REQUIRED_PATHS = [
   '/edit-profile', '/new-post', '/create-group', '/premium',
 ];
 
-export function Layout() {
+export function Layout({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isLoading, currentUser } = useAppData();
   const location = useLocation();
 
@@ -98,7 +99,14 @@ export function Layout() {
   const needsAuth = AUTH_REQUIRED_PATHS.some(p => location.pathname.startsWith(p));
   if (!isAuthenticated && needsAuth) {
     return (
-      <div className="min-h-dvh">
+      <div className="min-h-dvh relative">
+        <Link
+          to="/feed"
+          className="fixed top-4 right-4 z-50 p-2 bg-card/80 backdrop-blur-sm rounded-full border border-border hover:bg-secondary transition-colors inline-flex items-center justify-center"
+          aria-label="Go to feed"
+        >
+          <X className="w-5 h-5" />
+        </Link>
         <LoginModule variant="page" />
       </div>
     );
@@ -109,7 +117,7 @@ export function Layout() {
       <ScrollRestoration />
       <DesktopSidebar />
       <div className={`md:ml-[60px] lg:ml-[220px] pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4`}>
-        <Outlet />
+        {children}
       </div>
       <BottomNav />
       {isAuthenticated && <WhatsNewModal />}

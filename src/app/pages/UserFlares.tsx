@@ -1,5 +1,5 @@
 ﻿import { ArrowLeft, Flame, Trash2 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect } from 'react';
 import { lfgFlares as lfgFlaresAPI, profiles } from '../utils/supabase';

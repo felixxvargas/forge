@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { Star, Plus, X, Search, Loader2, Gamepad2 } from 'lucide-react';
 import { ProfileAvatar } from './ProfileAvatar';
 import { top8API } from '../utils/supabase';

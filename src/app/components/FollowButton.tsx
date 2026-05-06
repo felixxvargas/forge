@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check, UserPlus, Loader2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 
 interface FollowButtonProps {
   userId: string;

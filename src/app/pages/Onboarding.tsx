@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from '@/compat/router';
 import { AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../components/LoadingSpinner';

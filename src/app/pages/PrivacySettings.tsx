@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link } from '@/compat/router';
 import { ArrowLeft, MessageCircle, Lock, FileText, User, Filter, Share2, Repeat2, Heart } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 

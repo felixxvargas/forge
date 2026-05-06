@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { X, Upload, Settings, Crown, Shield, Check, Trash2, Plus, Link2 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import type { Platform, SocialPlatform } from '../data/data';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';

@@ -1,6 +1,7 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿'use client';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, Heart, MessageCircle, Quote, Users, LayoutList } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -10,7 +11,7 @@ import { gamesAPI } from '../utils/api';
 import { gameSearchCache, gameCoverCache } from '../utils/mentionHighlight';
 import { ImageUpload } from '../components/ImageUpload';
 
-export function PostDetail() {
+export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   const { postId: rawPostId } = useParams();
   // Decode URL-encoded external post IDs (at:// URIs encoded as %3A%2F%2F etc.)
   const postId = rawPostId ? decodeURIComponent(rawPostId) : undefined;
@@ -37,7 +38,7 @@ export function PostDetail() {
   const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [standalonePost, setStandalonePost] = useState<any>(null);
+  const [standalonePost, setStandalonePost] = useState<any>(initialPost ?? null);
   const [showReplyTray, setShowReplyTray] = useState(false);
   const [replyImageUrls, setReplyImageUrls] = useState<string[]>([]);
   const [replyImageAlts, setReplyImageAlts] = useState<string[]>([]);
@@ -46,6 +47,10 @@ export function PostDetail() {
   const [replyLinkUrl, setReplyLinkUrl] = useState('');
   const [showReplyImageUpload, setShowReplyImageUpload] = useState(false);
   const [showReplyLinkInput, setShowReplyLinkInput] = useState(false);
+  // Inline chain-reply form shown below a freshly submitted reply
+  const [inlineChainTargetId, setInlineChainTargetId] = useState<string | null>(null);
+  const [chainContent, setChainContent] = useState('');
+  const [isChainSubmitting, setIsChainSubmitting] = useState(false);
   const mentionTriggerIndex = useRef<number>(-1);
 
   // Parent post (when the viewed post is itself a reply)
@@ -389,6 +394,8 @@ export function PostDetail() {
             setForgeReplies(prev => [...prev, replyPost]);
           } else {
             setReplies(prev => [...prev, replyPost]);
+            setInlineChainTargetId(replyId);
+            setChainContent('');
           }
           addPosts([replyPost]);
         } catch {}
@@ -418,6 +425,23 @@ export function PostDetail() {
   const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     await performReplySubmit();
+  };
+
+  const handleChainSubmit = async (parentReplyId: string) => {
+    if (!chainContent.trim() || !session?.user) return;
+    setIsChainSubmitting(true);
+    try {
+      const chainId = await createPost(
+        chainContent.trim(), undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, parentReplyId,
+      );
+      if (chainId) navigate(`/post/${encodeURIComponent(chainId)}`);
+    } catch (err) {
+      console.error('Failed to post chain reply:', err);
+    } finally {
+      setIsChainSubmitting(false);
+    }
   };
 
   const handleDeleteReply = async (replyId: string) => {
@@ -686,7 +710,7 @@ export function PostDetail() {
           {/* Reply Tray — fullscreen on mobile, centered dialog on desktop */}
           {showReplyTray && (
             <div className="fixed inset-0 z-50 flex flex-col sm:items-end sm:justify-end md:items-center md:justify-center sm:bg-black/60">
-              <div className="w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-background flex flex-col overflow-hidden shadow-2xl">
+              <div className="w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card/80 backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl">
                 {/* Tray header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                   <button
@@ -1159,9 +1183,11 @@ export function PostDetail() {
                   ? (reply.comment_count ?? 0) - (bestSubReply ? 1 : 0)
                   : 0;
 
+                const hasThread = !!bestSubReply || inlineChainTargetId === reply.id;
+
                 return (
                   <div key={reply.id}>
-                    {/* Top-level reply — full card like Feed */}
+                    {/* Top-level reply */}
                     <PostCard
                       post={reply}
                       user={replyUser}
@@ -1173,14 +1199,15 @@ export function PostDetail() {
                         : undefined}
                       isLiked={likedPosts.has(reply.id)}
                       isReposted={repostedPosts.has(reply.id)}
+                      showThreadLine={hasThread}
                     />
 
-                    {/* Best sub-reply — connected with a vertical thread line */}
+                    {/* Best sub-reply connected with a vertical thread line */}
                     {bestSubReply && (() => {
                       const subUser = bestSubReply.author ?? getUserById(bestSubReply.user_id);
                       if (!subUser) return null;
                       return (
-                        <div className="ml-5 pl-3 border-l-2 border-border/50 -mt-1 mb-3">
+                        <div className="pl-3 border-l-2 border-border/50 -mt-2 mb-3">
                           <div
                             className="cursor-pointer"
                             onClick={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}`)}
@@ -1206,6 +1233,45 @@ export function PostDetail() {
                         </div>
                       );
                     })()}
+
+                    {/* Inline chain-reply form shown after the user just posted this reply */}
+                    {inlineChainTargetId === reply.id && currentUser && (
+                      <div className="pl-3 border-l-2 border-accent/40 -mt-2 mb-4">
+                        <div className="flex gap-2.5 pt-3 px-2 pb-2 bg-secondary/20 rounded-xl">
+                          <ProfileAvatar
+                            username={currentUser.display_name || currentUser.handle || '?'}
+                            profilePicture={currentUser.profile_picture}
+                            size="sm"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <textarea
+                              autoFocus
+                              value={chainContent}
+                              onChange={e => setChainContent(e.target.value)}
+                              placeholder="Continue the thread…"
+                              rows={2}
+                              className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground"
+                              style={{ fontSize: '16px' }}
+                            />
+                            <div className="flex justify-between items-center mt-1.5">
+                              <button
+                                onClick={() => { setInlineChainTargetId(null); setChainContent(''); }}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleChainSubmit(reply.id)}
+                                disabled={!chainContent.trim() || isChainSubmitting}
+                                className="px-4 py-1 bg-accent text-accent-foreground rounded-full text-xs font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50"
+                              >
+                                {isChainSubmitting ? 'Posting…' : 'Reply'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

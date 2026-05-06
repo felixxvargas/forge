@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 
 interface LinkifyMentionsProps {
@@ -26,8 +26,11 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
         parts.push(segment.substring(lastIndex, match.index));
       }
       if (match[1]) {
-        // URL
+        // URL — only render as a link if it's http/https (defense-in-depth; regex already enforces this)
         const url = match[1];
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          parts.push(url);
+        } else {
         const displayUrl = url.length > 60 ? url.slice(0, 57) + '...' : url;
         parts.push(
           <a
@@ -41,6 +44,7 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
             {displayUrl}
           </a>
         );
+        }
       } else {
         // @mention
         const handle = match[0];

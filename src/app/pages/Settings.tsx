@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { Header } from '../components/Header';
 import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Tv2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -13,8 +13,6 @@ interface LinkedAccount {
   handle: string;
   display_name: string;
   profile_picture: string | null;
-  access_token: string;
-  refresh_token: string;
 }
 
 export function Settings() {
@@ -32,8 +30,11 @@ export function Settings() {
     try { return JSON.parse(localStorage.getItem('forge-onboarding-v1') ?? '{}').dismissCount ?? 0; } catch { return 0; }
   });
   const [hasPosted, setHasPosted] = useState<boolean | null>(null);
+  const [profileUrl, setProfileUrl] = useState('');
 
-  const profileUrl = `${window.location.origin}/${(currentUser?.handle || '').replace(/^@/, '')}`;
+  useEffect(() => {
+    setProfileUrl(`${window.location.origin}/${(currentUser?.handle || '').replace(/^@/, '')}`);
+  }, [currentUser?.handle]);
 
   // Load hasPosted for onboarding task check
   useEffect(() => {
@@ -49,10 +50,10 @@ export function Settings() {
       );
   }, [currentUser?.id]);
 
-  // After returning from link-account flow, save the newly signed-in account
+  // After returning from link-account flow, save the newly signed-in account (display data only)
   useEffect(() => {
     const shouldSave = localStorage.getItem('forge-save-linked-account') === 'true';
-    if (shouldSave && currentUser && session) {
+    if (shouldSave && currentUser) {
       localStorage.removeItem('forge-save-linked-account');
       setLinkedAccounts(prev => {
         if (prev.find(a => a.id === currentUser.id)) return prev;
@@ -61,18 +62,16 @@ export function Settings() {
           handle: currentUser.handle,
           display_name: currentUser.display_name,
           profile_picture: currentUser.profile_picture,
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
         };
         const updated = [...prev, newAccount];
         localStorage.setItem('forge-linked-accounts', JSON.stringify(updated));
         return updated;
       });
     }
-  }, [currentUser, session]);
+  }, [currentUser]);
 
   const handleLinkAccount = () => {
-    if (!currentUser || !session) return;
+    if (!currentUser) return;
     const linked: LinkedAccount[] = JSON.parse(localStorage.getItem('forge-linked-accounts') || '[]');
     if (!linked.find(a => a.id === currentUser.id)) {
       linked.push({
@@ -80,8 +79,6 @@ export function Settings() {
         handle: currentUser.handle,
         display_name: currentUser.display_name,
         profile_picture: currentUser.profile_picture,
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
       });
       localStorage.setItem('forge-linked-accounts', JSON.stringify(linked));
     }
@@ -89,36 +86,12 @@ export function Settings() {
     navigate('/login');
   };
 
-  const handleSwitchAccount = async (account: LinkedAccount) => {
-    if (!currentUser || !session) return;
-    const linked: LinkedAccount[] = JSON.parse(localStorage.getItem('forge-linked-accounts') || '[]');
-    const currentData: LinkedAccount = {
-      id: currentUser.id,
-      handle: currentUser.handle,
-      display_name: currentUser.display_name,
-      profile_picture: currentUser.profile_picture,
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-    };
-    const idx = linked.findIndex(a => a.id === currentUser.id);
-    if (idx >= 0) linked[idx] = currentData; else linked.push(currentData);
-    localStorage.setItem('forge-linked-accounts', JSON.stringify(linked));
-
-    const { error } = await supabase.auth.setSession({
-      access_token: account.access_token,
-      refresh_token: account.refresh_token,
-    });
-    if (error) {
-      // Remove the stale linked account entry and prompt re-linking
-      const updated = linked.filter(a => a.id !== account.id);
-      setLinkedAccounts(updated.filter(a => a.id !== currentUser.id));
-      localStorage.setItem('forge-linked-accounts', JSON.stringify(updated.filter(a => a.id !== currentUser.id)));
-      // Save current account before redirecting to re-link
-      localStorage.setItem('forge-linking-account', 'true');
-      navigate('/login');
-      return;
-    }
-    navigate('/feed');
+  const handleSwitchAccount = async (_account: LinkedAccount) => {
+    // Sign out current session and go to login to re-authenticate as the other account.
+    // Tokens are no longer stored locally; re-auth is required for every account switch.
+    localStorage.setItem('forge-linking-account', 'true');
+    try { await signOut(); } catch { /* ignore */ }
+    navigate('/login');
   };
 
   const handleRemoveLinkedAccount = (accountId: string) => {
@@ -212,7 +185,7 @@ export function Settings() {
                     <p className="font-medium truncate">{account.display_name || account.handle}</p>
                     <p className="text-xs text-muted-foreground">@{(account.handle || '').replace(/^@/, '')}</p>
                   </div>
-                  <span className="text-xs text-muted-foreground mr-1">Switch</span>
+                  <span className="text-xs text-muted-foreground mr-1">Sign in</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                 </button>
               ))}

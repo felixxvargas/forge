@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Home, Search, MessageCircle, User, X, LogOut, ChevronUp, AlertTriangle } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
 import { LoginModule } from './LoginModule';
@@ -204,9 +204,9 @@ export function DesktopSidebar() {
             aria-label="Go to feed"
           >
             <ForgeLogo width="28" height="22" aria-hidden="true" className="shrink-0" />
-            <span className="hidden lg:flex items-center gap-1.5 overflow-hidden">
+            <span className="hidden lg:flex items-center justify-center gap-2 overflow-hidden">
               <span className="font-black text-lg text-accent whitespace-nowrap">Forge</span>
-              <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none whitespace-nowrap">beta</span>
+              <span className="inline-flex items-center justify-center align-bottom text-[9px] font-bold tracking-widest uppercase px-1.5 py-1.5 rounded-full bg-accent/15 text-accent leading-none whitespace-nowrap">beta</span>
             </span>
           </button>
         </div>
@@ -257,7 +257,10 @@ export function DesktopSidebar() {
             {showAccountMenu && (
               <div className="absolute bottom-full left-2 right-2 mb-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-10">
                 {/* Current account */}
-                <div className="px-3 py-2.5 flex items-center gap-2.5 bg-secondary/50">
+                <button
+                  onClick={() => { setShowAccountMenu(false); navigate('/profile'); }}
+                  className="w-full px-3 py-2.5 flex items-center gap-2.5 bg-secondary/50 hover:bg-secondary transition-colors text-left"
+                >
                   {currentUser.profile_picture ? (
                     <img src={currentUser.profile_picture} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                   ) : (
@@ -270,7 +273,7 @@ export function DesktopSidebar() {
                     <p className="text-[10px] text-muted-foreground truncate">@{(currentUser.handle || '').replace(/^@/, '')}</p>
                   </div>
                   <span className="text-[10px] text-accent bg-accent/10 px-1.5 py-0.5 rounded-full font-medium shrink-0">Active</span>
-                </div>
+                </button>
 
                 {/* Other linked accounts */}
                 {otherAccounts.length > 0 && (
@@ -312,7 +315,7 @@ export function DesktopSidebar() {
             )}
 
             <button
-              onClick={() => setShowAccountMenu(v => !v)}
+              onClick={() => otherAccounts.length === 0 ? navigate('/profile') : setShowAccountMenu(v => !v)}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 w-full transition-colors hover:bg-secondary"
             >
               <ProfileAvatar

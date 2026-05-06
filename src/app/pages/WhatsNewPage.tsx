@@ -1,5 +1,5 @@
 ﻿import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Sparkles, Clock } from 'lucide-react';
 import { RELEASES } from '../components/WhatsNew';
 

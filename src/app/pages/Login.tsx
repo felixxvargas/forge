@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router';
-import { Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { useNavigate, Link } from '@/compat/router';
+import { Mail, Eye, EyeOff, ArrowLeft, Gamepad2, Users, Trophy, Flame, Search } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
-import { SocialAuthButtons } from '../components/SocialAuthButtons';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
@@ -87,8 +86,16 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0d0818 0%, #110c1e 40%, #0a0612 100%)' }}>
+    <div className="min-h-dvh flex flex-col items-center justify-center px-4 relative">
+
+      {/* Close / back button */}
+      <Link
+        to="/feed"
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors inline-flex items-center justify-center"
+        aria-label="Back to feed"
+      >
+        <ArrowLeft className="w-5 h-5 text-white" />
+      </Link>
 
       {/* Ambient glow orbs */}
       <div className="pointer-events-none absolute inset-0 -z-0" aria-hidden="true">
@@ -102,7 +109,41 @@ export function Login() {
           style={{ background: 'radial-gradient(circle, rgba(88,28,135,0.22) 0%, transparent 70%)', filter: 'blur(70px)' }} />
       </div>
 
-      <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-20 sm:pt-0 relative z-10">
+      {/* Desktop feature points + form side-by-side */}
+      <div className="w-full lg:max-w-4xl flex-1 flex flex-col lg:flex-row lg:items-center lg:gap-16 pt-20 sm:pt-0 relative z-10 lg:px-4">
+
+        {/* Feature points — desktop left column only */}
+        <div className="hidden lg:flex flex-col gap-6 flex-1 max-w-sm rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div>
+            <h2 className="text-3xl font-black text-foreground leading-tight mb-2">
+              The social network<br/>built for gamers.
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Track your library, connect with the community, and share what you're playing.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {[
+              { icon: Gamepad2, title: 'Track your game library', desc: 'Organize games you\'ve played, want to play, and your all-time favorites.' },
+              { icon: Users, title: 'Connect with gamers', desc: 'Follow friends, join communities, and see what everyone is playing.' },
+              { icon: Search, title: 'Discover new games', desc: 'Get recommendations from people with the same gaming taste as you.' },
+              { icon: Flame, title: 'Find teammates with LFG', desc: 'Post a flare when you need a squad and get matched instantly.' },
+              { icon: Trophy, title: 'Share your highlights', desc: 'Post clips, screenshots, and hot takes to your gaming feed.' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex gap-3 items-start">
+                <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon className="w-4.5 h-4.5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full max-w-md flex-1 lg:flex-none flex flex-col justify-center">
 
         {/* Logo section */}
         <div className="text-center mb-8">
@@ -196,8 +237,6 @@ export function Login() {
                 Continue with Google
               </button>
 
-              <SocialAuthButtons disabled={isLoading} />
-
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.12]"/></div>
                 <div className="relative flex justify-center text-sm">
@@ -267,6 +306,7 @@ export function Login() {
             </>
           )}
         </div>
+      </div>
       </div>
 
       {/* App Store Badges */}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from '@/compat/router';
 import { Crown, Check, List, Headphones, Gamepad2, TrendingUp } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 

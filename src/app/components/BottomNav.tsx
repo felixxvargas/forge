@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Home, Search, MessageCircle, User, X } from 'lucide-react';
-import { useLocation, Link, useNavigate } from 'react-router';
+import { useLocation, Link, useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
 import { LoginModule } from './LoginModule';
@@ -37,7 +37,7 @@ export function BottomNav() {
       {/* Auth modal — mobile: slide-up sheet; desktop: full-screen overlay */}
       {showAuthModal && (
         <div className="fixed inset-0 z-[60] flex items-end md:block bg-black/60 md:bg-transparent">
-          <div className="relative w-full md:h-full md:overflow-y-auto rounded-t-2xl md:rounded-none overflow-hidden bg-background">
+          <div className="relative w-full md:h-full md:overflow-y-auto rounded-t-2xl md:rounded-none overflow-hidden" style={{ background: 'rgba(14, 6, 36, 0.97)' }}>
             <button
               onClick={() => setShowAuthModal(false)}
               className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
@@ -49,7 +49,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t border-border z-50 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-white/10 z-50 md:hidden" style={{ background: 'rgba(14, 6, 36, 0.94)' }}>
         <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
           <button
             onClick={() => {
@@ -112,7 +112,7 @@ export function BottomNav() {
           </button>
         </div>
         {/* Safe-area extension */}
-        <div className="bg-card/80" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
+        <div style={{ background: 'rgba(14, 6, 36, 0.94)', height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
       </nav>
     </>
   );

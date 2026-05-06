@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowRight, Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from '@/compat/router';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { GroupIcon } from '../components/GroupIcon';
 import { WritePostButton } from '../components/WritePostButton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LoginModule } from '../components/LoginModule';
-import { SocialAuthButtons } from '../components/SocialAuthButtons';
 import { useAppData } from '../context/AppDataContext';
 import { posts as postsAPI } from '../utils/supabase';
 import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
@@ -312,7 +311,7 @@ export function Feed() {
       <div className="mb-6 relative">
         <button
           onClick={() => isAuthenticated && setShowDropdown(!showDropdown)}
-          className={`flex items-center gap-2 text-2xl font-semibold transition-colors ${isAuthenticated ? 'hover:text-accent cursor-pointer' : 'cursor-default'}`}
+          className={`flex items-center gap-2 text-2xl font-extrabold transition-colors ${isAuthenticated ? 'hover:text-accent cursor-pointer' : 'cursor-default'}`}
         >
           <span>{getSelectedName()}</span>
           {isAuthenticated && (
@@ -546,8 +545,12 @@ export function Feed() {
         {!isAuthenticated && (
           <aside className="hidden xl:flex flex-col gap-4 pt-20 pr-4 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
             <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <ForgeSVG width="24" height="19" aria-hidden="true" />
+              <div className="flex items-center gap-2 mb-3 min-w-0">
+                <ForgeSVG
+                  className="shrink-0 w-6 h-5"
+                  aria-hidden="true"
+                  preserveAspectRatio="xMidYMid meet"
+                />
                 <span className="font-black text-lg text-accent">Forge</span>
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
               </div>

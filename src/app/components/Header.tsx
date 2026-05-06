@@ -1,5 +1,5 @@
 import { Bell, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import ForgeLogo from '../../assets/forge-logo.svg?react';
 
@@ -18,7 +18,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
       <div className="w-full px-4 h-14 flex items-center relative">
         {/* Left zone */}
         <div className="flex-1 flex items-center">
-          {title && <h1 className="text-xl font-bold">{title}</h1>}
+          {title && <h1 className="text-2xl font-semibold">{title}</h1>}
         </div>
 
         {/* Center — absolutely positioned so it sits at true viewport center on desktop.

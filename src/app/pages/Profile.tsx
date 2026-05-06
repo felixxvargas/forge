@@ -1,5 +1,6 @@
+'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from '@/compat/router';
 import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
 import { isMentorHandle } from '../utils/mentors';
@@ -61,11 +62,11 @@ type ListTypeOption = 'recently-played' | 'favorite' | 'wishlist' | 'library';
 
 const BIO_MAX_LENGTH = 150;
 
-export function Profile() {
+export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const navigate = useNavigate();
   const { userId, handle } = useParams();
   const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
-  const [handleFetchedUser, setHandleFetchedUser] = useState<any>(null);
+  const [handleFetchedUser, setHandleFetchedUser] = useState<any>(initialProfile ?? null);
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
@@ -136,11 +137,16 @@ export function Profile() {
     setHandleFetchedUser(null);
   }, [userId, handle]);
 
-  // When routed via /handle/:handle, resolve the user (cache first, then DB)
+  // When routed via /handle/:handle, resolve the user (context cache → initialProfile → DB)
   useEffect(() => {
     if (!handle) return;
     const cached = getUserByHandle(handle);
     if (cached) { setHandleFetchedUser(cached); return; }
+    // Use SSR-provided profile if the handle matches (avoids duplicate DB call on first load)
+    if (initialProfile && handle.replace(/^@/, '').toLowerCase() === (initialProfile.handle || '').replace(/^@/, '').toLowerCase()) {
+      setHandleFetchedUser(initialProfile);
+      return;
+    }
     profiles.getByHandle(handle).then(u => setHandleFetchedUser(u ?? null)).catch(() => {});
   }, [handle]);
 
@@ -1201,24 +1207,30 @@ export function Profile() {
               isOwnProfile={isOwnProfile}
               onManage={isOwnProfile ? () => { setShowAddFriendPanel(false); setShowTopGamesPicker(true); } : undefined}
             />
-            {showAddFriendPanel && isOwnProfile && currentUser?.id && (
-              <AddTopFriendPanel
-                currentUserId={currentUser.id}
-                existingFriendIds={topFriendIds}
-                onClose={() => setShowAddFriendPanel(false)}
-              />
-            )}
-            {showTopGamesPicker && isOwnProfile && currentUser?.id && (
-              <ManageTopGamesPanel
-                currentUserId={currentUser.id}
-                currentTopGameIds={topGameIds}
-                onClose={() => setShowTopGamesPicker(false)}
-                onUpdate={(ids) => {
-                  setTopGameIds(ids);
-                  updateCurrentUser({ top_games: ids } as any);
-                }}
-              />
-            )}
+          </div>
+        )}
+
+        {/* Top 8 panels — rendered outside the "has content" gate so they work even when lists are empty */}
+        {showAddFriendPanel && isOwnProfile && currentUser?.id && (
+          <div className="px-4">
+            <AddTopFriendPanel
+              currentUserId={currentUser.id}
+              existingFriendIds={topFriendIds}
+              onClose={() => setShowAddFriendPanel(false)}
+            />
+          </div>
+        )}
+        {showTopGamesPicker && isOwnProfile && currentUser?.id && (
+          <div className="px-4">
+            <ManageTopGamesPanel
+              currentUserId={currentUser.id}
+              currentTopGameIds={topGameIds}
+              onClose={() => setShowTopGamesPicker(false)}
+              onUpdate={(ids) => {
+                setTopGameIds(ids);
+                updateCurrentUser({ top_games: ids } as any);
+              }}
+            />
           </div>
         )}
 
@@ -2179,7 +2191,7 @@ export function Profile() {
         isOpen={editGameListModal.isOpen}
         onClose={() => setEditGameListModal({ isOpen: false, listType: null })}
         onSave={handleSaveGameList}
-        currentGames={editGameListModal.listType ? (
+        currentGames={editGameListModal.listType && profileUser ? (
           editGameListModal.listType === 'recently-played' ? (profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []) :
           editGameListModal.listType === 'played-before' ? (profileUser.game_lists?.playedBefore ?? []) :
           editGameListModal.listType === 'favorite' ? (profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []) :

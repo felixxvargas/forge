@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, ExternalLink, Users } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';

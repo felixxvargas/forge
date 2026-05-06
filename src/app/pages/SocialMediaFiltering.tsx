@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router';
+﻿import { useNavigate } from '@/compat/router';
 import { ArrowLeft } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { PlatformIcon } from '../components/PlatformIcon';

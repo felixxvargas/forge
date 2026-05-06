@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { Flame, Gamepad2, TrendingUp } from 'lucide-react';
 import { Header } from '../components/Header';
 import { loadTrendingRankings, type RankedGame } from '../utils/gameRankings';

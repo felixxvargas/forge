@@ -4,7 +4,7 @@ import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
 import { GroupIcon } from '../components/GroupIcon';
-import { useNavigate, useNavigationType } from 'react-router';
+import { useNavigate, useNavigationType } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 import { type User, type Group, topicAccounts } from '../data/data';
@@ -20,11 +20,10 @@ export function Explore() {
   const { posts, users, getUserById, followingIds, currentUser, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading, followExternalUser, unfollowExternalUser, externalFollowIds, isAuthenticated } = useAppData() as any;
 
   const [activeTab, setActiveTab] = useState<ExploreTab>(() => {
-    const saved = localStorage.getItem('explore-active-tab');
-    return (saved as ExploreTab) || 'posts';
+    try { const saved = localStorage.getItem('explore-active-tab'); return (saved as ExploreTab) || 'posts'; } catch { return 'posts'; }
   });
 
-  const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem('explore-search-query') ?? '');
+  const [searchQuery, setSearchQuery] = useState(() => { try { return localStorage.getItem('explore-search-query') ?? ''; } catch { return ''; } });
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
@@ -512,7 +511,7 @@ export function Explore() {
               </button>
             )}
             {showSearchHistory && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl overflow-hidden z-30 shadow-2xl">
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-30 shadow-2xl" style={{ background: 'rgba(20, 8, 50, 0.93)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(139,92,246,0.2)' }}>
                 <div className="px-4 py-2 flex items-center justify-between border-b border-border">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Recent searches</p>
                   <button
@@ -834,16 +833,16 @@ export function Explore() {
           <>
             {/* ── NORMAL TABBED CONTENT ── */}
             {activeTab === 'posts' && (
-              <div className="space-y-4">
+              <div>
                 {/* Sort / filter chips */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap mb-4">
                   {(['latest', 'top'] as const).map(s => (
                     <button
                       key={s}
                       onClick={() => { setPostSort(s); setPostFilter('all'); }}
                       className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                         postFilter === 'all' && postSort === s
-                          ? 'bg-accent text-white'
+                          ? 'bg-accent text-[#1c1228]'
                           : 'bg-secondary text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -854,7 +853,7 @@ export function Explore() {
                     onClick={() => setPostFilter(postFilter === 'forge' ? 'all' : 'forge')}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       postFilter === 'forge'
-                        ? 'bg-accent text-white'
+                        ? 'bg-accent text-[#1c1228]'
                         : 'bg-secondary text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -862,9 +861,9 @@ export function Explore() {
                   </button>
                 </div>
                 {loadingTopicPosts ? (
-                  <div className="space-y-0 divide-y divide-border -mx-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="px-4 py-4 animate-pulse">
+                  <div className="lg:columns-3 lg:gap-4 space-y-4 lg:space-y-0">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="bg-card rounded-xl p-4 animate-pulse mb-4 break-inside-avoid">
                         <div className="flex gap-3">
                           <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
                           <div className="flex-1 space-y-2 pt-0.5">
@@ -883,40 +882,43 @@ export function Explore() {
                     <p>No posts to display</p>
                   </div>
                 ) : (
-                  gamingMediaPosts.map(post => {
-                    const user = post.author;
-                    if (!user) return null;
-                    const uid = post.user_id || post.userId || '';
-                    const isMuted = mutedUsers.has(uid);
-                    const isShown = showMutedPosts.has(post.id);
+                  <div className="lg:columns-3 lg:gap-4 space-y-4 lg:space-y-0">
+                    {gamingMediaPosts.map(post => {
+                      const user = post.author;
+                      if (!user) return null;
+                      const uid = post.user_id || post.userId || '';
+                      const isMuted = mutedUsers.has(uid);
+                      const isShown = showMutedPosts.has(post.id);
 
-                    if (isMuted && !isShown) {
+                      if (isMuted && !isShown) {
+                        return (
+                          <div key={post.id} className="bg-card border border-border rounded-lg p-4 mb-4 break-inside-avoid">
+                            <p className="text-muted-foreground text-sm mb-2">Post from muted user</p>
+                            <button
+                              onClick={() => handleShowMutedPost(post.id)}
+                              className="text-accent text-sm hover:text-accent/80"
+                            >
+                              Show anyway
+                            </button>
+                          </div>
+                        );
+                      }
+
                       return (
-                        <div key={post.id} className="bg-card border border-border rounded-lg p-4">
-                          <p className="text-muted-foreground text-sm mb-2">Post from muted user</p>
-                          <button
-                            onClick={() => handleShowMutedPost(post.id)}
-                            className="text-accent text-sm hover:text-accent/80"
-                          >
-                            Show anyway
-                          </button>
+                        <div key={post.id} className="mb-4 break-inside-avoid">
+                          <PostCard
+                            post={post}
+                            user={user!}
+                            onLike={() => handleLikeToggle(post.id)}
+                            onRepost={() => handleRepost(post.id)}
+                            onComment={() => handleComment(post.id)}
+                            isLiked={likedPosts.has(post.id)}
+                            isReposted={repostedPosts.has(post.id)}
+                          />
                         </div>
                       );
-                    }
-
-                    return (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        user={user!}
-                        onLike={() => handleLikeToggle(post.id)}
-                        onRepost={() => handleRepost(post.id)}
-                        onComment={() => handleComment(post.id)}
-                        isLiked={likedPosts.has(post.id)}
-                        isReposted={repostedPosts.has(post.id)}
-                      />
-                    );
-                  })
+                    })}
+                  </div>
                 )}
               </div>
             )}

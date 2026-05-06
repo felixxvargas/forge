@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
-import { Mail, Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react';
+import { useNavigate, Link } from '@/compat/router';
+import { Mail, Eye, EyeOff, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
-import { SocialAuthButtons } from '../components/SocialAuthButtons';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useRef } from 'react';
 
@@ -104,8 +103,16 @@ export function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0d0818 0%, #110c1e 40%, #0a0612 100%)' }}>
+    <div className="min-h-dvh flex flex-col items-center justify-center px-4 relative">
+
+      {/* Close / back button */}
+      <Link
+        to="/feed"
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors inline-flex items-center justify-center"
+        aria-label="Back to feed"
+      >
+        <ArrowLeft className="w-5 h-5 text-white" />
+      </Link>
 
       {/* Ambient glow orbs */}
       <div className="pointer-events-none absolute inset-0 -z-0" aria-hidden="true">
@@ -167,8 +174,6 @@ export function SignUp() {
             </svg>
             Sign up with Google
           </button>
-
-          <SocialAuthButtons disabled={isLoading} />
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.12]"/></div>

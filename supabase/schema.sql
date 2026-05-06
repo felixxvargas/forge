@@ -321,5 +321,4 @@ create policy "Users can view own feedback"
   on public.feedback for select
   using (auth.uid() = user_id);
 
--- Run these separately in your Supabase SQL editor to apply new columns:
--- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pinned_post_id uuid REFERENCES public.posts(id) ON DELETE SET NULL;
+-- pinned_post_id added via migration 20260505_pinned_post.sql

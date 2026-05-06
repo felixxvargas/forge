@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, Loader2, ShieldOff, UserMinus, Crown, ShieldCheck } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';

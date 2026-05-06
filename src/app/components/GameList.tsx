@@ -1,6 +1,7 @@
+'use client';
 import { useState } from 'react';
 import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal, Flame, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
 import {
@@ -108,13 +109,13 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                     </DropdownMenuItem>
                   )}
                   {onEdit && (
-                    <DropdownMenuItem onSelect={() => onEdit()}>
+                    <DropdownMenuItem onSelect={() => onEdit!()}>
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit list
                     </DropdownMenuItem>
                   )}
                   {onHide && (
-                    <DropdownMenuItem onSelect={() => onHide()}>
+                    <DropdownMenuItem onSelect={() => onHide!()}>
                       <EyeOff className="w-4 h-4 mr-2" />
                       Hide list
                     </DropdownMenuItem>
@@ -123,7 +124,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onSelect={() => onDelete()}
+                        onSelect={() => onDelete!()}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />

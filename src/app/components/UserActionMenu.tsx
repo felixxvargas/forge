@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MoreVertical, UserX, VolumeX, Flag, X } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 
 interface UserActionMenuProps {
   userId: string;

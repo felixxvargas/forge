@@ -1,0 +1,23 @@
+@import 'tailwindcss' source(none);
+@source '../src/**/*.{js,ts,jsx,tsx}';
+@source './**/*.{js,ts,jsx,tsx}';
+
+@import 'tw-animate-css';
+@import '../src/styles/fonts.css';
+@import '../src/styles/theme.css';
+
+/* Custom scrollbar */
+.scrollbar-thin::-webkit-scrollbar { height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+html { scroll-behavior: smooth; background-color: var(--background); }
+body { background: transparent; }
+
+/* Prevent iOS Safari zoom on input focus */
+input, textarea, select { font-size: max(16px, 1em); }
+
+@media (min-width: 768px) {
+  #__next { width: 100%; }
+}

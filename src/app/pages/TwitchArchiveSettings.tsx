@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from '@/compat/router';
 import { ArrowLeft, Check, AlertCircle, Loader2, Trash2 } from 'lucide-react';
 import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useAppData } from '../context/AppDataContext';

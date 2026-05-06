@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { Home, ArrowLeft } from 'lucide-react';
 
 export function NotFound() {

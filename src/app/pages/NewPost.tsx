@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { useNavigate, useSearchParams, useBlocker, useLocation } from 'react-router';
+import { useNavigate, useSearchParams, useBlocker, useLocation } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { ImageUpload } from '../components/ImageUpload';
 import { LinkPreview } from '../components/LinkPreview';
@@ -555,11 +555,7 @@ export function NewPost() {
       const pollData = filledOptions.length >= 2 && pollEndDate
         ? { options: filledOptions, end_date: new Date(pollEndDate).toISOString(), votes: {} }
         : undefined;
-      // Respect preview dismissals: don't save a URL if the user removed its preview card
-      const effectiveLinkUrl =
-        (linkUrl && previewDismissedFor !== linkUrl) ? linkUrl :
-        (!linkUrl && detectedUrl && detectedUrlDismissedFor !== detectedUrl) ? detectedUrl :
-        undefined;
+      const effectiveLinkUrl = linkUrl || detectedUrl || undefined;
       let lastPostId = await createPost(
         content, images, effectiveLinkUrl, imageAltsFinal, activeCommunityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
@@ -648,7 +644,7 @@ export function NewPost() {
 
   return (
     <div className="sm:fixed sm:inset-0 sm:z-50 sm:flex sm:items-end sm:justify-center md:items-center sm:bg-black/60">
-    <div className="w-full min-h-screen sm:bg-card flex flex-col sm:min-h-0 sm:h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl sm:overflow-hidden sm:shadow-2xl">
+    <div className="w-full min-h-screen sm:bg-card/85 sm:backdrop-blur-xl flex flex-col sm:min-h-0 sm:h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl sm:overflow-hidden sm:shadow-2xl">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border shrink-0">
         <div className="flex items-center justify-between p-4">
@@ -1262,32 +1258,36 @@ export function NewPost() {
         )}
 
         {/* Toolbar link preview */}
-        {!!linkUrl && previewDismissedFor !== linkUrl && openPanel !== 'link' && (
+        {!!linkUrl && openPanel !== 'link' && (
           <div className="mt-3 relative">
-            <button
-              type="button"
-              onClick={() => setPreviewDismissedFor(linkUrl)}
-              className="absolute top-2 right-2 z-10 w-6 h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm hover:bg-secondary transition-colors"
-              aria-label="Remove link preview"
-            >
-              <X className="w-3 h-3" />
-            </button>
-            <LinkPreview url={linkUrl} />
+            {previewDismissedFor !== linkUrl && (
+              <button
+                type="button"
+                onClick={() => setPreviewDismissedFor(linkUrl)}
+                className="absolute top-2 right-2 z-10 w-6 h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm hover:bg-secondary transition-colors"
+                aria-label="Remove preview image"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            <LinkPreview url={linkUrl} noImage={previewDismissedFor === linkUrl} />
           </div>
         )}
 
         {/* In-text URL preview */}
-        {!!detectedUrl && detectedUrl !== linkUrl && detectedUrlDismissedFor !== detectedUrl && (
+        {!!detectedUrl && detectedUrl !== linkUrl && (
           <div className="mt-3 relative">
-            <button
-              type="button"
-              onClick={() => setDetectedUrlDismissedFor(detectedUrl)}
-              className="absolute top-2 right-2 z-10 w-6 h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm hover:bg-secondary transition-colors"
-              aria-label="Remove link preview"
-            >
-              <X className="w-3 h-3" />
-            </button>
-            <LinkPreview url={detectedUrl} />
+            {detectedUrlDismissedFor !== detectedUrl && (
+              <button
+                type="button"
+                onClick={() => setDetectedUrlDismissedFor(detectedUrl)}
+                className="absolute top-2 right-2 z-10 w-6 h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm hover:bg-secondary transition-colors"
+                aria-label="Remove preview image"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            <LinkPreview url={detectedUrl} noImage={detectedUrlDismissedFor === detectedUrl} />
           </div>
         )}
 

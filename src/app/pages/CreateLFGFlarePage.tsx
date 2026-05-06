@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Search, Loader2, Flame, Users, Gamepad2, ChevronDown, ChevronRight } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from '@/compat/router';
 import { gamesAPI } from '../utils/api';
 import { lfgFlares, groups as groupsAPI } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';

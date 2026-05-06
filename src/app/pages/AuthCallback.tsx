@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { supabase, profiles } from '../utils/supabase';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { toast } from 'sonner';

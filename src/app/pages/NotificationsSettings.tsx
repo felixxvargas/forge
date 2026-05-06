@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Bell, Mail, Check } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 

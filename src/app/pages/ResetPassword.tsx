@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';

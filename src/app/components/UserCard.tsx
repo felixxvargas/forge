@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ProfileAvatar } from './ProfileAvatar';
 
 import { PlatformIcon } from './PlatformIcon';

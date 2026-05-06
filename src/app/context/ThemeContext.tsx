@@ -11,6 +11,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'dark';
     const saved = localStorage.getItem('forge-theme');
     return (saved as Theme) || 'dark';
   });
@@ -27,13 +28,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  // Ensure dark mode is applied on initial mount
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    }
-  }, []);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -54,8 +48,3 @@ export function useTheme() {
   return context;
 }
 
-// HMR: Accept updates to this module
-if (import.meta.hot) {
-  import.meta.hot.accept();
-  console.log('[HMR] ThemeContext module updated');
-}

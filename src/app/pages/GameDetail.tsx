@@ -1,4 +1,4 @@
-import { useParams, useNavigate, useLocation } from 'react-router';
+import { useParams, useNavigate, useLocation } from '@/compat/router';
 import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';

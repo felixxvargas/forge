@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Crown, Search } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { gamesAPI } from '../utils/api';

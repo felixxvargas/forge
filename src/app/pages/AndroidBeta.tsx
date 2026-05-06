@@ -1,5 +1,5 @@
-﻿import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+﻿import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from '@/compat/router';
 import { ArrowLeft, Smartphone, CheckCircle, Loader2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { supabase } from '../utils/supabase';
@@ -8,20 +8,21 @@ import ForgeSVG from '../../assets/forge-logo.svg?react';
 
 export function AndroidBeta() {
   const navigate = useNavigate();
-  const { currentUser, isAuthenticated } = useAppData();
+  const { currentUser, isAuthenticated, isLoading } = useAppData();
   const [userEmail, setUserEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const checkedRef = useRef(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !currentUser?.id || checkedRef.current) return;
+    checkedRef.current = true;
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setUserEmail(user.email);
     });
-    if (!currentUser?.id) return;
     supabase
       .from('beta_signups')
       .select('id')
@@ -98,6 +99,10 @@ export function AndroidBeta() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               A confirmation has been sent to <strong className="text-foreground">{userEmail}</strong>. Watch for an email from Google Play — your beta invite usually arrives within a week.
             </p>
+          </div>
+        ) : isLoading ? (
+          <div className="bg-card border border-border rounded-2xl p-8 flex justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : !isAuthenticated ? (
           <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4">

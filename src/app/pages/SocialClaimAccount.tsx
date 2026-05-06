@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router';
+import { useNavigate, useSearchParams, Link } from '@/compat/router';
 import { Mail, ArrowLeft } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';

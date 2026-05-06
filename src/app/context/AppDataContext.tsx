@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI } from '../utils/supabase';
@@ -75,46 +76,6 @@ interface AppDataContextType {
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 AppDataContext.displayName = 'AppDataContext';
 
-// ─── Client-side data cache (localStorage, per-user, 15-min TTL) ─────────────
-// Lets the app show content immediately on mobile "return to app" without a
-// loading screen, while a background refresh keeps data fresh.
-
-const DATA_CACHE_KEY = 'forge-data-v1';
-const DATA_CACHE_TTL = 15 * 60 * 1000;
-
-interface DataCache {
-  userId: string;
-  ts: number;
-  currentUser: any;
-  posts: any[];
-  users: any[];
-  groups: any[];
-  likedPosts: string[];
-  repostedPosts: string[];
-  followingIds: string[];
-  followedGameIds: string[];
-  memberGroupIds: string[];
-  externalFollows: any[];
-}
-
-function readDataCache(userId: string): DataCache | null {
-  try {
-    const raw = localStorage.getItem(DATA_CACHE_KEY);
-    if (!raw) return null;
-    const cache = JSON.parse(raw) as DataCache;
-    if (cache.userId !== userId) return null;
-    if (Date.now() - cache.ts > DATA_CACHE_TTL) return null;
-    return cache;
-  } catch { return null; }
-}
-
-function writeDataCache(data: DataCache): void {
-  try { localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
-}
-
-function clearDataCache(): void {
-  try { localStorage.removeItem(DATA_CACHE_KEY); } catch { /* ignore */ }
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Ensure profile objects never carry null/undefined on fields the UI depends on. */
@@ -129,6 +90,7 @@ function normalizeProfile(profile: any): any {
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
@@ -328,19 +290,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Poll for unread notifications every 60s so the badge updates while the user is active
-  useEffect(() => {
-    if (!session?.user) return;
-    const userId = session.user.id;
-    const poll = async () => {
-      try {
-        const count = await notificationsAPI.getUnreadCount(userId);
-        setHasUnreadNotifications(count > 0);
-      } catch { /* ignore */ }
-    };
-    const id = setInterval(poll, 60_000);
-    return () => clearInterval(id);
-  }, [session?.user?.id]);
 
   // Client-side replacement for pg_cron: check for expiring stream archives on login.
   // Runs once per session. Creates stream_expiry notifications for archives that are
@@ -432,7 +381,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           toast(`${actorName} ${label}`, {
             action: {
               label: 'View',
-              onClick: () => { window.location.href = '/notifications'; },
+              onClick: () => router.push('/notifications'),
             },
           });
         }
@@ -444,35 +393,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Load data when session changes
   useEffect(() => {
     const init = async () => {
-      const userId = session?.user?.id;
-
-      // Hydrate from client-side cache instantly so the loading screen is skipped
-      // when the user returns to the app (e.g. after backgrounding on mobile).
-      // A background refresh always runs to keep data current.
-      const cache = userId ? readDataCache(userId) : null;
-      if (cache) {
-        setCurrentUser(cache.currentUser);
-        currentUserRef.current = cache.currentUser;
-        setPostList(cache.posts);
-        setUsers(cache.users);
-        setGroupsList(cache.groups);
-        likedPostsRef.current = cache.likedPosts;
-        setLikedPosts(new Set(cache.likedPosts));
-        repostedPostsRef.current = cache.repostedPosts;
-        setRepostedPosts(new Set(cache.repostedPosts));
-        followingIdsRef.current = cache.followingIds;
-        setFollowingIds(new Set(cache.followingIds));
-        setFollowedGameIds(new Set(cache.followedGameIds));
-        followedGameIdsRef.current = cache.followedGameIds;
-        memberGroupIdsRef.current = cache.memberGroupIds ?? [];
-        setExternalFollows(cache.externalFollows ?? []);
-        lastLoadedUsersRef.current = cache.users;
-        setIsLoading(false); // Show cached content, no loading screen
-        setTopicPostsReady(true);
-      } else {
-        setIsLoading(true);
-        setTopicPostsReady(false);
-      }
+      setIsLoading(true);
+      setTopicPostsReady(false);
 
       try {
         let feedData = await refreshFeed();
@@ -595,23 +517,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               console.error('Error loading external follow posts:', e);
             }
           }
-          // Write fresh data to client-side cache for instant hydration on next load
-          if (userId && currentUserRef.current) {
-            writeDataCache({
-              userId,
-              ts: Date.now(),
-              currentUser: currentUserRef.current,
-              posts: feedData.posts,
-              users: feedData.users,
-              groups: feedData.groups,
-              likedPosts: likedPostsRef.current,
-              repostedPosts: repostedPostsRef.current,
-              followingIds: followingIdsRef.current,
-              followedGameIds: followedGameIdsRef.current,
-              memberGroupIds: memberGroupIdsRef.current,
-              externalFollows: loadResult?.externalFollows ?? [],
-            });
-          }
         } else {
           setCurrentUser(null);
         }
@@ -637,7 +542,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await auth.signOut();
-    clearDataCache();
     setCurrentUser(null);
     setPostList([]);
     setTopicPosts([]);

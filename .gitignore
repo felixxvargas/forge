@@ -1,10 +1,12 @@
 # Dependencies
-node_modules
-.pnpm-store
+node_modules/
+.pnpm-store/
 
-# Build output
-dist
-dist-ssr
+# Next.js Build Output (CRITICAL FIX)
+.next/
+out/
+dist/
+dist-ssr/
 
 # Environment variables — NEVER commit these
 .env
@@ -16,9 +18,10 @@ dist-ssr
 npm-debug.log*
 pnpm-debug.log*
 
-# Editor
-.vscode
-.idea
+# Editor & Cursor
+.cursor/
+.vscode/
+.idea/
 *.suo
 *.ntvs*
 *.njsproj

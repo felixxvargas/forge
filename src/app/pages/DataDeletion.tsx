@@ -1,4 +1,4 @@
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link } from '@/compat/router';
 import { ArrowLeft, Trash2, Shield, Mail, Smartphone } from 'lucide-react';
 
 const APP_NAME = 'Forge';

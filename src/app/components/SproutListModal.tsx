@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Sprout } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
 import { ProfileAvatar } from './ProfileAvatar';
 

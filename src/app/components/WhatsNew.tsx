@@ -20,8 +20,7 @@ export const RELEASES: Release[] = [
       'Post detail pages now show full comment threads with connected reply lines',
       'Game expansion pages link back to the parent game; expansions shown on parent pages',
       'Expansion activity now boosts parent game rankings',
-      'Sprout badge visible only on profile pages',
-      'Top navigation bars are now consistent in height across all pages',
+      'Sprout badge visible on profile pages',
     ],
   },
   {
@@ -71,7 +70,7 @@ export const RELEASES: Release[] = [
     title: "What's New in Forge",
     summary: "Quote posts, game list sharing in the feed, and compose improvements.",
     highlights: [
-      'Quote post support — the repost tray now offers Repost or Quote Post',
+      'Quote post support; the repost tray now offers Repost or Quote Post',
       'Attach a game list preview to any post from compose or from a List page',
       'Tapping a list preview in a post opens the full list',
       'Leaving compose with unsaved content now prompts to save as draft or discard',
@@ -95,7 +94,7 @@ export const RELEASES: Release[] = [
     title: "What's New in Forge",
     summary: "Forge launched with feeds, profiles, messages, notifications, and more.",
     highlights: [
-      'Launch of Forge — Feed, Explore, Messages, Profiles, Notifications, Settings',
+      'Launch of Forge; Feed, Explore, Messages, Profiles, Notifications, Settings',
       'Follow gaming news accounts via Bluesky and Mastodon (IGN, GameSpot, Xbox, and more)',
       'Login and sign up via Google',
       'Games database powered by IGDB',

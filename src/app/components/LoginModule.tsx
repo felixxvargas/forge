@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from '@/compat/router';
 import { Mail, Eye, EyeOff, AlertTriangle, Gamepad2, Megaphone, Search, Tv2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { toast } from 'sonner';
-import { SocialAuthButtons } from './SocialAuthButtons';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
 
 interface Props {
@@ -219,8 +218,6 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
         Continue with Google
       </button>
 
-      <SocialAuthButtons disabled={isLoading} />
-
       <div className="relative my-4">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"/></div>
         <div className="relative flex justify-center text-sm"><span className="px-4 bg-background text-muted-foreground">or</span></div>
@@ -278,9 +275,9 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-dvh flex">
       {/* Left panel — desktop branding (hidden on mobile) */}
-      <div className="hidden md:flex flex-col justify-between w-[45%] shrink-0 p-12 bg-card border-r border-border relative overflow-hidden">
+      <div className="hidden md:flex flex-col justify-between w-[45%] shrink-0 p-12 relative overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
         {/* Subtle background glow */}
         <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/10 pointer-events-none" />
         <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-accent/5 blur-3xl pointer-events-none" />
@@ -306,7 +303,7 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
               { icon: Gamepad2, text: 'Connect with gamers across PlayStation, Xbox, Steam, and more' },
               { icon: Megaphone, text: 'Share gaming moments, reviews, and finds with your community' },
               { icon: Search, text: 'Discover groups, LFG flares, and trending games' },
-              { icon: Tv2, text: 'Auto-archive your Twitch streams — up to 6-hour streams, saved forever' },
+              { icon: Tv2, text: 'Auto-archive your Twitch streams, up to 6 hours, saved forever' },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-start gap-3">
                 <Icon className="w-5 h-5 shrink-0 mt-0.5 text-accent" />

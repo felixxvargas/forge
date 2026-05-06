@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send } from 'lucide-react';
 import type { GameListType } from '../data/data';

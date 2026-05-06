@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Globe, Users, Lock } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import type { GroupType } from '../data/data';

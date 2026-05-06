@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { Heart, MessageCircle, Repeat2, UserPlus, Users, AtSign, Flame, ChevronDown, Tv2, Star } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';

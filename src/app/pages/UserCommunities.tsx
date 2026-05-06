@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Crown, Shield } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useAppData } from '../context/AppDataContext';

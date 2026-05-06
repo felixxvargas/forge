@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-import { useNavigate } from 'react-router';
+import { useNavigate } from '@/compat/router';
 import type { Post, User, SocialPlatform } from '../data/data';
 import { LinkifyMentions } from '../utils/linkify';
 import { PlatformIcon } from './PlatformIcon';
@@ -45,9 +45,10 @@ interface PostCardProps {
   noBacker?: boolean;
   onRemoveFromGroup?: () => void;
   hideGroupTag?: boolean;
+  showThreadLine?: boolean;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false }: PostCardProps) {
+export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -296,7 +297,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
         isFlarePost
           ? 'relative overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-950/60 via-red-950/30 to-card'
           : noBacker ? 'bg-transparent' : 'bg-card'
-      } p-4 ${!isDetailView ? 'rounded-xl mb-3 cursor-pointer transition-colors' : ''} ${
+      } p-4 ${showThreadLine ? 'relative' : ''} ${!isDetailView ? 'rounded-xl cursor-pointer transition-colors' : ''} ${
         isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-secondary/40' : ''
       }`}
       style={!isFlarePost && !noBacker ? {
@@ -305,6 +306,12 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       } : undefined}
       onClick={handlePostClick}
     >
+      {showThreadLine && (
+        <div
+          className="absolute w-0.5 bg-border/50 rounded-b-full pointer-events-none"
+          style={{ left: '40px', top: '64px', bottom: '-10px' }}
+        />
+      )}
       {/* Flare header banner */}
       {isFlarePost && (
         <div className="flex items-center gap-2 -mx-4 -mt-4 mb-3 px-4 py-2 bg-gradient-to-r from-orange-500/25 via-red-500/15 to-transparent border-b border-orange-500/25">
