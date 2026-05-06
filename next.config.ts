@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
       'VITE_STRIPE_PUBLISHABLE_KEY',
       'VITE_TWITCH_CLIENT_ID',
       'VITE_SENTRY_DSN',
+      'VITE_RAWG_API_KEY',
     ];
     for (const key of viteKeys) {
       viteEnv[`import.meta.env.${key}`] = JSON.stringify(process.env[key] ?? '');
