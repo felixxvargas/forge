@@ -93,6 +93,8 @@
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4.2.4",
     "@tailwindcss/vite": "4.1.12",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "4.7.0",
     "sharp": "^0.34.5",
     "tailwindcss": "4.1.12",
