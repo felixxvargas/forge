@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import useSWR from 'swr';
 import { ArrowRight, Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from '@/compat/router';
 import { Header } from '../components/Header';
@@ -62,7 +63,6 @@ export function Feed() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
-  const [dynamicLoading, setDynamicLoading] = useState(false);
   const [groupNewPostCounts, setGroupNewPostCounts] = useState<Record<string, number>>({});
   const navigate = useNavigate();
 
@@ -169,10 +169,14 @@ export function Feed() {
     return allGames.filter(g => followedGameIds.has(g.id));
   })() : [];
 
-  const loadDynamicFeed = useCallback(async () => {
-    if (feedMode === 'following' && isAuthenticated) { setDynamicPosts(null); return; }
-    setDynamicLoading(true);
-    try {
+  // SWR key: null for 'following' (uses contextPosts), string for all dynamic modes
+  const feedSWRKey = (feedMode === 'following' && isAuthenticated)
+    ? null
+    : `dynamic-feed:${typeof feedMode === 'string' ? feedMode : `${feedMode.type}:${feedMode.id}`}:${currentUser?.id ?? 'guest'}`;
+
+  const { data: swrPosts, isLoading: dynamicLoading } = useSWR(
+    feedSWRKey,
+    async (): Promise<any[]> => {
       if (feedMode === 'trending' || !isAuthenticated) {
         const [trendingRes, liveRes] = await Promise.allSettled([
           postsAPI.getTrendingFeed(40),
@@ -194,11 +198,11 @@ export function Feed() {
               };
             }).filter((p): p is NonNullable<typeof p> => !!p && isUsableTopicPost(p))
           : [];
-        const merged = [...trending, ...live].sort((a: any, b: any) =>
+        return [...trending, ...live].sort((a: any, b: any) =>
           new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()
         );
-        setDynamicPosts(merged);
-      } else if (feedMode === 'for-you') {
+      }
+      if (feedMode === 'for-you') {
         const [nativeRes, topicRes] = await Promise.allSettled([
           postsAPI.getForYouFeed(currentUser?.id ?? '', Array.from(followedGameIds), 35),
           fetchAllGamingMediaPosts(6),
@@ -218,7 +222,6 @@ export function Feed() {
             comment_count: p.comments ?? 0,
           };
         }).filter((p): p is NonNullable<typeof p> => !!p && isUsableTopicPost(p));
-        // Interleave: ~1 topic post per 6 native posts so native content stays dominant
         const merged: any[] = [];
         let ti = 0;
         native.forEach((post, i) => {
@@ -226,23 +229,24 @@ export function Feed() {
           if ((i + 1) % 6 === 0 && ti < topic.length) merged.push(topic[ti++]);
         });
         while (ti < topic.length) merged.push(topic[ti++]);
-        setDynamicPosts(merged);
-      } else if (typeof feedMode === 'object' && feedMode.type === 'game') {
-        const data = await postsAPI.getGameFeed(feedMode.id, 40);
-        setDynamicPosts(data);
-      } else {
-        setDynamicPosts(null);
+        return merged;
       }
-    } catch {
-      setDynamicPosts([]);
-    } finally {
-      setDynamicLoading(false);
-    }
-  }, [feedMode, currentUser?.id, followedGameIds, isAuthenticated]);
+      if (typeof feedMode === 'object' && feedMode.type === 'game') {
+        return postsAPI.getGameFeed(feedMode.id, 40);
+      }
+      return [];
+    },
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
 
+  // Sync SWR data into local state so like/repost mutations can still update it
   useEffect(() => {
-    loadDynamicFeed();
-  }, [loadDynamicFeed]);
+    if (feedMode === 'following' && isAuthenticated) {
+      setDynamicPosts(null);
+    } else if (swrPosts !== undefined) {
+      setDynamicPosts(swrPosts);
+    }
+  }, [swrPosts, feedMode, isAuthenticated]);
 
   // For guests, always show trending; restore following when auth resolves
   // (unless ?tab=trending was explicitly requested)
@@ -305,7 +309,11 @@ export function Feed() {
     setDynamicPosts(null);
   };
 
-  const loading = isLoading || dynamicLoading || (feedMode === 'following' && isAuthenticated && !topicPostsReady);
+  // Gate skeleton on no-data-yet: SWR with keepPreviousData means dynamicLoading is true
+  // during background revalidation too, so only block on first load (dynamicPosts === null).
+  const loading = isLoading
+    || (dynamicLoading && dynamicPosts === null)
+    || (feedMode === 'following' && isAuthenticated && !topicPostsReady && contextPosts.length === 0);
   const numCols = useColumnCount();
 
   const feedContent = (

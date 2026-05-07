@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useNavigate } from '@/compat/router';
 import { Heart, MessageCircle, Repeat2, UserPlus, Users, AtSign, Flame, ChevronDown, Tv2, Star } from 'lucide-react';
 import { Header } from '../components/Header';
@@ -19,28 +20,43 @@ export function Notifications() {
   const navigate = useNavigate();
   const { session, markNotificationsAsRead, followingIds, followUser, unfollowUser } = useAppData();
   const [notifs, setNotifs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [expiringFlares, setExpiringFlares] = useState<any[]>([]);
   const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
   const [renewingFlare, setRenewingFlare] = useState<string | null>(null);
   const [editFlare, setEditFlare] = useState<any | null>(null);
 
+  // SWR: caches notifications between navigations — no skeleton on return visits
+  const { data: notifData, isLoading: swrLoading } = useSWR(
+    session?.user?.id ? `notifications:${session.user.id}` : null,
+    async () => {
+      const [n, flares] = await Promise.all([
+        notificationsAPI.getForUser(session!.user.id, 50),
+        lfgFlaresAPI.getActiveForUser(session!.user.id),
+      ]);
+      const threshold = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      return {
+        notifs: n as any[],
+        expiringFlares: flares.filter(f => new Date(f.expires_at).getTime() < threshold),
+      };
+    },
+    { keepPreviousData: true, revalidateOnFocus: true }
+  );
+
+  // Sync SWR data into local state so mutation handlers (filter, etc.) keep working
   useEffect(() => {
-    if (!session?.user) return;
-    Promise.all([
-      notificationsAPI.getForUser(session.user.id, 50),
-      lfgFlaresAPI.getActiveForUser(session.user.id),
-    ])
-      .then(([n, flares]) => {
-        setNotifs(n);
-        // Show flares expiring within 7 days or already expired
-        const threshold = Date.now() + 7 * 24 * 60 * 60 * 1000;
-        setExpiringFlares(flares.filter(f => new Date(f.expires_at).getTime() < threshold));
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-    markNotificationsAsRead();
+    if (notifData) {
+      setNotifs(notifData.notifs);
+      setExpiringFlares(notifData.expiringFlares);
+    }
+  }, [notifData]);
+
+  // Mark read on every visit
+  useEffect(() => {
+    if (session?.user?.id) markNotificationsAsRead();
   }, [session?.user?.id]);
+
+  // Only show skeleton on first-ever load (no cached data yet)
+  const showSkeleton = swrLoading && !notifData;
 
   const handleFollowBack = async (actorId: string) => {
     if (!actorId) return;
@@ -134,7 +150,7 @@ export function Notifications() {
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">Notifications</h1>
 
-        {isLoading ? (
+        {showSkeleton ? (
           <div className="space-y-1">
             {['w-3/4', 'w-2/3', 'w-5/6', 'w-3/5', 'w-4/5', 'w-2/3', 'w-3/4'].map((w, i) => (
               <div key={i} className="flex items-start gap-3 px-4 py-3.5 animate-pulse">

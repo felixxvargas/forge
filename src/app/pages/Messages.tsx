@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import useSWR from 'swr';
 import { useSearchParams, useNavigate } from '@/compat/router';
 import { Header } from '../components/Header';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -68,7 +69,6 @@ export function Messages() {
   // Shared
   const [messageInput, setMessageInput] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [loadingConvos, setLoadingConvos] = useState(false);
 
   // Participant profile cache for group thread list avatars
   const [participantProfiles, setParticipantProfiles] = useState<Record<string, any>>({});
@@ -181,38 +181,47 @@ export function Messages() {
   }, [currentUser?.id]);
 
 
-  // Load conversations + group threads
+  // SWR: cache conversation list between navigations — no skeleton on return visits
+  const { data: convoData, isLoading: convoSWRLoading } = useSWR(
+    currentUser?.id ? `convos:${currentUser.id}` : null,
+    async () => {
+      const [dms, groups] = await Promise.all([
+        dmAPI.getConversations(currentUser!.id).catch(() => []),
+        groupAPI.getForUser(currentUser!.id).catch(() => []),
+      ]);
+      return { dms: dms as any[], groups: groups as any[] };
+    },
+    { keepPreviousData: true, revalidateOnFocus: false, revalidateOnReconnect: true }
+  );
+
+  // Sync SWR data into local state and handle encrypted preview decryption
   useEffect(() => {
-    if (!currentUser?.id) return;
-    setLoadingConvos(true);
-    Promise.all([
-      dmAPI.getConversations(currentUser.id).catch(() => []),
-      groupAPI.getForUser(currentUser.id).catch(() => []),
-    ]).then(async ([dms, groups]) => {
-      setConversations(dms);
-      setGroupThreadList(groups);
-      // Decrypt preview text for encrypted DM conversations
-      const encryptedConvos = (dms as any[]).filter(c => c.encrypted && c.content && c.iv);
-      if (encryptedConvos.length && currentUser?.id) {
-        const userId = currentUser.id;
-        const entries = await Promise.all(
-          encryptedConvos.map(async (convo: any) => {
-            try {
-              const pid = convo.sender_id === userId ? convo.recipient_id : convo.sender_id;
-              const raw = await profiles.getPublicKey(pid);
-              if (!raw) return null;
-              const key = JSON.parse(raw) as JsonWebKey;
-              const plain = await decryptMessage(convo.content, convo.iv, key);
-              return plain ? [pid, plain] as [string, string] : null;
-            } catch { return null; }
-          })
-        );
-        const map: Record<string, string> = {};
-        entries.forEach(e => { if (e) map[e[0]] = e[1]; });
-        setDmPreviews(prev => ({ ...prev, ...map }));
-      }
-    }).finally(() => setLoadingConvos(false));
-  }, [currentUser?.id]);
+    if (!convoData || !currentUser?.id) return;
+    setConversations(convoData.dms);
+    setGroupThreadList(convoData.groups);
+    const encryptedConvos = convoData.dms.filter((c: any) => c.encrypted && c.content && c.iv);
+    if (!encryptedConvos.length) return;
+    const userId = currentUser.id;
+    Promise.all(
+      encryptedConvos.map(async (convo: any) => {
+        try {
+          const pid = convo.sender_id === userId ? convo.recipient_id : convo.sender_id;
+          const raw = await profiles.getPublicKey(pid);
+          if (!raw) return null;
+          const key = JSON.parse(raw) as JsonWebKey;
+          const plain = await decryptMessage(convo.content, convo.iv, key);
+          return plain ? [pid, plain] as [string, string] : null;
+        } catch { return null; }
+      })
+    ).then(entries => {
+      const map: Record<string, string> = {};
+      entries.forEach(e => { if (e) map[e[0]] = e[1]; });
+      if (Object.keys(map).length) setDmPreviews(prev => ({ ...prev, ...map }));
+    });
+  }, [convoData, currentUser?.id]);
+
+  // Skeleton only on first-ever load (no cached data yet)
+  const loadingConvos = convoSWRLoading && !convoData;
 
   // Fetch partner public key then load & decrypt DM messages (sequential to avoid race condition)
   useEffect(() => {
