@@ -399,7 +399,7 @@ export function Feed() {
       {isAuthenticated && (
         <button
           onClick={() => navigate('/new-post')}
-          className="hidden md:flex items-center gap-3 w-full mb-6 px-4 py-3 bg-card border border-border rounded-xl hover:border-accent/40 transition-colors group"
+          className="hidden md:flex items-center gap-3 w-full md:max-w-xl mb-6 px-4 py-3 bg-card border border-border rounded-xl hover:border-accent/40 transition-colors group"
         >
           <div className="flex-1 text-left text-sm text-muted-foreground group-hover:text-foreground transition-colors">
             What's on your mind?
