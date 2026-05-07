@@ -13,6 +13,7 @@ import { posts as postsAPI } from '../utils/supabase';
 import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
 import { topicAccounts } from '../data/data';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
+import { BetaTag } from '../components/ui/BetaTag';
 
 // Reverse map: Bluesky handle → topic account (built once at module level)
 const BSKY_HANDLE_TO_TOPIC: Record<string, any> = {};
@@ -568,7 +569,7 @@ export function Feed() {
                   preserveAspectRatio="xMidYMid meet"
                 />
                 <span className="font-black text-lg text-accent">Forge</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
+                <BetaTag size="sm" />
               </div>
               <p className="text-sm text-muted-foreground mb-4 leading-snug">Connect with gamers across all platforms</p>
               <Link to="/signup" className="w-full block text-center py-2.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-semibold text-sm mb-2">

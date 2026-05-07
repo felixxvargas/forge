@@ -269,17 +269,6 @@ export const topicAccounts: User[] = [
     followerCount: 181484,
   },
   {
-    id: 'user-gamespot',
-    handle: '@gamespot',
-    displayName: 'GameSpot',
-    bio: 'The world in play',
-    profilePicture: '',
-    platforms: [],
-    socialPlatforms: ['x', 'instagram', 'bluesky'],
-    gameLists: { recentlyPlayed: [], library: [], favorites: [], wishlist: [] },
-    followerCount: 0,
-  },
-  {
     id: 'user-xbox',
     handle: '@xbox',
     displayName: 'Xbox',

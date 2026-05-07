@@ -67,69 +67,66 @@ export function ErrorBoundary() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full text-center">
-        {/* Error Icon */}
+    <div className="min-h-dvh bg-background text-foreground flex items-center justify-center p-6">
+      <div className="max-w-sm w-full text-center">
+        {/* Error icon */}
         <div className="mb-6 flex justify-center">
-          <div className="bg-purple-600/20 p-4 rounded-full">
-            <AlertCircle className="w-12 h-12 text-purple-500" />
+          <div className="bg-accent/10 p-4 rounded-full">
+            <AlertCircle className="w-10 h-10 text-accent" />
           </div>
         </div>
 
-        {/* Error Title */}
         <h1 className="text-2xl font-bold mb-3">{title}</h1>
-        
-        {/* Error Message */}
-        <p className="text-gray-400 mb-8 leading-relaxed">
+
+        <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
           {message}
         </p>
 
-        {/* Error Details (collapsed by default) */}
+        {/* Error details (collapsed) */}
         {showDetails && errorDetails && (
           <details className="mb-8 text-left">
-            <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-400 mb-2">
+            <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground mb-2">
               Technical details
             </summary>
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 text-xs text-gray-400 font-mono overflow-auto max-h-32">
+            <div className="bg-card border border-border rounded-xl p-3 text-xs text-muted-foreground font-mono overflow-auto max-h-32">
               {errorDetails}
             </div>
           </details>
         )}
 
-        {/* Action Buttons */}
+        {/* Action buttons */}
         <div className="flex flex-col gap-3">
           <Button
             onClick={handleGoBack}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            className="w-full"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4" />
             Go back
           </Button>
-          
+
           <div className="flex gap-3">
             <Button
               onClick={handleReload}
               variant="outline"
-              className="flex-1 border-gray-700 hover:border-gray-600 text-gray-300"
+              className="flex-1"
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw className="w-4 h-4" />
               Reload
             </Button>
-            
+
             <Button
               onClick={handleGoHome}
               variant="outline"
-              className="flex-1 border-gray-700 hover:border-gray-600 text-gray-300"
+              className="flex-1"
             >
-              <Home className="w-4 h-4 mr-2" />
+              <Home className="w-4 h-4" />
               Home
             </Button>
           </div>
         </div>
 
-        {/* Support Message */}
-        <p className="mt-8 text-xs text-gray-600">
-          If this problem persists, please contact support
+        <p className="mt-8 text-xs text-muted-foreground/50">
+          If this keeps happening, please contact support.
         </p>
       </div>
     </div>

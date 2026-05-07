@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from '@/compat/router';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SplashScreen } from '../components/onboarding/SplashScreen';
@@ -15,12 +15,22 @@ import type { Interest } from '../components/onboarding/InterestsScreen';
 
 type OnboardingStep = 'splash' | 'interests' | 'follow' | 'username';
 
+const MAIN_STEPS: OnboardingStep[] = ['interests', 'follow', 'username'];
+
+const stepVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
+  center: { x: '0%', opacity: 1 },
+  exit: (dir: number) => ({ x: dir > 0 ? '-50%' : '50%', opacity: 0 }),
+};
+const slideTransition = { type: 'tween', ease: 'easeInOut', duration: 0.3 } as const;
+
 export function Onboarding() {
   const navigate = useNavigate();
   const { refreshCurrentUser } = useAppData() as any;
   const [searchParams] = useSearchParams();
   const startStep = searchParams.get('step') as OnboardingStep | null;
   const [step, setStep] = useState<OnboardingStep>(startStep || 'splash');
+  const [direction, setDirection] = useState(1);
   const [selectedInterests, setSelectedInterests] = useState<Interest[]>([]);
   const [initialInterests, setInitialInterests] = useState<Interest[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
@@ -92,6 +102,7 @@ export function Onboarding() {
   }, [step]);
 
   const handleSplashComplete = () => {
+    setDirection(1);
     setStep('interests');
   };
 
@@ -113,10 +124,12 @@ export function Onboarding() {
     }
     
     // Otherwise continue onboarding flow
+    setDirection(1);
     setStep('follow');
   };
 
   const handleFollowComplete = (userIds: string[]) => {
+    setDirection(1);
     setFollowing(userIds);
     setStep('username');
   };
@@ -233,12 +246,52 @@ export function Onboarding() {
     }
   };
 
+  const stepIndex = MAIN_STEPS.indexOf(step);
+
   return (
-    <AnimatePresence mode="wait">
-      {step === 'splash' && <SplashScreen key="splash" onComplete={handleSplashComplete} />}
-      {step === 'interests' && <InterestsScreen key="interests" onComplete={handleInterestsComplete} initialInterests={initialInterests} />}
-      {step === 'follow' && <FollowScreen key="follow" users={suggestedUsers} onComplete={handleFollowComplete} />}
-      {step === 'username' && <UsernameScreen key="username" onComplete={handleUsernameComplete} />}
-    </AnimatePresence>
+    <div className="relative min-h-dvh overflow-hidden">
+      <AnimatePresence mode="wait" custom={direction}>
+        {step === 'splash' && (
+          <motion.div key="splash" initial={{ opacity: 1 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+            <SplashScreen onComplete={handleSplashComplete} />
+          </motion.div>
+        )}
+        {step === 'interests' && (
+          <motion.div key="interests" custom={direction} variants={stepVariants}
+            initial="enter" animate="center" exit="exit" transition={slideTransition}
+            className="absolute inset-0 overflow-y-auto">
+            <InterestsScreen onComplete={handleInterestsComplete} initialInterests={initialInterests} />
+          </motion.div>
+        )}
+        {step === 'follow' && (
+          <motion.div key="follow" custom={direction} variants={stepVariants}
+            initial="enter" animate="center" exit="exit" transition={slideTransition}
+            className="absolute inset-0 overflow-y-auto">
+            <FollowScreen users={suggestedUsers} onComplete={handleFollowComplete} />
+          </motion.div>
+        )}
+        {step === 'username' && (
+          <motion.div key="username" custom={direction} variants={stepVariants}
+            initial="enter" animate="center" exit="exit" transition={slideTransition}
+            className="absolute inset-0 overflow-y-auto">
+            <UsernameScreen onComplete={handleUsernameComplete} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Step indicator — visible on interests / follow / username steps */}
+      {stepIndex >= 0 && (
+        <div className="fixed top-5 inset-x-0 z-50 flex justify-center gap-2 pointer-events-none">
+          {MAIN_STEPS.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === stepIndex ? 'w-8 bg-accent' : i < stepIndex ? 'w-6 bg-accent/50' : 'w-6 bg-white/20'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
+import { BetaTag } from './ui/BetaTag';
 import { ArrowLeft } from 'lucide-react';
 import { useColumnCount, splitToColumns } from '../hooks/useColumnCount';
 
@@ -54,7 +55,7 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
     return (
       <div className="flex items-center gap-1.5">
         <ForgeSVG width="28" height="22" aria-hidden="true" className="opacity-70" />
-        <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none">beta</span>
+        <BetaTag size="sm" />
       </div>
     );
   })();

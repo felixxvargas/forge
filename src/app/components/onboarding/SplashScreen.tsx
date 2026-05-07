@@ -47,7 +47,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         >
           <h1 className="text-5xl font-bold text-foreground font-sora">Forge</h1>
           <motion.span
-            className="text-xs font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-accent/15 text-accent self-center mt-1"
+            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent self-center mt-1"
             initial={{ opacity: 0, scale: 0.7 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.9, duration: 0.4, ease: "easeOut" }}

@@ -2,6 +2,7 @@ import { Bell, Settings } from 'lucide-react';
 import { useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import ForgeLogo from '../../assets/forge-logo.svg?react';
+import { BetaTag } from './ui/BetaTag';
 
 interface HeaderProps {
   title?: string;
@@ -34,7 +35,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
             >
               <div className="flex items-center gap-1.5">
                 <ForgeLogo width="28" height="22" aria-hidden="true" />
-                <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none">beta</span>
+                <BetaTag size="sm" />
               </div>
             </button>
           </div>

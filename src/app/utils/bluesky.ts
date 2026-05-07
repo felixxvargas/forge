@@ -183,7 +183,7 @@ export async function fetchAllGamingMediaPosts(limit = 5): Promise<BlueskyPost[]
 
   try {
     // All handles now on Bluesky (MassivelyOP migrated from Mastodon to massivelyop.bsky.social)
-    const gamingMediaHandles = ['ign.com', 'gamespot.com', 'xbox.com', 'itch.io', 'pcgamer.com', 'massivelyop.bsky.social'];
+    const gamingMediaHandles = ['ign.com', 'xbox.com', 'itch.io', 'pcgamer.com', 'massivelyop.bsky.social'];
 
     const blueskyResults = await Promise.allSettled(
       gamingMediaHandles.map(h => fetchBlueskyPosts(h, limit))
@@ -210,9 +210,6 @@ export const topicAccountBlueskyHandles: Record<string, string> = {
   'user-ign': 'ign.com',
   'ign': 'ign.com',
   'ignentertainment': 'ign.com',
-  // GameSpot — verified at gamespot.com
-  'user-gamespot': 'gamespot.com',
-  'gamespot': 'gamespot.com',
   // Xbox — verified at xbox.com
   'user-xbox': 'xbox.com',
   'xbox': 'xbox.com',

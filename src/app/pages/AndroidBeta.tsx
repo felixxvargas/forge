@@ -5,6 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { supabase } from '../utils/supabase';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
+import { BetaTag } from '../components/ui/BetaTag';
 
 export function AndroidBeta() {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export function AndroidBeta() {
           <div>
             <div className="flex items-center justify-center gap-2 mb-1">
               <h2 className="text-2xl font-bold">Get Early Access</h2>
-              <span className="text-xs font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-accent/15 text-accent">Beta</span>
+              <BetaTag size="sm" />
             </div>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed">
               Be among the first to use Forge natively on Android. Sign up and we'll send your Google Play invite within a week.

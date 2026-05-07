@@ -20,8 +20,14 @@ type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 export function Explore() {
   const { posts, users, getUserById, followingIds, currentUser, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading, followExternalUser, unfollowExternalUser, externalFollowIds, isAuthenticated } = useAppData() as any;
 
+  const VALID_EXPLORE_TABS = new Set<ExploreTab>(['posts', 'users', 'games', 'groups']);
   const [activeTab, setActiveTab] = useState<ExploreTab>(() => {
-    try { const saved = localStorage.getItem('explore-active-tab'); return (saved as ExploreTab) || 'posts'; } catch { return 'posts'; }
+    try {
+      const pathSegment = window.location.pathname.split('/').pop() as ExploreTab;
+      if (VALID_EXPLORE_TABS.has(pathSegment)) return pathSegment;
+      const saved = localStorage.getItem('explore-active-tab');
+      return (saved as ExploreTab) || 'posts';
+    } catch { return 'posts'; }
   });
 
   const [searchQuery, setSearchQuery] = useState(() => { try { return localStorage.getItem('explore-search-query') ?? ''; } catch { return ''; } });
@@ -398,6 +404,7 @@ export function Explore() {
   const goToTab = (tab: ExploreTab, keepSearch = false) => {
     if (!keepSearch) setSearchQuery('');
     setActiveTab(tab);
+    window.history.replaceState(null, '', `/explore/${tab}`);
   };
 
   const seenPostIds = new Set<string>();
@@ -433,7 +440,7 @@ export function Explore() {
   const gamingMediaPosts = allExplorePosts;
 
   // Topic account handles allowed in Explore — verified connections only
-  const ALLOWED_TOPIC_HANDLES = new Set(['xbox', 'itchio', 'gamespot', 'ign', 'pcgamer', 'massivelyop']);
+  const ALLOWED_TOPIC_HANDLES = new Set(['xbox', 'itchio', 'ign', 'pcgamer', 'massivelyop']);
 
   const filteredUsers = users.filter(user => {
     if (user.id === currentUser?.id) return false;
@@ -937,6 +944,7 @@ export function Explore() {
             )}
 
             {activeTab === 'users' && (
+              <div className="max-w-5xl mx-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {isLoading ? (
                   <>
@@ -976,9 +984,11 @@ export function Explore() {
                   ))
                 )}
               </div>
+              </div>
             )}
 
             {activeTab === 'games' && (
+              <div className="max-w-5xl mx-auto">
               <>
                 {isSearchActive && (
                   <p className="text-sm text-muted-foreground mb-3">
@@ -1042,9 +1052,11 @@ export function Explore() {
                   )}
                 </div>
               </>
+              </div>
             )}
 
             {activeTab === 'groups' && (
+              <div className="max-w-5xl mx-auto">
               <div className="space-y-3">
                 <div className="flex lg:justify-start">
                   <button
@@ -1157,6 +1169,7 @@ export function Explore() {
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             )}
           </>

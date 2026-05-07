@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from '@/compat/router';
 import { Mail, Eye, EyeOff, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
+import { BetaTag } from '../components/ui/BetaTag';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ export function SignUp() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [showCaptcha, setShowCaptcha] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
 
   const rules = {
@@ -70,6 +72,19 @@ export function SignUp() {
     }
   };
 
+  const doSignUp = (token: string | null) => {
+    setIsLoading(true);
+    try {
+      localStorage.setItem('forge-signup-email', email);
+      localStorage.setItem('forge-signup-password', password);
+      if (token) localStorage.setItem('forge-signup-captcha', token);
+      navigate('/splash');
+    } catch (err: any) {
+      setError(err.message || 'Sign-up failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -82,24 +97,13 @@ export function SignUp() {
       setError('Passwords do not match.');
       return;
     }
+
     if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      setError('Please complete the CAPTCHA verification.');
+      setShowCaptcha(true);
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // Store credentials — account is created at the end of onboarding once the
-      // profile (handle, display name) is ready, so we have all data in one atomic step.
-      localStorage.setItem('forge-signup-email', email);
-      localStorage.setItem('forge-signup-password', password);
-      if (captchaToken) localStorage.setItem('forge-signup-captcha', captchaToken);
-      navigate('/splash');
-    } catch (err: any) {
-      setError(err.message || 'Sign-up failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    doSignUp(captchaToken);
   };
 
   return (
@@ -131,18 +135,19 @@ export function SignUp() {
         <div className="text-center mb-8">
           <div className="inline-block px-6 pt-5 pb-4 rounded-2xl mb-1"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="relative w-14 h-11 sm:w-20 sm:h-16 mx-auto mb-3 flex items-center justify-center">
+            {/* Logo with extended glow covering wordmark */}
+            <div className="relative w-16 h-[51px] sm:w-24 sm:h-[77px] mx-auto mb-3 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ background: 'radial-gradient(circle, rgba(231,255,196,0.35) 0%, rgba(167,139,250,0.55) 40%, transparent 70%)', filter: 'blur(20px)', transform: 'scale(1.8)' }} />
+                style={{ background: 'radial-gradient(circle, rgba(231,255,196,0.55) 0%, rgba(167,139,250,0.45) 40%, transparent 70%)', filter: 'blur(22px)', transform: 'scale(4)' }} />
               <svg viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative w-full h-full">
                 <path d="M23.8546 22.0745C23.7979 22.282 23.7454 22.5338 23.5728 22.7707C23.5288 23.1602 15.1934 22.7982 14.7127 22.7861C14.2111 22.7735 14.1341 22.1925 14.2267 21.8101C14.4018 21.0873 14.3769 20.9666 13.4012 20.9113C12.5315 20.862 12.1966 20.8773 11.1815 20.8909C10.5502 20.8993 10.3816 20.9074 10.1126 21.6804C9.99697 22.0128 9.64876 22.8544 9.27062 22.8359C8.44573 22.7954 4.60944 23.0175 3.78419 23.0361C2.63975 23.062 1.45237 23.1342 0.410346 22.9347C-0.760071 22.6379 0.894435 18.5131 1.39725 16.955C1.90006 15.3969 2.56631 12.3622 4.16834 11.5331C6.34674 10.4057 9.05856 10.4719 10.9357 8.62745C11.583 7.99141 11.6584 7.36046 11.7806 6.62056C11.8589 6.14617 11.5027 5.70097 11.0902 5.39449C10.8029 5.18109 10.5792 5.00749 9.59795 4.65701C8.70017 4.33633 8.3743 4.21834 7.18528 4.01055C6.3735 3.86869 4.77876 4.05397 4.77876 3.24283C4.77876 2.87926 5.36739 0.899542 5.47746 0.622489C5.47741 -0.174039 6.13479 0.0211001 9.17101 0.0211077C14.9725 0.0211221 20.6141 0.0731651 26.4059 0.0732023C27.31 0.0732081 28.5337 0.0732023 29.2956 0.0732023C28.8365 2.44179 28.4822 3.21115 27.3705 3.38842C26.0435 3.60001 23.1275 4.35326 21.7334 4.95082C21.1549 5.25938 20.7193 5.52426 20.2956 5.78788C19.4622 6.30628 19.2417 7.64898 19.3112 8.67594C19.4076 10.101 23.3879 10.5443 25.071 11.5331C26.6525 11.8949 25.2559 16.7747 25.071 17.3973C24.5922 19.0097 24.2238 20.7229 23.8546 22.0745Z" fill="#E7FFC4"/>
               </svg>
             </div>
             <div className="flex items-center justify-center gap-2 mb-1">
               <h1 className="text-4xl font-black tracking-tight text-accent font-sora">Forge</h1>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent">Beta</span>
+              <BetaTag className="hidden sm:inline-flex" />
             </div>
-            <span className="sm:hidden inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mb-1">Beta</span>
+            <BetaTag className="sm:hidden mb-1" />
             <p className="text-muted-foreground text-sm">Connect with gamers across all platforms</p>
           </div>
         </div>
@@ -266,20 +271,9 @@ export function SignUp() {
               )}
             </div>
 
-            {HCAPTCHA_SITE_KEY && (
-              <HCaptcha
-                ref={captchaRef}
-                sitekey={HCAPTCHA_SITE_KEY}
-                onVerify={setCaptchaToken}
-                onExpire={() => setCaptchaToken(null)}
-                onError={() => setCaptchaToken(null)}
-                theme="dark"
-              />
-            )}
-
             <button
               type="submit"
-              disabled={isLoading || !passwordValid || !passwordsMatch || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
+              disabled={isLoading || !passwordValid || !passwordsMatch}
               className="w-full py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50"
             >
               {isLoading ? 'Creating account...' : 'Create Account →'}
@@ -303,6 +297,42 @@ export function SignUp() {
           </div>
         </div>
       </div>
+
+      {/* hCaptcha overlay — slides up after user submits valid form */}
+      {showCaptcha && HCAPTCHA_SITE_KEY && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCaptcha(false)}
+          />
+          <div className="relative w-full max-w-sm mx-4 bg-card rounded-t-2xl sm:rounded-2xl p-6 pb-10 sm:pb-6 flex flex-col items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+            <div className="w-10 h-1 bg-border rounded-full sm:hidden" />
+            <h3 className="text-lg font-semibold">Quick verification</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Complete the challenge to create your account.
+            </p>
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={HCAPTCHA_SITE_KEY}
+              onVerify={(token) => {
+                setCaptchaToken(token);
+                setShowCaptcha(false);
+                doSignUp(token);
+              }}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              theme="dark"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCaptcha(false)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

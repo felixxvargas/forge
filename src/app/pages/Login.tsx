@@ -5,6 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
+import { BetaTag } from '../components/ui/BetaTag';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
@@ -25,6 +26,7 @@ export function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [showCaptcha, setShowCaptcha] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
 
   // Forgot password
@@ -63,12 +65,10 @@ export function Login() {
     }
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const doSignIn = async (token: string | null) => {
     setIsLoading(true);
     try {
-      await signIn(email, password, captchaToken ?? undefined);
+      await signIn(email, password, token ?? undefined);
       const isLinking = localStorage.getItem('forge-linking-account') === 'true';
       if (isLinking) {
         localStorage.removeItem('forge-linking-account');
@@ -83,6 +83,16 @@ export function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      setShowCaptcha(true);
+      return;
+    }
+    doSignIn(captchaToken);
   };
 
   return (
@@ -147,10 +157,12 @@ export function Login() {
 
         {/* Logo section */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2.5 mb-2">
-            <ForgeSVG width="28" height="22" aria-hidden="true" />
+          <div className="relative flex items-center justify-center gap-2.5 mb-2">
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse 90% 150% at 40% 50%, rgba(231,255,196,0.22) 0%, rgba(167,139,250,0.15) 55%, transparent 85%)', filter: 'blur(12px)', transform: 'scale(1.6)' }} />
+            <ForgeSVG width="32" height="26" aria-hidden="true" />
             <span className="font-black text-2xl text-accent tracking-tight">Forge</span>
-            <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-accent/15 text-accent leading-none">Beta</span>
+            <BetaTag size="sm" />
           </div>
           <p className="text-sm text-muted-foreground">Your gaming social network</p>
         </div>
@@ -272,17 +284,7 @@ export function Login() {
                     </button>
                   </div>
                 </div>
-                {HCAPTCHA_SITE_KEY && (
-                  <HCaptcha
-                    ref={captchaRef}
-                    sitekey={HCAPTCHA_SITE_KEY}
-                    onVerify={setCaptchaToken}
-                    onExpire={() => setCaptchaToken(null)}
-                    onError={() => setCaptchaToken(null)}
-                    theme="dark"
-                  />
-                )}
-                <button type="submit" disabled={isLoading || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
+                <button type="submit" disabled={isLoading}
                   className="w-full py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50">
                   {isLoading ? 'Signing in...' : 'Sign In'}
                 </button>
@@ -323,6 +325,22 @@ export function Login() {
           </div>
         </div>
       </div>
+
+      {/* hCaptcha overlay */}
+      {showCaptcha && HCAPTCHA_SITE_KEY && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCaptcha(false)} />
+          <div className="relative w-full max-w-sm mx-4 bg-card rounded-t-2xl sm:rounded-2xl p-6 pb-10 sm:pb-6 flex flex-col items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+            <div className="w-10 h-1 bg-border rounded-full sm:hidden" />
+            <h3 className="text-lg font-semibold">Quick verification</h3>
+            <p className="text-sm text-muted-foreground text-center">Complete the challenge to sign in.</p>
+            <HCaptcha ref={captchaRef} sitekey={HCAPTCHA_SITE_KEY}
+              onVerify={(token) => { setCaptchaToken(token); setShowCaptcha(false); doSignIn(token); }}
+              onExpire={() => setCaptchaToken(null)} onError={() => setCaptchaToken(null)} theme="dark" />
+            <button type="button" onClick={() => setShowCaptcha(false)} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

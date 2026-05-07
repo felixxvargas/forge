@@ -1,6 +1,7 @@
 import { useNavigate } from '@/compat/router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Tv2 } from 'lucide-react';
+import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones } from 'lucide-react';
+import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect, useRef } from 'react';
@@ -310,7 +311,7 @@ export function Settings() {
               onClick={() => navigate('/settings/twitch-archive')}
               className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
             >
-              <Tv2 className="w-5 h-5 text-muted-foreground" />
+              <TwitchIcon className="w-5 h-5 text-muted-foreground" />
               <div className="text-left flex-1">
                 <p className="font-medium">Twitch Stream Archive</p>
                 <p className="text-sm text-muted-foreground">Auto-save your streams to Forge</p>

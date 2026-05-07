@@ -38,9 +38,13 @@ export default async function middleware(request: Request): Promise<Response | u
   const segment = segments[0];
 
   // /android-beta — inject dedicated OG image for the beta sign-up page
+  // Skip for Next.js RSC/prefetch navigation to avoid returning HTML to the router
   if (segment === 'android-beta' && !hasRedirectFlag) {
-    const target = new URL('/api/android-beta-og', url.origin);
-    return fetch(target.toString(), { headers: request.headers });
+    const isNextNavigation = !!(request.headers.get('RSC') || request.headers.get('Next-Router-Prefetch') || request.headers.get('Next-Url'));
+    if (!isNextNavigation) {
+      const target = new URL('/api/android-beta-og', url.origin);
+      return fetch(target.toString(), { headers: request.headers });
+    }
   }
 
   // Skip known app routes and file-like paths

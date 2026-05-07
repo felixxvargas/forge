@@ -9,6 +9,7 @@ import { ProfileAvatar } from './ProfileAvatar';
 import { LoginModule } from './LoginModule';
 import ForgeLogo from '../../assets/forge-logo.svg?react';
 import { supabase } from '../utils/supabase';
+import { BetaTag } from './ui/BetaTag';
 
 interface LinkedAccount {
   id: string;
@@ -222,7 +223,7 @@ export function DesktopSidebar() {
                   className="flex items-center gap-1.5 overflow-hidden"
                 >
                   <span className="font-black text-lg text-accent whitespace-nowrap">Forge</span>
-                  <span className="inline-flex items-center justify-center align-bottom text-[9px] font-bold tracking-widest uppercase px-1.5 py-1.5 rounded-full bg-accent/15 text-accent leading-none whitespace-nowrap">beta</span>
+                  <BetaTag size="sm" />
                 </motion.span>
               )}
             </AnimatePresence>
@@ -385,6 +386,21 @@ export function DesktopSidebar() {
                 )}
               </AnimatePresence>
             </button>
+            <AnimatePresence>
+              {!isOpen && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="flex items-center justify-center w-full py-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-destructive/60 hover:text-destructive"
+                  aria-label="Log out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </motion.aside>

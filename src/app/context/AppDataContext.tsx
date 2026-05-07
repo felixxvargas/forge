@@ -14,7 +14,6 @@ const topicAccountById: Record<string, User> = Object.fromEntries(
 // Maps topic account synthetic IDs to their Bluesky fetcher
 const TOPIC_BLUESKY_MAP: Record<string, string> = {
   'user-ign': 'ign.com',
-  'user-gamespot': 'gamespot.com',
   'user-xbox': 'xbox.com',
   'user-itchio': 'itch.io',
   'user-pcgamer': 'pcgamer.com',
@@ -973,9 +972,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       'wishlist': 'wishlist',
       'library': 'library',
       'completed': 'completed',
+      'custom': 'custom',
       'lfg': 'lfg',
     };
     const key = keyMap[listType];
+    if (!key) return;
     const existing = currentUser.game_lists ?? {} as any;
     // Auto-show lists when they receive their first games (newly created list becomes visible).
     const wasEmpty = (existing[key] ?? []).length === 0;
