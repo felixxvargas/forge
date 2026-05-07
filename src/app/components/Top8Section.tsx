@@ -90,7 +90,7 @@ export function Top8Games({ gameIds, isOwnProfile, onManage }: Top8GamesProps) {
     if (!gameIds.length) return;
     (async () => {
       try {
-        const { data } = await supabase.from('games').select('id, title, artwork').in('id', gameIds);
+        const { data } = await supabase.from('forge_games_17285bd7').select('id, title, artwork:forge_game_artwork_17285bd7(*)').in('id', gameIds);
         if (!data?.length) return;
         const ordered = gameIds.map(id => data.find((g: any) => g.id === id || g.id === parseInt(id))).filter(Boolean);
         setGames(ordered);
@@ -167,7 +167,7 @@ export function ManageTopGamesPanel({ currentUserId, currentTopGameIds, onClose,
   useEffect(() => {
     if (!selected.length) { setSelectedGames([]); return; }
     (async () => {
-      const { data } = await supabase.from('games').select('id, title, artwork').in('id', selected);
+      const { data } = await supabase.from('forge_games_17285bd7').select('id, title, artwork:forge_game_artwork_17285bd7(*)').in('id', selected);
       if (data) setSelectedGames(selected.map(id => data.find((g: any) => String(g.id) === String(id))).filter(Boolean));
     })();
   }, [selected.join(',')]);
@@ -178,7 +178,7 @@ export function ManageTopGamesPanel({ currentUserId, currentTopGameIds, onClose,
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const { data } = await supabase.from('games').select('id, title, artwork').ilike('title', `%${query}%`).limit(6);
+        const { data } = await supabase.from('forge_games_17285bd7').select('id, title, artwork:forge_game_artwork_17285bd7(*)').ilike('title', `%${query}%`).limit(6);
         setResults(data ?? []);
       } catch {} finally { setSearching(false); }
     }, 300);

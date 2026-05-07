@@ -2198,6 +2198,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           editGameListModal.listType === 'wishlist' ? (profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []) :
           editGameListModal.listType === 'completed' ? (profileUser.game_lists?.completed ?? []) :
           editGameListModal.listType === 'lfg' ? (profileUser.game_lists?.lfg ?? []) :
+          editGameListModal.listType === 'custom' ? (profileUser.game_lists?.custom ?? []) :
           (profileUser.game_lists?.library ?? profileUser.gameLists?.library ?? [])
         ) : []}
         listType={editGameListModal.listType || 'library'}

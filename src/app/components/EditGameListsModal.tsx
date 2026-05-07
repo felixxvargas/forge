@@ -198,7 +198,11 @@ export function EditGameListsModal({
   };
 
   const removeGame = (gameId: string) => {
-    setSelectedGames(prev => prev.filter(g => g.id !== gameId));
+    setSelectedGames(prev => {
+      const next = prev.filter(g => g.id !== gameId);
+      onSave(next);
+      return next;
+    });
   };
 
   const handleSave = () => {
