@@ -8,6 +8,7 @@ import { WritePostButton } from '../components/WritePostButton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LoginModule } from '../components/LoginModule';
 import { useAppData } from '../context/AppDataContext';
+import { useColumnCount, splitToColumns } from '../hooks/useColumnCount';
 import { posts as postsAPI } from '../utils/supabase';
 import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
 import { topicAccounts } from '../data/data';
@@ -304,9 +305,10 @@ export function Feed() {
   };
 
   const loading = isLoading || dynamicLoading || (feedMode === 'following' && isAuthenticated && !topicPostsReady);
+  const numCols = useColumnCount();
 
   const feedContent = (
-    <div className="w-full max-w-2xl mx-auto px-4 py-6">
+    <div className="w-full px-4 lg:px-6 py-6">
       {/* Feed selector */}
       <div className="mb-6 relative">
         <button
@@ -411,78 +413,92 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="animate-pulse">
-          {[true, false, true, false, true, true, false, true, false, true].map((hasImage, i) => {
-            const textWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full', 'w-2/3'];
-            return (
-              <div key={i} className="bg-card rounded-xl mb-3 p-4">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex gap-2 mb-2.5">
-                      <div className="h-3 bg-muted/50 rounded w-24" />
-                      <div className="h-3 bg-muted/30 rounded w-16" />
-                    </div>
-                    <div className="space-y-2 mb-3">
-                      <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
-                      <div className="h-3 bg-muted/40 rounded w-5/6" />
-                      {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
-                    </div>
-                    {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
-                    <div className="flex gap-4 pt-1">
-                      <div className="h-3 bg-muted/25 rounded w-8" />
-                      <div className="h-3 bg-muted/25 rounded w-8" />
-                      <div className="h-3 bg-muted/25 rounded w-8" />
+        <div className="flex gap-6 items-start animate-pulse">
+          {splitToColumns([true, false, true, false, true, true, false, true, false, true], numCols).map((colItems, colIdx) => (
+            <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
+              {colItems.map((hasImage, i) => {
+                const textWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full', 'w-2/3'];
+                return (
+                  <div key={i} className="bg-card rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex gap-2 mb-2.5">
+                          <div className="h-3 bg-muted/50 rounded w-24" />
+                          <div className="h-3 bg-muted/30 rounded w-16" />
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
+                          <div className="h-3 bg-muted/40 rounded w-5/6" />
+                          {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
+                        </div>
+                        {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
+                        <div className="flex gap-4 pt-1">
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 
       {!loading && (
-        <div>
-          {visiblePosts.map(post => {
-            const user = post.author;
-            if (!user) return null;
-            return (
-              <PostCard
-                key={post.id + (post.repostedBy || '')}
-                post={post}
-                user={user}
-                onLike={handleLikeToggle}
-                onRepost={handleRepost}
-                onComment={() => {}}
-                onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
-                showDelete={post.user_id === currentUser?.id}
-              />
-            );
-          })}
+        <div className="flex gap-6 items-start">
+          {splitToColumns(visiblePosts, numCols).map((colPosts, colIdx) => (
+            <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
+              {colPosts.map(post => {
+                const user = post.author;
+                if (!user) return null;
+                return (
+                  <PostCard
+                    key={post.id + (post.repostedBy || '')}
+                    post={post}
+                    user={user}
+                    onLike={handleLikeToggle}
+                    onRepost={handleRepost}
+                    onComment={() => {}}
+                    onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
+                    showDelete={post.user_id === currentUser?.id}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 
       {!loading && mutedFilteredPosts.length > 0 && (
         <div className="mt-4">
           <div className="text-sm text-muted-foreground mb-2">Muted Posts</div>
-          {mutedFilteredPosts.map(post => {
-            const user = post.author;
-            if (!user) return null;
-            return (
-              <PostCard
-                key={post.id}
-                post={post}
-                user={user}
-                onLike={handleLikeToggle}
-                onRepost={handleRepost}
-                onComment={() => {}}
-                onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
-                showDelete={post.user_id === currentUser?.id}
-                onShowMutedPost={handleShowMutedPost}
-              />
-            );
-          })}
+          <div className="flex gap-6 items-start">
+            {splitToColumns(mutedFilteredPosts, numCols).map((colPosts, colIdx) => (
+              <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
+                {colPosts.map(post => {
+                  const user = post.author;
+                  if (!user) return null;
+                  return (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      user={user}
+                      onLike={handleLikeToggle}
+                      onRepost={handleRepost}
+                      onComment={() => {}}
+                      onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
+                      showDelete={post.user_id === currentUser?.id}
+                      onShowMutedPost={handleShowMutedPost}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -536,14 +552,14 @@ export function Feed() {
       })()}
 
       {/* Desktop layout: 2-col grid for guests (sign-up rail on right), single centered column for auth */}
-      <div className={!isAuthenticated ? "xl:grid xl:grid-cols-[1fr_264px] xl:gap-6 xl:max-w-[1024px] xl:mx-auto" : ""}>
+      <div className={!isAuthenticated ? "xl:grid xl:grid-cols-[1fr_320px]" : ""}>
         <div className="min-w-0">
           {feedContent}
         </div>
 
         {/* Right rail — guests only at xl+, shows sign-up module */}
         {!isAuthenticated && (
-          <aside className="hidden xl:flex flex-col gap-4 pt-20 pr-4 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+          <aside className="hidden xl:flex flex-col gap-4 pt-20 pr-6 sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
             <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
               <div className="flex items-center gap-2 mb-3 min-w-0">
                 <ForgeSVG

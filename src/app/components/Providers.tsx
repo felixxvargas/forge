@@ -2,6 +2,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { ThemeProvider } from '../context/ThemeContext';
 import { AppDataProvider } from '../context/AppDataContext';
+import { SidebarProvider } from '../context/SidebarContext';
 import { Toaster } from './ui/sonner';
 import { OnboardingTooltip } from './OnboardingTooltip';
 import { GlowBackground } from './GlowBackground';
@@ -19,6 +20,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   return (
+    <SidebarProvider>
     <ThemeProvider>
       <AppDataProvider>
         <GlowBackground />
@@ -30,5 +32,6 @@ export function Providers({ children }: { children: ReactNode }) {
         </div>
       </AppDataProvider>
     </ThemeProvider>
+    </SidebarProvider>
   );
 }

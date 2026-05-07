@@ -6,6 +6,7 @@ import { UserCard } from '../components/UserCard';
 import { GroupIcon } from '../components/GroupIcon';
 import { useNavigate, useNavigationType } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
+import { useColumnCount, splitToColumns } from '../hooks/useColumnCount';
 import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 import { type User, type Group, topicAccounts } from '../data/data';
 import { posts as postsAPI, profiles as profilesAPI, lfgFlares as lfgFlaresAPI, groups as groupsAPI, supabase } from '../utils/supabase';
@@ -32,6 +33,7 @@ export function Explore() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [topicPosts, setTopicPosts] = useState<any[]>([]);
   const [livePosts, setLivePosts] = useState<any[]>([]);
+  const numCols = useColumnCount();
   const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [hideSearchBar, setHideSearchBar] = useState(false);
@@ -861,18 +863,22 @@ export function Explore() {
                   </button>
                 </div>
                 {loadingTopicPosts ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                        <div className="flex gap-3">
-                          <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
-                          <div className="flex-1 space-y-2 pt-0.5">
-                            <div className="h-3.5 bg-muted/50 rounded w-32" />
-                            <div className="h-3 bg-muted/40 rounded w-full" />
-                            <div className="h-3 bg-muted/40 rounded w-4/5" />
-                            <div className="h-[140px] bg-muted/30 rounded-xl mt-2 w-full" />
+                  <div className="flex gap-6 items-start animate-pulse">
+                    {splitToColumns(Array.from({ length: 6 }, (_, i) => i), numCols).map((colItems, colIdx) => (
+                      <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
+                        {colItems.map(i => (
+                          <div key={i} className="bg-card rounded-xl p-4">
+                            <div className="flex gap-3">
+                              <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
+                              <div className="flex-1 space-y-2 pt-0.5">
+                                <div className="h-3.5 bg-muted/50 rounded w-32" />
+                                <div className="h-3 bg-muted/40 rounded w-full" />
+                                <div className="h-3 bg-muted/40 rounded w-4/5" />
+                                <div className="h-[140px] bg-muted/30 rounded-xl mt-2 w-full" />
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -882,42 +888,45 @@ export function Explore() {
                     <p>No posts to display</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {gamingMediaPosts.map(post => {
-                      const user = post.author;
-                      if (!user) return null;
-                      const uid = post.user_id || post.userId || '';
-                      const isMuted = mutedUsers.has(uid);
-                      const isShown = showMutedPosts.has(post.id);
+                  <div className="flex gap-6 items-start">
+                    {splitToColumns(gamingMediaPosts, numCols).map((colPosts, colIdx) => (
+                      <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
+                        {colPosts.map(post => {
+                          const user = post.author;
+                          if (!user) return null;
+                          const uid = post.user_id || post.userId || '';
+                          const isMuted = mutedUsers.has(uid);
+                          const isShown = showMutedPosts.has(post.id);
 
-                      if (isMuted && !isShown) {
-                        return (
-                          <div key={post.id} className="bg-card border border-border rounded-lg p-4">
-                            <p className="text-muted-foreground text-sm mb-2">Post from muted user</p>
-                            <button
-                              onClick={() => handleShowMutedPost(post.id)}
-                              className="text-accent text-sm hover:text-accent/80"
-                            >
-                              Show anyway
-                            </button>
-                          </div>
-                        );
-                      }
+                          if (isMuted && !isShown) {
+                            return (
+                              <div key={post.id} className="bg-card border border-border rounded-lg p-4">
+                                <p className="text-muted-foreground text-sm mb-2">Post from muted user</p>
+                                <button
+                                  onClick={() => handleShowMutedPost(post.id)}
+                                  className="text-accent text-sm hover:text-accent/80"
+                                >
+                                  Show anyway
+                                </button>
+                              </div>
+                            );
+                          }
 
-                      return (
-                        <div key={post.id}>
-                          <PostCard
-                            post={post}
-                            user={user!}
-                            onLike={() => handleLikeToggle(post.id)}
-                            onRepost={() => handleRepost(post.id)}
-                            onComment={() => handleComment(post.id)}
-                            isLiked={likedPosts.has(post.id)}
-                            isReposted={repostedPosts.has(post.id)}
-                          />
-                        </div>
-                      );
-                    })}
+                          return (
+                            <PostCard
+                              key={post.id}
+                              post={post}
+                              user={user!}
+                              onLike={() => handleLikeToggle(post.id)}
+                              onRepost={() => handleRepost(post.id)}
+                              onComment={() => handleComment(post.id)}
+                              isLiked={likedPosts.has(post.id)}
+                              isReposted={repostedPosts.has(post.id)}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

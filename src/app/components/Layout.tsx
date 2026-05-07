@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { motion } from 'motion/react';
 import { Link, Navigate, ScrollRestoration, useLocation, useNavigate } from '@/compat/router';
+import { useSidebar } from '../context/SidebarContext';
 import { X, PenSquare } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { DesktopSidebar } from './DesktopSidebar';
@@ -14,6 +16,7 @@ const DRAFT_KEY = 'forge-post-draft';
 function DraftResumeBanner() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isOpen } = useSidebar();
   const [draft, setDraft] = useState<{ content: string; replyTo?: string } | null>(null);
 
   useEffect(() => {
@@ -46,7 +49,11 @@ function DraftResumeBanner() {
   const preview = draft.content.length > 55 ? draft.content.slice(0, 55) + '…' : draft.content;
 
   return (
-    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-3 md:left-[calc(60px+1rem)] lg:left-[calc(220px+1rem)] md:right-auto md:w-80 z-[45]">
+    <motion.div
+      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-3 md:right-auto md:w-80 z-[45]"
+      animate={{ left: typeof window !== 'undefined' && window.innerWidth >= 768 ? (isOpen ? 220 : 60) + 16 : 12 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+    >
       <div className="flex items-center gap-3 px-4 py-3 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl">
         <PenSquare className="w-4 h-4 text-accent shrink-0" />
         <div className="flex-1 min-w-0">
@@ -63,7 +70,7 @@ function DraftResumeBanner() {
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -75,13 +82,14 @@ const AUTH_REQUIRED_PATHS = [
 
 export function Layout({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isLoading, currentUser } = useAppData();
+  const { isOpen } = useSidebar();
   const location = useLocation();
 
   if (isLoading || (isAuthenticated && !currentUser)) {
     return (
       <div className="min-h-dvh relative">
         <DesktopSidebar />
-        <div className="md:ml-[60px] lg:ml-[220px]">
+        <div style={{ marginLeft: 60 }}>
           <LoadingScreen path={location.pathname} />
         </div>
         <BottomNav />
@@ -116,9 +124,15 @@ export function Layout({ children }: { children?: ReactNode }) {
     <div className="min-h-dvh relative">
       <ScrollRestoration />
       <DesktopSidebar />
-      <div className={`md:ml-[60px] lg:ml-[220px] pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4`}>
+      <motion.div
+        className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4"
+        initial={false}
+        animate={{ marginLeft: isOpen ? 220 : 60 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        style={{ marginLeft: 60 }}
+      >
         {children}
-      </div>
+      </motion.div>
       <BottomNav />
       {isAuthenticated && <WhatsNewModal />}
       {isAuthenticated && <DraftResumeBanner />}
