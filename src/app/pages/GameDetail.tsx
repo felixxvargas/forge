@@ -84,7 +84,7 @@ export function GameDetail() {
   useEffect(() => {
     if (!game || !gameId) return;
 
-    gamesAPI.getSimilarGames(gameId, game.genres ?? [], 8)
+    gamesAPI.getSimilarGames(gameId, game.genres ?? [], 20)
       .then((res: any) => setSimilarGames(Array.isArray(res) ? res : res?.games ?? []))
       .catch(() => {});
 
@@ -827,7 +827,10 @@ export function GameDetail() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Similar Games</h2>
             <div className="grid grid-cols-4 gap-3">
-              {similarGames.slice(0, 8).map((g: any) => {
+              {similarGames.filter((g: any) => {
+                const cover = g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url;
+                return !!cover;
+              }).slice(0, 8).map((g: any) => {
                 const gCover = g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url;
                 return (
                   <button

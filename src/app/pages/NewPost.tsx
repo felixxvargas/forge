@@ -323,7 +323,8 @@ export function NewPost() {
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value.slice(0, POST_MAX_LENGTH);
+    if (e.target.value.length > POST_MAX_LENGTH) return;
+    const newContent = e.target.value;
     setContent(newContent);
 
     // Detect URLs for inline preview (debounced to avoid spamming the preview API)

@@ -46,7 +46,6 @@ export function DesktopSidebar() {
 
   // Don't show on these pages
   if (
-    location.pathname === '/list' ||
     location.pathname === '/login' ||
     location.pathname === '/onboarding' ||
     location.pathname === '/splash'
