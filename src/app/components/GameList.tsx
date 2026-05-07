@@ -103,19 +103,19 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {listType && games.length > 0 && (
-                    <DropdownMenuItem onSelect={() => setTimeout(() => { if (listType) navigate(`/list?type=${listType}&browse=true`); }, 0)}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => { if (listType) navigate(`/list?type=${listType}&browse=true`); }, 150)}>
                       <Users className="w-4 h-4 mr-2" />
                       See others with this list
                     </DropdownMenuItem>
                   )}
                   {onEdit && (
-                    <DropdownMenuItem onSelect={() => setTimeout(() => onEdit!(), 0)}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => onEdit!(), 150)}>
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit list
                     </DropdownMenuItem>
                   )}
                   {onHide && (
-                    <DropdownMenuItem onSelect={() => setTimeout(() => onHide!(), 0)}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => onHide!(), 150)}>
                       <EyeOff className="w-4 h-4 mr-2" />
                       Hide list
                     </DropdownMenuItem>
@@ -124,7 +124,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onSelect={() => setTimeout(() => onDelete!(), 0)}
+                        onSelect={() => setTimeout(() => onDelete!(), 150)}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />

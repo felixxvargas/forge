@@ -158,8 +158,6 @@ export function Login() {
         {/* Logo section */}
         <div className="text-center mb-8">
           <div className="relative flex items-center justify-center gap-2.5 mb-2">
-            <div className="absolute inset-0 pointer-events-none hidden sm:block"
-              style={{ background: 'radial-gradient(ellipse 90% 150% at 40% 50%, rgba(231,255,196,0.22) 0%, rgba(167,139,250,0.15) 55%, transparent 85%)', filter: 'blur(12px)', transform: 'scale(1.6)' }} />
             <ForgeSVG width="32" height="26" aria-hidden="true" />
             <span className="font-black text-2xl text-accent tracking-tight">Forge</span>
             <BetaTag size="sm" />
