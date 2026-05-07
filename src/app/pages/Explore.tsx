@@ -33,6 +33,7 @@ export function Explore() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [topicPosts, setTopicPosts] = useState<any[]>([]);
   const [livePosts, setLivePosts] = useState<any[]>([]);
+  const [trendingNativePosts, setTrendingNativePosts] = useState<any[]>([]);
   const numCols = useColumnCount();
   const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
@@ -271,11 +272,13 @@ export function Explore() {
     const load = async () => {
       setLoadingTopicPosts(true);
       try {
-        const [supabasePosts, live] = await Promise.allSettled([
+        const [supabasePosts, live, nativeTrending] = await Promise.allSettled([
           postsAPI.getTopicPosts(100),
           fetchAllGamingMediaPosts(8),
+          postsAPI.getTrendingFeed(40),
         ]);
         if (supabasePosts.status === 'fulfilled') setTopicPosts(supabasePosts.value);
+        if (nativeTrending.status === 'fulfilled') setTrendingNativePosts(nativeTrending.value);
         if (live.status === 'fulfilled') {
           // Enrich live Bluesky/Mastodon posts with their topic account author object
           // so PostCard can render them (it requires post.author to be set).
@@ -401,6 +404,7 @@ export function Explore() {
   const allExplorePosts = [
     ...topicPosts,
     ...livePosts,
+    ...trendingNativePosts,
     ...posts, // all user posts (own + followed)
   ].filter(post => {
     if (post.repostedBy) return false;

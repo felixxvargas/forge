@@ -711,7 +711,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
             </div>
             <p className="text-sm text-foreground/80 line-clamp-3 whitespace-pre-wrap">{qp.content}</p>
             {qp.images && qp.images.length > 0 && (
-              <img src={qp.images[0]} alt="" className="mt-2 w-full max-h-40 object-cover rounded-lg" />
+              <img src={qp.images[0]} alt="" className="mt-2 w-full rounded-lg" />
             )}
           </div>
         );

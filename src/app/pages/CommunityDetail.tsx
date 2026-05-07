@@ -349,16 +349,22 @@ export function CommunityDetail() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto">
+      <div className="w-full max-w-5xl mx-auto">
         {/* Banner */}
         {community.banner && (
-          <div className="h-32 overflow-hidden">
+          <div className="h-32 lg:h-52 overflow-hidden">
             <img src={community.banner} alt={community.name} className="w-full h-full object-cover" />
           </div>
         )}
 
+        {/* 2-col on desktop: sidebar (info/games/flares) right, feed left */}
+        <div className="lg:flex lg:flex-row-reverse lg:gap-6 lg:items-start lg:px-6 lg:pt-6">
+
+        {/* ── Sidebar col ── */}
+        <div className="lg:w-80 lg:shrink-0 lg:sticky lg:top-[57px] lg:self-start lg:space-y-4">
+
         {/* Community Info */}
-        <div className="px-4 py-6 bg-card border-b border-border">
+        <div className="px-4 py-6 bg-card border-b border-border lg:rounded-2xl lg:border lg:border-border/50 lg:p-5">
           <div className="flex items-start gap-4 mb-4">
             <div className="flex-shrink-0">
               <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center text-accent overflow-hidden">
@@ -495,7 +501,7 @@ export function CommunityDetail() {
         </div>
 
         {/* Community Games */}
-        <div className="px-4 py-5 bg-card border-b border-border">
+        <div className="px-4 py-5 bg-card border-b border-border lg:rounded-2xl lg:border lg:border-border/50 lg:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Games</h3>
             {isAdmin && communityGames.length < 10 && (
@@ -547,7 +553,7 @@ export function CommunityDetail() {
         </div>
 
         {/* Group Flares */}
-        <div className="px-4 py-5 bg-card border-b border-border">
+        <div className="px-4 py-5 bg-card border-b border-border lg:rounded-2xl lg:border lg:border-border/50 lg:p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-400" />
@@ -592,7 +598,11 @@ export function CommunityDetail() {
               ))}
             </div>
           )}
-        </div>
+        </div>{/* end Flares */}
+        </div>{/* end sidebar col */}
+
+        {/* ── Main col (feed) ── */}
+        <div className="lg:flex-1 lg:min-w-0">
 
         {/* Remove post confirmation */}
         {postToConfirmRemove && (
@@ -625,7 +635,7 @@ export function CommunityDetail() {
         )}
 
         {/* Group Feed */}
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 lg:px-0">
           <h3 className="text-lg font-semibold mb-4">Group Posts</h3>
           {/* Show skeleton while either posts or membership check is still loading */}
           {(loadingGroupPosts || !isMemberChecked) ? (
@@ -673,8 +683,10 @@ export function CommunityDetail() {
               <p className="text-muted-foreground">Join this group to see posts and participate</p>
             </div>
           )}
-        </div>
-      </div>
+        </div>{/* end Group Feed */}
+        </div>{/* end main col */}
+        </div>{/* end 2-col flex */}
+      </div>{/* end max-w-5xl */}
 
       {/* Floating compose button — members only */}
       {isMember && (
