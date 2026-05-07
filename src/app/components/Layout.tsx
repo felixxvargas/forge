@@ -113,7 +113,8 @@ export function Layout({ children }: { children?: ReactNode }) {
   }
 
   // Auth-required pages: show login module for guests
-  const needsAuth = AUTH_REQUIRED_PATHS.some(p => location.pathname.startsWith(p));
+  const needsAuth = AUTH_REQUIRED_PATHS.some(p => location.pathname.startsWith(p))
+    || location.pathname === '/profile';
   if (!isAuthenticated && needsAuth) {
     return (
       <div className="min-h-dvh relative">

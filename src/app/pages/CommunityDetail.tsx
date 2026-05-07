@@ -651,23 +651,25 @@ export function CommunityDetail() {
             </div>
           ) : (isMember || community.posts_public !== false) ? (
             communityPosts.length > 0 ? (
-              communityPosts.map(post => {
-                const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
-                if (!postUser) return null;
-                return (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    user={postUser}
-                    onLike={handleLikeToggle}
-                    onRepost={handleRepostToggle}
-                    isLiked={likedPosts.has(post.id)}
-                    isReposted={repostedPosts.has(post.id)}
-                    onRemoveFromGroup={isAdmin ? () => setPostToConfirmRemove(post.id) : undefined}
-                    hideGroupTag
-                  />
-                );
-              })
+              <div className="flex flex-col gap-3 sm:gap-6">
+                {communityPosts.map(post => {
+                  const postUser = post.author ?? getUserById(post.userId ?? post.user_id);
+                  if (!postUser) return null;
+                  return (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      user={postUser}
+                      onLike={handleLikeToggle}
+                      onRepost={handleRepostToggle}
+                      isLiked={likedPosts.has(post.id)}
+                      isReposted={repostedPosts.has(post.id)}
+                      onRemoveFromGroup={isAdmin ? () => setPostToConfirmRemove(post.id) : undefined}
+                      hideGroupTag
+                    />
+                  );
+                })}
+              </div>
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <p>No posts yet. Be the first to post in this group!</p>

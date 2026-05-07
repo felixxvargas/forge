@@ -772,7 +772,7 @@ export function GameDetail() {
             {loadingPosts ? (
               <p className="text-muted-foreground text-sm">Loading posts…</p>
             ) : (
-              <div>
+              <div className="flex flex-col gap-3 sm:gap-6">
                 {sortedPosts.map(post => {
                   const author = post.author;
                   if (!author) return null;

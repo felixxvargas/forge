@@ -17,7 +17,6 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
 import { useAppData } from '../context/AppDataContext';
-import { LoginModule } from '../components/LoginModule';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
@@ -302,11 +301,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       updateCurrentUser({ onboarding_complete: true } as any);
     }
   }, [isOwnProfile, currentUser?.id, profileUserPosts.length]);
-
-  // Guest trying to view their own profile — show login module
-  if (!isAuthenticated && isOwnProfile) {
-    return <LoginModule variant="page" />;
-  }
 
   // If profile not loaded yet, show skeleton
   if (!profileUser) {
@@ -1584,6 +1578,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   {profileUserPosts.length > 0 && (
                     <div className="mt-4">
                       <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Recent Posts</h3>
+                      <div className="flex flex-col gap-3 sm:gap-6">
                       {(() => {
                         const pinned = pinnedPostId ? profileUserPosts.find(p => p.id === pinnedPostId && !p.repostedBy) : null;
                         const rest = profileUserPosts.filter(p => !(pinnedPostId && p.id === pinnedPostId && !p.repostedBy));
@@ -1603,6 +1598,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                           />
                         ));
                       })()}
+                      </div>
                       {profileUserPosts.length > 5 && (
                         <button
                           onClick={() => setActiveTab('posts')}
@@ -1644,7 +1640,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {effectiveTab === 'posts' && (
-          <div className="px-4">
+          <div className="px-4 flex flex-col gap-3 sm:gap-6">
             {profileUserPosts.length > 0 ? (
               (() => {
                 const pinned = pinnedPostId ? profileUserPosts.find(p => p.id === pinnedPostId && !p.repostedBy) : null;
@@ -1694,7 +1690,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {effectiveTab === 'likes' && (
-          <div className="px-4">
+          <div className="px-4 flex flex-col gap-3 sm:gap-6">
             {likesLoading ? (
               <div className="divide-y divide-border">
                 {Array.from({ length: 4 }).map((_, i) => (
