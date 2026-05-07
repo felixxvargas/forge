@@ -84,11 +84,10 @@ export function Layout({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isLoading, currentUser } = useAppData();
   const { isOpen } = useSidebar();
   const location = useLocation();
-  const [isMdPlus, setIsMdPlus] = useState(false);
+  const [isMdPlus, setIsMdPlus] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
 
   useEffect(() => {
     const check = () => setIsMdPlus(window.innerWidth >= 768);
-    check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
