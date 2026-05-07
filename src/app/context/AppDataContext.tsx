@@ -62,6 +62,7 @@ interface AppDataContextType {
   updateGameList: (listType: GameListType, games: any[]) => Promise<void>;
   createGroup: (name: string, description: string, icon: string, type: string) => Promise<any>;
   refreshFeed: () => Promise<any>;
+  refreshFeedPosts: () => Promise<void>;
   refreshGroups: () => Promise<void>;
   markNotificationsAsRead: () => void;
   followGame: (gameId: string) => Promise<void>;
@@ -245,35 +246,43 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshFeed = useCallback(async () => {
-    let loadedUsers: any[] = [];
+    const userId = sessionRef.current?.user?.id;
+    const [feedResult, usersResult, groupsResult] = await Promise.allSettled([
+      userId
+        ? postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current, memberGroupIdsRef.current)
+        : postsAPI.getFeed(50),
+      profiles.getAll(),
+      groupsAPI.getAll(),
+    ]);
     let loadedPosts: any[] = [];
+    let loadedUsers: any[] = [];
     let loadedGroups: any[] = [];
+    if (feedResult.status === 'fulfilled') {
+      loadedPosts = feedResult.value;
+      setPostList(loadedPosts);
+    } else { console.error('Error loading feed:', feedResult.reason); }
+    if (usersResult.status === 'fulfilled') {
+      loadedUsers = usersResult.value.map(normalizeProfile);
+      lastLoadedUsersRef.current = loadedUsers;
+      setUsers(loadedUsers);
+    } else { console.error('Error loading users:', usersResult.reason); }
+    if (groupsResult.status === 'fulfilled') {
+      loadedGroups = groupsResult.value;
+      setGroupsList(loadedGroups);
+    } else { console.error('[AppData] Error loading groups:', groupsResult.reason); }
+    return { posts: loadedPosts, users: loadedUsers, groups: loadedGroups };
+  }, []);
+
+  const refreshFeedPosts = useCallback(async () => {
     try {
       const userId = sessionRef.current?.user?.id;
       const feed = userId
         ? await postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current, memberGroupIdsRef.current)
         : await postsAPI.getFeed(50);
       setPostList(feed);
-      loadedPosts = feed;
     } catch (e) {
-      console.error('Error loading feed:', e);
+      console.error('Error refreshing feed posts:', e);
     }
-    try {
-      const allUsers = await profiles.getAll();
-      loadedUsers = allUsers.map(normalizeProfile);
-      lastLoadedUsersRef.current = loadedUsers;
-      setUsers(loadedUsers);
-    } catch (e) {
-      console.error('Error loading users:', e);
-    }
-    try {
-      const allGroups = await groupsAPI.getAll();
-      setGroupsList(allGroups);
-      loadedGroups = allGroups;
-    } catch (e) {
-      console.error('[AppData] Error loading groups:', e);
-    }
-    return { posts: loadedPosts, users: loadedUsers, groups: loadedGroups };
   }, []);
 
   // Listen for auth state changes
@@ -1124,6 +1133,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateGameList,
       createGroup,
       refreshFeed,
+      refreshFeedPosts,
       refreshGroups,
       markNotificationsAsRead,
       externalFollowIds,

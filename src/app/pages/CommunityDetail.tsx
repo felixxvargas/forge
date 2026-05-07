@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
+import useSWR from 'swr';
 import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, AlertTriangle } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
@@ -57,14 +58,8 @@ export function CommunityDetail() {
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
 
-  // Group flares
-  const [groupFlares, setGroupFlares] = useState<any[]>([]);
-  const [loadingFlares, setLoadingFlares] = useState(false);
-
-
   // Community games
   const [communityGames, setCommunityGames] = useState<any[]>([]);
-  const [loadingGames, setLoadingGames] = useState(false);
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [gameSearch, setGameSearch] = useState('');
   const [gameSearchResults, setGameSearchResults] = useState<any[]>([]);
@@ -182,31 +177,32 @@ export function CommunityDetail() {
     }
   };
 
-  // Load active group flares
-  useEffect(() => {
-    if (!communityId) return;
-    setLoadingFlares(true);
-    flaresAPI.getActiveForCommunity(communityId)
-      .then(setGroupFlares)
-      .catch(() => setGroupFlares([]))
-      .finally(() => setLoadingFlares(false));
-  }, [communityId]);
+  const { data: flaresData, isLoading: flaresSWRLoading } = useSWR(
+    communityId ? `community-flares:${communityId}` : null,
+    () => flaresAPI.getActiveForCommunity(communityId!).catch(() => []),
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
+  const groupFlares = flaresData ?? [];
+  const loadingFlares = flaresSWRLoading && !flaresData;
 
-  // Load community games from stored IDs
+  // Key includes game_ids so changing the list triggers a re-fetch (e.g. after admin edits)
+  const gameIdsKey = JSON.stringify(community?.game_ids ?? []);
+  const { data: communityGamesData, isLoading: gamesSWRLoading } = useSWR(
+    (communityId && community) ? `community-games:${communityId}:${gameIdsKey}` : null,
+    async () => {
+      const gameIds: string[] = community?.game_ids ?? [];
+      if (gameIds.length === 0) return [];
+      const res = await gamesAPI.getGames(gameIds).catch(() => []);
+      const list = Array.isArray(res) ? res : (res as any)?.games ?? [];
+      const byId = Object.fromEntries(list.map((g: any) => [g.id, g]));
+      return gameIds.map(id => byId[id]).filter(Boolean);
+    },
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
   useEffect(() => {
-    const gameIds: string[] = community.game_ids ?? [];
-    if (gameIds.length === 0) { setCommunityGames([]); return; }
-    setLoadingGames(true);
-    gamesAPI.getGames(gameIds)
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : res?.games ?? [];
-        // Preserve order from game_ids
-        const byId = Object.fromEntries(list.map((g: any) => [g.id, g]));
-        setCommunityGames(gameIds.map(id => byId[id]).filter(Boolean));
-      })
-      .catch(() => setCommunityGames([]))
-      .finally(() => setLoadingGames(false));
-  }, [community.game_ids]);
+    if (communityGamesData) setCommunityGames(communityGamesData);
+  }, [communityGamesData]);
+  const loadingGames = gamesSWRLoading && !communityGamesData;
 
   // Debounce game search
   useEffect(() => {

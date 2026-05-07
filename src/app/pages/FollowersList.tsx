@@ -3,8 +3,9 @@ import { useNavigate, useParams, useSearchParams } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { profiles } from '../utils/supabase';
+import useSWR from 'swr';
 
 export function FollowersList() {
   const navigate = useNavigate();
@@ -13,27 +14,30 @@ export function FollowersList() {
   const highlightFollowing = searchParams.get('highlight') === 'following';
 
   const { currentUser, followingIds } = useAppData();
-  const [followers, setFollowers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [targetHandle, setTargetHandle] = useState('');
 
   const viewingUserId = userId || currentUser?.id || '';
 
-  useEffect(() => {
-    if (!viewingUserId) return;
-    setLoading(true);
-    setError(null);
+  const { data: followerData, isLoading: swrLoading, error: swrError } = useSWR(
+    viewingUserId ? `followers:${viewingUserId}` : null,
+    async () => {
+      const [userResult, followersResult] = await Promise.allSettled([
+        profiles.getById(viewingUserId),
+        profiles.getFollowers(viewingUserId),
+      ]);
+      return {
+        handle: userResult.status === 'fulfilled'
+          ? (userResult.value?.display_name || userResult.value?.handle || '')
+          : '',
+        followers: (followersResult.status === 'fulfilled' ? followersResult.value : []) as any[],
+      };
+    },
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
 
-    profiles.getById(viewingUserId)
-      .then(u => setTargetHandle(u?.display_name || u?.handle || ''))
-      .catch(() => {});
-
-    profiles.getFollowers(viewingUserId)
-      .then(setFollowers)
-      .catch((err: any) => setError(err?.message || 'Failed to load followers'))
-      .finally(() => setLoading(false));
-  }, [viewingUserId]);
+  const followers = followerData?.followers ?? [];
+  const loading = swrLoading && !followerData;
+  const error = swrError ? (swrError?.message || 'Failed to load followers') : null;
+  const targetHandle = followerData?.handle ?? '';
 
   // Sort: when coming from social-proof link, put people currentUser follows at the top
   const sortedFollowers = useMemo(() => {

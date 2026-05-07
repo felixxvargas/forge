@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Home, Search, MessageCircle, User, X } from 'lucide-react';
 import { useLocation, Link, useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
@@ -8,6 +9,7 @@ import { LoginModule } from './LoginModule';
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const router = useRouter();
   const { currentUser, isAuthenticated } = useAppData();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -52,6 +54,8 @@ export function BottomNav() {
       <nav className="fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 md:hidden">
         <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
           <button
+            onMouseEnter={() => router.prefetch('/feed')}
+            onTouchStart={() => router.prefetch('/feed')}
             onClick={() => {
               if (location.pathname === '/feed' || location.pathname === '/') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -70,6 +74,8 @@ export function BottomNav() {
 
           <Link
             to="/explore"
+            onMouseEnter={() => router.prefetch('/explore')}
+            onTouchStart={() => router.prefetch('/explore')}
             className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
               isActive('/explore') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -78,6 +84,8 @@ export function BottomNav() {
           </Link>
 
           <button
+            onMouseEnter={() => router.prefetch('/messages')}
+            onTouchStart={() => router.prefetch('/messages')}
             onClick={() => handleProtected('/messages')}
             className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
               isActive('/messages') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
@@ -87,6 +95,8 @@ export function BottomNav() {
           </button>
 
           <button
+            onMouseEnter={() => router.prefetch('/profile')}
+            onTouchStart={() => router.prefetch('/profile')}
             onClick={() => {
               if (!isAuthenticated) { setShowAuthModal(true); return; }
               if (location.pathname === '/profile') {

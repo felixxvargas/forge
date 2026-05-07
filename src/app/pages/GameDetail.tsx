@@ -1,6 +1,7 @@
 import { useParams, useNavigate, useLocation } from '@/compat/router';
 import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
@@ -19,13 +20,10 @@ export function GameDetail() {
   const location = useLocation();
   const { gameId: rawGameId } = useParams();
   const gameId = rawGameId ? decodeURIComponent(rawGameId) : rawGameId;
-  const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeed, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
+  const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeedPosts, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
 
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
   const [postSort, setPostSort] = useState<PostSort>('latest');
-  const [game, setGame] = useState<any>(null);
-  const [loadingGame, setLoadingGame] = useState(true);
 
   const [isPlayed, setIsPlayed] = useState(false);
   const [isOwned, setIsOwned] = useState(false);
@@ -68,17 +66,20 @@ export function GameDetail() {
   const [gameFlares, setGameFlares] = useState<LFGFlare[]>([]);
   const [loadingFlares, setLoadingFlares] = useState(false);
 
-  useEffect(() => {
-    if (!gameId) return;
-    setLoadingGame(true);
-    gamesAPI.getGame(gameId)
-      .then((data: any) => setGame(data?.game ?? data ?? null))
-      .catch(() => {
-        const fallback = (location.state as any)?.fallbackGame ?? null;
-        setGame(fallback);
-      })
-      .finally(() => setLoadingGame(false));
-  }, [gameId]);
+  const { data: gameData, isLoading: gameSWRLoading } = useSWR(
+    gameId ?? null,
+    async () => {
+      try {
+        const data = await gamesAPI.getGame(gameId!);
+        return data?.game ?? data ?? null;
+      } catch {
+        return (location.state as any)?.fallbackGame ?? null;
+      }
+    },
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
+  const game = gameData ?? null;
+  const loadingGame = gameSWRLoading && !gameData;
 
   // Load dependent data once game is loaded
   useEffect(() => {
@@ -100,14 +101,15 @@ export function GameDetail() {
       .catch(() => {});
   }, [game?.id]);
 
+  const { data: taggedPostsData, isLoading: taggedPostsSWRLoading } = useSWR(
+    gameId ? `game-posts:${gameId}` : null,
+    () => postsAPI.getByGame(gameId!).catch(() => []),
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
   useEffect(() => {
-    if (!gameId) return;
-    setLoadingPosts(true);
-    postsAPI.getByGame(gameId)
-      .then(setTaggedPosts)
-      .catch(() => setTaggedPosts([]))
-      .finally(() => setLoadingPosts(false));
-  }, [gameId]);
+    if (taggedPostsData) setTaggedPosts(taggedPostsData);
+  }, [taggedPostsData]);
+  const loadingPosts = taggedPostsSWRLoading && !taggedPostsData;
 
   useEffect(() => {
     if (!gameId) return;
@@ -248,7 +250,7 @@ export function GameDetail() {
         await followGame(gameId);
         toast.success(`Following ${game?.title ?? 'game'}`);
       }
-      refreshFeed();
+      refreshFeedPosts();
     } catch {
       setIsFollowed(wasFollowed); // revert on error
     } finally { setTogglingFollowed(false); }

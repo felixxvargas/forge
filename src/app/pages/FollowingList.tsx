@@ -3,20 +3,38 @@ import { useNavigate, useParams } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
-import { useState, useEffect } from 'react';
 import { profiles } from '../utils/supabase';
 import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
+import useSWR from 'swr';
 
 export function FollowingList() {
   const navigate = useNavigate();
   const { userId } = useParams();
   const { currentUser } = useAppData();
-  const [following, setFollowing] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [targetHandle, setTargetHandle] = useState('');
 
   const viewingUserId = userId || currentUser?.id || '';
+
+  const { data: followingData, isLoading: swrLoading, error: swrError } = useSWR(
+    viewingUserId ? `following:${viewingUserId}` : null,
+    async () => {
+      const [userResult, followingResult] = await Promise.allSettled([
+        profiles.getById(viewingUserId),
+        profiles.getFollowing(viewingUserId),
+      ]);
+      return {
+        handle: userResult.status === 'fulfilled'
+          ? (userResult.value?.display_name || userResult.value?.handle || '')
+          : '',
+        following: (followingResult.status === 'fulfilled' ? followingResult.value : []) as any[],
+      };
+    },
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
+
+  const following = followingData?.following ?? [];
+  const loading = swrLoading && !followingData;
+  const error = swrError ? (swrError?.message || 'Failed to load following') : null;
+  const targetHandle = followingData?.handle ?? '';
 
   // For topic accounts, derive the synthetic ID used as profileCache key
   const topicIdFor = (u: any) =>
@@ -26,21 +44,6 @@ export function FollowingList() {
 
   // Pre-populate Bluesky avatar cache for any topic accounts in the list
   useTopicAccountProfiles(following.map(topicIdFor));
-
-  useEffect(() => {
-    if (!viewingUserId) return;
-    setLoading(true);
-    setError(null);
-
-    profiles.getById(viewingUserId)
-      .then(u => setTargetHandle(u?.display_name || u?.handle || ''))
-      .catch(() => {});
-
-    profiles.getFollowing(viewingUserId)
-      .then(setFollowing)
-      .catch((err: any) => setError(err?.message || 'Failed to load following'))
-      .finally(() => setLoading(false));
-  }, [viewingUserId]);
 
   return (
     <div className="min-h-screen bg-background pb-20">

@@ -51,6 +51,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
       { protocol: 'https', hostname: '*.supabase.in' },
+      { protocol: 'https', hostname: 'images.igdb.com' },
+      { protocol: 'https', hostname: 'cdn.bsky.app' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'm.media-amazon.com' },
+      { protocol: 'https', hostname: 'upload.wikimedia.org' },
     ],
   },
 

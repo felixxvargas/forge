@@ -422,15 +422,15 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="flex gap-3 sm:gap-6 items-start animate-pulse">
-          {splitToColumns([true, false, true, false, true, true, false, true, false, true], numCols).map((colItems, colIdx) => (
+        <div className="flex gap-3 sm:gap-6 items-start">
+          {splitToColumns([true, false, false, true, false, true, false, false, true, false], numCols).map((colItems, colIdx) => (
             <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
               {colItems.map((hasImage, i) => {
                 const textWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full', 'w-2/3'];
                 return (
-                  <div key={i} className="bg-card rounded-xl p-4">
+                  <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                     <div className="flex gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                      <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex gap-2 mb-2.5">
                           <div className="h-3 bg-muted/50 rounded w-24" />

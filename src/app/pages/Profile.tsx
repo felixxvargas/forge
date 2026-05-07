@@ -22,6 +22,7 @@ import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
 import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI, streamArchivesAPI, top8API } from '../utils/supabase';
+import useSWR from 'swr';
 import type { LFGFlare, StreamArchive } from '../utils/supabase';
 
 import {
@@ -66,7 +67,23 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const navigate = useNavigate();
   const { userId, handle } = useParams();
   const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
-  const [handleFetchedUser, setHandleFetchedUser] = useState<any>(initialProfile ?? null);
+  const normalizedHandle = handle ? handle.replace(/^@/, '').toLowerCase() : null;
+  const { data: swrHandleProfile } = useSWR(
+    normalizedHandle ? `profile-handle:${normalizedHandle}` : null,
+    async () => {
+      const cached = getUserByHandle(handle!);
+      if (cached) return cached;
+      return profiles.getByHandle(handle!).then(u => u ?? null).catch(() => null);
+    },
+    {
+      fallbackData: (initialProfile && normalizedHandle === (initialProfile.handle || '').replace(/^@/, '').toLowerCase())
+        ? initialProfile
+        : undefined,
+      revalidateOnFocus: false,
+      keepPreviousData: false,
+    }
+  );
+  const handleFetchedUser = swrHandleProfile ?? null;
   const [editGameListModal, setEditGameListModal] = useState<{
     isOpen: boolean;
     listType: GameListType | null;
@@ -131,24 +148,10 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
 
 
-  // Always scroll to top when the profile page loads or the target user changes
+  // Scroll to top when navigating to a new profile
   useEffect(() => {
     window.scrollTo(0, 0);
-    setHandleFetchedUser(null);
   }, [userId, handle]);
-
-  // When routed via /handle/:handle, resolve the user (context cache → initialProfile → DB)
-  useEffect(() => {
-    if (!handle) return;
-    const cached = getUserByHandle(handle);
-    if (cached) { setHandleFetchedUser(cached); return; }
-    // Use SSR-provided profile if the handle matches (avoids duplicate DB call on first load)
-    if (initialProfile && handle.replace(/^@/, '').toLowerCase() === (initialProfile.handle || '').replace(/^@/, '').toLowerCase()) {
-      setHandleFetchedUser(initialProfile);
-      return;
-    }
-    profiles.getByHandle(handle).then(u => setHandleFetchedUser(u ?? null)).catch(() => {});
-  }, [handle]);
 
   // Determine which user profile to show
   const isOwnProfile = handle
@@ -348,10 +351,12 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               <div key={i} className="w-8 h-8 rounded-full bg-muted/30" />
             ))}
           </div>
-          {/* Tab bar */}
-          <div className="flex gap-0 border-b border-border/50 mb-5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-10 bg-muted/30 rounded-t w-16 mr-2" />
+          {/* Tab bar — 5 text tabs matching Lists/Posts/Likes/Media/About */}
+          <div className="flex gap-2 border-b border-border/50 mb-5">
+            {['w-7', 'w-10', 'w-7', 'w-12', 'w-11'].map((w, i) => (
+              <div key={i} className="px-4 py-3">
+                <div className={`h-4 bg-muted/30 rounded ${w}`} />
+              </div>
             ))}
           </div>
           {/* Game lists skeleton */}
@@ -409,9 +414,11 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           </div>
           {/* Right col: tabs + game lists */}
           <div className="flex-1 min-w-0 space-y-5">
-            <div className="flex gap-1 border-b border-border/50 pb-0">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-10 bg-muted/30 rounded-t w-16 mr-1" />
+            <div className="flex gap-2 border-b border-border/50">
+              {['w-7', 'w-10', 'w-7', 'w-12', 'w-11'].map((w, i) => (
+                <div key={i} className="px-4 py-3">
+                  <div className={`h-4 bg-muted/30 rounded ${w}`} />
+                </div>
               ))}
             </div>
             {Array.from({ length: 3 }).map((_, i) => (

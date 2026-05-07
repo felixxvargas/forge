@@ -1,5 +1,6 @@
 ﻿'use client';
 import { useState, useEffect, useRef } from 'react';
+import useSWR from 'swr';
 import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, Heart, MessageCircle, Quote, Users, LayoutList } from 'lucide-react';
@@ -34,7 +35,6 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   const [newReply, setNewReply] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
-  const [isLoadingReplies, setIsLoadingReplies] = useState(true);
   const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -229,35 +229,44 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     postsAPI.getById(replyToId).then(p => setParentPost(p)).catch(() => setParentPost(null));
   }, [activePost?.reply_to]);
 
-  // Load replies for normal Forge posts, then load their sub-replies
-  useEffect(() => {
-    if (!postId || isExternalPost) { setIsLoadingReplies(false); return; }
-    setIsLoadingReplies(true);
-    setSubRepliesMap({});
-    postsAPI.getByReplyTo(postId)
-      .then(async data => {
-        setReplies(data);
-        if (data.length > 0) {
-          addPosts(data);
-          // Load sub-replies for each reply in parallel (limit to avoid spam)
-          const withReplies = data.filter((r: any) => (r.comment_count ?? 0) > 0);
-          if (withReplies.length > 0) {
-            const results = await Promise.allSettled(
-              withReplies.slice(0, 10).map((r: any) => postsAPI.getByReplyTo(r.id))
-            );
-            const map: Record<string, any[]> = {};
-            results.forEach((res, i) => {
-              if (res.status === 'fulfilled' && res.value.length > 0) {
-                map[withReplies[i].id] = res.value;
-              }
-            });
-            if (Object.keys(map).length > 0) setSubRepliesMap(map);
-          }
+  const { data: repliesData, isLoading: repliesSWRLoading } = useSWR(
+    (!isExternalPost && postId) ? `post-replies:${postId}` : null,
+    async () => {
+      const data: any[] = await postsAPI.getByReplyTo(postId!).catch(() => []);
+      const subMap: Record<string, any[]> = {};
+      if (data.length > 0) {
+        const withReplies = data.filter((r: any) => (r.comment_count ?? 0) > 0);
+        if (withReplies.length > 0) {
+          const results = await Promise.allSettled(
+            withReplies.slice(0, 10).map((r: any) => postsAPI.getByReplyTo(r.id))
+          );
+          results.forEach((res, i) => {
+            if (res.status === 'fulfilled' && res.value.length > 0) {
+              subMap[withReplies[i].id] = res.value;
+            }
+          });
         }
-      })
-      .catch(() => setReplies([]))
-      .finally(() => setIsLoadingReplies(false));
-  }, [postId, isExternalPost]);
+      }
+      return { replies: data, subRepliesMap: subMap };
+    },
+    { keepPreviousData: false, revalidateOnFocus: false }
+  );
+
+  // Reset local state when navigating to a different post
+  useEffect(() => {
+    setReplies([]);
+    setSubRepliesMap({});
+  }, [postId]);
+
+  // Sync SWR data into local state (so mutations like add/delete still work)
+  useEffect(() => {
+    if (!repliesData) return;
+    setReplies(repliesData.replies);
+    setSubRepliesMap(repliesData.subRepliesMap);
+    if (repliesData.replies.length > 0) addPosts(repliesData.replies);
+  }, [repliesData]);
+
+  const isLoadingReplies = repliesSWRLoading && !repliesData;
 
   // Load Forge comments on external posts (stored with url = 'forge-comment:{externalId}')
   useEffect(() => {

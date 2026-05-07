@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import useSWR from 'swr';
 import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
@@ -37,21 +38,14 @@ export function Explore() {
     try { return JSON.parse(localStorage.getItem('forge-search-history') || '[]'); } catch { return []; }
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [topicPosts, setTopicPosts] = useState<any[]>([]);
-  const [livePosts, setLivePosts] = useState<any[]>([]);
-  const [trendingNativePosts, setTrendingNativePosts] = useState<any[]>([]);
   const numCols = useColumnCount();
-  const [loadingTopicPosts, setLoadingTopicPosts] = useState(false);
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());
   const [hideSearchBar, setHideSearchBar] = useState(false);
   const [dbGames, setDbGames] = useState<any[]>([]);
-  const [loadingGames, setLoadingGames] = useState(false);
   const [loadingTrendingCounts, setLoadingTrendingCounts] = useState(false);
   const [loadingExtraGames, setLoadingExtraGames] = useState(false);
   const [trendingCounts, setTrendingCounts] = useState<Record<string, number>>({});
   const [listCounts, setListCounts] = useState<Record<string, number>>({});
-  const [lfgPlayers, setLfgPlayers] = useState<LFGFlare[]>([]);
-  const [loadingLfg, setLoadingLfg] = useState(false);
   const [groupGameTitles, setGroupGameTitles] = useState<Record<string, string>>({});
   const [postSort, setPostSort] = useState<'latest' | 'top'>('latest');
   const [postFilter, setPostFilter] = useState<'all' | 'forge'>('all');
@@ -65,6 +59,69 @@ export function Explore() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks extra game IDs fetched to fill engagement gaps — reset on tab change
   const fetchedExtraGameIds = useRef<Set<string>>(new Set());
+
+  // ── SWR: posts tab ──────────────────────────────────────────────────────────
+  const { data: topicPostData, isLoading: topicPostSWRLoading } = useSWR(
+    activeTab === 'posts' ? 'explore-topic-posts' : null,
+    async () => {
+      const [supabasePosts, live, nativeTrending] = await Promise.allSettled([
+        postsAPI.getTopicPosts(100),
+        fetchAllGamingMediaPosts(8),
+        postsAPI.getTrendingFeed(40),
+      ]);
+      let enrichedLive: any[] = [];
+      if (live.status === 'fulfilled') {
+        const bskyHandleToTopic: Record<string, any> = {};
+        for (const [topicId, handle] of Object.entries(topicAccountBlueskyHandles)) {
+          const account = topicAccounts.find(a => a.id === topicId);
+          if (account) bskyHandleToTopic[handle] = account;
+        }
+        enrichedLive = (live.value as any[]).map(p => {
+          const topicAccount = bskyHandleToTopic[p.userId];
+          if (!topicAccount) return null;
+          return {
+            ...p,
+            author: topicAccount,
+            user_id: topicAccount.id,
+            created_at: p.timestamp instanceof Date ? p.timestamp.toISOString() : (p.timestamp ?? p.created_at),
+            like_count: p.likes ?? 0,
+            repost_count: p.reposts ?? 0,
+            comment_count: p.comments ?? 0,
+          };
+        }).filter(Boolean);
+      }
+      return {
+        topicPosts: supabasePosts.status === 'fulfilled' ? supabasePosts.value as any[] : [],
+        livePosts: enrichedLive,
+        trendingNativePosts: nativeTrending.status === 'fulfilled' ? nativeTrending.value as any[] : [],
+      };
+    },
+    { keepPreviousData: true, revalidateOnFocus: false, refreshInterval: 5 * 60 * 1000 }
+  );
+  const topicPosts = topicPostData?.topicPosts ?? [];
+  const livePosts = topicPostData?.livePosts ?? [];
+  const trendingNativePosts = topicPostData?.trendingNativePosts ?? [];
+  const loadingTopicPosts = topicPostSWRLoading && !topicPostData;
+
+  // ── SWR: games tab ──────────────────────────────────────────────────────────
+  const { data: gamesListData, isLoading: gamesListSWRLoading } = useSWR(
+    activeTab === 'games' && !searchQuery.trim() ? 'explore-games' : null,
+    () => gamesAPI.listGames(500, 0).then((res: any) => (Array.isArray(res) ? res : res?.games ?? [])),
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
+  useEffect(() => {
+    if (gamesListData) setDbGames(gamesListData);
+  }, [gamesListData]);
+  const loadingGames = gamesListSWRLoading && !gamesListData;
+
+  // ── SWR: LFG flares (groups tab) ────────────────────────────────────────────
+  const { data: lfgData, isLoading: lfgSWRLoading } = useSWR(
+    activeTab === 'groups' ? 'explore-lfg' : null,
+    () => lfgFlaresAPI.getActive(50),
+    { keepPreviousData: true }
+  );
+  const lfgPlayers = (lfgData ?? []) as LFGFlare[];
+  const loadingLfg = lfgSWRLoading && !lfgData;
 
   const showGamesSkeleton = useMemo(() => {
     if (loadingGames || loadingTrendingCounts || loadingExtraGames) return true;
@@ -154,13 +211,6 @@ export function Explore() {
     })();
   }, [activeTab, users.length]);
 
-  useEffect(() => {
-    if (activeTab !== 'groups') return;
-    setLoadingLfg(true);
-    lfgFlaresAPI.getActive(50)
-      .then(setLfgPlayers)
-      .finally(() => setLoadingLfg(false));
-  }, [activeTab]);
 
   // Fetch game titles for all unique game IDs across all groups
   useEffect(() => {
@@ -231,20 +281,6 @@ export function Explore() {
     setListCounts(counts);
   }, [activeTab, users, currentUser]);
 
-  useEffect(() => {
-    if (activeTab !== 'games') return;
-    // When search is active the overlay handles games — don't fire a competing request
-    if (searchQuery.trim()) return;
-    if (dbGames.length > 0) return;
-    setLoadingGames(true);
-    gamesAPI.listGames(500, 0)
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : res?.games ?? [];
-        setDbGames(list);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingGames(false));
-  }, [activeTab, searchQuery]);
 
   // Supplementary fetch: any game with engagement (post tags / list adds) that
   // wasn't returned in the initial 500 still needs to be shown and sorted.
@@ -273,51 +309,6 @@ export function Explore() {
       .finally(() => setLoadingExtraGames(false));
   }, [activeTab, trendingCounts, listCounts, dbGames, loadingGames]);
 
-  useEffect(() => {
-    if (activeTab !== 'posts') return;
-
-    const load = async () => {
-      setLoadingTopicPosts(true);
-      try {
-        const [supabasePosts, live, nativeTrending] = await Promise.allSettled([
-          postsAPI.getTopicPosts(100),
-          fetchAllGamingMediaPosts(8),
-          postsAPI.getTrendingFeed(40),
-        ]);
-        if (supabasePosts.status === 'fulfilled') setTopicPosts(supabasePosts.value);
-        if (nativeTrending.status === 'fulfilled') setTrendingNativePosts(nativeTrending.value);
-        if (live.status === 'fulfilled') {
-          // Enrich live Bluesky/Mastodon posts with their topic account author object
-          // so PostCard can render them (it requires post.author to be set).
-          const bskyHandleToTopic: Record<string, any> = {};
-          for (const [topicId, handle] of Object.entries(topicAccountBlueskyHandles)) {
-            const account = topicAccounts.find(a => a.id === topicId);
-            if (account) bskyHandleToTopic[handle] = account;
-          }
-          const enriched = (live.value as any[]).map(p => {
-            const topicAccount = bskyHandleToTopic[p.userId];
-            if (!topicAccount) return null;
-            return {
-              ...p,
-              author: topicAccount,
-              user_id: topicAccount.id,
-              created_at: p.timestamp instanceof Date ? p.timestamp.toISOString() : (p.timestamp ?? p.created_at),
-              like_count: p.likes ?? 0,
-              repost_count: p.reposts ?? 0,
-              comment_count: p.comments ?? 0,
-            };
-          }).filter(Boolean);
-          setLivePosts(enriched);
-        }
-      } catch {}
-      finally { setLoadingTopicPosts(false); }
-    };
-
-    load();
-    // Re-fetch live posts every 5 minutes
-    const interval = setInterval(load, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [activeTab]);
 
   // Global search: debounce and fetch posts + games in parallel
   useEffect(() => {
@@ -875,18 +866,27 @@ export function Explore() {
                   </button>
                 </div>
                 {loadingTopicPosts ? (
-                  <div className="flex gap-6 items-start animate-pulse">
-                    {splitToColumns(Array.from({ length: 6 }, (_, i) => i), numCols).map((colItems, colIdx) => (
+                  <div className="flex gap-6 items-start">
+                    {splitToColumns([false, true, false, false, true, false], numCols).map((colItems, colIdx) => (
                       <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
-                        {colItems.map(i => (
-                          <div key={i} className="bg-card rounded-xl p-4">
+                        {colItems.map((hasImage, i) => (
+                          <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                             <div className="flex gap-3">
                               <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
                               <div className="flex-1 space-y-2 pt-0.5">
-                                <div className="h-3.5 bg-muted/50 rounded w-32" />
+                                <div className="flex gap-2 items-center">
+                                  <div className="h-3.5 bg-muted/50 rounded w-24" />
+                                  <div className="h-3 bg-muted/30 rounded w-14" />
+                                </div>
                                 <div className="h-3 bg-muted/40 rounded w-full" />
                                 <div className="h-3 bg-muted/40 rounded w-4/5" />
-                                <div className="h-[140px] bg-muted/30 rounded-xl mt-2 w-full" />
+                                {i % 2 === 0 && <div className="h-3 bg-muted/30 rounded w-3/5" />}
+                                {hasImage && <div className="h-40 bg-muted/30 rounded-xl mt-2 w-full" />}
+                                <div className="flex gap-4 pt-1">
+                                  <div className="h-3 bg-muted/20 rounded w-7" />
+                                  <div className="h-3 bg-muted/20 rounded w-7" />
+                                  <div className="h-3 bg-muted/20 rounded w-7" />
+                                </div>
                               </div>
                             </div>
                           </div>
