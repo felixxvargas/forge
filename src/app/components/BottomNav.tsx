@@ -37,7 +37,7 @@ export function BottomNav() {
       {/* Auth modal — mobile: slide-up sheet; desktop: full-screen overlay */}
       {showAuthModal && (
         <div className="fixed inset-0 z-[60] flex items-end md:block bg-black/60 md:bg-transparent">
-          <div className="relative w-full md:h-full md:overflow-y-auto rounded-t-2xl md:rounded-none overflow-hidden" style={{ background: 'rgba(14, 6, 36, 0.97)' }}>
+          <div className="relative w-full md:h-full md:overflow-y-auto rounded-t-2xl md:rounded-none overflow-hidden border-t border-[#c4a3ff]/25 md:border-none" style={{ background: 'rgba(14, 6, 36, 0.97)' }}>
             <button
               onClick={() => setShowAuthModal(false)}
               className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
