@@ -84,12 +84,22 @@ export function Layout({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isLoading, currentUser } = useAppData();
   const { isOpen } = useSidebar();
   const location = useLocation();
+  const [isMdPlus, setIsMdPlus] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMdPlus(window.innerWidth >= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const sidebarMargin = isMdPlus ? (isOpen ? 220 : 60) : 0;
 
   if (isLoading || (isAuthenticated && !currentUser)) {
     return (
       <div className="min-h-dvh relative">
         <DesktopSidebar />
-        <div style={{ marginLeft: 60 }}>
+        <div style={{ marginLeft: sidebarMargin }}>
           <LoadingScreen path={location.pathname} />
         </div>
         <BottomNav />
@@ -127,9 +137,9 @@ export function Layout({ children }: { children?: ReactNode }) {
       <motion.div
         className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4"
         initial={false}
-        animate={{ marginLeft: isOpen ? 220 : 60 }}
+        animate={{ marginLeft: sidebarMargin }}
         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-        style={{ marginLeft: 60 }}
+        style={{ marginLeft: sidebarMargin }}
       >
         {children}
       </motion.div>
