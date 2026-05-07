@@ -33,16 +33,19 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Auth modal — full-screen overlay */}
+      {/* Auth modal — full-screen overlay matching Settings overlay style */}
       {showAuthModal && (
         <div className="fixed inset-0 z-[60] bg-background overflow-y-auto">
-          <button
-            onClick={() => setShowAuthModal(false)}
-            className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          <LoginModule variant="page" onSuccess={() => setShowAuthModal(false)} />
+          <div className="min-h-dvh relative">
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="fixed top-4 right-4 z-50 p-2 bg-card/80 backdrop-blur-sm rounded-full border border-border hover:bg-secondary transition-colors inline-flex items-center justify-center"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <LoginModule variant="page" onSuccess={() => setShowAuthModal(false)} />
+          </div>
         </div>
       )}
 

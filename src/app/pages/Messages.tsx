@@ -104,9 +104,11 @@ export function Messages() {
   const [groupReactions, setGroupReactions] = useState<ReactionMap>({});
   // Group thread read receipts: userId → last_read_at (ISO string)
   const [groupThreadReaders, setGroupThreadReaders] = useState<Record<string, string>>({});
-  // Sheet showing all readers of the last group message
+  // Sheet showing all readers of the last group message (mobile) / popup (desktop)
   const [showReadReceiptSheet, setShowReadReceiptSheet] = useState(false);
   const [readReceiptSheetUsers, setReadReceiptSheetUsers] = useState<any[]>([]);
+  const [readReceiptPopupOpen, setReadReceiptPopupOpen] = useState(false);
+  const readReceiptPopupRef = useRef<HTMLDivElement>(null);
 
   const composeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addPeopleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -373,6 +375,18 @@ export function Messages() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedGroupThread?.id, currentUser?.id]);
+
+  // Close read receipt popup on click-outside
+  useEffect(() => {
+    if (!readReceiptPopupOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (readReceiptPopupRef.current && !readReceiptPopupRef.current.contains(e.target as Node)) {
+        setReadReceiptPopupOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [readReceiptPopupOpen]);
 
   // Real-time DM read receipts — update read_at on my sent messages when partner reads them
   useEffect(() => {
@@ -856,7 +870,7 @@ export function Messages() {
                     <ProfileAvatar username={sender?.display_name || sender?.handle || '?'} profilePicture={sender?.profile_picture ?? null} size="sm" userId={msg.sender_id} />
                   </button>
                 )}
-                <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-[70%] flex flex-col relative ${isMe ? 'items-end' : 'items-start'}`}>
                   {!isMe && sender && (
                     <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="text-xs mb-0.5 transition-colors" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                       {sender.display_name || sender.handle}
@@ -889,34 +903,67 @@ export function Messages() {
                       ))}
                     </div>
                   )}
-                  {/* Read receipts — tappable row; up to 4 avatars, overflow +N on 4th slot */}
-                  {isLastMessage && readersOfLast.length > 0 && (
-                    <button
-                      onClick={() => { setReadReceiptSheetUsers(readersOfLast); setShowReadReceiptSheet(true); }}
-                      className={`flex items-center gap-1 mt-1 hover:opacity-80 transition-opacity ${isMe ? 'self-end' : 'self-start'}`}
-                    >
-                      <div className="flex -space-x-1.5">
-                        {readersOfLast.slice(0, readersOfLast.length <= 4 ? 4 : 3).map(p => (
-                          <ProfileAvatar
-                            key={p.id}
-                            username={p.display_name || p.handle || '?'}
-                            profilePicture={p.profile_picture ?? null}
-                            size="sm"
-                            userId={p.id}
-                            className="border-2 border-background !w-5 !h-5 text-[9px]"
-                          />
-                        ))}
-                        {readersOfLast.length >= 5 && (
-                          <div className="!w-5 !h-5 rounded-full bg-secondary border-2 border-background flex items-center justify-center shrink-0">
-                            <span className="text-[8px] font-bold text-muted-foreground leading-none">
-                              +{readersOfLast.length - 3}
-                            </span>
-                          </div>
-                        )}
+                  {/* Read receipts — mobile: bottom sheet tap; desktop: click popup */}
+                  {isLastMessage && readersOfLast.filter(p => p.id !== currentUser?.id).length > 0 && (() => {
+                    const readers = readersOfLast.filter(p => p.id !== currentUser?.id);
+                    const avatarRow = (
+                      <div className="flex items-center gap-1">
+                        <div className="flex -space-x-1.5">
+                          {readers.slice(0, readers.length <= 4 ? 4 : 3).map(p => (
+                            <ProfileAvatar
+                              key={p.id}
+                              username={p.display_name || p.handle || '?'}
+                              profilePicture={p.profile_picture ?? null}
+                              size="sm"
+                              userId={p.id}
+                              className="border-2 border-background !w-5 !h-5 text-[9px]"
+                            />
+                          ))}
+                          {readers.length >= 5 && (
+                            <div className="!w-5 !h-5 rounded-full bg-secondary border-2 border-background flex items-center justify-center shrink-0">
+                              <span className="text-[8px] font-bold text-muted-foreground leading-none">+{readers.length - 3}</span>
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">Read</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">Read</span>
-                    </button>
-                  )}
+                    );
+                    return (
+                      <>
+                        {/* Mobile — opens bottom sheet */}
+                        <button
+                          onClick={() => { setReadReceiptSheetUsers(readers); setShowReadReceiptSheet(true); }}
+                          className={`md:hidden flex items-center gap-1 mt-1 hover:opacity-80 transition-opacity ${isMe ? 'self-end' : 'self-start'}`}
+                        >
+                          {avatarRow}
+                        </button>
+                        {/* Desktop — click to show inline popup */}
+                        <div ref={readReceiptPopupRef} className={`hidden md:flex flex-col mt-1 relative ${isMe ? 'items-end' : 'items-start'}`}>
+                          <button
+                            onClick={() => setReadReceiptPopupOpen(prev => !prev)}
+                            className="hover:opacity-80 transition-opacity"
+                          >
+                            {avatarRow}
+                          </button>
+                          {readReceiptPopupOpen && (
+                            <div className={`absolute z-50 mt-1 bg-card border border-border rounded-xl shadow-xl py-1.5 min-w-[180px] ${isMe ? 'right-0' : 'left-0'}`} style={{ top: '100%' }}>
+                              <p className="text-[10px] text-muted-foreground px-3 pt-1 pb-0.5 font-semibold uppercase tracking-wider">Read by</p>
+                              {readers.map(p => (
+                                <button
+                                  key={p.id}
+                                  onClick={() => { setReadReceiptPopupOpen(false); navigate(`/profile/${p.id}`); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-secondary transition-colors text-left"
+                                >
+                                  <ProfileAvatar username={p.display_name || p.handle || '?'} profilePicture={p.profile_picture ?? null} size="sm" userId={p.id} />
+                                  <span className="text-sm">{p.display_name || p.handle}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             );
@@ -1403,9 +1450,11 @@ export function Messages() {
                               <Flame className="w-5 h-5 text-white" />
                             </div>
                           ) : (() => {
-                            const pIds = (item.participant_ids ?? [])
-                              .filter((id: string) => id !== currentUser?.id)
-                              .slice(0, 4);
+                            const totalCount = item.participant_ids?.length ?? 0;
+                            // 3–4 members: show everyone (including current user). 5+: show only others.
+                            const pIds = totalCount <= 4
+                              ? (item.participant_ids ?? []).slice(0, 4)
+                              : (item.participant_ids ?? []).filter((id: string) => id !== currentUser?.id).slice(0, 4);
                             if (pIds.length === 0) return (
                               <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
                                 <Users className="w-5 h-5 text-muted-foreground" />
@@ -1416,7 +1465,8 @@ export function Messages() {
                                 {[0, 1, 2, 3].map(i => {
                                   if (pIds.length === 3 && i === 3) return null;
                                   const id = pIds[i];
-                                  const p = id ? participantProfiles[id] : null;
+                                  // Use currentUser directly for own avatar (already loaded, no fetch needed)
+                                  const p = id ? (id === currentUser?.id ? currentUser : participantProfiles[id]) : null;
                                   const spanClass = pIds.length === 3 && i === 2 ? 'col-span-2' : '';
                                   return p?.profile_picture ? (
                                     <img key={i} src={p.profile_picture} alt="" className={`w-full h-full object-cover ${spanClass}`} />

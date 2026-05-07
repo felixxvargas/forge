@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from '@/compat/router';
-import { Mail, Eye, EyeOff, ArrowLeft, Gamepad2, Users, Trophy, Flame, Search } from 'lucide-react';
+import { Mail, Eye, EyeOff, ArrowLeft, Gamepad2, Users, Tv2, Flame, Search } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';
@@ -138,7 +138,7 @@ export function Login() {
               { icon: Users, title: 'Connect with gamers', desc: 'Follow friends, join communities, and see what everyone is playing.' },
               { icon: Search, title: 'Discover new games', desc: 'Get recommendations from people with the same gaming taste as you.' },
               { icon: Flame, title: 'Find teammates with LFG', desc: 'Post a flare when you need a squad and get matched instantly.' },
-              { icon: Trophy, title: 'Share your highlights', desc: 'Post clips, screenshots, and hot takes to your gaming feed.' },
+              { icon: Tv2, title: 'Auto Twitch stream archives', desc: 'Your Twitch VODs are automatically saved and shared to your profile.' },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex gap-3 items-start">
                 <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
@@ -313,10 +313,10 @@ export function Login() {
       <div className="w-full max-w-md mt-8 mb-6 relative z-10">
         <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
         <div className="flex items-center justify-center gap-6 pb-4">
-          <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
-            <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10" />
-            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
-          </div>
+          <Link to="/android-beta" className="relative group">
+            <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10 group-hover:opacity-80 transition-opacity" />
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-accent tracking-wide font-medium">Join Beta</span>
+          </Link>
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-7 grayscale" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
