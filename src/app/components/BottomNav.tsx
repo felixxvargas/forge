@@ -49,7 +49,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-white/10 z-50 md:hidden" style={{ background: 'rgba(14, 6, 36, 0.94)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 md:hidden">
         <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
           <button
             onClick={() => {
@@ -112,7 +112,7 @@ export function BottomNav() {
           </button>
         </div>
         {/* Safe-area extension */}
-        <div style={{ background: 'rgba(14, 6, 36, 0.94)', height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
+        <div className="bg-sidebar" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
       </nav>
     </>
   );
