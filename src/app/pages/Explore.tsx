@@ -861,9 +861,9 @@ export function Explore() {
                   </button>
                 </div>
                 {loadingTopicPosts ? (
-                  <div className="lg:columns-3 lg:gap-4 space-y-4 lg:space-y-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-card rounded-xl p-4 animate-pulse mb-4 break-inside-avoid">
+                      <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                         <div className="flex gap-3">
                           <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
                           <div className="flex-1 space-y-2 pt-0.5">
@@ -882,7 +882,7 @@ export function Explore() {
                     <p>No posts to display</p>
                   </div>
                 ) : (
-                  <div className="lg:columns-3 lg:gap-4 space-y-4 lg:space-y-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {gamingMediaPosts.map(post => {
                       const user = post.author;
                       if (!user) return null;
@@ -892,7 +892,7 @@ export function Explore() {
 
                       if (isMuted && !isShown) {
                         return (
-                          <div key={post.id} className="bg-card border border-border rounded-lg p-4 mb-4 break-inside-avoid">
+                          <div key={post.id} className="bg-card border border-border rounded-lg p-4">
                             <p className="text-muted-foreground text-sm mb-2">Post from muted user</p>
                             <button
                               onClick={() => handleShowMutedPost(post.id)}
@@ -905,7 +905,7 @@ export function Explore() {
                       }
 
                       return (
-                        <div key={post.id} className="mb-4 break-inside-avoid">
+                        <div key={post.id}>
                           <PostCard
                             post={post}
                             user={user!}

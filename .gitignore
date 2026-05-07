@@ -39,3 +39,4 @@ src/imports/pasted_text/
 # Supabase local
 .supabase/
 supabase/.temp/
+.vercel
