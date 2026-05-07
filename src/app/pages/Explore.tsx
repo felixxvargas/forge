@@ -889,7 +889,7 @@ export function Explore() {
                   </div>
                 ) : (
                   <div className="flex gap-6 items-start">
-                    {splitToColumns(gamingMediaPosts, numCols).map((colPosts, colIdx) => (
+                    {splitToColumns(gamingMediaPosts as any[], numCols).map((colPosts, colIdx) => (
                       <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
                         {colPosts.map(post => {
                           const user = post.author;

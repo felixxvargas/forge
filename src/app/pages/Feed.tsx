@@ -450,7 +450,7 @@ export function Feed() {
 
       {!loading && (
         <div className="flex gap-6 items-start">
-          {splitToColumns(visiblePosts, numCols).map((colPosts, colIdx) => (
+          {splitToColumns(visiblePosts as any[], numCols).map((colPosts, colIdx) => (
             <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
               {colPosts.map(post => {
                 const user = post.author;
@@ -477,7 +477,7 @@ export function Feed() {
         <div className="mt-4">
           <div className="text-sm text-muted-foreground mb-2">Muted Posts</div>
           <div className="flex gap-6 items-start">
-            {splitToColumns(mutedFilteredPosts, numCols).map((colPosts, colIdx) => (
+            {splitToColumns(mutedFilteredPosts as any[], numCols).map((colPosts, colIdx) => (
               <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
                 {colPosts.map(post => {
                   const user = post.author;
