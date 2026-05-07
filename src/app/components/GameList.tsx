@@ -103,19 +103,19 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {listType && games.length > 0 && (
-                    <DropdownMenuItem onSelect={() => { if (listType) navigate(`/list?type=${listType}&browse=true`); }}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => { if (listType) navigate(`/list?type=${listType}&browse=true`); }, 0)}>
                       <Users className="w-4 h-4 mr-2" />
                       See others with this list
                     </DropdownMenuItem>
                   )}
                   {onEdit && (
-                    <DropdownMenuItem onSelect={() => onEdit!()}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => onEdit!(), 0)}>
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit list
                     </DropdownMenuItem>
                   )}
                   {onHide && (
-                    <DropdownMenuItem onSelect={() => onHide!()}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => onHide!(), 0)}>
                       <EyeOff className="w-4 h-4 mr-2" />
                       Hide list
                     </DropdownMenuItem>
@@ -124,7 +124,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onSelect={() => onDelete!()}
+                        onSelect={() => setTimeout(() => onDelete!(), 0)}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
@@ -183,7 +183,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
             className="fixed inset-0 z-[55] bg-black/50"
             onClick={() => { setShowActionTray(false); setConfirmDelete(false); }}
           />
-          <div className="fixed inset-x-0 bottom-0 z-[60] bg-card/95 backdrop-blur-xl rounded-t-2xl shadow-xl">
+          <div className="fixed inset-x-0 bottom-0 z-[60] bg-sidebar backdrop-blur-xl rounded-t-2xl shadow-xl">
             <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1" />
             {confirmDelete ? (
               <div className="p-4 space-y-3 pb-8">

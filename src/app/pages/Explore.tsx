@@ -503,7 +503,7 @@ export function Explore() {
       {/* Search Bar */}
       <div className={`sticky top-14 z-20 bg-card/80 backdrop-blur-lg border-b border-border transition-all duration-300 ${hideSearchBar ? '-translate-y-full' : 'translate-y-0'}`}>
         <div className="px-4 lg:px-6 py-3">
-          <div className="relative">
+          <div className="relative max-w-2xl mx-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               ref={searchInputRef}
@@ -524,7 +524,7 @@ export function Explore() {
               </button>
             )}
             {showSearchHistory && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-30 shadow-2xl" style={{ background: 'rgba(20, 8, 50, 0.93)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(139,92,246,0.2)' }}>
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-30 shadow-2xl bg-sidebar backdrop-blur-xl" style={{ border: '1px solid rgba(139,92,246,0.2)' }}>
                 <div className="px-4 py-2 flex items-center justify-between border-b border-border">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Recent searches</p>
                   <button
