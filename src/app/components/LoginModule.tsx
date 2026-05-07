@@ -191,7 +191,7 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
           <ForgeSVG width="80" height="64" aria-hidden="true" />
         </div>
         <h1 className="text-4xl font-black tracking-tight text-accent mb-1">Forge</h1>
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mt-1 mb-2">Beta</span>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold tracking-widest uppercase bg-accent/15 text-accent mt-1 mb-2">Beta</span>
         <p className="text-muted-foreground mt-1">Your gaming social network</p>
       </div>
 
