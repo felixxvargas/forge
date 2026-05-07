@@ -33,19 +33,16 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Auth modal for guests */}
-      {/* Auth modal — mobile: slide-up sheet; desktop: full-screen overlay */}
+      {/* Auth modal — full-screen overlay */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-[60] flex items-end md:block bg-black/60 md:bg-transparent">
-          <div className="relative w-full md:h-full md:overflow-y-auto rounded-t-2xl md:rounded-none overflow-hidden" style={{ background: 'rgba(14, 6, 36, 0.97)', boxShadow: 'inset 0 1px 0 rgba(196, 163, 255, 0.45)' }}>
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <LoginModule variant="page" onSuccess={() => setShowAuthModal(false)} />
-          </div>
+        <div className="fixed inset-0 z-[60] bg-background overflow-y-auto">
+          <button
+            onClick={() => setShowAuthModal(false)}
+            className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <LoginModule variant="page" onSuccess={() => setShowAuthModal(false)} />
         </div>
       )}
 

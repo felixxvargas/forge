@@ -1292,7 +1292,19 @@ export function Messages() {
           </button>
         </div>
 
-        {allConvos.length === 0 && !loadingConvos ? (
+        {loadingConvos && allConvos.length === 0 ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-card rounded-xl flex items-center gap-3 p-4 animate-pulse">
+                <div className="w-10 h-10 rounded-full bg-secondary shrink-0" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="h-4 bg-secondary rounded w-28" />
+                  <div className="h-3 bg-secondary rounded w-44" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : allConvos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No messages yet</h3>
@@ -1391,10 +1403,9 @@ export function Messages() {
                               <Flame className="w-5 h-5 text-white" />
                             </div>
                           ) : (() => {
-                            const totalCount = (item.participant_ids ?? []).length;
-                            const pIds = totalCount <= 4
-                              ? (item.participant_ids ?? []).slice(0, 4)
-                              : (item.participant_ids ?? []).filter((id: string) => id !== currentUser?.id).slice(0, 4);
+                            const pIds = (item.participant_ids ?? [])
+                              .filter((id: string) => id !== currentUser?.id)
+                              .slice(0, 4);
                             if (pIds.length === 0) return (
                               <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center shrink-0">
                                 <Users className="w-5 h-5 text-muted-foreground" />

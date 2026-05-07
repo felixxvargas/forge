@@ -122,9 +122,10 @@ export function Explore() {
     let lastScrollY = window.scrollY;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+      const delta = currentScrollY - lastScrollY;
+      if (delta > 8 && currentScrollY > 100) {
         setHideSearchBar(true);
-      } else if (currentScrollY < lastScrollY || currentScrollY < 50) {
+      } else if (delta < -8 || currentScrollY < 50) {
         setHideSearchBar(false);
       }
       lastScrollY = currentScrollY;

@@ -219,9 +219,10 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
         Continue with Google
       </button>
 
-      <div className="relative my-4">
-        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"/></div>
-        <div className="relative flex justify-center text-sm"><span className="px-4 bg-background text-muted-foreground">or</span></div>
+      <div className="flex items-center gap-3 my-4">
+        <div className="flex-1 border-t border-border" />
+        <span className="text-sm text-muted-foreground">or</span>
+        <div className="flex-1 border-t border-border" />
       </div>
 
       <form onSubmit={handleEmailLogin} className="space-y-3">
