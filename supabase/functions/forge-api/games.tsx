@@ -484,11 +484,14 @@ async function getIGDBAccessToken(): Promise<string> {
     throw new Error('IGDB credentials not configured');
   }
 
-  const tokenUrl = `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`;
-  
-  const response = await fetch(tokenUrl, { method: 'POST' });
+  const response = await fetch('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&grant_type=client_credentials`,
+  });
   if (!response.ok) {
-    throw new Error(`IGDB OAuth error: ${response.statusText}`);
+    const body = await response.text().catch(() => '');
+    throw new Error(`IGDB OAuth error: ${response.status} ${response.statusText} — ${body}`);
   }
 
   const data = await response.json();

@@ -368,13 +368,29 @@ app.post("/forge-api/games/moby", async (c) => {
 });
 
 // Bulk seed top-rated games from IGDB into forge_games_17285bd7
+// Body: { offset?: number, total?: number }
+// - offset: starting offset (default 0)
+// - total: total games to seed across multiple 500-game IGDB pages (default 500, max 5000)
 app.post("/forge-api/seed/igdb-games", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const offset = parseInt(body.offset ?? 0);
-    const limit = parseInt(body.limit ?? 500);
-    const result = await gamesAPI.seedFromIGDB(offset, limit);
-    return c.json({ success: true, ...result });
+    const startOffset = parseInt(body.offset ?? 0);
+    const total = Math.min(parseInt(body.total ?? 500), 5000);
+
+    let inserted = 0, skipped = 0;
+    const errors: string[] = [];
+
+    for (let off = startOffset; off < startOffset + total; off += 500) {
+      const batchSize = Math.min(500, startOffset + total - off);
+      const result = await gamesAPI.seedFromIGDB(off, batchSize);
+      inserted += result.inserted;
+      skipped += result.skipped;
+      errors.push(...result.errors);
+      // Stop early if IGDB returned fewer results than requested (end of catalogue)
+      if (result.inserted + result.skipped < batchSize) break;
+    }
+
+    return c.json({ success: true, inserted, skipped, errors });
   } catch (err: any) {
     console.error("[seed/igdb-games] error:", err);
     return c.json({ success: false, error: err.message }, 500);
