@@ -320,7 +320,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       <div className="min-h-screen">
         <Header />
         {/* Mobile skeleton */}
-        <div className="lg:hidden animate-pulse">
+        <div className="lg:hidden flex flex-col animate-pulse">
           {/* Profile header card */}
           <div className="w-full max-w-2xl mx-auto px-4 pt-5 pb-4">
             <div className="flex items-start justify-between mb-3">
@@ -371,7 +371,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>
 
         {/* Desktop skeleton — 2-column layout matching actual profile */}
-        <div className="hidden lg:flex w-full max-w-5xl mx-auto px-6 pt-8 gap-6 items-start animate-pulse">
+        <div className="max-lg:hidden flex flex-row w-full max-w-5xl mx-auto px-6 pt-8 gap-6 items-start animate-pulse">
           {/* Left col: profile card + about card */}
           <div className="w-[300px] shrink-0 sticky top-[72px]">
             {/* Profile header card */}

@@ -457,10 +457,10 @@ export function EditGameList() {
       </div>
 
       {/* ── Desktop 2-column layout ── */}
-      <div className="hidden lg:flex flex-1 min-h-0 gap-6 p-6">
+      <div className="hidden lg:grid lg:grid-cols-[2fr_3fr] flex-1 min-h-0 gap-6 p-6">
 
-        {/* Left: current list */}
-        <div className="w-[360px] shrink-0 flex flex-col min-h-0 bg-card/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+        {/* Left: current list — 40% */}
+        <div className="flex flex-col min-h-0 bg-card/80 backdrop-blur-xl rounded-2xl overflow-hidden">
           <div className="px-4 pt-4 pb-2 shrink-0 border-b border-border/40">
             <h3 className="text-sm font-medium text-muted-foreground">
               {selectedGames.length === 0
@@ -490,8 +490,8 @@ export function EditGameList() {
           </div>
         </div>
 
-        {/* Right: search + results / recent searches */}
-        <div className="flex-1 flex flex-col min-h-0">
+        {/* Right: search + results / recent searches — 60% */}
+        <div className="flex flex-col min-h-0">
           <div className="relative mb-4 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input

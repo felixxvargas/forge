@@ -109,7 +109,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
                     </DropdownMenuItem>
                   )}
                   {onEdit && (
-                    <DropdownMenuItem onSelect={() => setTimeout(() => onEdit!(), 150)}>
+                    <DropdownMenuItem onSelect={() => setTimeout(() => onEdit!(), 0)}>
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit list
                     </DropdownMenuItem>
