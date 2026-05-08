@@ -61,6 +61,8 @@ export function EditGameListsModal({
   const dragPtrRef = useRef<{ fromIdx: number; currentOver: number | null } | null>(null);
   const itemElsRef = useRef<(HTMLDivElement | null)[]>([]);
 
+  const draftKey = `forge-game-list-draft:${listType}`;
+
   const listTitles: Record<GameListType, string> = {
     'recently-played': 'Recently Played',
     'played-before': "I've Played Before",
@@ -164,11 +166,17 @@ export function EditGameListsModal({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
-  // Restore/reset state when opened
+  // Restore/reset state when opened — load draft if one exists from a previous session
   useEffect(() => {
     if (isOpen) {
       initialGamesRef.current = currentGames;
-      setSelectedGames(currentGames);
+      try {
+        const raw = localStorage.getItem(draftKey);
+        const draft: AnyGame[] | null = raw ? JSON.parse(raw) : null;
+        setSelectedGames(draft ?? currentGames);
+      } catch {
+        setSelectedGames(currentGames);
+      }
       setShareGames(null);
       setShareMessage('');
       const savedQuery = localStorage.getItem(`forge-game-list-search-${listType}`) || '';
@@ -189,6 +197,12 @@ export function EditGameListsModal({
     }
   }, [searchQuery, isOpen, listType]);
 
+  // Persist in-progress selections so the user can return after switching apps/tabs
+  useEffect(() => {
+    if (!isOpen) return;
+    localStorage.setItem(draftKey, JSON.stringify(selectedGames));
+  }, [selectedGames, isOpen, draftKey]);
+
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
       const next = [game, ...selectedGames];
@@ -205,8 +219,15 @@ export function EditGameListsModal({
     });
   };
 
+  const handleClose = () => {
+    localStorage.removeItem(draftKey);
+    localStorage.removeItem(`forge-game-list-search-${listType}`);
+    onClose();
+  };
+
   const handleSave = () => {
     onSave(selectedGames);
+    localStorage.removeItem(draftKey);
     localStorage.removeItem(`forge-game-list-search-${listType}`);
     const newlyAdded = selectedGames.filter(
       g => !initialGamesRef.current.some(ig => String(ig.id) === String(g.id))
@@ -298,7 +319,7 @@ export function EditGameListsModal({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+          <button onClick={handleClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
           <h2 className="text-xl font-semibold">Edit {listTitles[listType]}</h2>
@@ -478,7 +499,7 @@ export function EditGameListsModal({
               </p>
             </div>
             <button
-              onClick={() => { setShareGames(null); onClose(); }}
+              onClick={() => { setShareGames(null); handleClose(); }}
               className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground"
             >
               <X className="w-5 h-5" />
@@ -518,7 +539,7 @@ export function EditGameListsModal({
           {/* Actions */}
           <div className="px-4 pb-6 flex gap-3 shrink-0">
             <button
-              onClick={() => { setShareGames(null); onClose(); }}
+              onClick={() => { setShareGames(null); handleClose(); }}
               className="flex-1 py-3 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors"
             >
               Skip
