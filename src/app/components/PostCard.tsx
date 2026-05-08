@@ -137,12 +137,29 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
   useEffect(() => {
     taggedGames.forEach(g => {
       if (gameCoverCache.has(g.id)) return;
+
+      const applyUrl = (url: string | null) => {
+        gameCoverCache.set(g.id, url);
+        setGameCovers(prev => new Map(prev).set(g.id, url));
+      };
+
+      // Fallback: search by title when ID lookup yields no artwork (RAWG ID ≠ IGDB ID)
+      const fetchByTitle = async () => {
+        if (!g.title) { applyUrl(null); return; }
+        try {
+          const sd: any = await gamesAPI.searchGames(g.title, 5);
+          const results: any[] = Array.isArray(sd) ? sd : (sd?.games ?? []);
+          const tl = g.title.toLowerCase();
+          const match = results.find(r => r.title?.toLowerCase() === tl) ?? results[0];
+          applyUrl(match?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? match?.artwork?.[0]?.url ?? null);
+        } catch { applyUrl(null); }
+      };
+
       gamesAPI.getGame(g.id).then((data: any) => {
         const game = data?.game ?? data;
         const url = game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game?.artwork?.[0]?.url ?? null;
-        gameCoverCache.set(g.id, url);
-        setGameCovers(prev => new Map(prev).set(g.id, url));
-      }).catch(() => { gameCoverCache.set(g.id, null); });
+        if (url) { applyUrl(url); } else { fetchByTitle(); }
+      }).catch(() => fetchByTitle());
     });
   }, [post?.game_ids?.join(',') ?? post?.game_id]);
 

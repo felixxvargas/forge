@@ -61,9 +61,7 @@ export function EditGameList() {
 
   const listType = (listTypeParam ?? 'library') as GameListType;
   const autoFocusSearch = searchParams.get('search') === '1';
-  const initialGames = getGamesForList(currentUser, listType);
-
-  const [selectedGames, setSelectedGames] = useState<AnyGame[]>(initialGames);
+  const [selectedGames, setSelectedGames] = useState<AnyGame[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -77,7 +75,8 @@ export function EditGameList() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const desktopSearchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialGamesRef = useRef<AnyGame[]>(initialGames);
+  const initialGamesRef = useRef<AnyGame[]>([]);
+  const hasInitializedRef = useRef(false);
 
   // Share-prompt state
   const [shareGames, setShareGames] = useState<AnyGame[] | null>(null);
@@ -94,15 +93,20 @@ export function EditGameList() {
 
   const draftKey = `forge-game-list-draft:${listType}`;
 
-  // Load draft on mount
+  // Initialize from currentUser — wait for it to be non-null so games load correctly
+  // even if context is still hydrating when this page first mounts.
   useEffect(() => {
-    initialGamesRef.current = initialGames;
+    if (hasInitializedRef.current || !currentUser) return;
+    hasInitializedRef.current = true;
+
+    const games = getGamesForList(currentUser, listType);
+    initialGamesRef.current = games;
     try {
       const raw = localStorage.getItem(draftKey);
       const draft: AnyGame[] | null = raw ? JSON.parse(raw) : null;
-      setSelectedGames(draft ?? initialGames);
+      setSelectedGames(draft ?? games);
     } catch {
-      setSelectedGames(initialGames);
+      setSelectedGames(games);
     }
     const savedQuery = localStorage.getItem(`forge-game-list-search-${listType}`) || '';
     setSearchQuery(savedQuery);
@@ -117,7 +121,7 @@ export function EditGameList() {
       }, 100);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUser]);
 
   // Persist search query
   useEffect(() => {
@@ -205,21 +209,12 @@ export function EditGameList() {
         });
 
         setSearchResults(deduped);
-
-        const trimmedQuery = searchQuery.trim();
-        if (deduped.length > 0 && trimmedQuery) {
-          setRecentSearches(prev => {
-            const updated = [trimmedQuery, ...prev.filter(s => s !== trimmedQuery)].slice(0, 8);
-            localStorage.setItem(`forge-game-list-recent:${listType}`, JSON.stringify(updated));
-            return updated;
-          });
-        }
       } catch {
         setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
-    }, 350);
+    }, 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
@@ -228,6 +223,11 @@ export function EditGameList() {
       const next = [game, ...selectedGames];
       setSelectedGames(next);
       updateGameList(listType, next);
+      setRecentSearches(prev => {
+        const updated = [game.title, ...prev.filter(t => t !== game.title)].slice(0, 8);
+        localStorage.setItem(`forge-game-list-recent:${listType}`, JSON.stringify(updated));
+        return updated;
+      });
     }
   };
 
@@ -286,11 +286,17 @@ export function EditGameList() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not signed in');
+      const gameIds = shareGames.map(g => String(g.id));
+      const gameTitles = shareGames.map(g => g.title);
+      const covers = selectedGames.slice(0, 4).map(g => getCoverUrl(g)).filter(Boolean);
       await supabase.from('posts').insert({
         user_id: session.user.id,
-        content: shareMessage.trim() || `Added to my ${LIST_TITLES[listType]}: ${shareGames.map(g => g.title).join(', ')}`,
-        game_id: shareGames[0]?.id ? String(shareGames[0].id) : null,
-        game_title: shareGames[0]?.title ?? null,
+        content: shareMessage.trim() || `Added to my ${LIST_TITLES[listType]}: ${gameTitles.join(', ')}`,
+        game_id: gameIds[0] ?? null,
+        game_title: gameTitles[0] ?? null,
+        game_ids: gameIds,
+        game_titles: gameTitles,
+        attached_list: { listType, userId: session.user.id, title: LIST_TITLES[listType], gameCount: selectedGames.length, covers },
       });
       setShareGames(null);
       navigate(-1);
@@ -468,7 +474,7 @@ export function EditGameList() {
                 : `In this list (${selectedGames.length}) · drag to reorder`}
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto forge-scroll p-3 space-y-2">
             {selectedGames.length > 0 ? (
               <>
                 {selectedGames.map((game, i) => renderSelectedGame(game, i, desktopItemElsRef))}
@@ -508,7 +514,7 @@ export function EditGameList() {
             ) : searchQuery ? searchClearButton(desktopSearchInputRef) : null}
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-card/80 backdrop-blur-xl rounded-2xl p-4">
+          <div className="flex-1 overflow-y-auto forge-scroll bg-card/80 backdrop-blur-xl rounded-2xl p-4">
             {searchQuery.trim() ? (
               searchResults.length > 0 ? (
                 <div className="space-y-2">
@@ -564,7 +570,7 @@ export function EditGameList() {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1 overflow-y-auto forge-scroll overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="p-4 pb-24 space-y-4 max-w-2xl mx-auto w-full">
 
             {/* Search results */}

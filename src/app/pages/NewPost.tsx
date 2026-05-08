@@ -1381,7 +1381,7 @@ export function NewPost() {
       {/* Cancel confirmation dialog */}
       {showCancelConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold">Save your post?</h2>
             <p className="text-sm text-muted-foreground">Save this as a draft so you can come back to it later.</p>
             <div className="flex flex-col gap-2">
