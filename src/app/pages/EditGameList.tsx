@@ -67,7 +67,15 @@ export function EditGameList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(`forge-game-list-recent:${listTypeParam ?? 'library'}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const desktopSearchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialGamesRef = useRef<AnyGame[]>(initialGames);
 
@@ -80,7 +88,9 @@ export function EditGameList() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const dragPtrRef = useRef<{ fromIdx: number; currentOver: number | null } | null>(null);
-  const itemElsRef = useRef<(HTMLDivElement | null)[]>([]);
+  // Separate ref arrays for desktop and mobile to avoid collision with CSS-hidden elements
+  const mobileItemElsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const desktopItemElsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   const draftKey = `forge-game-list-draft:${listType}`;
 
@@ -98,7 +108,13 @@ export function EditGameList() {
     setSearchQuery(savedQuery);
     if (!savedQuery) setSearchResults([]);
     if (autoFocusSearch) {
-      setTimeout(() => searchInputRef.current?.focus(), 100);
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+          desktopSearchInputRef.current?.focus();
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }, 100);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -189,6 +205,15 @@ export function EditGameList() {
         });
 
         setSearchResults(deduped);
+
+        const trimmedQuery = searchQuery.trim();
+        if (deduped.length > 0 && trimmedQuery) {
+          setRecentSearches(prev => {
+            const updated = [trimmedQuery, ...prev.filter(s => s !== trimmedQuery)].slice(0, 8);
+            localStorage.setItem(`forge-game-list-recent:${listType}`, JSON.stringify(updated));
+            return updated;
+          });
+        }
       } catch {
         setSearchResults([]);
       } finally {
@@ -276,7 +301,6 @@ export function EditGameList() {
     }
   };
 
-  // Pointer drag handlers
   const onGripPointerDown = useCallback((i: number) => (e: React.PointerEvent) => {
     e.preventDefault();
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -286,9 +310,11 @@ export function EditGameList() {
 
   const onGripPointerMove = useCallback((i: number) => (e: React.PointerEvent) => {
     if (!dragPtrRef.current || dragPtrRef.current.fromIdx !== i) return;
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+    const refs = isDesktop ? desktopItemElsRef.current : mobileItemElsRef.current;
     let overIdx = i;
-    for (let j = 0; j < itemElsRef.current.length; j++) {
-      const el = itemElsRef.current[j];
+    for (let j = 0; j < refs.length; j++) {
+      const el = refs[j];
       if (!el) continue;
       const rect = el.getBoundingClientRect();
       if (e.clientY < rect.top + rect.height / 2) { overIdx = j; break; }
@@ -321,10 +347,101 @@ export function EditGameList() {
     setDragOverIdx(null);
   }, []);
 
+  const renderSelectedGame = (
+    game: AnyGame,
+    i: number,
+    elRef: React.MutableRefObject<(HTMLDivElement | null)[]>,
+  ) => {
+    const cover = getCoverUrl(game);
+    const isDragging = dragIdx === i;
+    const isOver = dragOverIdx === i && dragIdx !== i;
+    return (
+      <div
+        key={game.id}
+        ref={el => { elRef.current[i] = el; }}
+        className={`flex items-center gap-3 p-2 rounded-lg transition-all select-none ${
+          isDragging
+            ? 'opacity-40 bg-accent/10 border-2 border-accent/40'
+            : isOver
+            ? 'bg-accent/10 border-2 border-accent/60 scale-[1.01]'
+            : 'bg-secondary/60 border-2 border-transparent'
+        }`}
+      >
+        <div
+          className="cursor-grab active:cursor-grabbing touch-none p-1"
+          onPointerDown={onGripPointerDown(i)}
+          onPointerMove={onGripPointerMove(i)}
+          onPointerUp={onGripPointerUp(i)}
+          onPointerCancel={onGripPointerCancel}
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </div>
+        {cover ? (
+          <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded pointer-events-none" />
+        ) : (
+          <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground pointer-events-none">?</div>
+        )}
+        <div className="flex-1 min-w-0 pointer-events-none">
+          <p className="font-medium truncate">{game.title}</p>
+          {game.year && <p className="text-sm text-muted-foreground">{game.year}</p>}
+        </div>
+        <button
+          onClick={() => removeGame(game.id)}
+          className="p-2 hover:bg-destructive/20 rounded-lg transition-colors"
+        >
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </button>
+      </div>
+    );
+  };
+
+  const renderSearchResult = (game: AnyGame) => {
+    const isSelected = selectedGames.some(g => g.id === game.id);
+    const cover = getCoverUrl(game);
+    return (
+      <button
+        key={game.id}
+        onClick={() => !isSelected && addGame(game)}
+        disabled={isSelected}
+        className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
+          isSelected
+            ? 'bg-accent/20 cursor-default border-2 border-accent'
+            : 'bg-secondary/50 hover:bg-secondary'
+        }`}
+      >
+        {cover ? (
+          <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded flex-shrink-0" />
+        ) : (
+          <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">?</div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-medium truncate">{game.title}</p>
+          <p className="text-sm text-muted-foreground">{game.year ?? ''}</p>
+        </div>
+        {isSelected ? (
+          <div className="flex items-center gap-1 text-accent text-sm font-medium shrink-0">
+            <Check className="w-4 h-4" />
+          </div>
+        ) : (
+          <Plus className="w-5 h-5 text-accent shrink-0" />
+        )}
+      </button>
+    );
+  };
+
+  const searchClearButton = (inputRef: React.RefObject<HTMLInputElement | null>) => (
+    <button
+      onClick={() => { setSearchQuery(''); inputRef.current?.focus(); }}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <X className="w-4 h-4" />
+    </button>
+  );
+
   return (
-    <div className="fixed inset-0 bg-background flex flex-col overflow-hidden">
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-20">
+      <div className="flex items-center justify-between p-4 border-b border-border bg-card/80 backdrop-blur-lg sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <button onClick={handleClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />
@@ -339,163 +456,188 @@ export function EditGameList() {
         </button>
       </div>
 
-      {/* Sticky Search Bar */}
-      <div className="sticky top-[65px] z-10 px-4 py-3 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="relative max-w-2xl mx-auto w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search games to add…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-9 py-2.5 bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
-            style={{ fontSize: '16px' }}
-          />
-          {isSearching ? (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-          ) : searchQuery ? (
-            <button
-              onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          ) : null}
-        </div>
-      </div>
+      {/* ── Desktop 2-column layout ── */}
+      <div className="hidden lg:flex flex-1 min-h-0 gap-6 p-6">
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="p-4 pb-24 space-y-4 max-w-2xl mx-auto w-full">
-
-          {/* Search Results */}
-          {searchQuery.trim() && (
-            <div>
-              {searchResults.length > 0 ? (
-                <div className="space-y-2">
-                  {searchResults.map((game) => {
-                    const isSelected = selectedGames.some(g => g.id === game.id);
-                    const cover = getCoverUrl(game);
-                    return (
-                      <button
-                        key={game.id}
-                        onClick={() => !isSelected && addGame(game)}
-                        disabled={isSelected}
-                        className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
-                          isSelected
-                            ? 'bg-accent/20 cursor-default border-2 border-accent'
-                            : 'bg-secondary/50 hover:bg-secondary'
-                        }`}
-                      >
-                        {cover ? (
-                          <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded flex-shrink-0" />
-                        ) : (
-                          <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">?</div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{game.title}</p>
-                          <p className="text-sm text-muted-foreground">{game.year ?? ''}</p>
-                        </div>
-                        {isSelected ? (
-                          <div className="flex items-center gap-1 text-accent text-sm font-medium shrink-0">
-                            <Check className="w-4 h-4" />
-                          </div>
-                        ) : (
-                          <Plus className="w-5 h-5 text-accent shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : !isSearching ? (
-                <p className="text-center py-4 text-muted-foreground text-sm">No games found</p>
-              ) : null}
-            </div>
-          )}
-
-          {/* Selected Games */}
-          {selectedGames.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium mb-2 text-muted-foreground">
-                In this list ({selectedGames.length}) · drag to reorder
-              </h3>
-              <div className="space-y-2">
-                {selectedGames.map((game, i) => {
-                  const cover = getCoverUrl(game);
-                  const isDragging = dragIdx === i;
-                  const isOver = dragOverIdx === i && dragIdx !== i;
-                  return (
-                    <div
-                      key={game.id}
-                      ref={el => { itemElsRef.current[i] = el; }}
-                      className={`flex items-center gap-3 p-2 rounded-lg transition-all select-none ${
-                        isDragging
-                          ? 'opacity-40 bg-accent/10 border-2 border-accent/40'
-                          : isOver
-                          ? 'bg-accent/10 border-2 border-accent/60 scale-[1.01]'
-                          : 'bg-secondary border-2 border-transparent'
-                      }`}
-                    >
-                      <div
-                        className="cursor-grab active:cursor-grabbing touch-none p-1"
-                        onPointerDown={onGripPointerDown(i)}
-                        onPointerMove={onGripPointerMove(i)}
-                        onPointerUp={onGripPointerUp(i)}
-                        onPointerCancel={onGripPointerCancel}
-                      >
-                        <GripVertical className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      {cover ? (
-                        <img src={cover} alt={game.title} className="w-12 h-16 object-cover rounded pointer-events-none" />
-                      ) : (
-                        <div className="w-12 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground pointer-events-none">?</div>
-                      )}
-                      <div className="flex-1 min-w-0 pointer-events-none">
-                        <p className="font-medium truncate">{game.title}</p>
-                        {game.year && <p className="text-sm text-muted-foreground">{game.year}</p>}
-                      </div>
-                      <button
-                        onClick={() => removeGame(game.id)}
-                        className="p-2 hover:bg-destructive/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </button>
-                    </div>
-                  );
-                })}
-
+        {/* Left: current list */}
+        <div className="w-[360px] shrink-0 flex flex-col min-h-0 bg-card/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+          <div className="px-4 pt-4 pb-2 shrink-0 border-b border-border/40">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {selectedGames.length === 0
+                ? 'Your list is empty'
+                : `In this list (${selectedGames.length}) · drag to reorder`}
+            </h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {selectedGames.length > 0 ? (
+              <>
+                {selectedGames.map((game, i) => renderSelectedGame(game, i, desktopItemElsRef))}
                 <button
-                  onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+                  onClick={() => desktopSearchInputRef.current?.focus()}
                   className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
                 >
                   <div className="w-12 h-16 rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/30 shrink-0">
                     <Plus className="w-5 h-5 text-muted-foreground" />
                   </div>
-                  <p className="text-sm text-muted-foreground">Add a game to this list…</p>
+                  <p className="text-sm text-muted-foreground">Add a game…</p>
                 </button>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full min-h-[200px] text-center px-4">
+                <p className="text-muted-foreground text-sm">Search for games on the right to add them here</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </div>
 
-          {selectedGames.length === 0 && !searchQuery.trim() && (
-            <button
-              onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
-              className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
-            >
-              <div className="w-12 h-16 rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/30 shrink-0">
-                <Plus className="w-5 h-5 text-muted-foreground" />
+        {/* Right: search + results / recent searches */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="relative mb-4 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              ref={desktopSearchInputRef}
+              type="text"
+              placeholder="Search games to add…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-9 py-3 bg-card/80 backdrop-blur-xl rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
+              style={{ fontSize: '16px' }}
+            />
+            {isSearching ? (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+            ) : searchQuery ? searchClearButton(desktopSearchInputRef) : null}
+          </div>
+
+          <div className="flex-1 overflow-y-auto bg-card/80 backdrop-blur-xl rounded-2xl p-4">
+            {searchQuery.trim() ? (
+              searchResults.length > 0 ? (
+                <div className="space-y-2">
+                  {searchResults.map(game => renderSearchResult(game))}
+                </div>
+              ) : !isSearching ? (
+                <p className="text-center py-8 text-muted-foreground text-sm">No games found</p>
+              ) : null
+            ) : recentSearches.length > 0 ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recent searches</p>
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map(q => (
+                    <button
+                      key={q}
+                      onClick={() => { setSearchQuery(q); desktopSearchInputRef.current?.focus(); }}
+                      className="px-3 py-1.5 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">Search for games above to add them to this list…</p>
-            </button>
-          )}
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center">
+                <Search className="w-8 h-8 text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground text-sm">Search for games to add to your list</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobile layout ── */}
+      <div className="lg:hidden flex flex-col flex-1 min-h-0">
+        {/* Sticky search bar */}
+        <div className="sticky top-[65px] z-10 px-4 py-3 border-b border-border/50 bg-card/30 backdrop-blur-md">
+          <div className="relative max-w-2xl mx-auto w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search games to add…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-9 py-2.5 bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
+              style={{ fontSize: '16px' }}
+            />
+            {isSearching ? (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+            ) : searchQuery ? searchClearButton(searchInputRef) : null}
+          </div>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="p-4 pb-24 space-y-4 max-w-2xl mx-auto w-full">
+
+            {/* Search results */}
+            {searchQuery.trim() && (
+              <div>
+                {searchResults.length > 0 ? (
+                  <div className="space-y-2">
+                    {searchResults.map(game => renderSearchResult(game))}
+                  </div>
+                ) : !isSearching ? (
+                  <p className="text-center py-4 text-muted-foreground text-sm">No games found</p>
+                ) : null}
+              </div>
+            )}
+
+            {/* Recent searches */}
+            {!searchQuery.trim() && recentSearches.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Recent searches</p>
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map(q => (
+                    <button
+                      key={q}
+                      onClick={() => { setSearchQuery(q); searchInputRef.current?.focus(); }}
+                      className="px-3 py-1.5 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selected games */}
+            {selectedGames.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium mb-2 text-muted-foreground">
+                  In this list ({selectedGames.length}) · drag to reorder
+                </h3>
+                <div className="space-y-2">
+                  {selectedGames.map((game, i) => renderSelectedGame(game, i, mobileItemElsRef))}
+                  <button
+                    onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+                    className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
+                  >
+                    <div className="w-12 h-16 rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/30 shrink-0">
+                      <Plus className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Add a game to this list…</p>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selectedGames.length === 0 && !searchQuery.trim() && (
+              <button
+                onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+                className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
+              >
+                <div className="w-12 h-16 rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/30 shrink-0">
+                  <Plus className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Search for games above to add them to this list…</p>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Share prompt overlay */}
       {shareGames && (
-        <div className="absolute inset-0 bg-background z-20 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card shrink-0">
+        <div className="absolute inset-0 bg-background/90 backdrop-blur-lg z-20 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card/80 backdrop-blur-lg shrink-0">
             <div>
               <h2 className="text-base font-semibold">Share your update</h2>
               <p className="text-xs text-muted-foreground mt-0.5">

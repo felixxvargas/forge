@@ -371,7 +371,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>
 
         {/* Desktop skeleton — 2-column layout matching actual profile */}
-        <div className="hidden lg:flex w-full max-w-5xl mx-auto px-6 py-8 gap-6 items-start animate-pulse">
+        <div className="hidden lg:flex w-full max-w-5xl mx-auto px-6 pt-8 gap-6 items-start animate-pulse">
           {/* Left col: profile card + about card */}
           <div className="w-[300px] shrink-0 sticky top-[72px]">
             {/* Profile header card */}
@@ -788,8 +788,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     <div className="min-h-screen pb-20">
       <Header />
 
-      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto lg:pt-8 lg:px-6">
-        <div className="lg:flex lg:gap-6 lg:items-start">
+      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto">
+        <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:px-6">
         {/* LEFT COLUMN — profile header + about (desktop) */}
         <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
