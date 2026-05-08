@@ -19,17 +19,20 @@ CREATE TABLE IF NOT EXISTS stream_archives (
 
 ALTER TABLE stream_archives ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users view own archives" ON stream_archives
-  FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
-
-CREATE POLICY "Users delete own archives" ON stream_archives
-  FOR DELETE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users update own archives" ON stream_archives
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Service role insert archives" ON stream_archives
-  FOR INSERT WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'stream_archives' AND policyname = 'Users view own archives') THEN
+    CREATE POLICY "Users view own archives" ON stream_archives FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'stream_archives' AND policyname = 'Users delete own archives') THEN
+    CREATE POLICY "Users delete own archives" ON stream_archives FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'stream_archives' AND policyname = 'Users update own archives') THEN
+    CREATE POLICY "Users update own archives" ON stream_archives FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'stream_archives' AND policyname = 'Service role insert archives') THEN
+    CREATE POLICY "Service role insert archives" ON stream_archives FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Twitch integration columns on profiles
 ALTER TABLE profiles

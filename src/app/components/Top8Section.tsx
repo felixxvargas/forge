@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from '@/compat/router';
 import { Star, Plus, X, Search, Loader2, Gamepad2 } from 'lucide-react';
 import { ProfileAvatar } from './ProfileAvatar';
-import { top8API } from '../utils/supabase';
-import { supabase } from '../utils/supabase';
+import { top8API, supabase } from '../utils/supabase';
+import { gamesAPI } from '../utils/api';
 import { useAppData } from '../context/AppDataContext';
 
 interface Top8FriendsProps {
@@ -178,9 +178,11 @@ export function ManageTopGamesPanel({ currentUserId, currentTopGameIds, onClose,
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const { data } = await supabase.from('forge_games_17285bd7').select('id, title, artwork:forge_game_artwork_17285bd7(*)').ilike('title', `%${query}%`).limit(6);
-        setResults(data ?? []);
-      } catch {} finally { setSearching(false); }
+        const games = await gamesAPI.searchGames(query, 8);
+        setResults(Array.isArray(games) ? games : (games as any)?.games ?? []);
+      } catch {
+        setResults([]);
+      } finally { setSearching(false); }
     }, 300);
   }, [query]);
 

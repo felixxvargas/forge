@@ -94,8 +94,8 @@ export async function searchGames(query: string, limit = 20) {
 
   // Fall through to IGDB to fill the gap
   try {
-    const clientId = Deno.env.get('IGDB_CLIENT_ID');
-    const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET');
+    const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
+    const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET') ?? Deno.env.get('TWITCH_CLIENT_SECRET');
     if (!clientId || !clientSecret) return local;
 
     const accessToken = await getIGDBAccessToken();
@@ -387,8 +387,8 @@ export async function getExpansions(gameId: string): Promise<{ expansions: any[]
   if (!igdbId) return { expansions: dbExpansions ?? [], parentGame };
 
   try {
-    const clientId = Deno.env.get('IGDB_CLIENT_ID');
-    const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET');
+    const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
+    const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET') ?? Deno.env.get('TWITCH_CLIENT_SECRET');
     if (!clientId || !clientSecret) return { expansions: dbExpansions ?? [], parentGame };
 
     const accessToken = await getIGDBAccessToken();
@@ -476,9 +476,10 @@ export async function getExpansions(gameId: string): Promise<{ expansions: any[]
  * Get IGDB access token using OAuth
  */
 async function getIGDBAccessToken(): Promise<string> {
-  const clientId = Deno.env.get('IGDB_CLIENT_ID');
-  const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET');
-  
+  // IGDB uses Twitch OAuth — accept either IGDB_* or TWITCH_* credential names
+  const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
+  const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET') ?? Deno.env.get('TWITCH_CLIENT_SECRET');
+
   if (!clientId || !clientSecret) {
     throw new Error('IGDB credentials not configured');
   }
@@ -498,8 +499,8 @@ async function getIGDBAccessToken(): Promise<string> {
  * Fetch game data from IGDB API and store it
  */
 export async function fetchFromIGDB(gameName: string) {
-  const clientId = Deno.env.get('IGDB_CLIENT_ID');
-  
+  const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
+
   if (!clientId) {
     throw new Error('IGDB Client ID not configured');
   }
@@ -639,7 +640,7 @@ export async function getOrCreateGame(gameTitle: string) {
  * Bulk seed games from IGDB — fetches top-rated games in batches
  */
 export async function seedFromIGDB(offset = 0, limit = 500): Promise<{ inserted: number; skipped: number; errors: string[] }> {
-  const clientId = Deno.env.get('IGDB_CLIENT_ID');
+  const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
   if (!clientId) throw new Error('IGDB_CLIENT_ID not configured');
 
   const accessToken = await getIGDBAccessToken();
