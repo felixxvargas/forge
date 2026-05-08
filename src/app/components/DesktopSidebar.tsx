@@ -386,21 +386,6 @@ export function DesktopSidebar() {
                 )}
               </AnimatePresence>
             </button>
-            <AnimatePresence>
-              {!isOpen && (
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  onClick={() => setShowLogoutConfirm(true)}
-                  className="flex items-center justify-center w-full py-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-destructive/60 hover:text-destructive"
-                  aria-label="Log out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </motion.button>
-              )}
-            </AnimatePresence>
           </div>
         )}
       </motion.aside>
