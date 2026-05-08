@@ -4,9 +4,10 @@ import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send } from 'luc
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
 import { getGameRank } from '../utils/gameRankings';
-import { supabase } from '../utils/supabase';
+import { supabase, userGamesAPI } from '../utils/supabase';
+import { useNavigate, useParams, useSearchParams } from '@/compat/router';
+import { useAppData } from '../context/AppDataContext';
 
-// Use a generic game shape compatible with both local Game and IGDB DB games
 interface AnyGame {
   id: string;
   title: string;
@@ -18,15 +19,6 @@ interface AnyGame {
   [key: string]: any;
 }
 
-interface EditGameListsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  listType: GameListType;
-  currentGames: AnyGame[];
-  onSave: (games: AnyGame[]) => void;
-  autoFocusSearch?: boolean;
-}
-
 function getCoverUrl(game: AnyGame): string | null {
   return game.artwork?.find(a => a.artwork_type === 'cover')?.url
     ?? game.artwork?.[0]?.url
@@ -34,28 +26,57 @@ function getCoverUrl(game: AnyGame): string | null {
     ?? null;
 }
 
-export function EditGameListsModal({
-  isOpen,
-  onClose,
-  listType,
-  currentGames,
-  onSave,
-  autoFocusSearch = false,
-}: EditGameListsModalProps) {
-  const [selectedGames, setSelectedGames] = useState<AnyGame[]>(currentGames);
+const LIST_TITLES: Record<GameListType, string> = {
+  'recently-played': 'Recently Played',
+  'played-before': "I've Played Before",
+  'library': 'Library',
+  'favorite': 'Favorite Games',
+  'wishlist': 'Wishlist',
+  'completed': 'Completed Games',
+  'custom': 'Custom List',
+  'lfg': 'Looking for Group',
+};
+
+function getGamesForList(user: any, listType: GameListType): AnyGame[] {
+  if (!user) return [];
+  const lists = user.game_lists ?? user.gameLists ?? {};
+  switch (listType) {
+    case 'recently-played': return lists.recentlyPlayed ?? [];
+    case 'played-before': return lists.playedBefore ?? [];
+    case 'favorite': return lists.favorites ?? [];
+    case 'wishlist': return lists.wishlist ?? [];
+    case 'completed': return lists.completed ?? [];
+    case 'lfg': return lists.lfg ?? [];
+    case 'custom': return lists.custom ?? [];
+    case 'library': return lists.library ?? [];
+    default: return [];
+  }
+}
+
+export function EditGameList() {
+  const { listType: listTypeParam } = useParams<{ listType: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { currentUser, updateGameList } = useAppData();
+
+  const listType = (listTypeParam ?? 'library') as GameListType;
+  const autoFocusSearch = searchParams.get('search') === '1';
+  const initialGames = getGamesForList(currentUser, listType);
+
+  const [selectedGames, setSelectedGames] = useState<AnyGame[]>(initialGames);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialGamesRef = useRef<AnyGame[]>([]);
+  const initialGamesRef = useRef<AnyGame[]>(initialGames);
 
   // Share-prompt state
   const [shareGames, setShareGames] = useState<AnyGame[] | null>(null);
   const [shareMessage, setShareMessage] = useState('');
   const [isPosting, setIsPosting] = useState(false);
 
-  // Pointer-based drag state (works on desktop and mobile touch)
+  // Pointer-based drag state
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const dragPtrRef = useRef<{ fromIdx: number; currentOver: number | null } | null>(null);
@@ -63,18 +84,36 @@ export function EditGameListsModal({
 
   const draftKey = `forge-game-list-draft:${listType}`;
 
-  const listTitles: Record<GameListType, string> = {
-    'recently-played': 'Recently Played',
-    'played-before': "I've Played Before",
-    'library': 'Library',
-    'favorite': 'Favorite Games',
-    'wishlist': 'Wishlist',
-    'completed': 'Completed Games',
-    'custom': 'Custom List',
-    'lfg': 'Looking for Group',
-  };
+  // Load draft on mount
+  useEffect(() => {
+    initialGamesRef.current = initialGames;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      const draft: AnyGame[] | null = raw ? JSON.parse(raw) : null;
+      setSelectedGames(draft ?? initialGames);
+    } catch {
+      setSelectedGames(initialGames);
+    }
+    const savedQuery = localStorage.getItem(`forge-game-list-search-${listType}`) || '';
+    setSearchQuery(savedQuery);
+    if (!savedQuery) setSearchResults([]);
+    if (autoFocusSearch) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Debounced IGDB search
+  // Persist search query
+  useEffect(() => {
+    localStorage.setItem(`forge-game-list-search-${listType}`, searchQuery);
+  }, [searchQuery, listType]);
+
+  // Persist draft
+  useEffect(() => {
+    localStorage.setItem(draftKey, JSON.stringify(selectedGames));
+  }, [selectedGames, draftKey]);
+
+  // Debounced search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!searchQuery.trim()) {
@@ -93,15 +132,12 @@ export function EditGameListsModal({
           : [];
         const rawgGames: AnyGame[] = rawgRes.status === 'fulfilled' ? rawgRes.value : [];
 
-        // Merge: prefer server/IGDB results, append RAWG results not already present.
-        // Normalise: normalize subtitle separator but keep subtitle content; strip edition labels.
-        const normalise = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-          .replace(/\s*[:\-–]\s+/g, ' ')                           // normalize separator → space (keeps subtitle)
+        const normalise = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+          .replace(/\s*[:\-–]\s+/g, ' ')
           .replace(/\s+(complete|definitive|enhanced|remastered|goty|gold|ultimate|deluxe|premium|standard|special|collector|limited|anniversary|director.?s cut|game of the year)\s*(edition)?$/i, '')
-          .replace(/[''`,.!?™®]/g, '')                             // strip punctuation
+          .replace(/[''`,.!?™®]/g, '')
           .replace(/\s+/g, ' ')
           .trim();
-        // Build a lookup: normalised title → year for IGDB games (year-aware dedup)
         const serverKeys = new Set<string>();
         for (const g of serverGames) {
           const key = normalise(g.title);
@@ -120,8 +156,7 @@ export function EditGameListsModal({
           }),
         ];
 
-        // Re-rank by: Forge popularity → title word coverage → alphabetical
-        const deAccent = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const deAccent = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
         const queryWords = deAccent(searchQuery.trim()).split(/\s+/).filter(Boolean);
         const wordCoverage = (title: string) => {
           const t = deAccent(title);
@@ -137,14 +172,11 @@ export function EditGameListsModal({
           return 0;
         });
 
-        // Second-pass dedup: collapse variant versions of the same game (HD remasters,
-        // Re: prefixes, Final Mix, parenthetical platform tags, etc.) keeping the
-        // highest-ranked entry per group.
         const versionKey = (t: string) => t.toLowerCase()
           .replace(/\s*[:\-–]\s*/g, ' ')
-          .replace(/\bre:?\s*/gi, '')                              // strip "Re:" version prefix
+          .replace(/\bre:?\s*/gi, '')
           .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary)\b/gi, '')
-          .replace(/\s*\([^)]*\)\s*/g, '')                        // strip parentheticals (platform/year)
+          .replace(/\s*\([^)]*\)\s*/g, '')
           .replace(/[''`,.!?™®]/g, '')
           .replace(/\s+/g, ' ')
           .trim();
@@ -166,55 +198,18 @@ export function EditGameListsModal({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
-  // Restore/reset state when opened — load draft if one exists from a previous session
-  useEffect(() => {
-    if (isOpen) {
-      initialGamesRef.current = currentGames;
-      try {
-        const raw = localStorage.getItem(draftKey);
-        const draft: AnyGame[] | null = raw ? JSON.parse(raw) : null;
-        setSelectedGames(draft ?? currentGames);
-      } catch {
-        setSelectedGames(currentGames);
-      }
-      setShareGames(null);
-      setShareMessage('');
-      const savedQuery = localStorage.getItem(`forge-game-list-search-${listType}`) || '';
-      setSearchQuery(savedQuery);
-      if (!savedQuery) setSearchResults([]);
-      setDragIdx(null);
-      setDragOverIdx(null);
-      if (autoFocusSearch) {
-        setTimeout(() => searchInputRef.current?.focus(), 100);
-      }
-    }
-  }, [isOpen]);
-
-  // Persist search query per list type
-  useEffect(() => {
-    if (isOpen) {
-      localStorage.setItem(`forge-game-list-search-${listType}`, searchQuery);
-    }
-  }, [searchQuery, isOpen, listType]);
-
-  // Persist in-progress selections so the user can return after switching apps/tabs
-  useEffect(() => {
-    if (!isOpen) return;
-    localStorage.setItem(draftKey, JSON.stringify(selectedGames));
-  }, [selectedGames, isOpen, draftKey]);
-
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
       const next = [game, ...selectedGames];
       setSelectedGames(next);
-      onSave(next);
+      updateGameList(listType, next);
     }
   };
 
   const removeGame = (gameId: string) => {
     setSelectedGames(prev => {
       const next = prev.filter(g => g.id !== gameId);
-      onSave(next);
+      updateGameList(listType, next);
       return next;
     });
   };
@@ -222,11 +217,25 @@ export function EditGameListsModal({
   const handleClose = () => {
     localStorage.removeItem(draftKey);
     localStorage.removeItem(`forge-game-list-search-${listType}`);
-    onClose();
+    navigate(-1);
   };
 
-  const handleSave = () => {
-    onSave(selectedGames);
+  const syncLibraryUserGames = async (games: AnyGame[]) => {
+    if (listType !== 'library' || !currentUser) return;
+    const prevLibrary: any[] = currentUser?.game_lists?.library ?? [];
+    const prevIds = new Set(prevLibrary.map((g: any) => String(g.id)));
+    const newIds = new Set(games.map((g: any) => String(g.id)));
+    const added = games.filter((g: any) => !prevIds.has(String(g.id)));
+    const removed = prevLibrary.filter((g: any) => !newIds.has(String(g.id)));
+    await Promise.allSettled([
+      ...added.map((g: any) => userGamesAPI.add(currentUser.id, String(g.id), 'owned')),
+      ...removed.map((g: any) => userGamesAPI.remove(currentUser.id, String(g.id), 'owned')),
+    ]);
+  };
+
+  const handleSave = async () => {
+    await updateGameList(listType, selectedGames);
+    await syncLibraryUserGames(selectedGames);
     localStorage.removeItem(draftKey);
     localStorage.removeItem(`forge-game-list-search-${listType}`);
     const newlyAdded = selectedGames.filter(
@@ -239,10 +248,10 @@ export function EditGameListsModal({
         : names.length === 2
         ? `${names[0]} and ${names[1]}`
         : `${names[0]}, ${names[1]}, and ${names.length - 2} more`;
-      setShareMessage(`Just added ${preview} to my ${listTitles[listType]}.`);
+      setShareMessage(`Just added ${preview} to my ${LIST_TITLES[listType]}.`);
       setShareGames(newlyAdded);
     } else {
-      onClose();
+      navigate(-1);
     }
   };
 
@@ -254,12 +263,12 @@ export function EditGameListsModal({
       if (!session) throw new Error('Not signed in');
       await supabase.from('posts').insert({
         user_id: session.user.id,
-        content: shareMessage.trim() || `Added to my ${listTitles[listType]}: ${shareGames.map(g => g.title).join(', ')}`,
+        content: shareMessage.trim() || `Added to my ${LIST_TITLES[listType]}: ${shareGames.map(g => g.title).join(', ')}`,
         game_id: shareGames[0]?.id ? String(shareGames[0].id) : null,
         game_title: shareGames[0]?.title ?? null,
       });
       setShareGames(null);
-      onClose();
+      navigate(-1);
     } catch (e: any) {
       alert('Failed to post: ' + e.message);
     } finally {
@@ -267,7 +276,7 @@ export function EditGameListsModal({
     }
   };
 
-  // Pointer-based drag handlers (work on desktop mouse and mobile touch)
+  // Pointer drag handlers
   const onGripPointerDown = useCallback((i: number) => (e: React.PointerEvent) => {
     e.preventDefault();
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -312,17 +321,15 @@ export function EditGameListsModal({
     setDragOverIdx(null);
   }, []);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-background z-[60] flex flex-col relative overflow-hidden">
+    <div className="fixed inset-0 bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <button onClick={handleClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-semibold">Edit {listTitles[listType]}</h2>
+          <h2 className="text-xl font-semibold">Edit {LIST_TITLES[listType]}</h2>
         </div>
         <button
           onClick={handleSave}
@@ -341,7 +348,7 @@ export function EditGameListsModal({
             type="text"
             placeholder="Search games to add…"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-9 py-2.5 bg-secondary/60 backdrop-blur-sm rounded-xl border border-border/50 focus:border-accent focus:outline-none transition-colors text-sm"
             style={{ fontSize: '16px' }}
           />
@@ -355,7 +362,6 @@ export function EditGameListsModal({
               <X className="w-4 h-4" />
             </button>
           ) : null}
-
         </div>
       </div>
 
@@ -459,7 +465,6 @@ export function EditGameListsModal({
                   );
                 })}
 
-                {/* Add a game placeholder — always last in the list */}
                 <button
                   onClick={() => { searchInputRef.current?.focus(); searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
                   className="w-full flex items-center gap-3 p-2 rounded-lg border-2 border-dashed border-muted hover:border-accent/50 hover:bg-secondary/50 transition-colors text-left"
@@ -487,26 +492,24 @@ export function EditGameListsModal({
         </div>
       </div>
 
-      {/* Share prompt overlay — slides up after saving with new games */}
+      {/* Share prompt overlay */}
       {shareGames && (
         <div className="absolute inset-0 bg-background z-20 flex flex-col">
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card shrink-0">
             <div>
               <h2 className="text-base font-semibold">Share your update</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {shareGames.length === 1 ? '1 game added' : `${shareGames.length} games added`} to {listTitles[listType]}
+                {shareGames.length === 1 ? '1 game added' : `${shareGames.length} games added`} to {LIST_TITLES[listType]}
               </p>
             </div>
             <button
-              onClick={() => { setShareGames(null); handleClose(); }}
+              onClick={() => { setShareGames(null); navigate(-1); }}
               className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Game covers preview */}
           <div className="flex gap-3 px-4 py-4 overflow-x-auto shrink-0">
             {shareGames.map(game => {
               const cover = getCoverUrl(game);
@@ -524,7 +527,6 @@ export function EditGameListsModal({
             })}
           </div>
 
-          {/* Message input */}
           <div className="flex-1 px-4 pb-4 flex flex-col min-h-0">
             <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide font-medium">Your message</p>
             <textarea
@@ -536,10 +538,9 @@ export function EditGameListsModal({
             />
           </div>
 
-          {/* Actions */}
           <div className="px-4 pb-6 flex gap-3 shrink-0">
             <button
-              onClick={() => { setShareGames(null); handleClose(); }}
+              onClick={() => { setShareGames(null); navigate(-1); }}
               className="flex-1 py-3 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors"
             >
               Skip

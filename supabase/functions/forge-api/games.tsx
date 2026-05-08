@@ -685,10 +685,11 @@ export async function seedFromIGDB(offset = 0, limit = 500): Promise<{ inserted:
   let inserted = 0;
   let skipped = 0;
 
+  // IGDB: main games have category=null (not 0), so filter by excluding DLC/mod/etc. categories
   const body = `
-    fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category, aggregated_rating, aggregated_rating_count;
-    where cover != null & aggregated_rating_count > 3 & category = 0;
-    sort aggregated_rating desc;
+    fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category, total_rating, total_rating_count;
+    where cover != null & total_rating_count > 20 & (category = null | (category != (1,2,3,5,6,7,13,14)));
+    sort total_rating desc;
     limit ${Math.min(limit, 500)};
     offset ${offset};
   `;
@@ -726,7 +727,7 @@ export async function seedFromIGDB(offset = 0, limit = 500): Promise<{ inserted:
           description: g.summary ?? null,
           genres: g.genres?.map((x: any) => x.name) ?? [],
           platforms: g.platforms?.map((x: any) => x.name) ?? [],
-          game_category: g.category ?? 0,
+          game_category: g.category != null ? g.category : 0,
         }, { onConflict: 'id', ignoreDuplicates: true });
 
       if (upsertErr) { errors.push(`${g.name}: ${upsertErr.message}`); continue; }

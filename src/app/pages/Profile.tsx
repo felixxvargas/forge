@@ -10,7 +10,6 @@ import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { GameList } from '../components/GameList';
-import { EditGameListsModal } from '../components/EditGameListsModal';
 import { ProfilePictureLightbox } from '../components/ProfilePictureLightbox';
 import { PlatformIcon } from '../components/PlatformIcon';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -20,7 +19,7 @@ import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, userGamesAPI, streamArchivesAPI, top8API } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, streamArchivesAPI, top8API } from '../utils/supabase';
 import useSWR from 'swr';
 import type { LFGFlare, StreamArchive } from '../utils/supabase';
 
@@ -83,11 +82,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     }
   );
   const handleFetchedUser = swrHandleProfile ?? null;
-  const [editGameListModal, setEditGameListModal] = useState<{
-    isOpen: boolean;
-    listType: GameListType | null;
-    focusSearch?: boolean;
-  }>({ isOpen: false, listType: null });
   const [showListTypeSelector, setShowListTypeSelector] = useState(false);
   const [showListLimitTray, setShowListLimitTray] = useState(false);
 
@@ -378,9 +372,10 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
         {/* Desktop skeleton — 2-column layout matching actual profile */}
         <div className="hidden lg:flex w-full max-w-5xl mx-auto px-6 py-8 gap-6 items-start animate-pulse">
-          {/* Left col: sticky profile card */}
+          {/* Left col: profile card + about card */}
           <div className="w-[300px] shrink-0 sticky top-[72px]">
-            <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
+            {/* Profile header card */}
+            <div className="rounded-2xl bg-card p-5 space-y-4 mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
                 <div className="space-y-2 flex-1">
@@ -391,7 +386,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               <div className="space-y-2">
                 <div className="h-3.5 bg-muted/35 rounded w-full" />
                 <div className="h-3.5 bg-muted/35 rounded w-5/6" />
-                <div className="h-3.5 bg-muted/35 rounded w-2/3" />
               </div>
               <div className="flex gap-5">
                 <div className="space-y-1">
@@ -404,39 +398,54 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 </div>
               </div>
               <div className="h-9 bg-muted/35 rounded-full w-full" />
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2">
                 {Array.from({ length: 4 }).map((_, i) => <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />)}
               </div>
-              {/* Game list rows in sidebar */}
-              <div className="space-y-3 pt-2 border-t border-border/30">
+            </div>
+            {/* About card */}
+            <div className="rounded-2xl bg-card px-5 py-4 space-y-3">
+              <div className="h-4 bg-muted/40 rounded w-16" />
+              <div className="space-y-2">
+                <div className="h-3.5 bg-muted/25 rounded w-full" />
+                <div className="h-3.5 bg-muted/25 rounded w-4/5" />
+                <div className="h-3.5 bg-muted/25 rounded w-3/5" />
+              </div>
+              <div className="flex gap-2 pt-1">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i}>
-                    <div className="h-3.5 bg-muted/30 rounded w-28 mb-2" />
-                    <div className="flex gap-2">
-                      {Array.from({ length: 5 }).map((_, j) => (
-                        <div key={j} className="shrink-0 w-10 rounded-lg bg-muted/30" style={{ aspectRatio: '3/4' }} />
-                      ))}
-                    </div>
-                  </div>
+                  <div key={i} className="h-7 bg-muted/20 rounded-full w-20" />
                 ))}
               </div>
             </div>
           </div>
-          {/* Right col: tabs + post cards extending past screen */}
+          {/* Right col: tabs + game list rows extending past screen */}
           <div className="flex-1 min-w-0">
             {/* Tab bar */}
             <div className="flex border-b border-border/50 mb-5">
-              {[28, 40, 28, 48, 44].map((w, i) => (
+              {[44, 32, 40, 36, 48].map((w, i) => (
                 <div key={i} className="px-4 py-3">
                   <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
                 </div>
               ))}
             </div>
-            {/* Post card skeletons — enough to extend past bottom */}
-            <div className="flex flex-col gap-4">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <PostCardSkeleton key={i} imageRow={i === 2 || i === 5} />
+            {/* Game list rows */}
+            <div className="space-y-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 bg-muted/40 rounded w-32" />
+                    <div className="h-4 bg-muted/20 rounded w-12" />
+                  </div>
+                  <div className="flex gap-2">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <div key={j} className="shrink-0 rounded-lg bg-muted/30" style={{ width: 72, aspectRatio: '3/4' }} />
+                    ))}
+                  </div>
+                </div>
               ))}
+              {/* Post card skeletons below game lists */}
+              <PostCardSkeleton imageRow={false} />
+              <PostCardSkeleton imageRow={true} />
+              <PostCardSkeleton imageRow={false} />
             </div>
           </div>
         </div>
@@ -485,11 +494,11 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const isUnclaimedAccount = (profileUser as any)?.account_type === 'topic';
 
   const handleOpenGameListEdit = (listType: GameListType) => {
-    setEditGameListModal({ isOpen: true, listType, focusSearch: false });
+    navigate(`/edit-game-list/${listType}`);
   };
 
   const handleOpenGameListEditWithSearch = (listType: GameListType) => {
-    setEditGameListModal({ isOpen: true, listType, focusSearch: true });
+    navigate(`/edit-game-list/${listType}?search=1`);
   };
 
   const handlePinPost = async (postId: string) => {
@@ -503,23 +512,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const handleDeletePost = async (postId: string) => {
     await deletePost(postId);
     setProfileUserPosts(prev => prev.filter(p => p.id !== postId));
-  };
-
-  const handleSaveGameList = async (games: any[]) => {
-    if (!editGameListModal.listType) return;
-    await updateGameList(editGameListModal.listType, games);
-    // Sync user_games table when library list changes
-    if (editGameListModal.listType === 'library' && currentUser) {
-      const prevLibrary: any[] = currentUser?.game_lists?.library ?? [];
-      const prevIds = new Set(prevLibrary.map((g: any) => String(g.id)));
-      const newIds = new Set(games.map((g: any) => String(g.id)));
-      const added = games.filter((g: any) => !prevIds.has(String(g.id)));
-      const removed = prevLibrary.filter((g: any) => !newIds.has(String(g.id)));
-      await Promise.allSettled([
-        ...added.map((g: any) => userGamesAPI.add(currentUser.id, String(g.id), 'owned')),
-        ...removed.map((g: any) => userGamesAPI.remove(currentUser.id, String(g.id), 'owned')),
-      ]);
-    }
   };
 
   // Get liked posts from the feed (what we have in context)
@@ -796,7 +788,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     <div className="min-h-screen pb-20">
       <Header />
 
-      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto">
+      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto lg:pt-8 lg:px-6">
         <div className="lg:flex lg:gap-6 lg:items-start">
         {/* LEFT COLUMN — profile header + about (desktop) */}
         <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
@@ -2195,25 +2187,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
       {/* Write Post Button */}
       <WritePostButton />
-
-      {/* Edit Game Lists Modal */}
-      <EditGameListsModal
-        isOpen={editGameListModal.isOpen}
-        onClose={() => setEditGameListModal({ isOpen: false, listType: null })}
-        onSave={handleSaveGameList}
-        currentGames={editGameListModal.listType && profileUser ? (
-          editGameListModal.listType === 'recently-played' ? (profileUser.game_lists?.recentlyPlayed ?? profileUser.gameLists?.recentlyPlayed ?? []) :
-          editGameListModal.listType === 'played-before' ? (profileUser.game_lists?.playedBefore ?? []) :
-          editGameListModal.listType === 'favorite' ? (profileUser.game_lists?.favorites ?? profileUser.gameLists?.favorites ?? []) :
-          editGameListModal.listType === 'wishlist' ? (profileUser.game_lists?.wishlist ?? profileUser.gameLists?.wishlist ?? []) :
-          editGameListModal.listType === 'completed' ? (profileUser.game_lists?.completed ?? []) :
-          editGameListModal.listType === 'lfg' ? (profileUser.game_lists?.lfg ?? []) :
-          editGameListModal.listType === 'custom' ? (profileUser.game_lists?.custom ?? []) :
-          (profileUser.game_lists?.library ?? profileUser.gameLists?.library ?? [])
-        ) : []}
-        listType={editGameListModal.listType || 'library'}
-        autoFocusSearch={editGameListModal.focusSearch}
-      />
 
       {/* Profile Picture Lightbox */}
       <ProfilePictureLightbox

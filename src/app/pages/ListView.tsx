@@ -4,7 +4,6 @@ import { useSearchParams, useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { GameCard } from '../components/GameCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
-import { EditGameListsModal } from '../components/EditGameListsModal';
 import { Header } from '../components/Header';
 import { profiles as profilesAPI } from '../utils/supabase';
 import type { Game, GameListType } from '../data/data';
@@ -37,10 +36,9 @@ export function ListView() {
   const listType = (searchParams.get('type') || 'library') as GameListType;
   const isBrowseMode = searchParams.get('browse') === 'true';
   const viewUserId = searchParams.get('userId');
-  const { currentUser, users, updateGameList } = useAppData();
+  const { currentUser, users } = useAppData();
 
   const [sortOrder, setSortOrder] = useState<'default' | 'a-z' | 'z-a'>('default');
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showShareTray, setShowShareTray] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
@@ -52,23 +50,8 @@ export function ListView() {
   // Always start at the top of the list
   useLayoutEffect(() => { window.scrollTo(0, 0); }, []);
 
-  const EDIT_MODAL_KEY = `forge-edit-list-open-${listType}`;
-
-  // Restore edit modal open state across page navigations / browser restores
-  useEffect(() => {
-    if (localStorage.getItem(EDIT_MODAL_KEY) === '1') {
-      setIsEditModalOpen(true);
-    }
-  }, []);
-
   const openEditModal = () => {
-    localStorage.setItem(EDIT_MODAL_KEY, '1');
-    setIsEditModalOpen(true);
-  };
-
-  const closeEditModal = () => {
-    localStorage.removeItem(EDIT_MODAL_KEY);
-    setIsEditModalOpen(false);
+    navigate(`/edit-game-list/${listType}`);
   };
 
   const listKey = LIST_KEY_MAP[listType];
@@ -107,10 +90,6 @@ export function ListView() {
     setSortOrder(s => s === 'default' ? 'a-z' : s === 'a-z' ? 'z-a' : 'default');
   };
   const sortLabel = sortOrder === 'default' ? 'Default' : sortOrder === 'a-z' ? 'A-Z' : 'Z-A';
-
-  const handleSaveGameList = (updatedGames: Game[]) => {
-    updateGameList(listType, updatedGames);
-  };
 
   // Other users who have games in this list type (only public lists)
   const usersWithList = users.filter(u => {
@@ -544,14 +523,6 @@ export function ListView() {
         </div>
       )}
 
-      {/* Edit Game Lists Modal */}
-      <EditGameListsModal
-        isOpen={isEditModalOpen}
-        onClose={closeEditModal}
-        onSave={handleSaveGameList}
-        currentGames={games}
-        listType={listType}
-      />
     </div>
   );
 }
