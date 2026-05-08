@@ -246,9 +246,8 @@ export const gamesAPI = {
     return apiRequest(`/games/${gameId}/players`);
   },
 
-  async getSimilarGames(gameId: string, genres: string[], limit = 8) {
-    const genresParam = genres.length ? `&genres=${encodeURIComponent(genres.join(','))}` : '';
-    return apiRequest(`/games/${gameId}/similar?limit=${limit}${genresParam}`);
+  async getSimilarGames(gameId: string, limit = 8) {
+    return apiRequest(`/games/${gameId}/similar?limit=${limit}`);
   },
 
   async getGameVersions(gameId: string, title: string, limit = 6) {

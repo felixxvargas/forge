@@ -304,78 +304,83 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   // If profile not loaded yet, show skeleton
   if (!profileUser) {
+    const PostCardSkeleton = ({ imageRow = false }: { imageRow?: boolean }) => (
+      <div className="bg-card rounded-xl p-4">
+        <div className="flex gap-3">
+          <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+          <div className="flex-1 space-y-2 min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="h-4 bg-muted/50 rounded w-28" />
+              <div className="h-3 bg-muted/25 rounded w-16" />
+            </div>
+            <div className="h-3.5 bg-muted/30 rounded w-full" />
+            <div className="h-3.5 bg-muted/30 rounded w-5/6" />
+            {imageRow && <div className="mt-3 h-32 bg-muted/20 rounded-lg w-full" />}
+            <div className="h-3 bg-muted/20 rounded w-4/5" />
+          </div>
+        </div>
+      </div>
+    );
+
     return (
-      <div className="min-h-screen pb-20">
+      <div className="min-h-screen">
         <Header />
         {/* Mobile skeleton */}
-        <div className="lg:hidden w-full max-w-2xl mx-auto px-4 py-6 animate-pulse">
-          {/* Avatar + name + edit button */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
-              <div className="space-y-2 pt-1">
-                <div className="h-5 bg-muted/50 rounded w-36" />
-                <div className="h-3.5 bg-muted/30 rounded w-24" />
+        <div className="lg:hidden animate-pulse">
+          {/* Profile header card */}
+          <div className="w-full max-w-2xl mx-auto px-4 pt-5 pb-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
+                <div className="space-y-2 pt-1">
+                  <div className="h-5 bg-muted/50 rounded w-36" />
+                  <div className="h-3.5 bg-muted/30 rounded w-24" />
+                </div>
               </div>
+              <div className="w-9 h-9 rounded-lg bg-muted/30" />
             </div>
-            <div className="w-9 h-9 rounded-lg bg-muted/30" />
-          </div>
-          {/* Bio */}
-          <div className="space-y-2 mb-3">
-            <div className="h-3.5 bg-muted/40 rounded w-full" />
-            <div className="h-3.5 bg-muted/40 rounded w-2/3" />
-          </div>
-          {/* Stats + follow */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex gap-5">
-              <div className="space-y-1">
-                <div className="h-5 bg-muted/50 rounded w-8" />
-                <div className="h-3 bg-muted/30 rounded w-16" />
-              </div>
-              <div className="space-y-1">
-                <div className="h-5 bg-muted/50 rounded w-8" />
-                <div className="h-3 bg-muted/30 rounded w-16" />
-              </div>
+            <div className="space-y-2 mb-3">
+              <div className="h-3.5 bg-muted/35 rounded w-full" />
+              <div className="h-3.5 bg-muted/35 rounded w-2/3" />
             </div>
-            <div className="h-9 bg-muted/40 rounded-full w-24" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-5">
+                <div className="space-y-1">
+                  <div className="h-5 bg-muted/50 rounded w-8" />
+                  <div className="h-3 bg-muted/25 rounded w-16" />
+                </div>
+                <div className="space-y-1">
+                  <div className="h-5 bg-muted/50 rounded w-8" />
+                  <div className="h-3 bg-muted/25 rounded w-16" />
+                </div>
+              </div>
+              <div className="h-9 bg-muted/35 rounded-full w-24" />
+            </div>
+            <div className="flex gap-2 mb-4">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />)}
+            </div>
           </div>
-          {/* Platform icons */}
-          <div className="flex gap-2 mb-5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="w-8 h-8 rounded-full bg-muted/30" />
-            ))}
-          </div>
-          {/* Tab bar — 5 text tabs matching Lists/Posts/Likes/Media/About */}
-          <div className="flex gap-2 border-b border-border/50 mb-5">
-            {['w-7', 'w-10', 'w-7', 'w-12', 'w-11'].map((w, i) => (
-              <div key={i} className="px-4 py-3">
-                <div className={`h-4 bg-muted/30 rounded ${w}`} />
+          {/* Tab bar */}
+          <div className="flex border-b border-border/50 px-4 mb-4 w-full max-w-2xl mx-auto">
+            {[28, 40, 28, 48, 44].map((w, i) => (
+              <div key={i} className="px-3 py-3">
+                <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
               </div>
             ))}
           </div>
-          {/* Game lists skeleton */}
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="h-4 bg-muted/50 rounded w-32" />
-                <div className="h-3.5 bg-muted/30 rounded w-16" />
-              </div>
-              <div className="flex gap-3 overflow-hidden">
-                {Array.from({ length: 5 }).map((_, j) => (
-                  <div key={j} className="shrink-0 w-16">
-                    <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-1.5" />
-                    <div className="h-2.5 bg-muted/30 rounded w-full" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+          {/* Post card skeletons — enough to overflow the screen */}
+          <div className="w-full max-w-2xl mx-auto px-4 flex flex-col gap-3 pb-20">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <PostCardSkeleton key={i} imageRow={i === 1 || i === 4} />
+            ))}
+          </div>
         </div>
-        {/* Desktop skeleton — 2-column layout */}
+
+        {/* Desktop skeleton — 2-column layout matching actual profile */}
         <div className="hidden lg:flex w-full max-w-5xl mx-auto px-6 py-8 gap-6 items-start animate-pulse">
-          {/* Left col: profile card */}
-          <div className="w-[300px] shrink-0 space-y-4">
-            <div className="rounded-2xl border border-border/50 p-5 space-y-4">
+          {/* Left col: sticky profile card */}
+          <div className="w-[300px] shrink-0 sticky top-[72px]">
+            <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
                 <div className="space-y-2 flex-1">
@@ -384,53 +389,55 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="h-3.5 bg-muted/40 rounded w-full" />
-                <div className="h-3.5 bg-muted/40 rounded w-5/6" />
-                <div className="h-3.5 bg-muted/40 rounded w-2/3" />
+                <div className="h-3.5 bg-muted/35 rounded w-full" />
+                <div className="h-3.5 bg-muted/35 rounded w-5/6" />
+                <div className="h-3.5 bg-muted/35 rounded w-2/3" />
               </div>
               <div className="flex gap-5">
                 <div className="space-y-1">
                   <div className="h-5 bg-muted/50 rounded w-8" />
-                  <div className="h-3 bg-muted/30 rounded w-16" />
+                  <div className="h-3 bg-muted/25 rounded w-16" />
                 </div>
                 <div className="space-y-1">
                   <div className="h-5 bg-muted/50 rounded w-8" />
-                  <div className="h-3 bg-muted/30 rounded w-16" />
+                  <div className="h-3 bg-muted/25 rounded w-16" />
                 </div>
               </div>
-              <div className="h-9 bg-muted/40 rounded-full w-full" />
+              <div className="h-9 bg-muted/35 rounded-full w-full" />
               <div className="flex gap-2 flex-wrap">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-muted/30" />
+                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />)}
+              </div>
+              {/* Game list rows in sidebar */}
+              <div className="space-y-3 pt-2 border-t border-border/30">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i}>
+                    <div className="h-3.5 bg-muted/30 rounded w-28 mb-2" />
+                    <div className="flex gap-2">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <div key={j} className="shrink-0 w-10 rounded-lg bg-muted/30" style={{ aspectRatio: '3/4' }} />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
-          {/* Right col: tabs + game lists */}
-          <div className="flex-1 min-w-0 space-y-5">
-            <div className="flex gap-2 border-b border-border/50">
-              {['w-7', 'w-10', 'w-7', 'w-12', 'w-11'].map((w, i) => (
+          {/* Right col: tabs + post cards extending past screen */}
+          <div className="flex-1 min-w-0">
+            {/* Tab bar */}
+            <div className="flex border-b border-border/50 mb-5">
+              {[28, 40, 28, 48, 44].map((w, i) => (
                 <div key={i} className="px-4 py-3">
-                  <div className={`h-4 bg-muted/30 rounded ${w}`} />
+                  <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
                 </div>
               ))}
             </div>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="h-4 bg-muted/50 rounded w-32" />
-                  <div className="h-3.5 bg-muted/30 rounded w-16" />
-                </div>
-                <div className="flex gap-3 overflow-hidden">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <div key={j} className="shrink-0 w-18">
-                      <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-1.5 w-16" />
-                      <div className="h-2.5 bg-muted/30 rounded w-16" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+            {/* Post card skeletons — enough to extend past bottom */}
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <PostCardSkeleton key={i} imageRow={i === 2 || i === 5} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

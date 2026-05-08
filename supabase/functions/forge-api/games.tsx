@@ -249,43 +249,77 @@ export async function getGameArtwork(gameId: string, artworkType?: string) {
   return data;
 }
 
+// IGDB category values that indicate non-canonical releases
+const MOD_CATEGORIES = new Set([5, 12]); // 5=mod, 12=fork
+
 /**
- * Get games with similar genres (for "Similar Games" module)
+ * Get games with similar genres (for "Similar Games" module).
+ * Looks up the source game's genres/platforms/category, then ranks candidates
+ * by genre overlap. Mods are excluded unless the source game is itself a mod.
  */
-export async function getSimilarGames(gameId: string, genres: string[], limit = 8) {
-  if (genres.length === 0) {
-    // Fallback: just return some recent games
+export async function getSimilarGames(gameId: string, limit = 8) {
+  // Look up source game for genre/platform/category data
+  const { data: source } = await supabase
+    .from('forge_games_17285bd7')
+    .select('id, genres, platforms, game_category')
+    .eq('id', gameId)
+    .single();
+
+  const genres: string[] = source?.genres ?? [];
+  const platforms: string[] = source?.platforms ?? [];
+  const sourceIsMod = source?.game_category != null && MOD_CATEGORIES.has(source.game_category);
+
+  let candidates: any[] = [];
+
+  if (genres.length > 0) {
+    // Find games sharing at least one genre (array overlap)
+    const { data } = await supabase
+      .from('forge_games_17285bd7')
+      .select('*, artwork:forge_game_artwork_17285bd7(*)')
+      .neq('id', gameId)
+      .or('hidden.is.null,hidden.eq.false')
+      .overlaps('genres', genres)
+      .limit(60);
+    candidates = data ?? [];
+  }
+
+  // If too few genre matches, supplement with recent games
+  if (candidates.length < 3) {
     const { data } = await supabase
       .from('forge_games_17285bd7')
       .select('*, artwork:forge_game_artwork_17285bd7(*)')
       .neq('id', gameId)
       .or('hidden.is.null,hidden.eq.false')
       .order('year', { ascending: false })
-      .limit(limit);
-    return data ?? [];
+      .limit(60);
+    const extra = data ?? [];
+    const seen = new Set(candidates.map((g: any) => g.id));
+    candidates = [...candidates, ...extra.filter((g: any) => !seen.has(g.id))];
   }
 
-  // Try matching on first genre
-  const { data } = await supabase
-    .from('forge_games_17285bd7')
-    .select('*, artwork:forge_game_artwork_17285bd7(*)')
-    .contains('genres', [genres[0]])
-    .neq('id', gameId)
-    .or('hidden.is.null,hidden.eq.false')
-    .order('year', { ascending: false })
-    .limit(limit);
+  // Exclude mods/forks unless the source game is also a mod
+  if (!sourceIsMod) {
+    candidates = candidates.filter((g: any) =>
+      g.game_category == null || !MOD_CATEGORIES.has(g.game_category)
+    );
+  }
 
-  if ((data ?? []).length >= 3) return data ?? [];
+  // Score by genre overlap (weighted 3×) + platform overlap (1×), then year desc
+  const scored = candidates.map((g: any) => {
+    const gGenres: string[] = g.genres ?? [];
+    const gPlatforms: string[] = g.platforms ?? [];
+    const genreMatches = genres.filter(genre => gGenres.includes(genre)).length;
+    const platformMatches = platforms.length > 0
+      ? platforms.filter((p: string) => gPlatforms.includes(p)).length
+      : 0;
+    return { ...g, _relevance: genreMatches * 3 + platformMatches };
+  });
 
-  // Fallback: second genre or keyword match on title
-  const { data: fallback } = await supabase
-    .from('forge_games_17285bd7')
-    .select('*, artwork:forge_game_artwork_17285bd7(*)')
-    .neq('id', gameId)
-    .or('hidden.is.null,hidden.eq.false')
-    .order('year', { ascending: false })
-    .limit(limit);
-  return fallback ?? [];
+  scored.sort((a: any, b: any) =>
+    b._relevance - a._relevance || (b.year ?? 0) - (a.year ?? 0)
+  );
+
+  return scored.slice(0, limit);
 }
 
 /**
@@ -652,8 +686,8 @@ export async function seedFromIGDB(offset = 0, limit = 500): Promise<{ inserted:
   let skipped = 0;
 
   const body = `
-    fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, aggregated_rating, aggregated_rating_count;
-    where cover != null & aggregated_rating_count > 3;
+    fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category, aggregated_rating, aggregated_rating_count;
+    where cover != null & aggregated_rating_count > 3 & category = 0;
     sort aggregated_rating desc;
     limit ${Math.min(limit, 500)};
     offset ${offset};
@@ -692,6 +726,7 @@ export async function seedFromIGDB(offset = 0, limit = 500): Promise<{ inserted:
           description: g.summary ?? null,
           genres: g.genres?.map((x: any) => x.name) ?? [],
           platforms: g.platforms?.map((x: any) => x.name) ?? [],
+          game_category: g.category ?? 0,
         }, { onConflict: 'id', ignoreDuplicates: true });
 
       if (upsertErr) { errors.push(`${g.name}: ${upsertErr.message}`); continue; }

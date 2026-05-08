@@ -276,10 +276,8 @@ app.get("/forge-api/games/:gameId", async (c) => {
 app.get("/forge-api/games/:gameId/similar", async (c) => {
   try {
     const gameId = c.req.param("gameId");
-    const genresParam = c.req.query("genres") || "";
-    const genres = genresParam ? genresParam.split(",").map((g) => g.trim()).filter(Boolean) : [];
     const limit = parseInt(c.req.query("limit") || "8");
-    const games = await gamesAPI.getSimilarGames(gameId, genres, limit);
+    const games = await gamesAPI.getSimilarGames(gameId, limit);
     return c.json({ games });
   } catch (err) {
     console.error("[games/similar] error:", err);
