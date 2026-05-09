@@ -203,7 +203,7 @@ export const gamesAPI = {
     //   11=port, 12=fork, 13=pack, 14=update
     const EXCLUDED_CATEGORIES = new Set([1, 3, 5, 6, 7, 13, 14]);
     const MAIN_CATEGORIES = new Set([0, 4, 8, 9, 10, 11, 12]);
-    const NOISE_RE = /\b(dlc|season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|upgrade pack|game pack|booster pack|weapon pack|skin pack|cosmetic pack|points pack|randomizer|randomiser|mod pack|fan edit|fan made|fan-made|texture pack|sound pack|voice pack)\b/i;
+    const NOISE_RE = /\b(dlc|season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|upgrade pack|game pack|booster pack|weapon pack|skin pack|cosmetic pack|points pack|starter pack|bonus pack|character pack|map pack|randomizer|randomiser|mod pack|fan edit|fan made|fan-made|texture pack|sound pack|voice pack)\b/i;
 
     const filtered = list.filter((g: any) => {
       const cat = g.category ?? g.game_type ?? g.type;
@@ -226,8 +226,25 @@ export const gamesAPI = {
       return titleScore(b.title ?? '') - titleScore(a.title ?? '');
     });
 
-    if (Array.isArray(raw)) return filtered;
-    return { ...raw, games: filtered };
+    // Dedup edition variants: collapse entries with the same base title into the first (highest-ranked) result
+    const versionKey = (t: string) => deAccent(t)
+      .replace(/\s*[:\-–—]\s*/g, ' ')
+      .replace(/\bre:?\s*/gi, '')
+      .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary|enhanced|gold|ultimate|deluxe|premium|standard|special|collector|limited|game of the year|goty)\b/gi, '')
+      .replace(/\s*\([^)]*\)\s*/g, '')
+      .replace(/[''`,.!?™®]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const seenVersionKeys = new Set<string>();
+    const deduped = filtered.filter(g => {
+      const vk = versionKey(g.title ?? '');
+      if (seenVersionKeys.has(vk)) return false;
+      seenVersionKeys.add(vk);
+      return true;
+    });
+
+    if (Array.isArray(raw)) return deduped;
+    return { ...raw, games: deduped };
   },
 
   async getGames(gameIds: string[]) {
@@ -270,7 +287,7 @@ export const rawgAPI = {
       const url = `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(query)}&page_size=${limit * 2}&search_exact=false&exclude_additions=true`;
       const res = await fetch(url);
       if (!res.ok) return [];
-      const NOISE_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack|randomizer|randomiser|mod pack|fan edit|texture pack)\b/i;
+      const NOISE_RE = /\b(season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|deluxe edition pass|upgrade pack|starter pack|bonus pack|character pack|map pack|randomizer|randomiser|mod pack|fan edit|fan made|fan-made|texture pack)\b/i;
       const queryWords = deAccent(query).split(/\s+/).filter(Boolean);
       const titleScore = (name: string) => {
         const t = deAccent(name);
