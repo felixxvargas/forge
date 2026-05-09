@@ -242,7 +242,7 @@ export function EditGameList() {
     // Popular on Forge
     void loadTrendingRankings().then(ranked => {
       setPopularOnForge(
-        ranked.filter(g => g.title && g.cover).slice(0, 24).map(g => ({
+        ranked.filter(g => g.title && g.cover).slice(0, 12).map(g => ({
           id: g.id, title: g.title, coverArt: g.cover ?? undefined, year: g.year,
         }))
       );
@@ -255,13 +255,13 @@ export function EditGameList() {
           .from('user_games')
           .select('game_id, created_at')
           .order('created_at', { ascending: false })
-          .limit(300);
+          .limit(200);
         if (!data?.length) return;
         const seen = new Set<string>();
         const ids: string[] = [];
         for (const r of data) {
           if (r.game_id && !seen.has(r.game_id)) { seen.add(r.game_id); ids.push(r.game_id); }
-          if (ids.length >= 24) break;
+          if (ids.length >= 12) break;
         }
         const batch: any = await gamesAPI.getGames(ids);
         const list: any[] = Array.isArray(batch) ? batch : batch?.games ?? [];
@@ -271,26 +271,37 @@ export function EditGameList() {
       } catch { /* carousel stays empty */ }
     })();
 
-    // New Releases — filter listGames to recent years
+    // New Releases — query DB directly by first_release_date desc
     (async () => {
       try {
-        const raw: any = await gamesAPI.listGames(120);
-        const list: any[] = Array.isArray(raw) ? raw : raw?.games ?? [];
         const currentYear = new Date().getFullYear();
-        const EXCL = new Set([1, 3, 5, 6, 7, 13, 14]);
-        const NOISE = /\b(dlc|season pass|battle pass|mod pack|randomizer|fan.?made)\b/i;
-        const recent = list
+        const since = Math.floor(new Date(`${currentYear - 2}-01-01`).getTime() / 1000);
+        const { data } = await supabase
+          .from('forge_games_17285bd7')
+          .select('id, title, first_release_date, game_category, artwork:forge_game_artwork_17285bd7(*)')
+          .gte('first_release_date', since)
+          .not('first_release_date', 'is', null)
+          .or('hidden.is.null,hidden.eq.false')
+          .order('first_release_date', { ascending: false })
+          .limit(60);
+        if (!data?.length) return;
+        const EXCL_CATS = new Set([1, 3, 5, 6, 7, 13, 14]);
+        const NOISE = /\b(dlc|season pass|battle pass|mod|randomizer|fan.?made)\b/i;
+        const filtered = (data as any[])
           .filter(g => {
-            const cat = g.category ?? g.game_type ?? g.type;
-            if (cat !== undefined && EXCL.has(Number(cat))) return false;
+            if (g.game_category !== null && EXCL_CATS.has(Number(g.game_category))) return false;
             if (NOISE.test(g.title ?? '')) return false;
-            const yr = g.year ?? g.first_release_year ?? 0;
-            return yr >= currentYear - 3 && yr <= currentYear + 1;
+            const art = g.artwork as any[] | null;
+            if (!art?.length) return false;
+            return true;
           })
-          .sort((a: any, b: any) => (b.year ?? b.first_release_year ?? 0) - (a.year ?? a.first_release_year ?? 0))
-          .slice(0, 24)
-          .map((g: any) => ({ id: String(g.id), title: g.title, artwork: g.artwork, coverArt: g.coverArt, year: g.year ?? g.first_release_year }));
-        setNewReleases(recent);
+          .slice(0, 12);
+        setNewReleases(filtered.map(g => ({
+          id: String(g.id),
+          title: g.title as string,
+          artwork: (g.artwork as any[] | null) ?? [],
+          year: g.first_release_date ? new Date((g.first_release_date as number) * 1000).getFullYear() : undefined,
+        })));
       } catch { /* carousel stays empty */ }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -576,7 +587,7 @@ export function EditGameList() {
         </div>
 
         {/* Right: search + results / recent searches — 60% */}
-        <div className="flex flex-col min-h-0">
+        <div className="flex flex-col min-h-0 min-w-0">
           <div className="relative mb-4 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -615,7 +626,7 @@ export function EditGameList() {
                           className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
                         >
                           {entry.cover ? (
-                            <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-full shrink-0" />
+                            <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
                               <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
