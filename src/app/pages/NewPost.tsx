@@ -1179,42 +1179,66 @@ export function NewPost() {
           </div>
         )}
 
-        {/* List tray */}
-        {openPanel === 'list' && (
-          <div className="mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
-              <span className="text-sm font-semibold flex items-center gap-1.5"><LayoutList className="w-4 h-4" /> Attach Game List</span>
-              <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-3 space-y-1 max-h-48 overflow-y-auto">
-              {Object.entries(LIST_LABELS).map(([type, label]) => {
-                const listKey = LIST_KEY_MAP[type] ?? type;
-                const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
-                const games: any[] = gameLists[listKey] ?? [];
-                if (games.length === 0) return null;
-                const covers = games.slice(0, 3).map((g: any) =>
-                  g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
-                ).filter(Boolean);
-                return (
-                  <button key={type} onClick={() => { setPickedListType(type); setPickedListUserId(currentUser?.id ?? ''); setOpenPanel(null); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'}`}>
-                    <div className="flex gap-0.5 shrink-0">
-                      {covers.length > 0 ? covers.map((c, i) => (
-                        <img key={i} src={c} alt="" className="w-6 h-9 object-cover rounded" />
-                      )) : (
-                        <div className="w-6 h-9 rounded bg-secondary flex items-center justify-center"><Gamepad2 className="w-3 h-3 text-muted-foreground" /></div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{label}</p>
-                      <p className="text-xs text-muted-foreground">{games.length} games</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* List picker — inline tray on mobile, centered popup on desktop */}
+        {openPanel === 'list' && (() => {
+          const listItems = Object.entries(LIST_LABELS).map(([type, label]) => {
+            const listKey = LIST_KEY_MAP[type] ?? type;
+            const gameLists = (currentUser as any)?.game_lists ?? (currentUser as any)?.gameLists ?? {};
+            const games: any[] = gameLists[listKey] ?? [];
+            if (games.length === 0) return null;
+            const covers = games.slice(0, 3).map((g: any) =>
+              g.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? g.artwork?.[0]?.url ?? g.coverArt ?? null
+            ).filter(Boolean);
+            return (
+              <button key={type} onClick={() => { setPickedListType(type); setPickedListUserId(currentUser?.id ?? ''); setOpenPanel(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${pickedListType === type ? 'bg-accent/15 border border-accent/30' : 'hover:bg-secondary'}`}>
+                <div className="flex gap-0.5 shrink-0">
+                  {covers.length > 0 ? covers.map((c, i) => (
+                    <img key={i} src={c} alt="" className="w-6 h-9 object-cover rounded" />
+                  )) : (
+                    <div className="w-6 h-9 rounded bg-secondary flex items-center justify-center"><Gamepad2 className="w-3 h-3 text-muted-foreground" /></div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{label}</p>
+                  <p className="text-xs text-muted-foreground">{games.length} games</p>
+                </div>
+              </button>
+            );
+          });
+          return (
+            <>
+              {/* Desktop popup */}
+              <div
+                className="hidden md:flex fixed inset-0 z-[60] items-center justify-center bg-black/50"
+                onClick={() => setOpenPanel(null)}
+              >
+                <div
+                  className="bg-card border border-border rounded-2xl w-96 overflow-hidden shadow-2xl"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                    <span className="font-semibold flex items-center gap-2"><LayoutList className="w-4 h-4" /> Attach Game List</span>
+                    <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+                    {listItems}
+                  </div>
+                </div>
+              </div>
+              {/* Mobile inline tray */}
+              <div className="md:hidden mt-3 bg-secondary/30 rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+                  <span className="text-sm font-semibold flex items-center gap-1.5"><LayoutList className="w-4 h-4" /> Attach Game List</span>
+                  <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="p-3 space-y-1 max-h-48 overflow-y-auto">
+                  {listItems}
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Poll tray */}
         {openPanel === 'poll' && (

@@ -1301,7 +1301,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
         {/* Tab Content */}
         {effectiveTab === 'lists' && (
-          <div className="px-4 space-y-6">
+          <div className="px-4 lg:pr-0 space-y-6">
 
             {(() => {
               const ALL_LISTS: { key: 'recentlyPlayed' | 'playedBefore' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [

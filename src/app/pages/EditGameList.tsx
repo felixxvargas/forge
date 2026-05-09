@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send } from 'lucide-react';
+import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send, Gamepad2 } from 'lucide-react';
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
 import { getGameRank } from '../utils/gameRankings';
@@ -65,10 +65,14 @@ export function EditGameList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+  const [recentSearches, setRecentSearches] = useState<{ title: string; cover: string | null }[]>(() => {
     try {
       const raw = localStorage.getItem(`forge-game-list-recent:${listTypeParam ?? 'library'}`);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      // Drop old plain-string entries saved before the cover-art format
+      return parsed.filter((e: any) => typeof e === 'object' && e !== null && typeof e.title === 'string');
     } catch { return []; }
   });
 
@@ -182,7 +186,17 @@ export function EditGameList() {
           const t = deAccent(title);
           return queryWords.filter(w => t.includes(w)).length;
         };
+        // Unofficial/fan-made/ROM-hack titles get pushed below official games
+        const isUnofficial = (t: string) => {
+          const l = t.toLowerCase();
+          return /\b(randomizer|nuzlocke|rom\s*hack|fangame|fan\s*game|fan.?made|bootleg|fakemon)\b/.test(l)
+            || /[\[(](hack|rom|fan|unofficial|pirate)[\])]/.test(l)
+            || /\s(hack|rom)$/.test(l);
+        };
         merged.sort((a, b) => {
+          const unoffA = isUnofficial(a.title) ? 1 : 0;
+          const unoffB = isUnofficial(b.title) ? 1 : 0;
+          if (unoffA !== unoffB) return unoffA - unoffB;
           const rankA = getGameRank(String(a.id)) ?? 9999;
           const rankB = getGameRank(String(b.id)) ?? 9999;
           const covA = wordCoverage(a.title);
@@ -224,7 +238,8 @@ export function EditGameList() {
       setSelectedGames(next);
       updateGameList(listType, next);
       setRecentSearches(prev => {
-        const updated = [game.title, ...prev.filter(t => t !== game.title)].slice(0, 8);
+        const entry = { title: game.title, cover: getCoverUrl(game) };
+        const updated = [entry, ...prev.filter(e => e.title !== game.title)].slice(0, 8);
         localStorage.setItem(`forge-game-list-recent:${listType}`, JSON.stringify(updated));
         return updated;
       });
@@ -525,15 +540,22 @@ export function EditGameList() {
               ) : null
             ) : recentSearches.length > 0 ? (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recent searches</p>
+                <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recently added</p>
                 <div className="flex flex-wrap gap-2">
-                  {recentSearches.map(q => (
+                  {recentSearches.map(entry => (
                     <button
-                      key={q}
-                      onClick={() => { setSearchQuery(q); desktopSearchInputRef.current?.focus(); }}
-                      className="px-3 py-1.5 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
+                      key={entry.title}
+                      onClick={() => { setSearchQuery(entry.title); desktopSearchInputRef.current?.focus(); }}
+                      className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
                     >
-                      {q}
+                      {entry.cover ? (
+                        <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-full shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="truncate max-w-[140px]">{entry.title}</span>
                     </button>
                   ))}
                 </div>
@@ -586,18 +608,25 @@ export function EditGameList() {
               </div>
             )}
 
-            {/* Recent searches */}
+            {/* Recently added */}
             {!searchQuery.trim() && recentSearches.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Recent searches</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Recently added</p>
                 <div className="flex flex-wrap gap-2">
-                  {recentSearches.map(q => (
+                  {recentSearches.map(entry => (
                     <button
-                      key={q}
-                      onClick={() => { setSearchQuery(q); searchInputRef.current?.focus(); }}
-                      className="px-3 py-1.5 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
+                      key={entry.title}
+                      onClick={() => { setSearchQuery(entry.title); searchInputRef.current?.focus(); }}
+                      className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
                     >
-                      {q}
+                      {entry.cover ? (
+                        <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-full shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="truncate max-w-[140px]">{entry.title}</span>
                     </button>
                   ))}
                 </div>

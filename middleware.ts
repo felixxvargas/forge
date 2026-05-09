@@ -26,10 +26,18 @@ export default async function middleware(request: Request): Promise<Response | u
   const segments = url.pathname.split('/').filter(Boolean);
   const hasRedirectFlag = url.searchParams.has('_r');
 
-  // /post/[postId] — inject post OG tags for social crawlers
+  // /post/[postId] — inject post OG tags for social crawlers; skip SPA/RSC navigations
   if (segments.length === 2 && segments[0] === 'post' && !hasRedirectFlag) {
-    const target = new URL(`/api/post-og/${segments[1]}`, url.origin);
-    return fetch(target.toString(), { headers: request.headers });
+    const isNextNavigation = !!(
+      request.headers.get('RSC') ||
+      request.headers.get('Next-Router-Prefetch') ||
+      request.headers.get('Next-Url')
+    );
+    if (!isNextNavigation) {
+      const target = new URL(`/api/post-og/${segments[1]}`, url.origin);
+      return fetch(target.toString(), { headers: request.headers });
+    }
+    return undefined;
   }
 
   // Only continue for single-segment paths (potential profile handles or known pages)
