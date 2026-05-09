@@ -442,10 +442,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   </div>
                 </div>
               ))}
-              {/* Post card skeletons below game lists */}
-              <PostCardSkeleton imageRow={false} />
-              <PostCardSkeleton imageRow={true} />
-              <PostCardSkeleton imageRow={false} />
             </div>
           </div>
         </div>
@@ -1691,19 +1687,19 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         {effectiveTab === 'likes' && (
           <div className="px-4 flex flex-col gap-3 sm:gap-6">
             {likesLoading ? (
-              <div className="divide-y divide-border">
+              <div className="flex flex-col gap-3 animate-pulse">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="py-4 animate-pulse">
+                  <div key={i} className="bg-card rounded-xl p-4">
                     <div className="flex gap-3">
                       <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
                       <div className="flex-1 space-y-2 pt-1">
-                        <div className="flex gap-2">
-                          <div className="h-3 bg-muted/50 rounded w-24" />
-                          <div className="h-3 bg-muted/30 rounded w-16" />
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 bg-muted/50 rounded w-28" />
+                          <div className="h-3 bg-muted/25 rounded w-16" />
                         </div>
-                        <div className="h-3 bg-muted/50 rounded w-full" />
-                        <div className="h-3 bg-muted/50 rounded w-4/5" />
-                        <div className="h-3 bg-muted/30 rounded w-1/2" />
+                        <div className="h-3.5 bg-muted/30 rounded w-full" />
+                        <div className="h-3.5 bg-muted/30 rounded w-5/6" />
+                        <div className="h-3 bg-muted/20 rounded w-4/5" />
                       </div>
                     </div>
                   </div>

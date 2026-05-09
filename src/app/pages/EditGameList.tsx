@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send, Gamepad2 } from 'lucide-react';
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
-import { getGameRank } from '../utils/gameRankings';
+import { getGameRank, loadTrendingRankings } from '../utils/gameRankings';
 import { supabase, userGamesAPI } from '../utils/supabase';
 import { useNavigate, useParams, useSearchParams } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
@@ -86,6 +86,11 @@ export function EditGameList() {
   const [shareGames, setShareGames] = useState<AnyGame[] | null>(null);
   const [shareMessage, setShareMessage] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+
+  // Discovery carousel state
+  const [newReleases, setNewReleases] = useState<AnyGame[]>([]);
+  const [recentlyAdded, setRecentlyAdded] = useState<AnyGame[]>([]);
+  const [popularOnForge, setPopularOnForge] = useState<AnyGame[]>([]);
 
   // Pointer-based drag state
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -231,6 +236,65 @@ export function EditGameList() {
     }, 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
+
+  // Load discovery carousels once on mount
+  useEffect(() => {
+    // Popular on Forge
+    void loadTrendingRankings().then(ranked => {
+      setPopularOnForge(
+        ranked.filter(g => g.title && g.cover).slice(0, 24).map(g => ({
+          id: g.id, title: g.title, coverArt: g.cover ?? undefined, year: g.year,
+        }))
+      );
+    });
+
+    // Recently Added by Users
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('user_games')
+          .select('game_id, created_at')
+          .order('created_at', { ascending: false })
+          .limit(300);
+        if (!data?.length) return;
+        const seen = new Set<string>();
+        const ids: string[] = [];
+        for (const r of data) {
+          if (r.game_id && !seen.has(r.game_id)) { seen.add(r.game_id); ids.push(r.game_id); }
+          if (ids.length >= 24) break;
+        }
+        const batch: any = await gamesAPI.getGames(ids);
+        const list: any[] = Array.isArray(batch) ? batch : batch?.games ?? [];
+        const ord = new Map(ids.map((id, i) => [id, i]));
+        list.sort((a, b) => (ord.get(String(a.id)) ?? 999) - (ord.get(String(b.id)) ?? 999));
+        setRecentlyAdded(list.map(g => ({ id: String(g.id), title: g.title, artwork: g.artwork, coverArt: g.coverArt, year: g.year })));
+      } catch { /* carousel stays empty */ }
+    })();
+
+    // New Releases — filter listGames to recent years
+    (async () => {
+      try {
+        const raw: any = await gamesAPI.listGames(120);
+        const list: any[] = Array.isArray(raw) ? raw : raw?.games ?? [];
+        const currentYear = new Date().getFullYear();
+        const EXCL = new Set([1, 3, 5, 6, 7, 13, 14]);
+        const NOISE = /\b(dlc|season pass|battle pass|mod pack|randomizer|fan.?made)\b/i;
+        const recent = list
+          .filter(g => {
+            const cat = g.category ?? g.game_type ?? g.type;
+            if (cat !== undefined && EXCL.has(Number(cat))) return false;
+            if (NOISE.test(g.title ?? '')) return false;
+            const yr = g.year ?? g.first_release_year ?? 0;
+            return yr >= currentYear - 3 && yr <= currentYear + 1;
+          })
+          .sort((a: any, b: any) => (b.year ?? b.first_release_year ?? 0) - (a.year ?? a.first_release_year ?? 0))
+          .slice(0, 24)
+          .map((g: any) => ({ id: String(g.id), title: g.title, artwork: g.artwork, coverArt: g.coverArt, year: g.year ?? g.first_release_year }));
+        setNewReleases(recent);
+      } catch { /* carousel stays empty */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
@@ -538,32 +602,70 @@ export function EditGameList() {
               ) : !isSearching ? (
                 <p className="text-center py-8 text-muted-foreground text-sm">No games found</p>
               ) : null
-            ) : recentSearches.length > 0 ? (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recently added</p>
-                <div className="flex flex-wrap gap-2">
-                  {recentSearches.map(entry => (
-                    <button
-                      key={entry.title}
-                      onClick={() => { setSearchQuery(entry.title); desktopSearchInputRef.current?.focus(); }}
-                      className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
-                    >
-                      {entry.cover ? (
-                        <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-full shrink-0" />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <span className="truncate max-w-[140px]">{entry.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center">
-                <Search className="w-8 h-8 text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground text-sm">Search for games to add to your list</p>
+              <div className="space-y-5">
+                {recentSearches.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recently added</p>
+                    <div className="flex flex-wrap gap-2">
+                      {recentSearches.map(entry => (
+                        <button
+                          key={entry.title}
+                          onClick={() => { setSearchQuery(entry.title); desktopSearchInputRef.current?.focus(); }}
+                          className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
+                        >
+                          {entry.cover ? (
+                            <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-full shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                              <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <span className="truncate max-w-[140px]">{entry.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {[
+                  { label: 'New Releases', games: newReleases },
+                  { label: 'Recently Added by Forge Users', games: recentlyAdded },
+                  { label: 'Popular on Forge', games: popularOnForge },
+                ].filter(({ games }) => games.length > 0).map(({ label, games }) => (
+                  <div key={label}>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">{label}</p>
+                    <div className="flex gap-2.5 overflow-x-auto pb-2 forge-scroll">
+                      {games.map(game => {
+                        const isSelected = selectedGames.some(g => g.id === game.id);
+                        const cover = getCoverUrl(game);
+                        return (
+                          <button
+                            key={game.id}
+                            onClick={() => !isSelected && addGame(game)}
+                            disabled={isSelected}
+                            className="shrink-0 w-[68px] text-left"
+                          >
+                            <div className={`w-[68px] h-[90px] rounded-lg overflow-hidden bg-muted/20 mb-1 relative ${isSelected ? 'ring-2 ring-accent' : 'hover:opacity-80 transition-opacity'}`}>
+                              {cover && <img src={cover} alt={game.title} className="w-full h-full object-cover" />}
+                              {isSelected && (
+                                <div className="absolute inset-0 bg-accent/30 flex items-center justify-center">
+                                  <Check className="w-4 h-4 text-accent" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">{game.title}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {recentSearches.length === 0 && newReleases.length === 0 && recentlyAdded.length === 0 && popularOnForge.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center">
+                    <Search className="w-8 h-8 text-muted-foreground/30 mb-3" />
+                    <p className="text-muted-foreground text-sm">Search for games to add to your list</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
