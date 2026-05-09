@@ -333,7 +333,7 @@ export function Feed() {
         {showDropdown && isAuthenticated && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-            <div className="absolute top-full left-0 mt-2 w-72 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+            <div className="absolute top-full left-0 mt-2 w-72 bg-sidebar border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
               <div className="px-3 pt-3 pb-1 text-xs text-muted-foreground uppercase tracking-wide font-medium">Feeds</div>
               {([
                 { mode: 'following' as FeedMode, label: 'Following', icon: <Users className="w-4 h-4 text-muted-foreground" /> },

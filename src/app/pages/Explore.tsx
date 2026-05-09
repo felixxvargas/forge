@@ -460,22 +460,41 @@ export function Explore() {
     );
   });
 
-  const filteredGames = dbGames
-    .filter(game => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        (game.title || '').toLowerCase().includes(query) ||
-        (game.genres && game.genres.some((g: string) => g.toLowerCase().includes(query)))
-      );
-    })
-    .sort((a, b) => {
-      // Score = IGDB/RAWG popularity + post tags + unique list adds
-      const scoreA = (a.popularity_score ?? a.rating ?? 0) + (trendingCounts[a.id] ?? 0) + (listCounts[a.id] ?? 0);
-      const scoreB = (b.popularity_score ?? b.rating ?? 0) + (trendingCounts[b.id] ?? 0) + (listCounts[b.id] ?? 0);
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return (b.year ?? 0) - (a.year ?? 0);
+  // Same category exclusions as searchGames in api.ts
+  const BROWSE_EXCLUDED_CATS = new Set([1, 3, 5, 6, 7, 13, 14]);
+  const BROWSE_NOISE_RE = /\b(dlc|season pass|annual pass|year pass|expansion pass|battle pass|premium pass|content pack|complete pack|supporter pack|founder pack|upgrade pack|game pack|booster pack|weapon pack|skin pack|cosmetic pack|points pack|randomizer|randomiser|mod pack|fan edit|fan made|fan-made|texture pack|sound pack|voice pack)\b/i;
+  const EDITION_SUFFIX_RE = /\s*[-:–—]\s*(?:Deluxe|Complete|Ultimate|Definitive|Gold|Platinum|Game of the Year|GOTY|Anniversary|Collector's?|Limited|Special|Enhanced|Director's? Cut|Expanded|Legendary|Royal|Starter|Founder's?|Redux|Reloaded|Standard)\s+Edition\b.*/i;
+  const browseBaseTitle = (t: string) => t.replace(EDITION_SUFFIX_RE, '').trim().toLowerCase();
+
+  const filteredGames = (() => {
+    const query = searchQuery.toLowerCase();
+    const sorted = dbGames
+      .filter(game => {
+        const cat = game.category ?? game.game_type ?? game.type;
+        if (cat !== undefined && cat !== null && BROWSE_EXCLUDED_CATS.has(Number(cat))) return false;
+        if (BROWSE_NOISE_RE.test(game.title ?? '')) return false;
+        if (!searchQuery) return true;
+        return (
+          (game.title || '').toLowerCase().includes(query) ||
+          (game.genres && game.genres.some((g: string) => g.toLowerCase().includes(query)))
+        );
+      })
+      .sort((a, b) => {
+        // Score = IGDB/RAWG popularity + post tags + unique list adds
+        const scoreA = (a.popularity_score ?? a.rating ?? 0) + (trendingCounts[a.id] ?? 0) + (listCounts[a.id] ?? 0);
+        const scoreB = (b.popularity_score ?? b.rating ?? 0) + (trendingCounts[b.id] ?? 0) + (listCounts[b.id] ?? 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (b.year ?? 0) - (a.year ?? 0);
+      });
+    // Deduplicate by base title — keep highest-scoring variant (editions, ports, etc.)
+    const seen = new Set<string>();
+    return sorted.filter(game => {
+      const base = browseBaseTitle(game.title ?? '');
+      if (seen.has(base)) return false;
+      seen.add(base);
+      return true;
     });
+  })();
 
   const isSearchActive = searchQuery.trim().length > 0;
 
@@ -630,16 +649,14 @@ export function Explore() {
                         onClick={() => navigate(`/game/${game.id}`)}
                       >
                         <div className="aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-muted/20">
-                          {coverArt ? (
+                          {coverArt && (
                             <img
                               src={coverArt}
                               alt={game.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              style={{ opacity: 0, transition: 'opacity 0.2s ease, transform 0.3s ease' }}
+                              onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
                             />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
-                            </div>
                           )}
                         </div>
                         <p className="text-xs font-medium line-clamp-2 group-hover:text-accent transition-colors">
@@ -996,9 +1013,10 @@ export function Explore() {
                     Results for "<span className="text-foreground">{searchQuery}</span>"
                   </p>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {(isSearchActive ? searchLoading : showGamesSkeleton) ? (
-                    <>
+                {(isSearchActive ? searchLoading : showGamesSkeleton) ? (
+                  <>
+                    {/* Mobile skeleton */}
+                    <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                       {Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} className="animate-pulse">
                           <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-2" />
@@ -1006,52 +1024,89 @@ export function Explore() {
                           <div className="h-2.5 bg-muted/30 rounded w-1/3" />
                         </div>
                       ))}
-                    </>
-                  ) : (isSearchActive ? searchGames : filteredGames).length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-muted-foreground">
-                      <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>{isSearchActive ? `No games found for "${searchQuery}"` : 'No games found'}</p>
                     </div>
-                  ) : (
-                    (isSearchActive ? searchGames : filteredGames).map(game => {
-                      const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
-                        ?? game.coverArt;
-                      const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
-                      return (
-                        <div
-                          key={game.id}
-                          className="group cursor-pointer relative"
-                          onClick={() => navigate(`/game/${game.id}`)}
-                        >
-                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20">
-                            {coverArt ? (
-                              <img
-                                src={coverArt}
-                                alt={game.title}
-                                className="w-full h-full object-cover group-hover:scale-105"
-                                style={{ opacity: 0, transition: 'opacity 0.25s ease, transform 0.3s ease' }}
-                                onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Gamepad2 className="w-8 h-8 text-muted-foreground/40" />
-                              </div>
-                            )}
+                    {/* Desktop skeleton */}
+                    <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-1">
+                      {Array.from({ length: 18 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
+                          <div className="w-10 h-14 rounded-md bg-muted/50 shrink-0" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 bg-muted/50 rounded w-4/5" />
+                            <div className="h-2.5 bg-muted/30 rounded w-1/3" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (isSearchActive ? searchGames : filteredGames).length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>{isSearchActive ? `No games found for "${searchQuery}"` : 'No games found'}</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Mobile: poster grid */}
+                    <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {(isSearchActive ? searchGames : filteredGames).map(game => {
+                        const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
+                        const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
+                        return (
+                          <div key={game.id} className="group cursor-pointer relative" onClick={() => navigate(`/game/${game.id}`)}>
+                            <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20">
+                              {coverArt && (
+                                <img
+                                  src={coverArt}
+                                  alt={game.title}
+                                  className="w-full h-full object-cover group-hover:scale-105"
+                                  style={{ opacity: 0, transition: 'opacity 0.25s ease, transform 0.3s ease' }}
+                                  onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
+                                />
+                              )}
+                              {score > 0 && !isSearchActive && !loadingTrendingCounts && !loadingExtraGames && (
+                                <div className="absolute top-1.5 left-1.5 bg-accent/80 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                  <Flame className="w-2.5 h-2.5" />{score}
+                                </div>
+                              )}
+                            </div>
+                            <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">{game.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">{game.year}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Desktop: compact list (no tall posters) */}
+                    <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-1">
+                      {(isSearchActive ? searchGames : filteredGames).map(game => {
+                        const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
+                        const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
+                        return (
+                          <div key={game.id} className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-secondary/60 cursor-pointer transition-colors" onClick={() => navigate(`/game/${game.id}`)}>
+                            <div className="w-10 h-14 rounded-md overflow-hidden bg-muted/20 shrink-0">
+                              {coverArt && (
+                                <img
+                                  src={coverArt}
+                                  alt={game.title}
+                                  className="w-full h-full object-cover"
+                                  style={{ opacity: 0, transition: 'opacity 0.2s ease' }}
+                                  onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
+                                />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">{game.title}</h3>
+                              <p className="text-xs text-muted-foreground">{game.year}</p>
+                            </div>
                             {score > 0 && !isSearchActive && !loadingTrendingCounts && !loadingExtraGames && (
-                              <div className="absolute top-1.5 left-1.5 bg-accent/80 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                              <div className="shrink-0 text-accent text-[10px] font-bold flex items-center gap-0.5">
                                 <Flame className="w-2.5 h-2.5" />{score}
                               </div>
                             )}
                           </div>
-                          <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">
-                            {game.title}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-1">{game.year}</p>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
               </div>
             )}

@@ -100,7 +100,7 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="relative w-full max-w-md mx-4 bg-card rounded-2xl shadow-xl overflow-hidden"
+          className="relative w-full max-w-md mx-4 bg-card sm:bg-sidebar rounded-2xl shadow-xl overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
