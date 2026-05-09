@@ -8,6 +8,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GroupIcon } from '../components/GroupIcon';
 
 import { gamesAPI } from '../utils/api';
+import { analytics } from '../utils/analytics';
 import { groups as groupsAPI, profiles as profilesAPI, lfgFlares as flaresAPI, posts as postsAPI } from '../utils/supabase';
 
 function getCoverUrl(game: any): string | null {
@@ -297,6 +298,7 @@ export function CommunityDetail() {
       await groupsAPI.join(currentUser.id, communityId!);
       setIsMember(true);
       setLocalMemberCount(prev => prev + 1);
+      analytics.groupJoined(communityId!);
     } catch (err) {
       console.error('Failed to join group:', err);
       alert('Failed to join group. Please try again.');

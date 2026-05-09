@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { ArrowLeft, Globe, Users, Lock } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import { analytics } from '../utils/analytics';
 import type { GroupType } from '../data/data';
 import { GAMING_ICONS, DEFAULT_ICON_KEY, GroupIcon } from '../components/GroupIcon';
 
@@ -37,6 +38,7 @@ export function CreateGroup() {
     setError('');
     try {
       const group = await createGroup(name.trim(), description.trim(), icon, type);
+      analytics.groupCreated(group.id, type);
       navigate(`/group/${group.id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to create group. Please try again.');

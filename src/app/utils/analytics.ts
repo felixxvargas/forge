@@ -58,15 +58,46 @@ export function trackEvent(
 // ─── Forge-specific event helpers ────────────────────────────────────────────
 
 export const analytics = {
-  postCreated: (hasGame: boolean, hasImage: boolean) =>
-    trackEvent('post_created', { has_game: hasGame, has_image: hasImage }),
+  // ── Posts ──
+  postCreated: (
+    hasGame: boolean,
+    hasImage: boolean,
+    extra?: { post_type?: string; has_community?: boolean; has_link?: boolean; is_poll?: boolean; is_thread?: boolean }
+  ) => trackEvent('post_created', { has_game: hasGame, has_image: hasImage, ...extra }),
 
+  // ── Game Lists ──
+  listUpdated: (listType: string, totalGames: number, gamesAdded: number, gamesRemoved: number) =>
+    trackEvent('list_updated', { list_type: listType, total_games: totalGames, games_added: gamesAdded, games_removed: gamesRemoved }),
+
+  gameAddedToList: (gameId: string, gameTitle: string, listType: string) =>
+    trackEvent('game_added_to_list', { game_id: gameId, game_title: gameTitle, list_type: listType }),
+
+  // ── Games ──
   gameFollowed: (gameId: string, gameTitle: string) =>
     trackEvent('game_followed', { game_id: gameId, game_title: gameTitle }),
 
   gameUnfollowed: (gameId: string) =>
     trackEvent('game_unfollowed', { game_id: gameId }),
 
+  // ── Groups ──
+  groupCreated: (groupId: string, groupType: string) =>
+    trackEvent('group_created', { group_id: groupId, group_type: groupType }),
+
+  groupJoined: (groupId: string) =>
+    trackEvent('group_joined', { group_id: groupId }),
+
+  // ── LFG Flares ──
+  flareCreated: (gameId: string, gameTitle: string, flareType: string, playersNeeded: number) =>
+    trackEvent('flare_created', { game_id: gameId, game_title: gameTitle, flare_type: flareType, players_needed: playersNeeded }),
+
+  // ── Settings ──
+  settingsFeatureToggled: (featureName: string, newValue: string | boolean) =>
+    trackEvent('settings_feature_toggled', { feature_name: featureName, new_value: String(newValue) }),
+
+  settingsPageViewed: (section: string) =>
+    trackEvent('settings_page_viewed', { section }),
+
+  // ── Discovery ──
   profileViewed: (profileId: string) =>
     trackEvent('profile_viewed', { profile_id: profileId }),
 
@@ -76,6 +107,7 @@ export const analytics = {
   searchPerformed: (query: string, resultCount: number) =>
     trackEvent('search', { search_term: query, result_count: resultCount }),
 
+  // ── Auth ──
   signUp: (method: 'email' | 'google') =>
     trackEvent('sign_up', { method }),
 

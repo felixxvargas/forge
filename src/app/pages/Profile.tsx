@@ -371,7 +371,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>
 
         {/* Desktop skeleton — 2-column layout matching actual profile */}
-        <div className="max-lg:hidden flex flex-row w-full max-w-5xl mx-auto px-6 pt-8 gap-6 items-start animate-pulse">
+        <div className="hidden lg:flex flex-row w-full max-w-5xl mx-auto px-6 pt-8 gap-6 items-start animate-pulse">
           {/* Left col: profile card + about card */}
           <div className="w-[300px] shrink-0 sticky top-[72px]">
             {/* Profile header card */}

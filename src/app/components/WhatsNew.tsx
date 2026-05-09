@@ -11,6 +11,18 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.3.2',
+    date: 'May 2026',
+    title: "What's New in Forge",
+    summary: "Game discovery in list editor, smarter search results, and profile improvements.",
+    highlights: [
+      'Discover games while editing your library or lists — browse New Releases, Recently Added by Forge users, and Popular on Forge without leaving the editor',
+      'Cleaner game search results — DLCs, season passes, and duplicate edition variants are filtered out automatically',
+      'Profile pages now use a wider desktop layout for better use of screen space',
+      'Bug fixes and performance improvements across the app',
+    ],
+  },
+  {
     version: 'v0.3.1',
     date: 'April 2026',
     title: "What's New in Forge",

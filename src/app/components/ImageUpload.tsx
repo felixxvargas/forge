@@ -29,21 +29,15 @@ export function ImageUpload({
   bucketType = 'avatar'
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(existingUrl || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingRef = useRef(false);
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processFile = useCallback(async (file: File) => {
     if (uploadingRef.current) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    // Reset input immediately so re-selecting the same file works
-    // and stale change events can't re-fire
-    if (fileInputRef.current) fileInputRef.current.value = '';
-
-    // Validate file type based on accept prop
     const isImageOnly = accept === 'image/*';
     if (isImageOnly && !file.type.startsWith('image/')) {
       setError('Please select an image file');
@@ -53,7 +47,6 @@ export function ImageUpload({
       return;
     }
 
-    // Validate file size
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       setError(`File size must be less than ${maxSizeMB}MB`);
@@ -66,15 +59,10 @@ export function ImageUpload({
     onUploadingChange?.(true);
 
     try {
-      // Create local preview
       const localPreview = URL.createObjectURL(file);
       setPreviewUrl(localPreview);
 
-      // Upload to backend (bucketType is the short key; api.ts maps it to the real bucket name)
-      console.log('[ImageUpload] Starting upload, bucketType:', bucketType);
       const result = await uploadAPI.uploadFile(file, bucketType) as { url: string; blurred?: boolean; reason?: string };
-
-      console.log('[ImageUpload] Upload result:', result);
 
       if (result.url) {
         onUpload(result.url, { blurred: result.blurred ?? false, reason: result.reason });
@@ -83,16 +71,7 @@ export function ImageUpload({
         throw new Error('Upload failed - no URL returned');
       }
     } catch (err: any) {
-      console.error('[ImageUpload] Upload error:', err);
-
-      // Display user-friendly error message
-      let errorMessage = 'Failed to upload file. Please try again.';
-
-      if (err.message) {
-        errorMessage = err.message;
-      }
-
-      setError(errorMessage);
+      setError(err.message || 'Failed to upload file. Please try again.');
       setPreviewUrl('');
     } finally {
       uploadingRef.current = false;
@@ -100,6 +79,12 @@ export function ImageUpload({
       onUploadingChange?.(false);
     }
   }, [bucketType, maxSizeMB, accept, onUpload, onUploadingChange]);
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (file) await processFile(file);
+  }, [processFile]);
 
   const handleRemove = () => {
     setPreviewUrl('');
@@ -124,14 +109,31 @@ export function ImageUpload({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={async (e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const file = e.dataTransfer.files[0];
+            if (file) await processFile(file);
+          }}
           disabled={isUploading}
           aria-label={isUploading ? 'Uploading image…' : `Upload ${accept === 'image/*' ? 'image' : 'image or video'}`}
-          className="w-full p-6 border-2 border-dashed border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+          className={`w-full p-6 border-2 border-dashed rounded-lg transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50 ${
+            isDragging
+              ? 'border-accent bg-accent/10 scale-[1.01]'
+              : 'border-border hover:border-accent hover:bg-accent/5'
+          }`}
         >
           {isUploading ? (
             <>
               <Loader2 className="w-8 h-8 text-accent animate-spin" />
               <span className="text-sm text-muted-foreground">Uploading...</span>
+            </>
+          ) : isDragging ? (
+            <>
+              <Upload className="w-8 h-8 text-accent" />
+              <span className="text-sm font-medium text-accent">Drop to upload</span>
             </>
           ) : (
             <>
@@ -139,7 +141,7 @@ export function ImageUpload({
               <span className="text-sm font-medium">
                 Upload {accept === 'image/*' ? 'Image' : 'Image or Video'}
               </span>
-              <span className="text-xs text-muted-foreground">Max {maxSizeMB}MB</span>
+              <span className="text-xs text-muted-foreground">Drop a file or click · Max {maxSizeMB}MB</span>
             </>
           )}
         </button>

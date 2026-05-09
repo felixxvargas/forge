@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Search, Loader2, Flame, Users, Gamepad2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useNavigate, useSearchParams } from '@/compat/router';
 import { gamesAPI } from '../utils/api';
+import { analytics } from '../utils/analytics';
 import { lfgFlares, groups as groupsAPI } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
 
@@ -108,6 +109,7 @@ export function CreateLFGFlarePage() {
         expires_at: expiresAt,
         community_id: scope === 'group' ? selectedGroup?.id : undefined,
       });
+      analytics.flareCreated(selectedGame.id, selectedGame.title, flareType, playersNeeded);
 
       const typeLabel = flareType === 'lfg' ? 'Looking for Group' : 'Looking for More';
       const parts = [

@@ -7,6 +7,7 @@ import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../utils/supabase';
+import { analytics } from '../utils/analytics';
 import { RELEASES } from '../components/WhatsNew';
 
 interface LinkedAccount {
@@ -218,7 +219,7 @@ export function Settings() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Appearance</h2>
           <div className="bg-card rounded-xl overflow-hidden">
             <button
-              onClick={toggleTheme}
+              onClick={() => { toggleTheme(); analytics.settingsFeatureToggled('theme', theme === 'dark' ? 'light' : 'dark'); }}
               className="w-full px-4 py-4 flex items-center justify-between hover:bg-secondary transition-colors"
             >
               <div className="flex items-center gap-3">

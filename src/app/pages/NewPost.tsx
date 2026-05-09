@@ -12,6 +12,7 @@ import { ImageUpload } from '../components/ImageUpload';
 import { LinkPreview } from '../components/LinkPreview';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { gamesAPI } from '../utils/api';
+import { analytics } from '../utils/analytics';
 import { gameSearchCache, buildHighlightedHtml, gameCoverCache } from '../utils/mentionHighlight';
 import type { User } from '../data/data';
 
@@ -572,6 +573,12 @@ export function NewPost() {
         );
       }
       localStorage.removeItem(AUTO_DRAFT_KEY);
+      analytics.postCreated(gameIds.length > 0, (images?.length ?? 0) > 0, {
+        has_community: !!activeCommunityId,
+        has_link: !!effectiveLinkUrl,
+        is_poll: !!pollData,
+        is_thread: threadPosts.filter(p => p.trim()).length > 0,
+      });
       // After posting to a group, go back to the group page so the post appears immediately
       if (activeCommunityId) {
         navigate(`/group/${activeCommunityId}`, { replace: true });

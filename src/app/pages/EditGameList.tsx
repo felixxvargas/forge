@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, GripVertical, Trash2, Check, Loader2, Search, Send, Gamepad2 } from 'lucide-react';
 import type { GameListType } from '../data/data';
 import { gamesAPI, rawgAPI } from '../utils/api';
+import { analytics } from '../utils/analytics';
 import { getGameRank, loadTrendingRankings } from '../utils/gameRankings';
 import { supabase, userGamesAPI } from '../utils/supabase';
 import { useNavigate, useParams, useSearchParams } from '@/compat/router';
@@ -312,6 +313,7 @@ export function EditGameList() {
       const next = [game, ...selectedGames];
       setSelectedGames(next);
       updateGameList(listType, next);
+      analytics.gameAddedToList(String(game.id), game.title, listType);
       setRecentSearches(prev => {
         const entry = { title: game.title, cover: getCoverUrl(game) };
         const updated = [entry, ...prev.filter(e => e.title !== game.title)].slice(0, 8);
@@ -356,6 +358,10 @@ export function EditGameList() {
     const newlyAdded = selectedGames.filter(
       g => !initialGamesRef.current.some(ig => String(ig.id) === String(g.id))
     );
+    const removed = initialGamesRef.current.filter(
+      ig => !selectedGames.some(g => String(g.id) === String(ig.id))
+    ).length;
+    analytics.listUpdated(listType, selectedGames.length, newlyAdded.length, removed);
     if (newlyAdded.length > 0) {
       const names = newlyAdded.map(g => g.title);
       const preview = names.length === 1

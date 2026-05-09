@@ -26,16 +26,23 @@ export default async function middleware(request: Request): Promise<Response | u
   const segments = url.pathname.split('/').filter(Boolean);
   const hasRedirectFlag = url.searchParams.has('_r');
 
-  // /post/[postId] — inject post OG tags for social crawlers; skip SPA/RSC navigations
-  if (segments.length === 2 && segments[0] === 'post' && !hasRedirectFlag) {
+  // 2-segment routes that get custom OG injection (/post/:id, /game/:id, /group/:id)
+  if (segments.length === 2 && !hasRedirectFlag) {
     const isNextNavigation = !!(
       request.headers.get('RSC') ||
       request.headers.get('Next-Router-Prefetch') ||
       request.headers.get('Next-Url')
     );
     if (!isNextNavigation) {
-      const target = new URL(`/api/post-og/${segments[1]}`, url.origin);
-      return fetch(target.toString(), { headers: request.headers });
+      if (segments[0] === 'post') {
+        return fetch(new URL(`/api/post-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+      }
+      if (segments[0] === 'game') {
+        return fetch(new URL(`/api/game-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+      }
+      if (segments[0] === 'group') {
+        return fetch(new URL(`/api/group-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+      }
     }
     return undefined;
   }
@@ -51,6 +58,20 @@ export default async function middleware(request: Request): Promise<Response | u
     const isNextNavigation = !!(request.headers.get('RSC') || request.headers.get('Next-Router-Prefetch') || request.headers.get('Next-Url'));
     if (!isNextNavigation) {
       const target = new URL('/api/android-beta-og', url.origin);
+      return fetch(target.toString(), { headers: request.headers });
+    }
+  }
+
+  // /list — inject list OG tags (has userId + type as query params)
+  if (segment === 'list' && url.searchParams.has('userId') && !hasRedirectFlag) {
+    const isNextNavigation = !!(
+      request.headers.get('RSC') ||
+      request.headers.get('Next-Router-Prefetch') ||
+      request.headers.get('Next-Url')
+    );
+    if (!isNextNavigation) {
+      const target = new URL('/api/list-og', url.origin);
+      target.search = url.search;
       return fetch(target.toString(), { headers: request.headers });
     }
   }
