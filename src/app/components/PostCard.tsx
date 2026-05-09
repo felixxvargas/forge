@@ -502,7 +502,13 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
           <>
             {post.content ? (
               <p className="mb-3 whitespace-pre-wrap">
-                <LinkifyMentions text={post.content} gameId={post.game_id} gameTitle={post.game_title} />
+                <LinkifyMentions
+                  text={post.content}
+                  gameId={post.game_id}
+                  gameTitle={post.game_title}
+                  gameIds={(post as any).game_ids}
+                  gameTitles={(post as any).game_titles}
+                />
               </p>
             ) : null}
             {previewUrl && <LinkPreview url={previewUrl} />}
@@ -596,16 +602,16 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
               <button
                 key={g.id}
                 onClick={(e) => { e.stopPropagation(); navigate(`/game/${g.id}`); }}
-                className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary border border-accent/20 transition-colors max-w-[260px] text-left"
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
               >
                 {cover ? (
                   <img src={cover} alt={g.title} className="w-8 h-10 rounded-md object-cover shrink-0" />
                 ) : (
-                  <Gamepad2 className="w-5 h-5 text-accent/70 shrink-0" />
+                  <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-[10px] text-accent/60 font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
-                  <p className="text-sm font-bold text-accent truncate leading-tight">{g.title}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
+                  <p className="text-sm font-semibold truncate leading-tight">{g.title}</p>
                 </div>
               </button>
             );

@@ -5,14 +5,24 @@ import { useAppData } from '../context/AppDataContext';
 interface LinkifyMentionsProps {
   text: string;
   onMentionClick?: (handle: string) => void;
-  /** If provided, @GameTitle occurrences will link to the game page */
+  /** Single tagged game (legacy / single-tag posts) */
   gameId?: string;
   gameTitle?: string;
+  /** Multi-game tagged posts — parallel arrays */
+  gameIds?: string[];
+  gameTitles?: string[];
 }
 
-export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: LinkifyMentionsProps) {
+export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle, gameIds, gameTitles }: LinkifyMentionsProps) {
   const navigate = useNavigate();
   const { getUserByHandle } = useAppData();
+
+  // Build a unified list of { id, title } for all tagged games
+  const games: { id: string; title: string }[] = (() => {
+    const ids = (gameIds?.length ?? 0) > 0 ? gameIds! : gameId ? [gameId] : [];
+    const titles = (gameTitles?.length ?? 0) > 0 ? gameTitles! : gameTitle ? [gameTitle] : [];
+    return ids.map((id, i) => ({ id, title: titles[i] ?? '' })).filter(g => g.id && g.title);
+  })();
 
   // Process a text segment for URLs and @mentions
   const processSegment = (segment: string, keyPrefix: string): ReactNode[] => {
@@ -26,27 +36,25 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
         parts.push(segment.substring(lastIndex, match.index));
       }
       if (match[1]) {
-        // URL — only render as a link if it's http/https (defense-in-depth; regex already enforces this)
         const url = match[1];
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
           parts.push(url);
         } else {
-        const displayUrl = url.length > 60 ? url.slice(0, 57) + '...' : url;
-        parts.push(
-          <a
-            key={`${keyPrefix}-url-${match.index}`}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="font-bold text-accent hover:underline break-all"
-          >
-            {displayUrl}
-          </a>
-        );
+          const displayUrl = url.length > 60 ? url.slice(0, 57) + '...' : url;
+          parts.push(
+            <a
+              key={`${keyPrefix}-url-${match.index}`}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="font-bold text-accent hover:underline break-all"
+            >
+              {displayUrl}
+            </a>
+          );
         }
       } else {
-        // @mention
         const handle = match[0];
         const handleWithoutAt = match[2];
         parts.push(
@@ -74,10 +82,13 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
     return parts;
   };
 
-  // If a game is tagged, extract both "@GameTitle" (old posts) and bare "GameTitle" (new posts)
-  if (gameTitle && gameId) {
-    const escapedTitle = gameTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const gameRegex = new RegExp(`@?${escapedTitle}`, 'g');
+  // With tagged games: split the text on every game title (supports @GameTitle and bare GameTitle),
+  // then process remaining segments for URLs/@mentions.
+  if (games.length > 0) {
+    // Build one regex that matches any game title (with optional leading @)
+    const escapedTitles = games.map(g => g.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const gameRegex = new RegExp(`(@?(?:${escapedTitles.join('|')}))`, 'g');
+
     const parts: ReactNode[] = [];
     let lastIndex = 0;
     let match;
@@ -86,15 +97,23 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
       if (match.index > lastIndex) {
         parts.push(...processSegment(text.substring(lastIndex, match.index), `pre-${match.index}`));
       }
-      parts.push(
-        <button
-          key={`game-${match.index}`}
-          onClick={(e) => { e.stopPropagation(); navigate(`/game/${gameId}`); }}
-          className="text-accent hover:underline font-bold"
-        >
-          {match[0]}
-        </button>
-      );
+      // Find which game this matched (strip leading @ for lookup)
+      const matchedText = match[0];
+      const stripped = matchedText.startsWith('@') ? matchedText.slice(1) : matchedText;
+      const game = games.find(g => g.title === stripped);
+      if (game) {
+        parts.push(
+          <button
+            key={`game-${match.index}`}
+            onClick={(e) => { e.stopPropagation(); navigate(`/game/${game.id}`); }}
+            className="text-accent hover:underline font-bold"
+          >
+            {matchedText}
+          </button>
+        );
+      } else {
+        parts.push(matchedText);
+      }
       lastIndex = match.index + match[0].length;
     }
 
@@ -105,7 +124,7 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle }: Lin
     return <>{parts}</>;
   }
 
-  // No game — process URLs and @mentions
+  // No games — process URLs and @mentions only
   const parts = processSegment(text, 'u');
   return <>{parts.length > 0 ? parts : text}</>;
 }
