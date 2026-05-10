@@ -822,7 +822,7 @@ OG image generator: `api/og.tsx` — supports types `profile`, `post`, `game`, `
 ---
 
 **Last Updated**: May 9, 2026
-**Version**: v0.5.0
+**Version**: v0.3.2
 **Maintainer**: Forge Development Team
 
 ---
@@ -842,26 +842,9 @@ OG image generator: `api/og.tsx` — supports types `profile`, `post`, `game`, `
 - **Post improvements**: Sent bubble gradient, glass received bubbles, invite group post visibility, game-add post prompt.
 - **UI polish**: Bottom nav blur, card lighting effects, badge polish, profile skeleton, LFG gradient fix, nav blur, platform toggle improvements.
 
-### v0.4.1 — April 19, 2026
-- **DM read receipts**: Replaced ✓/✓✓ checkmarks with plain "Read" text shown only below the last sent message when read.
-- **Group read receipts**: Added `group_thread_reads` table; last message shows up to 4 reader avatars + overflow badge (+N); tappable to open a full reader list sheet.
-- **Message reactions**: Long-press any DM or group message to open a context menu with emoji reactions and a delete option.
-- **Typing indicators**: Real-time typing indicators for both DM and group chat views.
-- **Group tag on posts**: Moved group indicator below the post header and above content; shows group profile image; tapping navigates to `/group/:groupId` (was `/community/:groupId` — 404 fixed).
-- **Compose auto-tag**: Navigating to New Post from a Game Detail or Group Detail page auto-populates the game/group tag.
-- **Game Detail compose button**: Added floating compose button to Game Detail pages.
-- **Header logo centering**: Forge logo lockup is now centered in the top nav using absolute positioning.
-- **DM preview text**: Decrypts and shows real message previews in the conversation list instead of static "New message".
-- **DM compose modal**: Raised z-index so the CTA button is never hidden by the bottom nav.
-- **Follower count flash fix**: Removed stale cache seed that caused a count flash on profile load.
-- **Repost +2 bug fix**: Removed redundant `sync_repost_count` RPC call from `postsAPI.repost/unrepost`; trigger now handles both regular reposts and quote posts consistently. Run `20260419_fix_repost_count_trigger.sql` migration.
-- **Skeleton loaders**: DM list and Profile skeletons updated to replicate actual UI layout.
-- **Explore groups button**: Create New Group button is now compact (`inline-flex`) instead of full-width on desktop.
-
-### v0.4.0 — April 13, 2026
-- **Edge function rebuilt (v3)**: Removed ~2100 lines of legacy Figma Make KV-store code (auth, user CRUD, post CRUD, likes, follows, blocks, mutes, admin endpoints). Edge function is now ~270 lines focused exclusively on games (IGDB) and file upload/moderation.
-- **Handle check fixed**: `/users/check-handle/:handle` now queries the `profiles` table instead of the legacy `kv_store_17285bd7` table.
-- **`api.ts` trimmed**: Removed dead exports `authAPI`, `postAPI`, `safetyAPI`, `followAPI`, `blueskyAPI`, `adminAPI`, and unused `userAPI` methods. Removed verbose token logging. File reduced from 696 → 270 lines.
-- **`supabase.ts` fixes**: Removed debug `console.log` in `profiles.update`. Fixed `getByHandle()` to use `.maybeSingle()` (was `.single()`, threw on no match). Fixed follow/unfollow counter race condition — replaced read-modify-write pattern with a count query from the `follows` table (authoritative, no concurrent-update skew).
-- **Stripe idempotency**: `create-payment-intent` now sends an `Idempotency-Key` header scoped to `userId`, preventing duplicate charges on retries.
-- **Sentry fix**: `useBlueskyData` hook now guards `if (!user) return` at the top of the effect and uses `[user?.id]` as the dependency, preventing `TypeError: Cannot read properties of null (reading 'id')` when `PostCard` renders with a null user (FORGE-6, FORGE-7 resolved).
+### v0.3.2 — May 9, 2026
+- **Profile skeleton**: Rebuilt with distinct mobile and desktop layouts matching actual two-column profile UI. `LoadingScreen` profile skeleton updated to match (`/@handle` routes now also trigger the profile skeleton).
+- **Profile desktop layout**: Left column fixed at `lg:w-[340px]`; right column capped at `lg:max-w-2xl` to keep posts readable.
+- **Admin stats**: New Vercel Edge Function at `api/admin/stats.ts` (replaces Next.js App Router route that was incompatible with static export).
+- **Android static export**: All 17 dynamic page wrappers now export `generateStaticParams` with placeholder params so Next.js 15.5.x static export check passes; server component pages use direct Supabase REST API instead of `cookies()`-based client.
+- **Sentry (Next.js)**: Added `sentry.edge.config.ts`, `onRouterTransitionStart` in client config, `onRequestError` in `instrumentation.ts` for full Next.js 15 App Router coverage.
