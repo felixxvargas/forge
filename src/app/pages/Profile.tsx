@@ -298,20 +298,16 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   // If profile not loaded yet, show skeleton
   if (!profileUser) {
-    const PostCardSkeleton = ({ imageRow = false }: { imageRow?: boolean }) => (
-      <div className="bg-card rounded-xl p-4">
-        <div className="flex gap-3">
-          <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
-          <div className="flex-1 space-y-2 min-w-0">
-            <div className="flex items-center gap-2">
-              <div className="h-4 bg-muted/50 rounded w-28" />
-              <div className="h-3 bg-muted/25 rounded w-16" />
-            </div>
-            <div className="h-3.5 bg-muted/30 rounded w-full" />
-            <div className="h-3.5 bg-muted/30 rounded w-5/6" />
-            {imageRow && <div className="mt-3 h-32 bg-muted/20 rounded-lg w-full" />}
-            <div className="h-3 bg-muted/20 rounded w-4/5" />
-          </div>
+    const GameListCardSkeleton = () => (
+      <div className="rounded-xl bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="h-4 bg-muted/40 rounded w-32" />
+          <div className="h-4 bg-muted/20 rounded w-12" />
+        </div>
+        <div className="flex gap-2 overflow-hidden">
+          {Array.from({ length: 6 }).map((_, j) => (
+            <div key={j} className="shrink-0 rounded-lg bg-muted/30" style={{ width: 68, aspectRatio: '3/4' }} />
+          ))}
         </div>
       </div>
     );
@@ -319,21 +315,19 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     return (
       <div className="min-h-screen">
         <Header />
-        {/* Mobile skeleton */}
-        <div className="lg:hidden flex flex-col animate-pulse">
+        {/* ── Mobile skeleton ── */}
+        <div className="lg:hidden animate-pulse">
           {/* Profile header card */}
-          <div className="w-full max-w-2xl mx-auto px-4 pt-5 pb-4">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
-                <div className="space-y-2 pt-1">
-                  <div className="h-5 bg-muted/50 rounded w-36" />
-                  <div className="h-3.5 bg-muted/30 rounded w-24" />
-                </div>
+          <div className="bg-card px-5 pt-5 pb-4 rounded-b-2xl mb-3">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
+              <div className="flex-1 pt-1 space-y-2">
+                <div className="h-5 bg-muted/50 rounded w-36" />
+                <div className="h-3.5 bg-muted/30 rounded w-24" />
               </div>
-              <div className="w-9 h-9 rounded-lg bg-muted/30" />
+              <div className="w-9 h-9 rounded-lg bg-muted/30 shrink-0" />
             </div>
-            <div className="space-y-2 mb-3">
+            <div className="space-y-1.5 mb-4">
               <div className="h-3.5 bg-muted/35 rounded w-full" />
               <div className="h-3.5 bg-muted/35 rounded w-2/3" />
             </div>
@@ -348,44 +342,45 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   <div className="h-3 bg-muted/25 rounded w-16" />
                 </div>
               </div>
-              <div className="h-9 bg-muted/35 rounded-full w-24" />
+              <div className="h-9 bg-muted/35 rounded-xl w-24" />
             </div>
-            <div className="flex gap-2 mb-4">
-              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />)}
+            <div className="flex gap-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />
+              ))}
             </div>
           </div>
           {/* Tab bar */}
-          <div className="flex border-b border-border/50 px-4 mb-4 w-full max-w-2xl mx-auto">
-            {[28, 40, 28, 48, 44].map((w, i) => (
-              <div key={i} className="px-3 py-3">
+          <div className="flex border-b border-border/50 mb-4">
+            {[36, 40, 32, 40, 44].map((w, i) => (
+              <div key={i} className="flex-1 flex justify-center py-3">
                 <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
               </div>
             ))}
           </div>
-          {/* Post card skeletons — enough to overflow the screen */}
-          <div className="w-full max-w-2xl mx-auto px-4 flex flex-col gap-3 pb-20">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <PostCardSkeleton key={i} imageRow={i === 1 || i === 4} />
+          {/* Game list cards — matches Lists tab default */}
+          <div className="px-4 space-y-4 pb-20">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <GameListCardSkeleton key={i} />
             ))}
           </div>
         </div>
 
-        {/* Desktop skeleton — 2-column layout matching actual profile */}
-        <div className="hidden lg:flex flex-row w-full max-w-5xl mx-auto px-6 pt-8 gap-6 items-start animate-pulse">
+        {/* ── Desktop skeleton — 2-column layout matching actual profile ── */}
+        <div className="hidden lg:flex lg:flex-row lg:gap-6 lg:items-start lg:pt-8 lg:px-6 w-full max-w-7xl mx-auto animate-pulse">
           {/* Left col: profile card + about card */}
-          <div className="w-[300px] shrink-0 sticky top-[72px]">
-            {/* Profile header card */}
-            <div className="rounded-2xl bg-card p-5 space-y-4 mb-4">
+          <div className="w-[300px] shrink-0 sticky top-[72px] self-start space-y-4">
+            <div className="rounded-2xl bg-card p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
-                <div className="space-y-2 flex-1">
+                <div className="flex-1 space-y-2">
                   <div className="h-5 bg-muted/50 rounded w-32" />
                   <div className="h-3.5 bg-muted/30 rounded w-20" />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="h-3.5 bg-muted/35 rounded w-full" />
-                <div className="h-3.5 bg-muted/35 rounded w-5/6" />
+                <div className="h-3.5 bg-muted/35 rounded w-4/5" />
               </div>
               <div className="flex gap-5">
                 <div className="space-y-1">
@@ -397,50 +392,39 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   <div className="h-3 bg-muted/25 rounded w-16" />
                 </div>
               </div>
-              <div className="h-9 bg-muted/35 rounded-full w-full" />
+              <div className="h-9 bg-muted/35 rounded-xl w-full" />
               <div className="flex gap-2">
-                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />)}
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />
+                ))}
               </div>
             </div>
-            {/* About card */}
             <div className="rounded-2xl bg-card px-5 py-4 space-y-3">
               <div className="h-4 bg-muted/40 rounded w-16" />
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="h-3.5 bg-muted/25 rounded w-full" />
                 <div className="h-3.5 bg-muted/25 rounded w-4/5" />
                 <div className="h-3.5 bg-muted/25 rounded w-3/5" />
               </div>
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 flex-wrap pt-1">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="h-7 bg-muted/20 rounded-full w-20" />
                 ))}
               </div>
             </div>
           </div>
-          {/* Right col: tabs + game list rows extending past screen */}
+          {/* Right col: tab bar + game list cards */}
           <div className="flex-1 min-w-0">
-            {/* Tab bar */}
             <div className="flex border-b border-border/50 mb-5">
-              {[44, 32, 40, 36, 48].map((w, i) => (
+              {[36, 40, 32, 44, 40].map((w, i) => (
                 <div key={i} className="px-4 py-3">
                   <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
                 </div>
               ))}
             </div>
-            {/* Game list rows */}
-            <div className="space-y-6">
+            <div className="space-y-5">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-xl bg-card p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="h-4 bg-muted/40 rounded w-32" />
-                    <div className="h-4 bg-muted/20 rounded w-12" />
-                  </div>
-                  <div className="flex gap-2">
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <div key={j} className="shrink-0 rounded-lg bg-muted/30" style={{ width: 72, aspectRatio: '3/4' }} />
-                    ))}
-                  </div>
-                </div>
+                <GameListCardSkeleton key={i} />
               ))}
             </div>
           </div>
@@ -787,7 +771,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
         <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:px-6">
         {/* LEFT COLUMN — profile header + about (desktop) */}
-        <div className="lg:w-[340px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
+        <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
         <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl lg:rounded-2xl mb-4" style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(255,255,255,0.055) 0%, transparent 55%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.18)' }}>
           {/* Back button for other users' profiles */}

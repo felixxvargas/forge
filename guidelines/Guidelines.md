@@ -68,8 +68,8 @@ Forge bridges the gap between different gaming ecosystems and social media platf
 | Layer | Technology |
 |-------|-----------|
 | Framework | React 18 + TypeScript 5 |
-| Build Tool | Vite 6 + `@sentry/vite-plugin` |
-| Router | React Router v7 |
+| Build Tool | Next.js 15 App Router + Vercel (web) · Vite 6 (Android/Capacitor only) |
+| Router | Next.js App Router (web) · React Router v7 (Android/Capacitor only) |
 | Styling | Tailwind CSS v4 (via `@tailwindcss/vite`) |
 | Animation | Motion (`motion/react`) |
 | State | React Context API |
@@ -626,16 +626,20 @@ Provides global state:
 - Tracks: page views, post creation, game follows, profile views, search, sign-up, login
 
 ### Sentry
-- Initialized in `main.tsx` via `Sentry.init()` when `VITE_SENTRY_DSN` is present
-- Only enabled in production (`import.meta.env.PROD`)
-- **Release tracking**: `@sentry/vite-plugin` in `vite.config.ts` — on every Vercel build:
-  - Uploads source maps (deleted from public bundle after upload)
-  - Creates a Sentry release named after the git commit SHA (`VERCEL_GIT_COMMIT_SHA`)
-  - Marks the release as deployed
+**Web (Next.js)** — `@sentry/nextjs` v10:
+- `sentry.client.config.ts` — client init; exports `onRouterTransitionStart` for App Router navigation tracking
+- `sentry.server.config.ts` — server init (Node.js runtime)
+- `sentry.edge.config.ts` — edge/middleware init
+- `instrumentation.ts` — Next.js lifecycle hook; imports server/edge configs by runtime, exports `onRequestError`
+- DSN: `VITE_SENTRY_DSN` (webpack DefinePlugin maps it for the client bundle; `process.env` for server/edge)
+- `withSentryConfig` in `next.config.ts` handles source map uploads and release creation
+
+**Android** — `@sentry/react` initialized in `src/main.tsx` when `VITE_SENTRY_DSN` is present
+
+- **Release tracking**: `@sentry/nextjs`'s webpack plugin — on every Vercel build creates a Sentry release named after `VERCEL_GIT_COMMIT_SHA` and uploads source maps
 - **GitHub release integration**: `.github/workflows/sentry-release.yml`
   - Push to `main` → Sentry release from short commit SHA
   - GitHub Release published → Sentry release from tag name (e.g. `v1.2.0`) with full commit association
-- `release: import.meta.env.VITE_SENTRY_RELEASE` in `Sentry.init` tags every error to the exact build
 
 **Required env vars for Sentry release tracking:**
 | Variable | Where to add |
@@ -686,8 +690,139 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 
 ---
 
-**Last Updated**: April 30, 2026
-**Version**: v0.4.2
+---
+
+## UI Conventions
+
+### Design Tokens
+| Token | Value | Usage |
+|-------|-------|-------|
+| `accent` | CSS var (lime `#E7FFC4` dark / `#6aaa1a` light) | Primary CTA buttons, active states, highlights |
+| `text-[#1c1228]` | Deep purple | Text on accent-colored backgrounds (buttons, pills) |
+| `bg-card` | CSS var | Surface backgrounds |
+| `bg-secondary` | CSS var | Secondary surfaces, inactive chips |
+| `border-border` | CSS var | All borders |
+| `text-muted-foreground` | CSS var | Secondary text, placeholders |
+
+### Button Styles
+| Variant | Classes |
+|---------|---------|
+| Primary CTA | `bg-accent text-[#1c1228] hover:bg-accent/90 rounded-xl` |
+| Secondary | `bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 rounded-xl` |
+| Destructive | `bg-destructive text-white hover:bg-destructive/90` |
+| LFG/Flare | `border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 rounded-xl` |
+| Icon-only | Secondary style + `px-4 py-3` icon centered |
+
+### Filter Chips / Sub-tabs (Forge-branded)
+```
+Active:   bg-accent text-[#1c1228] px-4 py-2 rounded-full text-sm font-medium
+Inactive: bg-secondary text-muted-foreground hover:text-foreground px-4 py-2 rounded-full text-sm font-medium
+```
+Used in: Explore filter chips, Explore Groups sub-tabs (Groups / Flares).
+
+### Main Tab Bar
+```
+Active:   text-accent border-b-2 border-accent
+Inactive: text-muted-foreground hover:text-foreground
+```
+
+---
+
+## Layout Patterns
+
+### Desktop Two-Column
+```jsx
+<div className="lg:flex lg:flex-row lg:gap-6 lg:items-start lg:px-6 lg:pt-6">
+  {/* Sidebar — left, sticky */}
+  <div className="lg:w-80 lg:shrink-0 lg:sticky lg:top-[57px] lg:self-start lg:space-y-4">
+    ...
+  </div>
+  {/* Main content — right */}
+  <div className="lg:flex-1 lg:min-w-0">
+    ...
+  </div>
+</div>
+```
+Used in: CommunityDetail (`lg:w-80`), GameDetail, Profile (`lg:w-[300px]` left column).
+
+> **Note**: Use `lg:flex-row` (sidebar left, content right). Never use `flex-row-reverse`. To show/hide elements at breakpoints use `hidden lg:flex` (not `max-lg:hidden flex` — the unconditional `flex` wins over `max-lg:hidden`).
+
+### Profile Desktop Left Column
+Width: `lg:w-[300px]`. Sticky at `top-[72px]`.
+
+### Skeleton / Loading States
+Show skeleton on first data load only (`!profileUser` / `loadingState && data.length === 0`). Use `animate-pulse` with muted placeholder shapes matching the real layout. Profile has two distinct skeleton variants: mobile (`lg:hidden`) and desktop (`hidden lg:flex`).
+
+---
+
+## Page-Specific Notes
+
+### Explore
+**Tab order**: Posts → Users → Games → Groups
+
+**Search results order** (all tabs search):
+1. Games
+2. Forge users
+3. Forge posts
+4. External accounts (Bluesky / Mastodon) — labeled "Also on the web"
+5. Groups
+
+**Groups tab sub-tabs** (Forge-branded pills):
+- **Groups** — grid of community cards + "Create new group" CTA
+- **Flares** — active LFG/LFM flares with count badge + "Create Flare" CTA
+
+**Search results game carousel** — on desktop uses `lg:aspect-[3/2]` with `object-top` to crop portrait covers to half-height.
+
+**Games list** — unified poster grid (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6`), no separate mobile/desktop layouts.
+
+**External user Follow button**: `bg-accent text-[#1c1228]` (NOT `text-white`). `rounded-lg`, not `rounded-full`.
+
+### Profile
+Mobile action buttons (own profile, below active flares):
+1. **Create Content** — `bg-accent text-[#1c1228]` → `/new-post`
+2. **Create LFG Flare** — orange LFG style → `/create-flare`
+
+Desktop floating button stack (bottom-right): New Post + Create LFG Flare (own profile only).
+
+### Game Detail
+**Description expand**: relative container with gradient fade + explicit "Read more ↓ / Show less ↑" button (ChevronDown/Up icons). Always shown when description is present.
+
+**Right column order** (top → bottom): Active Flares → Posts → Related Games (Other Versions) → Expansions & DLC → Similar Games.
+
+**Share button**: icon-only square button (Upload icon) beside "Add to List" in action row. Opens `ShareModal` with game context.
+
+### Messages
+Skeleton persists until all DM partner profile pictures are loaded, with a 2 s max timeout fallback. Uses `new Image()` preload pattern.
+
+### Community (Group) Detail
+Desktop: sidebar (info, games, flares) on **left** (`lg:w-80`), posts feed on **right** (`lg:flex-1`).
+
+---
+
+## OG / Social Preview
+
+| Page | Handler | Cache |
+|------|---------|-------|
+| Profile `/:handle` | `api/profile-og/[handle].ts` | 60 s |
+| Post `/post/:id` | `api/post-og/[postId].ts` | 60 s |
+| Game `/game/:id` | `api/game-og/[gameId].ts` | 300 s |
+| Group `/group/:id` | `api/group-og/[groupId].ts` | 60 s |
+| List `/list?userId=` | `api/list-og.ts` | 60 s |
+| Android Beta `/android-beta` | `api/android-beta-og.ts` | — |
+
+OG image generator: `api/og.tsx` — supports types `profile`, `post`, `game`, `group`, `list`.
+
+---
+
+## Git Conventions
+- No `Co-Authored-By` attribution in commits
+- Commit messages: concise, imperative, describe the change (not the task)
+- Push to `main` triggers automatic Vercel deployment
+
+---
+
+**Last Updated**: May 9, 2026
+**Version**: v0.5.0
 **Maintainer**: Forge Development Team
 
 ---
