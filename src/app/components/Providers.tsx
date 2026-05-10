@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, type ReactNode } from 'react';
+import { SWRConfig } from 'swr';
 import { ThemeProvider } from '../context/ThemeContext';
 import { AppDataProvider } from '../context/AppDataContext';
 import { SidebarProvider } from '../context/SidebarContext';
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   return (
+    <SWRConfig value={{ revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false, dedupingInterval: 60000 }}>
     <SidebarProvider>
     <ThemeProvider>
       <AppDataProvider>
@@ -33,5 +35,6 @@ export function Providers({ children }: { children: ReactNode }) {
       </AppDataProvider>
     </ThemeProvider>
     </SidebarProvider>
+    </SWRConfig>
   );
 }

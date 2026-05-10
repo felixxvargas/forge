@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import { Profile } from '@/app/pages/Profile';
 import type { Metadata } from 'next';
 
+export const revalidate = 3600;
+
 export function generateStaticParams() { return [{ handle: '_' }]; }
 
 async function fetchProfile(handle: string | undefined) {

@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import { PostDetail } from '@/app/pages/PostDetail';
 import type { Metadata } from 'next';
 
+export const revalidate = 3600;
+
 export function generateStaticParams() { return [{ postId: '_' }]; }
 
 async function fetchPost(postId: string | undefined) {
