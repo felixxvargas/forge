@@ -978,33 +978,34 @@ export function GameDetail() {
       {/* Played list tray — shown after marking as played, optional secondary lists */}
       {showPlayedTray && (
         <div className="fixed inset-0 z-50" onClick={() => setShowPlayedTray(false)}>
-          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-black/60" />
           <div
-            className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl rounded-t-2xl pb-safe"
+            className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:right-auto lg:rounded-2xl lg:w-full lg:max-w-sm"
+            style={{ backgroundColor: '#2d1054' }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-4" />
-            <p className="text-center font-semibold mb-1 px-4">Also add to...</p>
-            <p className="text-center text-sm text-muted-foreground mb-4 px-4">Added to I've Played Before. Want to also add it to another list?</p>
-            <div className="divide-y divide-border border-t border-border">
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-4 lg:hidden" />
+            <p className="text-center font-semibold mb-1 px-4 pt-4 lg:pt-6">Also add to...</p>
+            <p className="text-center text-sm text-purple-300/80 mb-4 px-4">Added to I've Played Before. Want to also add it to another list?</p>
+            <div className="divide-y divide-purple-800/60 border-t border-purple-800/60">
               <button
                 onClick={() => handleAlsoAddToList('recently-played')}
-                className="w-full flex flex-col px-5 py-4 hover:bg-secondary transition-colors text-left"
+                className="w-full flex flex-col px-5 py-4 hover:bg-purple-800/40 transition-colors text-left"
               >
                 <span className="font-medium">Recently Played</span>
-                <span className="text-sm text-muted-foreground mt-0.5">I play this game regularly</span>
+                <span className="text-sm text-purple-300/70 mt-0.5">I play this game regularly</span>
               </button>
               <button
                 onClick={() => handleAlsoAddToList('completed')}
-                className="w-full flex flex-col px-5 py-4 hover:bg-secondary transition-colors text-left"
+                className="w-full flex flex-col px-5 py-4 hover:bg-purple-800/40 transition-colors text-left"
               >
                 <span className="font-medium">Completed</span>
-                <span className="text-sm text-muted-foreground mt-0.5">I reached my goal in this game</span>
+                <span className="text-sm text-purple-300/70 mt-0.5">I reached my goal in this game</span>
               </button>
             </div>
             <button
               onClick={() => setShowPlayedTray(false)}
-              className="w-full py-4 text-center text-sm text-muted-foreground border-t border-border"
+              className="w-full py-4 text-center text-sm text-purple-300/70 border-t border-purple-800/60 hover:text-purple-200 transition-colors"
             >
               No thanks
             </button>

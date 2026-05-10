@@ -16,6 +16,7 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
   const isSettings     = path.startsWith('/settings');
   const isMessages     = path === '/messages';
   const isProfile      = path === '/profile' || path.startsWith('/profile/') || /^\/@[^/]/.test(path);
+  const isGameDetail   = /^\/game\/[^/]+$/.test(path);
 
   /* ─────────────────────────── header ─────────────────────────── */
   const header = (() => {
@@ -279,7 +280,7 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
             </div>
           </div>
           {/* ── Desktop skeleton — 2-column layout matching actual profile ── */}
-          <div className="hidden lg:flex lg:flex-row lg:gap-6 lg:items-start lg:pt-8 lg:px-6 w-full max-w-7xl mx-auto animate-pulse">
+          <div className="hidden lg:flex lg:flex-row lg:gap-6 lg:items-start lg:pt-8 lg:pl-12 lg:pr-6 w-full max-w-7xl mx-auto animate-pulse">
             <div className="w-[340px] shrink-0 sticky top-[72px] self-start space-y-4">
               <div className="rounded-2xl bg-card p-5 space-y-4">
                 <div className="flex items-center gap-3">
@@ -343,9 +344,86 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
       );
     }
 
+    /* ── game detail ── */
+    if (isGameDetail) {
+      return (
+        <div className="animate-pulse">
+          {/* Hero banner */}
+          <div className="relative w-full max-w-2xl lg:max-w-5xl mx-auto mb-6 rounded-2xl overflow-hidden">
+            <div className="absolute inset-0 bg-muted/20" />
+            <div className="relative flex justify-center items-center px-4 pt-8 pb-8 min-h-[320px]">
+              <div className="relative z-10 w-48 rounded-xl bg-muted/40" style={{ aspectRatio: '3/4' }} />
+            </div>
+          </div>
+          {/* Content */}
+          <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4">
+            <div className="lg:flex lg:gap-6 lg:items-start">
+              {/* Left col: title + actions */}
+              <div className="lg:w-[320px] lg:shrink-0 mb-6">
+                <div className="space-y-2 mb-5">
+                  <div className="h-8 bg-muted/50 rounded w-52" />
+                  <div className="h-4 bg-muted/30 rounded w-20" />
+                  <div className="flex gap-1.5 pt-0.5">
+                    {['w-16', 'w-20', 'w-14'].map((w, i) => (
+                      <div key={i} className={`h-5 bg-muted/25 rounded-full ${w}`} />
+                    ))}
+                  </div>
+                  <div className="space-y-1.5 pt-1">
+                    {['w-full', 'w-5/6', 'w-4/5', 'w-3/4'].map((w, i) => (
+                      <div key={i} className={`h-3 bg-muted/30 rounded ${w}`} />
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1 h-11 bg-muted/30 rounded-xl" />
+                    <div className="flex-1 h-11 bg-muted/30 rounded-xl" />
+                  </div>
+                  <div className="h-11 bg-muted/30 rounded-xl" />
+                  <div className="flex gap-2">
+                    <div className="flex-1 h-11 bg-muted/25 rounded-xl" />
+                    <div className="w-12 h-11 bg-muted/25 rounded-xl" />
+                  </div>
+                  <div className="h-11 bg-muted/20 rounded-xl" />
+                </div>
+              </div>
+              {/* Right col: stats + posts */}
+              <div className="flex-1 min-w-0">
+                <div className="bg-card rounded-2xl p-4 mb-6 flex divide-x divide-border">
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 py-2">
+                      <div className="h-7 bg-muted/40 rounded w-10" />
+                      <div className="h-3 bg-muted/25 rounded w-12" />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-4">
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="bg-card rounded-xl p-4">
+                      <div className="flex gap-3">
+                        <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                        <div className="flex-1 space-y-2 pt-0.5">
+                          <div className="flex gap-2">
+                            <div className="h-3 bg-muted/50 rounded w-24" />
+                            <div className="h-3 bg-muted/30 rounded w-14" />
+                          </div>
+                          <div className="h-3 bg-muted/35 rounded w-full" />
+                          <div className="h-3 bg-muted/35 rounded w-4/5" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     /* ── generic feed (Feed, Explore, and other list paths) ── */
     const contentWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full'];
-    const cardCount = numCols === 1 ? 4 : numCols === 2 ? 6 : 9;
+    const cardCount = numCols === 1 ? 7 : numCols === 2 ? 10 : 14;
     const cards = Array.from({ length: cardCount }, (_, i) => ({ hasImage: i % 2 === 0, i }));
     const columns = splitToColumns(cards, numCols);
     return (
