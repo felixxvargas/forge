@@ -1,11 +1,12 @@
 import { useParams, useNavigate, useLocation } from '@/compat/router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
+import { ShareModal } from '../components/ShareModal';
 
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ export function GameDetail() {
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [postSort, setPostSort] = useState<PostSort>('latest');
 
+  const [shareOpen, setShareOpen] = useState(false);
   const [isPlayed, setIsPlayed] = useState(false);
   const [isOwned, setIsOwned] = useState(false);
   const [isFollowed, setIsFollowed] = useState(false);
@@ -476,14 +478,23 @@ export function GameDetail() {
             </div>
           )}
           {game.description && (
-            <button
-              type="button"
-              onClick={() => setDescExpanded(v => !v)}
-              className={`text-sm text-muted-foreground leading-relaxed text-left w-full ${descExpanded ? '' : 'line-clamp-4'}`}
-            >
-              {game.description}
-              {!descExpanded && <span className="text-accent/70 ml-1">more</span>}
-            </button>
+            <div>
+              <div className="relative">
+                <p className={`text-sm text-muted-foreground leading-relaxed ${descExpanded ? '' : 'line-clamp-4'}`}>
+                  {game.description}
+                </p>
+                {!descExpanded && (
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDescExpanded(v => !v)}
+                className="mt-2 flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80 transition-colors"
+              >
+                {descExpanded ? <>Show less <ChevronUp className="w-3.5 h-3.5" /></> : <>Read more <ChevronDown className="w-3.5 h-3.5" /></>}
+              </button>
+            </div>
           )}
         </div>
 
@@ -511,38 +522,6 @@ export function GameDetail() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
             </button>
-          </div>
-        )}
-
-        {/* Platform versions (other DB entries with similar title) */}
-        {gameVersions.length > 0 && (
-          <div className="mb-5">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Other Versions</h3>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {gameVersions.map((v: any) => {
-                const vCover = v.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? v.artwork?.[0]?.url;
-                const vPlatforms: string[] = v.platforms ?? [];
-                return (
-                  <button
-                    key={v.id}
-                    onClick={() => navigate(`/game/${v.id}`)}
-                    className="flex-shrink-0 flex flex-col items-center gap-1 p-2 rounded-xl bg-card hover:bg-secondary transition-colors w-24"
-                  >
-                    {vCover ? (
-                      <img src={vCover} alt={v.title} className="w-16 rounded-lg object-cover" style={{ aspectRatio: '3/4' }} />
-                    ) : (
-                      <div className="w-16 bg-secondary rounded-lg flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
-                        <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
-                      </div>
-                    )}
-                    <p className="text-xs font-medium text-center line-clamp-2 leading-tight">{v.title}</p>
-                    {vPlatforms[0] && (
-                      <p className="text-xs text-muted-foreground text-center truncate w-full">{vPlatforms[0]}</p>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
           </div>
         )}
 
@@ -630,14 +609,23 @@ export function GameDetail() {
               )}
               {isFollowed ? 'Following' : 'Follow Game'}
             </button>
-            {/* Add to List button */}
-            <button
-              onClick={() => setShowAddToListTray(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-medium text-sm bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 transition-all"
-            >
-              <List className="w-4 h-4" />
-              Add to List
-            </button>
+            {/* Add to List + Share row */}
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setShowAddToListTray(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 transition-all"
+              >
+                <List className="w-4 h-4" />
+                Add to List
+              </button>
+              <button
+                onClick={() => setShareOpen(true)}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 transition-all"
+                aria-label="Share game"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+            </div>
 
             {/* LFG / LFM buttons — fire flare branding */}
             <div className="flex gap-3 mb-6">
@@ -883,6 +871,37 @@ export function GameDetail() {
           </div>
         )}
 
+        {/* Other Versions — related platform ports/releases */}
+        {gameVersions.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Related Games</h2>
+            <div className="grid grid-cols-4 gap-3">
+              {gameVersions.map((v: any) => {
+                const vCover = v.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? v.artwork?.[0]?.url;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => navigate(`/game/${v.id}`)}
+                    className="flex flex-col gap-1 group"
+                  >
+                    <div className="rounded-lg overflow-hidden bg-secondary" style={{ aspectRatio: '3/4' }}>
+                      {vCover ? (
+                        <img src={vCover} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium line-clamp-2 leading-tight group-hover:text-accent transition-colors">{v.title}</p>
+                    {v.year && <p className="text-xs text-muted-foreground">{v.year}</p>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Similar Games module */}
         {similarGames.length > 0 && (
           <div className="mb-8">
@@ -990,6 +1009,20 @@ export function GameDetail() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Share modal */}
+      {game && (
+        <ShareModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          game={{
+            id: game.id,
+            title: game.title,
+            description: game.description,
+            coverUrl: game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url,
+          }}
+        />
       )}
 
       {/* Floating compose button — logged-in users only */}

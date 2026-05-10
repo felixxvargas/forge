@@ -787,7 +787,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
         <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:px-6">
         {/* LEFT COLUMN — profile header + about (desktop) */}
-        <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
+        <div className="lg:w-[340px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
         <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl lg:rounded-2xl mb-4" style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(255,255,255,0.055) 0%, transparent 55%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.18)' }}>
           {/* Back button for other users' profiles */}
@@ -1170,14 +1170,25 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           </div>
         )}
 
-        {/* Create LFG Flare button (own profile only, shown above tabs, mobile only) */}
+        {/* Mobile-only CTA buttons (own profile): Create Content above, Create LFG Flare below */}
         {isOwnProfile && (
-          <div className="lg:hidden px-4 mb-3">
+          <div className="lg:hidden px-4 mb-3 flex flex-col gap-2">
+            <button
+              onClick={() => navigate('/new-post')}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-accent text-accent-foreground hover:bg-accent/90 transition-all"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+                <line x1="16" y1="8" x2="2" y2="22" />
+                <line x1="17.5" y1="15" x2="9" y2="15" />
+              </svg>
+              Create Content
+            </button>
             <button
               onClick={() => navigate('/create-flare')}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/80 transition-all"
             >
-              <Flame className="w-6 h-6" />
+              <Flame className="w-4 h-4" />
               {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
             </button>
           </div>

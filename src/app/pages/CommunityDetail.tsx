@@ -355,8 +355,8 @@ export function CommunityDetail() {
           </div>
         )}
 
-        {/* 2-col on desktop: sidebar (info/games/flares) right, feed left */}
-        <div className="lg:flex lg:flex-row-reverse lg:gap-6 lg:items-start lg:px-6 lg:pt-6">
+        {/* 2-col on desktop: sidebar (info/games/flares) left, feed right */}
+        <div className="lg:flex lg:flex-row lg:gap-6 lg:items-start lg:px-6 lg:pt-6">
 
         {/* ── Sidebar col ── */}
         <div className="lg:w-80 lg:shrink-0 lg:sticky lg:top-[57px] lg:self-start lg:space-y-4">

@@ -49,6 +49,7 @@ export function Explore() {
   const [groupGameTitles, setGroupGameTitles] = useState<Record<string, string>>({});
   const [postSort, setPostSort] = useState<'latest' | 'top'>('latest');
   const [postFilter, setPostFilter] = useState<'all' | 'forge'>('all');
+  const [groupsSubTab, setGroupsSubTab] = useState<'groups' | 'flares'>('groups');
   const [realFollowerCounts, setRealFollowerCounts] = useState<Record<string, number>>({});
 
   // Global search state
@@ -648,12 +649,12 @@ export function Explore() {
                         className="group cursor-pointer"
                         onClick={() => navigate(`/game/${game.id}`)}
                       >
-                        <div className="aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-muted/20">
+                        <div className="aspect-[3/4] lg:aspect-[3/2] rounded-lg overflow-hidden mb-1 bg-muted/20">
                           {coverArt && (
                             <img
                               src={coverArt}
                               alt={game.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                               style={{ opacity: 0, transition: 'opacity 0.2s ease, transform 0.3s ease' }}
                               onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
                             />
@@ -669,8 +670,8 @@ export function Explore() {
               </section>
             )}
 
-            {/* Users — Forge first, then external */}
-            {(searchUsers.length > 0 || externalUsers.length > 0) && (
+            {/* Users — Forge only */}
+            {searchUsers.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-semibold">Users</h2>
@@ -684,101 +685,13 @@ export function Explore() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {/* Forge users first */}
                   {searchUsers.map(user => (
                     <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
                   ))}
-                  {/* External users (Bluesky + Mastodon) below, with separator */}
-                  {externalUsers.length > 0 && (
-                    <>
-                      {searchUsers.length > 0 && (
-                        <div className="flex items-center gap-2 py-1">
-                          <div className="flex-1 h-px bg-border" />
-                          <span className="text-xs text-muted-foreground font-medium">Also on the web</span>
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
-                      )}
-                      {externalUsers.map(u => (
-                        <div
-                          key={u.id}
-                          onClick={() => u.platform === 'bluesky' ? navigate(`/bsky/${u.handle}`) : window.open(u.externalUrl, '_blank', 'noopener,noreferrer')}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary/60 hover:bg-secondary/80 transition-colors cursor-pointer"
-                        >
-                          {u.avatar ? (
-                            <img src={u.avatar} alt={u.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
-                              <UserIcon className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-semibold text-sm truncate">{u.displayName}</span>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                                u.platform === 'bluesky'
-                                  ? 'bg-sky-500/20 text-sky-400'
-                                  : 'bg-purple-500/20 text-purple-400'
-                              }`}>
-                                {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate">@{(u.handle || '').replace(/^@/, '')}</p>
-                          </div>
-                          {u.followerCount > 0 && (
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
-                            </span>
-                          )}
-                          {isAuthenticated && (
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const efId = u.platform === 'bluesky'
-                                  ? `bsky-${(u.handle || '').replace(/^@/, '')}`
-                                  : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`;
-                                const isFollowing = externalFollowIds?.has(efId);
-                                if (isFollowing) {
-                                  await unfollowExternalUser(efId);
-                                } else {
-                                  const instance = u.platform === 'mastodon'
-                                    ? (() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()
-                                    : undefined;
-                                  const accountId = u.platform === 'mastodon' ? u.id.replace('mastodon-', '') : undefined;
-                                  await followExternalUser({
-                                    id: efId,
-                                    platform: u.platform,
-                                    handle: (u.handle || '').replace(/^@/, ''),
-                                    displayName: u.displayName,
-                                    avatar: u.avatar,
-                                    instance,
-                                    accountId,
-                                  });
-                                }
-                              }}
-                              className={`shrink-0 px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
-                                externalFollowIds?.has(
-                                  u.platform === 'bluesky'
-                                    ? `bsky-${(u.handle || '').replace(/^@/, '')}`
-                                    : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`
-                                )
-                                  ? 'bg-secondary text-muted-foreground hover:bg-red-900/40 hover:text-red-400'
-                                  : 'bg-accent text-white hover:bg-accent/80'
-                              }`}
-                            >
-                              {externalFollowIds?.has(
-                                u.platform === 'bluesky'
-                                  ? `bsky-${(u.handle || '').replace(/^@/, '')}`
-                                  : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`
-                              ) ? 'Following' : 'Follow'}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </>
-                  )}
                 </div>
               </section>
             )}
+
 
             {/* Posts */}
             {searchPostResults.length > 0 && (
@@ -809,6 +722,77 @@ export function Explore() {
                         isLiked={likedPosts.has(post.id)}
                         isReposted={repostedPosts.has(post.id)}
                       />
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* External accounts — Bluesky & Mastodon, below native Forge content */}
+            {externalUsers.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground font-medium">Also on the web</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <div className="space-y-2">
+                  {externalUsers.map(u => {
+                    const efId = u.platform === 'bluesky'
+                      ? `bsky-${(u.handle || '').replace(/^@/, '')}`
+                      : `masto-${(() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()}-${u.id.replace('mastodon-', '')}`;
+                    const isFollowing = externalFollowIds?.has(efId);
+                    return (
+                      <div
+                        key={u.id}
+                        onClick={() => u.platform === 'bluesky' ? navigate(`/bsky/${u.handle}`) : window.open(u.externalUrl, '_blank', 'noopener,noreferrer')}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary/60 hover:bg-secondary/80 transition-colors cursor-pointer"
+                      >
+                        {u.avatar ? (
+                          <img src={u.avatar} alt={u.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
+                            <UserIcon className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-sm truncate">{u.displayName}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${u.platform === 'bluesky' ? 'bg-sky-500/20 text-sky-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                              {u.platform === 'bluesky' ? 'Bluesky' : 'Mastodon'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">@{(u.handle || '').replace(/^@/, '')}</p>
+                        </div>
+                        {u.followerCount > 0 && (
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {u.followerCount >= 1000 ? `${(u.followerCount / 1000).toFixed(1)}k` : u.followerCount}
+                          </span>
+                        )}
+                        {isAuthenticated && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (isFollowing) {
+                                await unfollowExternalUser(efId);
+                              } else {
+                                const instance = u.platform === 'mastodon'
+                                  ? (() => { try { return new URL(u.externalUrl).hostname; } catch { return 'mastodon.social'; } })()
+                                  : undefined;
+                                const accountId = u.platform === 'mastodon' ? u.id.replace('mastodon-', '') : undefined;
+                                await followExternalUser({ id: efId, platform: u.platform, handle: (u.handle || '').replace(/^@/, ''), displayName: u.displayName, avatar: u.avatar, instance, accountId });
+                              }
+                            }}
+                            className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                              isFollowing
+                                ? 'bg-secondary text-muted-foreground hover:bg-red-900/40 hover:text-red-400'
+                                : 'bg-accent text-[#1c1228] hover:bg-accent/80'
+                            }`}
+                          >
+                            {isFollowing ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1044,68 +1028,34 @@ export function Explore() {
                     <p>{isSearchActive ? `No games found for "${searchQuery}"` : 'No games found'}</p>
                   </div>
                 ) : (
-                  <>
-                    {/* Mobile: poster grid */}
-                    <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {(isSearchActive ? searchGames : filteredGames).map(game => {
-                        const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
-                        const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
-                        return (
-                          <div key={game.id} className="group cursor-pointer relative" onClick={() => navigate(`/game/${game.id}`)}>
-                            <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20">
-                              {coverArt && (
-                                <img
-                                  src={coverArt}
-                                  alt={game.title}
-                                  className="w-full h-full object-cover group-hover:scale-105"
-                                  style={{ opacity: 0, transition: 'opacity 0.25s ease, transform 0.3s ease' }}
-                                  onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
-                                />
-                              )}
-                              {score > 0 && !isSearchActive && !loadingTrendingCounts && !loadingExtraGames && (
-                                <div className="absolute top-1.5 left-1.5 bg-accent/80 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                  <Flame className="w-2.5 h-2.5" />{score}
-                                </div>
-                              )}
-                            </div>
-                            <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">{game.title}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">{game.year}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {/* Desktop: compact list (no tall posters) */}
-                    <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-1">
-                      {(isSearchActive ? searchGames : filteredGames).map(game => {
-                        const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
-                        const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
-                        return (
-                          <div key={game.id} className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-secondary/60 cursor-pointer transition-colors" onClick={() => navigate(`/game/${game.id}`)}>
-                            <div className="w-10 h-14 rounded-md overflow-hidden bg-muted/20 shrink-0">
-                              {coverArt && (
-                                <img
-                                  src={coverArt}
-                                  alt={game.title}
-                                  className="w-full h-full object-cover"
-                                  style={{ opacity: 0, transition: 'opacity 0.2s ease' }}
-                                  onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
-                                />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">{game.title}</h3>
-                              <p className="text-xs text-muted-foreground">{game.year}</p>
-                            </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {(isSearchActive ? searchGames : filteredGames).map(game => {
+                      const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
+                      const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
+                      return (
+                        <div key={game.id} className="group cursor-pointer relative" onClick={() => navigate(`/game/${game.id}`)}>
+                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20">
+                            {coverArt && (
+                              <img
+                                src={coverArt}
+                                alt={game.title}
+                                className="w-full h-full object-cover group-hover:scale-105"
+                                style={{ opacity: 0, transition: 'opacity 0.25s ease, transform 0.3s ease' }}
+                                onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
+                              />
+                            )}
                             {score > 0 && !isSearchActive && !loadingTrendingCounts && !loadingExtraGames && (
-                              <div className="shrink-0 text-accent text-[10px] font-bold flex items-center gap-0.5">
+                              <div className="absolute top-1.5 left-1.5 bg-accent/80 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                                 <Flame className="w-2.5 h-2.5" />{score}
                               </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </>
+                          <h3 className="text-sm font-medium line-clamp-2 group-hover:text-accent transition-colors">{game.title}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">{game.year}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </>
               </div>
@@ -1113,119 +1063,167 @@ export function Explore() {
 
             {activeTab === 'groups' && (
               <div className="max-w-5xl mx-auto">
-              <div className="space-y-3">
-                <div className="flex lg:justify-start">
+
+                {/* Forge-branded sub-tab switcher */}
+                <div className="flex gap-2 mb-5">
                   <button
-                    onClick={() => navigate('/create-group')}
-                    className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
+                    onClick={() => setGroupsSubTab('groups')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      groupsSubTab === 'groups'
+                        ? 'bg-accent text-[#1c1228]'
+                        : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    }`}
                   >
-                    <Plus className="w-4 h-4 shrink-0" />
-                    <span className="font-medium text-sm">Create new group</span>
+                    <Users className="w-4 h-4" />
+                    Groups
+                  </button>
+                  <button
+                    onClick={() => setGroupsSubTab('flares')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      groupsSubTab === 'flares'
+                        ? 'bg-accent text-[#1c1228]'
+                        : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Flame className="w-4 h-4" />
+                    Flares
+                    {!loadingLfg && lfgPlayers.length > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-orange-500/20 text-orange-300">
+                        {lfgPlayers.length}
+                      </span>
+                    )}
                   </button>
                 </div>
-                {isLoading ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="bg-card border border-border rounded-lg p-4 animate-pulse">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-muted/50 rounded w-36" />
-                            <div className="h-3 bg-muted/30 rounded w-full" />
-                            <div className="h-3 bg-muted/30 rounded w-4/5" />
-                            <div className="h-3 bg-muted/20 rounded w-24" />
+
+                {/* Groups sub-tab */}
+                {groupsSubTab === 'groups' && (
+                  <div className="space-y-3">
+                    <div className="flex lg:justify-start">
+                      <button
+                        onClick={() => navigate('/create-group')}
+                        className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-accent/10 border-2 border-dashed border-accent/40 rounded-lg hover:bg-accent/15 hover:border-accent/60 transition-colors text-accent"
+                      >
+                        <Plus className="w-4 h-4 shrink-0" />
+                        <span className="font-medium text-sm">Create new group</span>
+                      </button>
+                    </div>
+                    {isLoading ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="bg-card border border-border rounded-lg p-4 animate-pulse">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                              <div className="flex-1 space-y-2">
+                                <div className="h-4 bg-muted/50 rounded w-36" />
+                                <div className="h-3 bg-muted/30 rounded w-full" />
+                                <div className="h-3 bg-muted/30 rounded w-4/5" />
+                                <div className="h-3 bg-muted/20 rounded w-24" />
+                              </div>
+                              <div className="h-8 bg-muted/40 rounded-lg w-16 shrink-0" />
+                            </div>
                           </div>
-                          <div className="h-8 bg-muted/40 rounded-lg w-16 shrink-0" />
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : filteredGroups.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No groups found</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {filteredGroups.map(group => (
-                      <GroupCard key={group.id} group={group} gameTitles={groupGameTitles} />
-                    ))}
+                    ) : filteredGroups.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No groups found</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {filteredGroups.map(group => (
+                          <GroupCard key={group.id} group={group} gameTitles={groupGameTitles} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Active Flares — LFG flare branding */}
-                <div className="mt-6">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Flame className="w-5 h-5 text-orange-400" />
-                    <h2 className="font-semibold">Active Flares</h2>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">Players looking to group up right now</p>
-                  {loadingLfg ? (
-                    <div className="space-y-2">
-                      {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="p-3 bg-card border border-border rounded-lg animate-pulse">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                            <div className="flex-1 space-y-1.5">
-                              <div className="h-3 bg-muted/40 rounded w-28" />
-                              <div className="h-2.5 bg-muted/30 rounded w-20" />
-                            </div>
-                          </div>
-                          <div className="h-2.5 bg-muted/30 rounded w-full" />
-                        </div>
-                      ))}
+                {/* Flares sub-tab */}
+                {groupsSubTab === 'flares' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm text-muted-foreground">Players looking to group up right now</p>
+                      <button
+                        onClick={() => navigate('/create-flare')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border-2 border-orange-500/50 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/70 transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Create Flare
+                      </button>
                     </div>
-                  ) : lfgPlayers.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Flame className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                      <p className="text-sm">No active LFG flares right now</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {lfgPlayers.map(flare => {
-                        const player = (flare as any).user;
-                        if (!player) return null;
-                        return (
-                          <div
-                            key={flare.id}
-                            onClick={() => navigate(`/profile/${player.id}`)}
-                            className="p-3 bg-card border border-border rounded-lg hover:border-accent transition-colors cursor-pointer"
-                          >
+                    {loadingLfg ? (
+                      <div className="space-y-2">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="p-3 bg-card border border-border rounded-lg animate-pulse">
                             <div className="flex items-center gap-3 mb-2">
-                              {player.profile_picture ? (
-                                <img src={player.profile_picture} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                              ) : (
-                                <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
-                                  <UserIcon className="w-4 h-4 text-muted-foreground" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{player.display_name || player.handle}</p>
-                                <p className="text-xs text-muted-foreground">@{(player.handle || '').replace(/^@/, '')}</p>
+                              <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                              <div className="flex-1 space-y-1.5">
+                                <div className="h-3 bg-muted/40 rounded w-28" />
+                                <div className="h-2.5 bg-muted/30 rounded w-20" />
                               </div>
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                                flare.flare_type === 'lfg'
-                                  ? 'bg-accent/20 text-accent'
-                                  : 'bg-purple-500/20 text-purple-400'
-                              }`}>
-                                {flare.flare_type.toUpperCase()}
-                              </span>
                             </div>
-                            <div className="pl-12">
-                              <p className="text-sm font-medium">{flare.game_title}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
-                                {flare.game_mode ? ` · ${flare.game_mode}` : ''}
-                                {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
-                              </p>
-                            </div>
+                            <div className="h-2.5 bg-muted/30 rounded w-full" />
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+                        ))}
+                      </div>
+                    ) : lfgPlayers.length === 0 ? (
+                      <div className="flex flex-col items-center py-10 text-muted-foreground gap-3">
+                        <Flame className="w-10 h-10 opacity-40" />
+                        <p className="text-sm">No active LFG flares right now</p>
+                        <button
+                          onClick={() => navigate('/create-flare')}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 border-orange-500/50 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/70 transition-all"
+                        >
+                          <Flame className="w-4 h-4" />
+                          Be the first — Create a Flare
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {lfgPlayers.map(flare => {
+                          const player = (flare as any).user;
+                          if (!player) return null;
+                          return (
+                            <div
+                              key={flare.id}
+                              onClick={() => navigate(`/profile/${player.id}`)}
+                              className="p-3 bg-card border border-border rounded-lg hover:border-accent transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                {player.profile_picture ? (
+                                  <img src={player.profile_picture} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
+                                    <UserIcon className="w-4 h-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{player.display_name || player.handle}</p>
+                                  <p className="text-xs text-muted-foreground">@{(player.handle || '').replace(/^@/, '')}</p>
+                                </div>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                  flare.flare_type === 'lfg' ? 'bg-accent/20 text-accent' : 'bg-purple-500/20 text-purple-400'
+                                }`}>
+                                  {flare.flare_type.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="pl-12">
+                                <p className="text-sm font-medium">{flare.game_title}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Need {flare.players_needed}{flare.group_size ? `/${flare.group_size}` : ''} players
+                                  {flare.game_mode ? ` · ${flare.game_mode}` : ''}
+                                  {flare.scheduled_for ? ` · ${new Date(flare.scheduled_for).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
             )}
           </>

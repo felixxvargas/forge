@@ -36,7 +36,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   // Gaming
   steam: 'Steam', xbox: 'Xbox', playstation: 'PlayStation', epic: 'Epic Games',
   ea: 'EA', nintendo: 'Nintendo', gog: 'GOG', ubisoft: 'Ubisoft',
-  rockstar: 'Rockstar', pc: 'PC (Windows)', mac: 'Mac (Apple)', linux: 'Linux',
+  rockstar: 'Rockstar', pc: 'Windows', mac: 'Mac', ios: 'iOS', android: 'Android', linux: 'Linux',
   // Social
   discord: 'Discord', twitter: 'X (Twitter)', x: 'X (Twitter)',
   instagram: 'Instagram', facebook: 'Facebook', reddit: 'Reddit',
@@ -118,6 +118,13 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
         );
       case 'pc':        return <WindowsIcon className={cls} />;
       case 'mac':       return <AppleIcon className={cls} />;
+      case 'ios':       return <AppleIcon className={cls} />;
+      case 'android':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>
+            <path d="M17.523 15.341a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m-10.046 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M17.7 9.5H6.3A3.3 3.3 0 0 0 3 12.8v4.4A3.3 3.3 0 0 0 6.3 20.5h11.4a3.3 3.3 0 0 0 3.3-3.3v-4.4A3.3 3.3 0 0 0 17.7 9.5M8.1 3.617l-1.35-1.35a.5.5 0 0 0-.707.707l1.437 1.437A6.97 6.97 0 0 0 5 9.5h14a6.97 6.97 0 0 0-2.48-5.09l1.437-1.436a.5.5 0 0 0-.707-.707L15.9 3.617A6.94 6.94 0 0 0 12 2.5a6.94 6.94 0 0 0-3.9 1.117"/>
+          </svg>
+        );
       case 'linux':
         return (
           <svg viewBox="0 0 24 24" fill="currentColor" className={cls}>

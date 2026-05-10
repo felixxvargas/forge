@@ -223,6 +223,27 @@ export function Messages() {
   // Skeleton only on first-ever load (no cached data yet)
   const loadingConvos = convoSWRLoading && !convoData;
 
+  // Hold the skeleton until DM partner profile pictures have finished loading
+  const [profilePicsReady, setProfilePicsReady] = useState(false);
+  useEffect(() => {
+    if (loadingConvos) return;
+    const urls = conversations
+      .map(c => {
+        const p = c.sender_id === currentUser?.id ? c.recipient : c.sender;
+        return p?.profile_picture as string | undefined;
+      })
+      .filter(Boolean) as string[];
+    if (urls.length === 0) { setProfilePicsReady(true); return; }
+    let done = 0;
+    const timeout = setTimeout(() => setProfilePicsReady(true), 2000);
+    urls.forEach(url => {
+      const img = new window.Image();
+      img.onload = img.onerror = () => { if (++done === urls.length) { clearTimeout(timeout); setProfilePicsReady(true); } };
+      img.src = url;
+    });
+    return () => clearTimeout(timeout);
+  }, [loadingConvos, conversations, currentUser?.id]);
+
   // Fetch partner public key then load & decrypt DM messages (sequential to avoid race condition)
   useEffect(() => {
     if (!currentUser?.id || !selectedPartnerId) {
@@ -1348,7 +1369,7 @@ export function Messages() {
           </button>
         </div>
 
-        {loadingConvos && allConvos.length === 0 ? (
+        {(loadingConvos || (allConvos.length > 0 && !profilePicsReady)) ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="bg-card rounded-xl flex items-center gap-3 p-4 animate-pulse">

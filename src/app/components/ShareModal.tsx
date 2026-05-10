@@ -4,14 +4,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { Post, User } from '../data/data';
 import MastodonIcon from '../../assets/icons/mastodon.svg?react';
 
+interface GameShare {
+  id: string | number;
+  title: string;
+  description?: string;
+  coverUrl?: string;
+}
+
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   post?: Post;
   user?: User;
+  game?: GameShare;
 }
 
-export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
+export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
 
   // Generate shareable URL based on what's being shared
@@ -22,6 +30,8 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
     } else if (user) {
       const handle = ((user.handle as string) || '').replace(/^@/, '');
       return handle ? `${baseUrl}/${handle}` : `${baseUrl}/profile/${user.id}`;
+    } else if (game) {
+      return `${baseUrl}/game/${game.id}`;
     }
     return baseUrl;
   };
@@ -32,6 +42,8 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
       return 'Check out this post on Forge';
     } else if (user) {
       return `${(user as any).display_name || (user as any).displayName || user.handle} on Forge`;
+    } else if (game) {
+      return `${game.title} on Forge`;
     }
     return 'Forge - Gaming Social Platform';
   };
@@ -41,6 +53,8 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
       return post.content.slice(0, 100) + (post.content.length > 100 ? '...' : '');
     } else if (user) {
       return user.bio;
+    } else if (game) {
+      return game.description?.slice(0, 100) || `Check out ${game.title} on Forge — the gaming social network.`;
     }
     return 'Connect with gamers across platforms';
   };
@@ -128,6 +142,18 @@ export function ShareModal({ isOpen, onClose, post, user }: ShareModalProps) {
                   <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
                     <UserIcon className="w-5 h-5 text-muted-foreground" />
                   </div>
+                )
+              )}
+              {game && (
+                game.coverUrl ? (
+                  <img
+                    src={game.coverUrl}
+                    alt={game.title}
+                    className="w-8 rounded object-cover shrink-0"
+                    style={{ aspectRatio: '3/4' }}
+                  />
+                ) : (
+                  <div className="w-8 rounded bg-secondary border border-border shrink-0" style={{ aspectRatio: '3/4' }} />
                 )
               )}
               <div className="flex-1 min-w-0">
