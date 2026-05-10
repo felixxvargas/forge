@@ -27,6 +27,16 @@ function getCoverUrl(game: AnyGame): string | null {
     ?? null;
 }
 
+function buildFormattedHtml(message: string, games: AnyGame[]): string {
+  let result = message;
+  for (const game of games) {
+    const escaped = game.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const safe = game.title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    result = result.replace(new RegExp(escaped, 'g'), `<span style="font-weight:600;color:#86efac">${safe}</span>`);
+  }
+  return result;
+}
+
 const LIST_TITLES: Record<GameListType, string> = {
   'recently-played': 'Recently Played',
   'played-before': "I've Played Before",
@@ -66,7 +76,7 @@ export function EditGameList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AnyGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<{ title: string; cover: string | null }[]>(() => {
+  const [recentSearches, setRecentSearches] = useState<{ title: string; cover: string | null; id?: string }[]>(() => {
     try {
       const raw = localStorage.getItem(`forge-game-list-recent:${listTypeParam ?? 'library'}`);
       if (!raw) return [];
@@ -82,6 +92,8 @@ export function EditGameList() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialGamesRef = useRef<AnyGame[]>([]);
   const hasInitializedRef = useRef(false);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const composerInitRef = useRef(false);
 
   // Share-prompt state
   const [shareGames, setShareGames] = useState<AnyGame[] | null>(null);
@@ -308,6 +320,25 @@ export function EditGameList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Set formatted HTML in compose overlay when share screen opens
+  useEffect(() => {
+    if (!shareGames) {
+      composerInitRef.current = false;
+      return;
+    }
+    if (!composerRef.current || composerInitRef.current) return;
+    composerInitRef.current = true;
+    composerRef.current.innerHTML = buildFormattedHtml(shareMessage, shareGames);
+    composerRef.current.focus();
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(composerRef.current);
+    range.collapse(false);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareGames]);
+
   const addGame = (game: AnyGame) => {
     if (!selectedGames.some(g => g.id === game.id)) {
       const next = [game, ...selectedGames];
@@ -315,7 +346,7 @@ export function EditGameList() {
       updateGameList(listType, next);
       analytics.gameAddedToList(String(game.id), game.title, listType);
       setRecentSearches(prev => {
-        const entry = { title: game.title, cover: getCoverUrl(game) };
+        const entry = { title: game.title, cover: getCoverUrl(game), id: String(game.id) };
         const updated = [entry, ...prev.filter(e => e.title !== game.title)].slice(0, 8);
         localStorage.setItem(`forge-game-list-recent:${listType}`, JSON.stringify(updated));
         return updated;
@@ -625,14 +656,25 @@ export function EditGameList() {
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recently added</p>
                     <div className="flex flex-wrap gap-2">
-                      {recentSearches.map(entry => (
+                      {recentSearches.map(entry => {
+                        const isAlreadyAdded = !!entry.id && selectedGames.some(g => g.id === entry.id);
+                        return (
                         <button
                           key={entry.title}
-                          onClick={() => { setSearchQuery(entry.title); desktopSearchInputRef.current?.focus(); }}
-                          className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
+                          onClick={() => {
+                            if (isAlreadyAdded) return;
+                            if (entry.id) {
+                              addGame({ id: entry.id, title: entry.title, coverArt: entry.cover ?? undefined });
+                            } else {
+                              setSearchQuery(entry.title);
+                              desktopSearchInputRef.current?.focus();
+                            }
+                          }}
+                          disabled={isAlreadyAdded}
+                          className={`flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors ${isAlreadyAdded ? 'opacity-50 cursor-default' : ''}`}
                         >
                           {entry.cover ? (
-                            <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded shrink-0" />
+                            <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-sm shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
                               <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -640,7 +682,8 @@ export function EditGameList() {
                           )}
                           <span className="truncate max-w-[140px]">{entry.title}</span>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -662,7 +705,7 @@ export function EditGameList() {
                             disabled={isSelected}
                             className="shrink-0 w-[68px] text-left"
                           >
-                            <div className={`w-[68px] h-[90px] rounded-lg overflow-hidden bg-muted/20 mb-1 relative ${isSelected ? 'ring-2 ring-accent' : 'hover:opacity-80 transition-opacity'}`}>
+                            <div className={`w-[68px] h-[90px] rounded-md overflow-hidden bg-muted/20 mb-1 relative ${isSelected ? 'ring-2 ring-accent' : 'hover:opacity-80 transition-opacity'}`}>
                               {cover && <img src={cover} alt={game.title} className="w-full h-full object-cover" />}
                               {isSelected && (
                                 <div className="absolute inset-0 bg-accent/30 flex items-center justify-center">
@@ -727,30 +770,6 @@ export function EditGameList() {
               </div>
             )}
 
-            {/* Recently added */}
-            {!searchQuery.trim() && recentSearches.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Recently added</p>
-                <div className="flex flex-wrap gap-2">
-                  {recentSearches.map(entry => (
-                    <button
-                      key={entry.title}
-                      onClick={() => { setSearchQuery(entry.title); searchInputRef.current?.focus(); }}
-                      className="flex items-center gap-2 pl-1 pr-3 py-1 bg-secondary/60 hover:bg-secondary rounded-full text-sm transition-colors"
-                    >
-                      {entry.cover ? (
-                        <img src={entry.cover} alt={entry.title} className="w-7 h-9 object-cover rounded-full shrink-0" />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <span className="truncate max-w-[140px]">{entry.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Selected games */}
             {selectedGames.length > 0 && (
@@ -825,12 +844,12 @@ export function EditGameList() {
 
           <div className="flex-1 px-4 pb-4 flex flex-col min-h-0">
             <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide font-medium">Your message</p>
-            <textarea
-              autoFocus
-              value={shareMessage}
-              onChange={e => setShareMessage(e.target.value)}
-              placeholder="Write something about these games…"
-              className="flex-1 min-h-[120px] w-full bg-secondary rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent border border-border/50 focus:border-accent/60"
+            <div
+              ref={composerRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(e) => setShareMessage((e.currentTarget as HTMLDivElement).innerText)}
+              className="flex-1 min-h-[120px] w-full bg-secondary rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-accent border border-border/50 focus:border-accent/60 outline-none break-words whitespace-pre-wrap"
             />
           </div>
 
