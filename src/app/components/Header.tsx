@@ -50,7 +50,7 @@ export function Header({ title, showNotifications = true, showSettings = true }:
             >
               <Bell className="w-5 h-5" />
               {hasUnreadNotifications && (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-accent rounded-full" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-card animate-pulse" />
               )}
             </button>
           )}

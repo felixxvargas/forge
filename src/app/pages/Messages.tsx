@@ -1241,12 +1241,14 @@ export function Messages() {
             <p className="text-center text-muted-foreground text-sm py-8">Start the conversation!</p>
           )}
           {(() => {
-            // ID of the last message sent by me — "Read" label goes here when partner has read it
-            const lastSentId = [...messages].reverse().find(m => m.sender_id === currentUser?.id)?.id ?? null;
+            // Show "Read" on the last sent message that the partner has actually read.
+            // Using the last message with read_at (not just the last sent) keeps the receipt
+            // visible after sending a new message, until the partner reads the new one.
+            const lastReadSentId = [...messages].reverse().find(m => m.sender_id === currentUser?.id && !!m.read_at)?.id ?? null;
             return messages.map((msg) => {
             const isMe = msg.sender_id === currentUser?.id;
             const msgReactions = dmReactions[msg.id] ?? [];
-            const showRead = isMe && msg.id === lastSentId && !!msg.read_at;
+            const showRead = isMe && msg.id === lastReadSentId;
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                 <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>

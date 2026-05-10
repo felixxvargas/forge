@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { motion } from 'motion/react';
 import { Link, Navigate, ScrollRestoration, useLocation, useNavigate } from '@/compat/router';
 import { useSidebar } from '../context/SidebarContext';
@@ -8,9 +9,10 @@ import { X, PenSquare } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { DesktopSidebar } from './DesktopSidebar';
 import { useAppData } from '../context/AppDataContext';
-import { LoginModule } from './LoginModule';
-import { WhatsNewModal } from './WhatsNew';
 import { LoadingScreen } from './LoadingScreen';
+
+const LoginModule = dynamic(() => import('./LoginModule').then(m => ({ default: m.LoginModule })), { ssr: false });
+const WhatsNewModal = dynamic(() => import('./WhatsNew').then(m => ({ default: m.WhatsNewModal })), { ssr: false });
 
 const DRAFT_KEY = 'forge-post-draft';
 
