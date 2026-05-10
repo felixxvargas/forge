@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+const sentryConfig = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
@@ -74,4 +74,6 @@ export default withSentryConfig(nextConfig, {
   tunnelRoute: '/monitoring',
   disableLogger: true,
   automaticVercelMonitors: false,
-});
+};
+
+export default isAndroidBuild ? nextConfig : withSentryConfig(nextConfig, sentryConfig);

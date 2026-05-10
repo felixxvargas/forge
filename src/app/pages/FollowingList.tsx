@@ -1,4 +1,5 @@
-﻿import { ArrowLeft } from 'lucide-react';
+﻿'use client';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';

@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿'use client';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from '@/compat/router';
 import {
   ArrowLeft, Flame, Users, Gamepad2, Clock, Loader2,

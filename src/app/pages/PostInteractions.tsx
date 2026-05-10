@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+﻿'use client';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Heart, Repeat2, Quote } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from '@/compat/router';
 import { posts as postsAPI } from '../utils/supabase';

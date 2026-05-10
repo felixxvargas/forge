@@ -369,7 +369,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         {/* ── Desktop skeleton — 2-column layout matching actual profile ── */}
         <div className="hidden lg:flex lg:flex-row lg:gap-6 lg:items-start lg:pt-8 lg:px-6 w-full max-w-7xl mx-auto animate-pulse">
           {/* Left col: profile card + about card */}
-          <div className="w-[300px] shrink-0 sticky top-[72px] self-start space-y-4">
+          <div className="w-[340px] shrink-0 sticky top-[72px] self-start space-y-4">
             <div className="rounded-2xl bg-card p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
@@ -771,7 +771,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
         <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:px-6">
         {/* LEFT COLUMN — profile header + about (desktop) */}
-        <div className="lg:w-[300px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
+        <div className="lg:w-[340px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
         <div className="bg-card px-6 pt-6 pb-4 rounded-b-2xl lg:rounded-2xl mb-4" style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(255,255,255,0.055) 0%, transparent 55%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.18)' }}>
           {/* Back button for other users' profiles */}
@@ -1098,7 +1098,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>{/* end left column */}
 
         {/* RIGHT COLUMN — LFG, tabs, tab content */}
-        <div className="lg:flex-1 lg:min-w-0">
+        <div className="lg:flex-1 lg:min-w-0 lg:max-w-2xl">
 
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (

@@ -1,18 +1,22 @@
 import { Suspense } from 'react';
 import { PostDetail } from '@/app/pages/PostDetail';
 import type { Metadata } from 'next';
-import { createSupabaseServer } from '@/app/utils/supabase-server';
 
-async function fetchPost(postId: string) {
+export function generateStaticParams() { return [{ postId: '_' }]; }
+
+async function fetchPost(postId: string | undefined) {
+  if (!postId || postId === '_') return null;
   try {
-    const supabase = await createSupabaseServer();
-    const { data } = await supabase
-      .from('posts')
-      .select('*, profiles(id, display_name, handle, profile_picture, bio)')
-      .eq('id', postId)
-      .single();
-    if (!data) return null;
-    return { ...data, author: data.profiles };
+    const projectId = process.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
+    const url = `https://${projectId}.supabase.co/rest/v1/posts?select=*,profiles(id,display_name,handle,profile_picture,bio)&id=eq.${postId}&limit=1`;
+    const res = await fetch(url, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data[0]) return null;
+    return { ...data[0], author: data[0].profiles };
   } catch {
     return null;
   }

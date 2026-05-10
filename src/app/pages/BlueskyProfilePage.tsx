@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, ExternalLink, Users } from 'lucide-react';

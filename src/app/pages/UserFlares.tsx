@@ -1,4 +1,5 @@
-﻿import { ArrowLeft, Flame, Trash2 } from 'lucide-react';
+﻿'use client';
+import { ArrowLeft, Flame, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { useState, useEffect } from 'react';

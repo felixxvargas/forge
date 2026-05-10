@@ -1,3 +1,4 @@
+'use client';
 import { useParams, useNavigate, useLocation } from '@/compat/router';
 import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';

@@ -1,3 +1,4 @@
+'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, Gamepad2, Library, Users, BookOpen, List } from 'lucide-react';

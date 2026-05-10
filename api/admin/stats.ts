@@ -1,0 +1,94 @@
+export const config = { runtime: 'edge' };
+
+const PROJECT_ID = process.env.VITE_SUPABASE_PROJECT_ID ?? '';
+const SERVICE_KEY = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const SUPABASE_URL = `https://${PROJECT_ID}.supabase.co`;
+
+function daysAgo(n: number) {
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+}
+
+async function countTable(table: string, since?: string): Promise<number> {
+  const params = new URLSearchParams({ select: 'id', limit: '1' });
+  if (since) params.set('created_at', `gte.${since}`);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: 'count=exact' },
+  });
+  const cr = res.headers.get('Content-Range') ?? '0-0/0';
+  return parseInt(cr.split('/')[1] ?? '0', 10);
+}
+
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== 'GET') return new Response('Method not allowed', { status: 405 });
+
+  if (!SERVICE_KEY || !PROJECT_ID) {
+    return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Validate JWT
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${token}` },
+  });
+  if (!userRes.ok) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const { id: userId } = await userRes.json();
+
+  // Check is_admin
+  const profileRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=is_admin&limit=1`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+  );
+  const [profile] = await profileRes.json();
+  if (!profile?.is_admin) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const t7 = daysAgo(7), t30 = daysAgo(30), t90 = daysAgo(90), t365 = daysAgo(365);
+
+  const [
+    totalUsers, users7, users30, users90, users365,
+    totalPosts, posts30, posts90, posts365,
+    totalUserGames, games30, games90, games365,
+    totalCommunities,
+    totalFlares, flares30, flares90, flares365,
+  ] = await Promise.all([
+    countTable('profiles'), countTable('profiles', t7), countTable('profiles', t30),
+    countTable('profiles', t90), countTable('profiles', t365),
+    countTable('posts'), countTable('posts', t30), countTable('posts', t90), countTable('posts', t365),
+    countTable('user_games'), countTable('user_games', t30),
+    countTable('user_games', t90), countTable('user_games', t365),
+    countTable('communities'),
+    countTable('lfg_flares'), countTable('lfg_flares', t30),
+    countTable('lfg_flares', t90), countTable('lfg_flares', t365),
+  ]);
+
+  const recentRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?select=handle,display_name,created_at&order=created_at.desc&limit=10`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+  );
+  const recentUsers = await recentRes.json();
+
+  return new Response(JSON.stringify({
+    users: { total: totalUsers, last7Days: users7, last30Days: users30, last90Days: users90, last365Days: users365 },
+    posts: { total: totalPosts, last30Days: posts30, last90Days: posts90, last365Days: posts365 },
+    games: { total: totalUserGames, last30Days: games30, last90Days: games90, last365Days: games365 },
+    communities: { total: totalCommunities },
+    flares: { total: totalFlares, last30Days: flares30, last90Days: flares90, last365Days: flares365 },
+    recentUsers: recentUsers ?? [],
+    generatedAt: new Date().toISOString(),
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+}

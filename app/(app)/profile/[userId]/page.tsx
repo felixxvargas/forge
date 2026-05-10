@@ -1,17 +1,21 @@
 import { Suspense } from 'react';
 import { Profile } from '@/app/pages/Profile';
 import type { Metadata } from 'next';
-import { createSupabaseServer } from '@/app/utils/supabase-server';
 
-async function fetchProfile(userId: string) {
+export function generateStaticParams() { return [{ userId: '_' }]; }
+
+async function fetchProfile(userId: string | undefined) {
+  if (!userId || userId === '_') return null;
   try {
-    const supabase = await createSupabaseServer();
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    return data ?? null;
+    const projectId = process.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
+    const url = `https://${projectId}.supabase.co/rest/v1/profiles?select=*&id=eq.${userId}&limit=1`;
+    const res = await fetch(url, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data[0] ?? null;
   } catch {
     return null;
   }

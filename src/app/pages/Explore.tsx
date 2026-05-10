@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';

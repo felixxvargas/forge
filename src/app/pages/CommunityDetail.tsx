@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿'use client';
+import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { useParams, useNavigate } from '@/compat/router';
 import { ArrowLeft, Users, Lock, UserPlus, Settings, X, Plus, Trash2, Loader2, Search, MessageCircle, ShieldOff, UserMinus, Camera, Check, Flame, AlertTriangle } from 'lucide-react';
