@@ -17,6 +17,7 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
   const isMessages     = path === '/messages';
   const isProfile      = path === '/profile' || path.startsWith('/profile/') || /^\/@[^/]/.test(path);
   const isGameDetail   = /^\/game\/[^/]+$/.test(path);
+  const isExplore      = path === '/explore';
 
   /* ─────────────────────────── header ─────────────────────────── */
   const header = (() => {
@@ -339,6 +340,98 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── explore ── */
+    if (isExplore) {
+      const savedTab = (() => { try { return localStorage.getItem('explore-active-tab') || 'posts'; } catch { return 'posts'; } })();
+      const searchBarSkeleton = <div className="h-10 bg-muted/30 rounded-xl mb-4 max-w-5xl mx-auto" />;
+
+      if (savedTab === 'games') {
+        return (
+          <div className="px-4 lg:px-6 pt-3 pb-6 animate-pulse">
+            {searchBarSkeleton}
+            <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div key={i}>
+                  <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-2" />
+                  <div className="h-3 bg-muted/50 rounded mb-1.5 w-4/5" />
+                  <div className="h-2.5 bg-muted/30 rounded w-1/3" />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      if (savedTab === 'users') {
+        return (
+          <div className="px-4 lg:px-6 pt-3 pb-6 animate-pulse">
+            {searchBarSkeleton}
+            <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-card rounded-xl p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-muted/50 shrink-0" />
+                    <div className="flex-1 space-y-2 pt-0.5">
+                      <div className="h-4 bg-muted/50 rounded w-32" />
+                      <div className="h-3 bg-muted/30 rounded w-20" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 mb-3">
+                    <div className="h-3 bg-muted/40 rounded w-full" />
+                    <div className="h-3 bg-muted/30 rounded w-3/4" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="h-3 bg-muted/30 rounded w-24" />
+                    <div className="h-8 bg-muted/35 rounded-full w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      /* posts / groups / default — column-based post cards */
+      const expContentWidths = ['w-full', 'w-5/6', 'w-4/5', 'w-11/12', 'w-3/4', 'w-5/6', 'w-full'];
+      const expCards = Array.from({ length: numCols === 1 ? 7 : numCols === 2 ? 10 : 14 }, (_, i) => i);
+      const expCols = splitToColumns(expCards, numCols);
+      return (
+        <div className="px-4 lg:px-6 pt-3 pb-6 animate-pulse">
+          {searchBarSkeleton}
+          <div className="flex gap-6 items-start">
+            {expCols.map((colItems, colIdx) => (
+              <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
+                {colItems.map((i) => (
+                  <div key={i} className="bg-card rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted/40 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex gap-2 mb-2.5">
+                          <div className="h-3 bg-muted/50 rounded w-24" />
+                          <div className="h-3 bg-muted/30 rounded w-16" />
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          <div className={`h-3 bg-muted/40 rounded ${expContentWidths[i % expContentWidths.length]}`} />
+                          <div className="h-3 bg-muted/40 rounded w-5/6" />
+                          {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
+                        </div>
+                        {(i + colIdx) % 3 === 0 && <div className="h-32 bg-muted/20 rounded-xl mb-3" />}
+                        <div className="flex gap-4 pt-1">
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       );

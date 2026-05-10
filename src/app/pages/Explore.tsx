@@ -869,9 +869,11 @@ export function Explore() {
                 </div>
                 {loadingTopicPosts ? (
                   <div className="flex gap-6 items-start">
-                    {splitToColumns([false, true, false, false, true, false], numCols).map((colItems, colIdx) => (
+                    {Array.from({ length: numCols }).map((_, colIdx) => (
                       <div key={colIdx} className="flex-1 flex flex-col gap-6 min-w-0">
-                        {colItems.map((hasImage, i) => (
+                        {Array.from({ length: 7 }).map((_, i) => {
+                          const hasImage = (colIdx + i) % 3 === 0;
+                          return (
                           <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                             <div className="flex gap-3">
                               <div className="w-9 h-9 rounded-full bg-muted/50 shrink-0" />
@@ -892,7 +894,8 @@ export function Explore() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
@@ -1010,15 +1013,13 @@ export function Explore() {
                         </div>
                       ))}
                     </div>
-                    {/* Desktop skeleton */}
-                    <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-1">
-                      {Array.from({ length: 18 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
-                          <div className="w-10 h-14 rounded-md bg-muted/50 shrink-0" />
-                          <div className="flex-1 space-y-1.5">
-                            <div className="h-3 bg-muted/50 rounded w-4/5" />
-                            <div className="h-2.5 bg-muted/30 rounded w-1/3" />
-                          </div>
+                    {/* Desktop skeleton — card grid matching actual games layout */}
+                    <div className="hidden lg:grid lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {Array.from({ length: 24 }).map((_, i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="aspect-[3/4] rounded-lg bg-muted/50 mb-2" />
+                          <div className="h-3 bg-muted/50 rounded mb-1.5 w-4/5" />
+                          <div className="h-2.5 bg-muted/30 rounded w-1/3" />
                         </div>
                       ))}
                     </div>

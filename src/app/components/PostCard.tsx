@@ -605,7 +605,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
                 className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
               >
                 {cover ? (
-                  <img src={cover} alt={g.title} className="w-8 h-10 rounded-md object-cover shrink-0" />
+                  <img src={cover} alt={g.title} className="w-8 h-10 rounded object-cover shrink-0" />
                 ) : (
                   <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
                 )}

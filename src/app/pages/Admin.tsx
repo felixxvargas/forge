@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
+import { supabase } from '../utils/supabase';
 import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw } from 'lucide-react';
 
 interface AdminStats {
@@ -67,20 +68,22 @@ export function Admin() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('30d');
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
     setError('');
-    const token = localStorage.getItem('forge-access-token');
-    if (!token) { navigate('/'); return; }
-
-    fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then(async res => {
-        if (res.status === 401 || res.status === 403) { navigate('/'); return; }
-        if (!res.ok) throw new Error('Failed to load stats');
-        setStats(await res.json());
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { navigate('/'); return; }
+      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) { navigate('/'); return; }
+      if (!res.ok) throw new Error('Failed to load stats');
+      setStats(await res.json());
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps

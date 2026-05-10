@@ -70,8 +70,11 @@ export function Messages() {
   const [messageInput, setMessageInput] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Participant profile cache for group thread list avatars
-  const [participantProfiles, setParticipantProfiles] = useState<Record<string, any>>({});
+  // Participant profile cache for group thread list avatars — persisted to localStorage
+  const GROUP_AVATAR_CACHE_KEY = 'forge-group-avatars-v1';
+  const [participantProfiles, setParticipantProfiles] = useState<Record<string, any>>(() => {
+    try { return JSON.parse(localStorage.getItem('forge-group-avatars-v1') || '{}'); } catch { return {}; }
+  });
 
   // Compose modal — unified: select people first, then confirm
   const GROUP_DM_DRAFT_KEY = 'forge-group-dm-draft';
@@ -296,7 +299,11 @@ export function Messages() {
     if (!needed.length) return;
     needed.forEach((id: string) => {
       profiles.getById(id).then(p => {
-        if (p) setParticipantProfiles(prev => ({ ...prev, [id]: p }));
+        if (p) setParticipantProfiles(prev => {
+          const next = { ...prev, [id]: p };
+          try { localStorage.setItem(GROUP_AVATAR_CACHE_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
       }).catch(() => {});
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
