@@ -11,7 +11,7 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: 'v0.3.2',
+    version: 'v0.3.4',
     date: 'May 2026',
     title: "What's New in Forge",
     summary: "Game discovery in list editor, smarter search results, and profile improvements.",
@@ -20,6 +20,34 @@ export const RELEASES: Release[] = [
       'Cleaner game search results — DLCs, season passes, and duplicate edition variants are filtered out automatically',
       'Profile pages now use a wider desktop layout for better use of screen space',
       'Bug fixes and performance improvements across the app',
+    ],
+  },
+  {
+    version: 'v0.3.3',
+    date: 'April 2026',
+    title: "What's New in Forge",
+    summary: "Messaging upgrades: read receipts, reactions, typing indicators, and more.",
+    highlights: [
+      'DM read receipts — "Read" now appears below your last sent message once it\'s been seen',
+      'Group chat read receipts — tap the avatar stack under a message to see who\'s read it',
+      'Emoji reactions on DMs and group messages — long-press any message to react or delete',
+      'Real-time typing indicators in both DMs and group chats',
+      'Real message preview text in the conversation list instead of generic "New message"',
+      'Composing a post from a Game or Group page now auto-tags that game or group',
+      'New floating compose button on Game Detail pages',
+    ],
+  },
+  {
+    version: 'v0.3.2',
+    date: 'April 2026',
+    title: "What's New in Forge",
+    summary: "Backend reliability improvements, follow count fixes, and Sentry error tracking.",
+    highlights: [
+      'Follow and unfollow counts now sync correctly — fixed a race condition that could skew counts',
+      'Subscription payments are more reliable with duplicate charge prevention',
+      'Error tracking improvements — fewer false positives when loading posts with certain account states',
+      'Handle lookups and profile matching are now more accurate and consistent',
+      'Performance improvements across data fetching and API calls',
     ],
   },
   {
