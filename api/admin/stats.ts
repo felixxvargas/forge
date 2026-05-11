@@ -22,7 +22,7 @@ const STANDARD_LIST_KEYS = ['recentlyPlayed', 'playedBefore', 'favorites', 'wish
 
 async function getListStats(): Promise<{ total: number; customTotal: number; updateCount: number }> {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/profiles?select=game_lists&game_lists=not.is.null`,
+    `${SUPABASE_URL}/rest/v1/profiles?select=game_lists`,
     { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
   );
   const data = await res.json();

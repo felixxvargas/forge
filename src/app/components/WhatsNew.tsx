@@ -14,12 +14,14 @@ export const RELEASES: Release[] = [
     version: 'v0.3.4',
     date: 'May 2026',
     title: "What's New in Forge",
-    summary: "Game discovery in list editor, smarter search results, and profile improvements.",
+    summary: "Notification improvements, list editor game discovery, and polish.",
     highlights: [
+      'Notification bell now shows your unread count with a glowing badge — at a glance you can see exactly how many new notifications you have',
       'Discover games while editing your library or lists — browse New Releases, Recently Added by Forge users, and Popular on Forge without leaving the editor',
       'Cleaner game search results — DLCs, season passes, and duplicate edition variants are filtered out automatically',
+      'Game titles in post text now flow inline correctly on all screen sizes',
+      'List previews in posts display cleanly on tablet and mobile',
       'Profile pages now use a wider desktop layout for better use of screen space',
-      'Bug fixes and performance improvements across the app',
     ],
   },
   {

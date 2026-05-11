@@ -836,7 +836,7 @@ The `<head>` loads everything via CDN — no local dependencies:
 
 ### Typography
 
-Load the font via the `<link>` tag above. Good defaults: **Inter**, **Plus Jakarta Sans**, **DM Sans**. Match the user's preference if they specified one.
+Load the font via the `<link>` tag above. Good defaults: **Inter**, **Plus Jakarta Sans**. Match the user's preference if they specified one.
 
 Scale all font sizes relative to canvas width — never hardcode `px` values in slide rendering:
 
