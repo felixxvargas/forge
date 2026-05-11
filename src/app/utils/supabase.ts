@@ -2079,6 +2079,8 @@ export interface StreamArchive {
   created_at: string;
   retention_prompted_at: string | null;
   deleted_at: string | null;
+  is_public: boolean;
+  twitch_vod_url: string | null;
 }
 
 export const streamArchivesAPI = {
@@ -2135,6 +2137,34 @@ export const streamArchivesAPI = {
       .from('stream_archives')
       .update({ recorded_at: new Date().toISOString(), retention_prompted_at: null })
       .eq('id', archiveId);
+  },
+
+  async setPublic(archiveId: string, isPublic: boolean) {
+    await supabase
+      .from('stream_archives')
+      .update({ is_public: isPublic })
+      .eq('id', archiveId);
+  },
+
+  async getPublicForUser(userId: string): Promise<StreamArchive[]> {
+    const { data } = await supabase
+      .from('stream_archives')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_public', true)
+      .is('deleted_at', null)
+      .order('recorded_at', { ascending: false });
+    return (data ?? []) as StreamArchive[];
+  },
+
+  async getByIds(ids: string[]): Promise<StreamArchive[]> {
+    if (!ids.length) return [];
+    const { data } = await supabase
+      .from('stream_archives')
+      .select('*')
+      .in('id', ids)
+      .is('deleted_at', null);
+    return (data ?? []) as StreamArchive[];
   },
 
   async syncFromTwitch(userId: string, accessToken: string) {

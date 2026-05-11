@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from '@/compat/router';
-import { ArrowLeft, Check, AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, AlertCircle, Loader2, Trash2, Eye, EyeOff, Tv2 } from 'lucide-react';
 import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useAppData } from '../context/AppDataContext';
 import { supabase, streamArchivesAPI, type StreamArchive } from '../utils/supabase';
@@ -37,6 +37,8 @@ export function TwitchArchiveSettings() {
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number } | null>(null);
   const [toggling, setToggling] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pushing, setPushing] = useState(false);
   const [isExchanging, setIsExchanging] = useState(() => {
     if (typeof window === 'undefined') return false;
     const p = new URLSearchParams(window.location.search);
@@ -80,7 +82,6 @@ export function TwitchArchiveSettings() {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error ?? 'OAuth exchange failed');
         }
-        // Re-fetch the full profile so currentUser reflects what the edge function wrote
         await refreshCurrentUser();
         navigate('/settings/twitch-archive', { replace: true });
       } catch (e: any) {
@@ -132,6 +133,7 @@ export function TwitchArchiveSettings() {
         twitch_archive_enabled: false,
       } as any);
       setArchives([]);
+      setSelectedIds(new Set());
     } finally {
       setDisconnecting(false);
     }
@@ -152,22 +154,37 @@ export function TwitchArchiveSettings() {
     await updateCurrentUser({ twitch_archive_auto_post: !isAutoPost } as any);
   };
 
-  const createStreamPost = async (archive: StreamArchive) => {
-    if (!currentUser?.id) return;
-    const session = (await supabase.auth.getSession()).data.session;
-    if (!session) return;
-    const h = Math.floor(archive.duration_seconds / 3600);
-    const m = Math.floor((archive.duration_seconds % 3600) / 60);
-    const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
-    const body = `Just finished streaming: ${archive.title} (${dur})`;
-    const images = archive.thumbnail_url ? [archive.thumbnail_url] : [];
-    await supabase.from('posts').insert({
-      user_id: currentUser.id,
-      body,
-      images,
-      post_type: 'stream_archive',
-      stream_archive_id: archive.id,
-    });
+  const handleTogglePublic = async (archive: StreamArchive) => {
+    await streamArchivesAPI.setPublic(archive.id, !archive.is_public);
+    setArchives(prev => prev.map(a => a.id === archive.id ? { ...a, is_public: !a.is_public } : a));
+  };
+
+  const handlePushToProfile = async () => {
+    if (!currentUser?.id || selectedIds.size === 0) return;
+    setPushing(true);
+    try {
+      const ids = [...selectedIds];
+      await Promise.all(ids.map(id => streamArchivesAPI.setPublic(id, true)));
+
+      const session = (await supabase.auth.getSession()).data.session;
+      if (session) {
+        const count = ids.length;
+        const body = `Added ${count} stream${count !== 1 ? 's' : ''} to my Forge profile`;
+        await supabase.from('posts').insert({
+          user_id: currentUser.id,
+          body,
+          post_type: 'stream_publish',
+          stream_archive_ids: ids,
+        });
+      }
+
+      setArchives(prev => prev.map(a => selectedIds.has(a.id) ? { ...a, is_public: true } : a));
+      setSelectedIds(new Set());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setPushing(false);
+    }
   };
 
   const handleSync = async () => {
@@ -181,9 +198,25 @@ export function TwitchArchiveSettings() {
       setSyncResult(result);
       const updated = await streamArchivesAPI.getForUser(currentUser.id);
       setArchives(updated);
+
       if (isAutoPost) {
-        const newArchives = updated.filter(a => !prevIds.has(a.id) && a.download_status !== 'pending');
-        await Promise.all(newArchives.map(createStreamPost));
+        const newArchives = updated.filter(a => !prevIds.has(a.id));
+        if (newArchives.length > 0) {
+          const ids = newArchives.map(a => a.id);
+          await Promise.all(ids.map(id => streamArchivesAPI.setPublic(id, true)));
+          const session = (await supabase.auth.getSession()).data.session;
+          if (session) {
+            const count = ids.length;
+            const body = `Added ${count} stream${count !== 1 ? 's' : ''} to my Forge profile`;
+            await supabase.from('posts').insert({
+              user_id: currentUser.id,
+              body,
+              post_type: 'stream_publish',
+              stream_archive_ids: ids,
+            });
+          }
+          setArchives(prev => prev.map(a => ids.includes(a.id) ? { ...a, is_public: true } : a));
+        }
       }
     } catch (e: any) {
       setError(e.message);
@@ -195,10 +228,19 @@ export function TwitchArchiveSettings() {
   const handleDeleteArchive = async (archiveId: string) => {
     await streamArchivesAPI.softDelete(archiveId);
     setArchives(prev => prev.filter(a => a.id !== archiveId));
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(archiveId); return next; });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-32">
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full px-4 h-14 flex items-center gap-4">
           <button onClick={() => navigate('/settings')} className="p-2 hover:bg-secondary rounded-full transition-colors">
@@ -275,7 +317,7 @@ export function TwitchArchiveSettings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">Auto-post when synced</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Create a post on your profile when a new stream is saved</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Post new streams to your profile automatically on sync</p>
                   </div>
                   <button
                     onClick={handleToggleAutoPost}
@@ -314,8 +356,8 @@ export function TwitchArchiveSettings() {
               {[
                 'Connect your Twitch account to Forge',
                 'Enable auto-archiving — streams under 4 hours are saved automatically',
-                'Archived streams appear on your Forge media tab and profile',
-              'Optionally auto-post to your feed when a new stream is saved',
+                'Select which streams to push to your Forge profile and Media tab',
+                'Pushing streams creates a post on your profile so followers can see',
                 "You'll be reminded to review archives after 1 year",
                 'Archives with no response are deleted after 3 months of inactivity',
               ].map((item, i) => (
@@ -331,49 +373,79 @@ export function TwitchArchiveSettings() {
         {/* Archive list */}
         {isConnected && (
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-              Your Archives ({archives.length})
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Your Archives ({archives.length})
+              </h2>
+              {archives.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Select streams to push to your profile
+                </p>
+              )}
+            </div>
+
             {loadingArchives ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="bg-card rounded-xl overflow-hidden animate-pulse">
-                    <div className="aspect-video bg-muted/50" />
-                    <div className="p-3 space-y-2">
-                      <div className="h-4 bg-muted/50 rounded w-3/4" />
-                      <div className="h-3 bg-muted/30 rounded w-1/3" />
-                    </div>
+                    <div className="h-16 bg-muted/50" />
                   </div>
                 ))}
               </div>
             ) : archives.length === 0 ? (
               <div className="bg-card rounded-xl p-8 text-center text-muted-foreground">
-                <TwitchIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <Tv2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">No archived streams yet.</p>
                 <p className="text-xs mt-1">{isEnabled ? 'Streams will appear here after you go live.' : 'Enable auto-archiving above to get started.'}</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {archives.map(archive => (
-                  <div key={archive.id} className="bg-card rounded-xl overflow-hidden">
-                    {archive.thumbnail_url && (
-                      <div className="aspect-video bg-muted overflow-hidden">
+                  <div
+                    key={archive.id}
+                    className={`bg-card rounded-xl overflow-hidden flex items-stretch transition-colors ${selectedIds.has(archive.id) ? 'ring-1 ring-accent' : ''}`}
+                  >
+                    {/* Checkbox */}
+                    <button
+                      onClick={() => toggleSelect(archive.id)}
+                      className={`flex-none w-11 flex items-center justify-center transition-colors ${selectedIds.has(archive.id) ? 'bg-accent/15' : 'hover:bg-secondary/50'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedIds.has(archive.id) ? 'bg-accent border-accent' : 'border-muted-foreground/50'}`}>
+                        {selectedIds.has(archive.id) && <Check className="w-3 h-3 text-accent-foreground" />}
+                      </div>
+                    </button>
+
+                    {/* Thumbnail */}
+                    {archive.thumbnail_url ? (
+                      <div className="w-28 h-16 shrink-0 bg-muted overflow-hidden">
                         <img src={archive.thumbnail_url} alt={archive.title} className="w-full h-full object-cover" />
                       </div>
-                    )}
-                    <div className="p-3 flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{archive.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatDate(archive.recorded_at)} · {formatDuration(archive.duration_seconds)}
-                          {archive.download_status === 'pending' && (
-                            <span className="ml-2 text-amber-400">Pending download</span>
-                          )}
-                          {archive.download_status === 'ready' && (
-                            <span className="ml-2 text-green-400">Ready</span>
-                          )}
-                        </p>
+                    ) : (
+                      <div className="w-28 h-16 shrink-0 bg-muted flex items-center justify-center">
+                        <Tv2 className="w-5 h-5 text-muted-foreground/40" />
                       </div>
+                    )}
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 px-3 py-2 flex flex-col justify-center">
+                      <p className="font-medium text-sm truncate">{archive.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatDate(archive.recorded_at)} · {formatDuration(archive.duration_seconds)}
+                      </p>
+                      {archive.download_status === 'pending' && (
+                        <span className="text-xs text-amber-400 mt-0.5">Pending download</span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-0.5 pr-2 shrink-0">
+                      <button
+                        onClick={() => handleTogglePublic(archive)}
+                        className={`p-1.5 rounded transition-colors ${archive.is_public ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+                        title={archive.is_public ? 'Visible on profile — click to hide' : 'Hidden from profile — click to show'}
+                      >
+                        {archive.is_public ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
                       <button
                         onClick={() => handleDeleteArchive(archive.id)}
                         className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded"
@@ -398,6 +470,25 @@ export function TwitchArchiveSettings() {
           </div>
         )}
       </div>
+
+      {/* Push to profile sticky bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-20 px-4">
+          <div className="max-w-2xl mx-auto bg-accent text-accent-foreground rounded-xl px-4 py-3 flex items-center justify-between shadow-2xl">
+            <p className="text-sm font-medium">
+              {selectedIds.size} stream{selectedIds.size !== 1 ? 's' : ''} selected
+            </p>
+            <button
+              onClick={handlePushToProfile}
+              disabled={pushing}
+              className="flex items-center gap-2 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {pushing && <Loader2 className="w-4 h-4 animate-spin" />}
+              Push to Profile
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

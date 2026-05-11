@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight, Tv2, PlayCircle } from 'lucide-react';
 
 import { useNavigate } from '@/compat/router';
 import type { Post, User, SocialPlatform } from '../data/data';
@@ -13,7 +13,7 @@ import { useBlueskyData } from '../hooks/useBlueskyData';
 import { ShareModal } from './ShareModal';
 import { gameCoverCache } from '../utils/mentionHighlight';
 import { gamesAPI } from '../utils/api';
-import { pollAPI } from '../utils/supabase';
+import { pollAPI, streamArchivesAPI, type StreamArchive } from '../utils/supabase';
 import { LinkPreview } from './LinkPreview';
 import { BlurredImage } from './BlurredImage';
 import {
@@ -23,6 +23,68 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+
+function StreamPublishCard({ archiveIds, userId }: { archiveIds: string[]; userId: string }) {
+  const navigate = useNavigate();
+  const [archives, setArchives] = useState<StreamArchive[]>([]);
+
+  useEffect(() => {
+    if (archiveIds.length > 0) {
+      streamArchivesAPI.getByIds(archiveIds).then(setArchives).catch(() => {});
+    }
+  }, [archiveIds.join(',')]);
+
+  if (archives.length === 0) return null;
+
+  return (
+    <div className="mb-3 rounded-xl bg-purple-500/5 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <Tv2 className="w-3.5 h-3.5 text-purple-400" />
+        <span className="text-xs font-medium text-purple-300 uppercase tracking-wide">Stream{archives.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="divide-y divide-purple-500/10">
+        {archives.map(archive => {
+          const h = Math.floor(archive.duration_seconds / 3600);
+          const m = Math.floor((archive.duration_seconds % 3600) / 60);
+          const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+          const target = archive.twitch_vod_url ?? null;
+          return (
+            <div
+              key={archive.id}
+              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-purple-500/10 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (target) {
+                  window.open(target, '_blank', 'noopener,noreferrer');
+                } else {
+                  navigate(`/profile/${userId}`);
+                }
+              }}
+            >
+              {archive.thumbnail_url ? (
+                <div className="relative w-20 h-12 shrink-0 rounded overflow-hidden bg-muted">
+                  <img src={archive.thumbnail_url} alt={archive.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <PlayCircle className="w-5 h-5 text-white drop-shadow" />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-20 h-12 shrink-0 rounded bg-muted flex items-center justify-center">
+                  <Tv2 className="w-4 h-4 text-muted-foreground/40" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{archive.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{dur}</p>
+              </div>
+              {target && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface PostCardProps {
   post: Post;
@@ -313,7 +375,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       className={`${
         isFlarePost
           ? 'relative overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-950/60 via-red-950/30 to-card'
-          : noBacker ? 'bg-transparent' : 'bg-card border border-border'
+          : noBacker ? 'bg-transparent' : 'bg-card'
       } p-4 ${showThreadLine ? 'relative' : ''} ${!isDetailView ? 'rounded-xl cursor-pointer transition-colors' : ''} ${
         isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-secondary/40' : ''
       }`}
@@ -601,7 +663,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
             return (
               <button
                 key={g.id}
-                onClick={(e) => { e.stopPropagation(); navigate(`/game/${g.id}`); }}
+                onClick={(e) => { e.stopPropagation(); navigate(`/game/${encodeURIComponent(g.id)}`); }}
                 className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
               >
                 {cover ? (
@@ -617,6 +679,14 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
             );
           })}
         </div>
+      )}
+
+      {/* Stream publish card */}
+      {(post as any).post_type === 'stream_publish' && (post as any).stream_archive_ids?.length > 0 && (
+        <StreamPublishCard
+          archiveIds={(post as any).stream_archive_ids}
+          userId={post.user_id ?? post.userId}
+        />
       )}
 
       {/* Source link card for third-party posts */}

@@ -105,7 +105,7 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle, gameI
         parts.push(
           <button
             key={`game-${match.index}`}
-            onClick={(e) => { e.stopPropagation(); navigate(`/game/${game.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/game/${encodeURIComponent(game.id)}`); }}
             className="inline align-baseline p-0 text-accent hover:underline font-bold"
           >
             {matchedText}

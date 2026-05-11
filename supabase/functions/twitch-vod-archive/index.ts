@@ -159,6 +159,7 @@ app.post("/twitch-vod-archive/sync", async (c) => {
       title: vod.title ?? "Untitled Stream",
       duration_seconds: durationSec,
       thumbnail_url: thumbnailUrl,
+      twitch_vod_url: vod.url ?? null,
       download_status: "pending",
       recorded_at: vod.created_at,
     }, { onConflict: "user_id,twitch_vod_id", ignoreDuplicates: true });

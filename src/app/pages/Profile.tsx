@@ -262,16 +262,19 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     [profileUserPosts]
   );
 
-  // Load stream archives for own profile
+  // Load stream archives
   useEffect(() => {
-    if (!isOwnProfile || !currentUser?.id) return;
-    streamArchivesAPI.getForUser(currentUser.id).then(setStreamArchives).catch(() => {});
-    streamArchivesAPI.autoDeleteOverdue(currentUser.id).catch(() => {});
-    streamArchivesAPI.getRetentionDue(currentUser.id).then(due => {
-      setRetentionDue(due);
-      due.forEach(a => streamArchivesAPI.markRetentionPrompted(a.id));
-    }).catch(() => {});
-  }, [isOwnProfile, currentUser?.id]);
+    if (isOwnProfile && currentUser?.id) {
+      streamArchivesAPI.getForUser(currentUser.id).then(setStreamArchives).catch(() => {});
+      streamArchivesAPI.autoDeleteOverdue(currentUser.id).catch(() => {});
+      streamArchivesAPI.getRetentionDue(currentUser.id).then(due => {
+        setRetentionDue(due);
+        due.forEach(a => streamArchivesAPI.markRetentionPrompted(a.id));
+      }).catch(() => {});
+    } else if (!isOwnProfile && profileUser?.id) {
+      streamArchivesAPI.getPublicForUser(profileUser.id).then(setStreamArchives).catch(() => {});
+    }
+  }, [isOwnProfile, currentUser?.id, profileUser?.id]);
 
   // Sync top_friends and top_games from the displayed profile
   useEffect(() => {
@@ -1243,7 +1246,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               Likes
             </button>
           )}
-          {mediaPosts.length > 0 && (
+          {(mediaPosts.length > 0 || streamArchives.length > 0) && (
             <button
               onClick={() => setActiveTab('media')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
@@ -1766,15 +1769,25 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {streamArchives.slice(0, 5).map(archive => {
+                  {streamArchives.slice(0, isOwnProfile ? undefined : 10).map(archive => {
                     const h = Math.floor(archive.duration_seconds / 3600);
                     const m = Math.floor((archive.duration_seconds % 3600) / 60);
                     const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    const vodUrl = (archive as any).twitch_vod_url ?? null;
                     return (
-                      <div key={archive.id} className="flex items-center gap-3 bg-card rounded-xl overflow-hidden">
+                      <div
+                        key={archive.id}
+                        className={`flex items-center gap-3 bg-card rounded-xl overflow-hidden ${vodUrl ? 'cursor-pointer hover:bg-card/80 transition-colors' : ''}`}
+                        onClick={vodUrl ? () => window.open(vodUrl, '_blank', 'noopener,noreferrer') : undefined}
+                      >
                         {archive.thumbnail_url ? (
-                          <div className="w-24 h-14 shrink-0 bg-muted overflow-hidden">
+                          <div className="relative w-24 h-14 shrink-0 bg-muted overflow-hidden">
                             <img src={archive.thumbnail_url} alt={archive.title} className="w-full h-full object-cover" />
+                            {vodUrl && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <PlayCircle className="w-5 h-5 text-white drop-shadow" />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="w-24 h-14 shrink-0 bg-muted flex items-center justify-center">
@@ -1786,10 +1799,11 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {new Date(archive.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {dur}
                           </p>
-                          {archive.download_status === 'pending' && (
+                          {isOwnProfile && archive.download_status === 'pending' && (
                             <span className="text-xs text-amber-400">Pending</span>
                           )}
                         </div>
+                        {vodUrl && <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0 mr-3" />}
                       </div>
                     );
                   })}
