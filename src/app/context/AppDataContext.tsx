@@ -34,6 +34,7 @@ interface AppDataContextType {
   topicPostsReady: boolean;
   isAuthenticated: boolean;
   hasUnreadNotifications: boolean;
+  unreadNotificationCount: number;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -115,6 +116,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [topicPostsReady, setTopicPostsReady] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [filteredSocialPlatforms, setFilteredSocialPlatforms] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('forge-filtered-platforms');
@@ -195,6 +197,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       followingIdsRef.current = mergedFollowingIds;
       setFollowingIds(new Set(mergedFollowingIds));
       setHasUnreadNotifications(unreadCount > 0);
+      setUnreadNotificationCount(unreadCount);
       const externalFollowsList: any[] = (profile?.game_lists?._externalFollows) ?? [];
       setExternalFollows(externalFollowsList);
       return { topicFollows, externalFollows: externalFollowsList, followingIdList, likedIds, repostedIds };
@@ -365,6 +368,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         async (payload) => {
           setHasUnreadNotifications(true);
+          setUnreadNotificationCount(prev => prev + 1);
           // Check user preference before showing toast
           if (localStorage.getItem('forge-toast-notifications') === 'false') return;
           const notif = payload.new as any;
@@ -1039,6 +1043,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!session?.user) return;
     await notificationsAPI.markAllRead(session.user.id);
     setHasUnreadNotifications(false);
+    setUnreadNotificationCount(0);
   };
 
   // Re-fetch the current user's profile from DB and sync to React state.
@@ -1103,6 +1108,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       topicPostsReady,
       isAuthenticated,
       hasUnreadNotifications,
+      unreadNotificationCount,
       signIn,
       signUp,
       signInWithGoogle,

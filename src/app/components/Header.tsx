@@ -12,7 +12,7 @@ interface HeaderProps {
 
 export function Header({ title, showNotifications = true, showSettings = true }: HeaderProps) {
   const navigate = useNavigate();
-  const { hasUnreadNotifications } = useAppData();
+  const { hasUnreadNotifications, unreadNotificationCount } = useAppData();
 
   return (
     <header className="sticky top-0 bg-card/80 backdrop-blur-lg border-b border-border z-40">
@@ -46,11 +46,16 @@ export function Header({ title, showNotifications = true, showSettings = true }:
           {showNotifications && (
             <button
               onClick={() => navigate('/notifications')}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors relative"
+              className="group p-2 hover:bg-secondary rounded-lg transition-colors flex items-center gap-1.5"
             >
               <Bell className="w-5 h-5" />
               {hasUnreadNotifications && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-card animate-pulse" />
+                <span className="relative">
+                  <span className="absolute inset-0 rounded-full bg-accent/50 animate-ping" aria-hidden="true" />
+                  <span className="relative flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-accent text-accent-foreground text-xs font-semibold rounded-full transition-shadow group-hover:shadow-[0_0_8px_rgba(231,255,196,0.65)]">
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount || ''}
+                  </span>
+                </span>
               )}
             </button>
           )}

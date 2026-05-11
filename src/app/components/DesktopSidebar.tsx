@@ -358,7 +358,7 @@ export function DesktopSidebar() {
             )}
 
             <button
-              onClick={() => otherAccounts.length === 0 ? navigate('/profile') : setShowAccountMenu(v => !v)}
+              onClick={() => setShowAccountMenu(v => !v)}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 w-full transition-colors hover:bg-sidebar-accent"
             >
               <ProfileAvatar
