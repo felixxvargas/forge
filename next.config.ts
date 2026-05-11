@@ -69,11 +69,16 @@ const nextConfig: NextConfig = {
 const sentryConfig = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  silent: !process.env.CI,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  telemetry: false,
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
   disableLogger: true,
   automaticVercelMonitors: false,
+  // Skip source map upload when no auth token is available (e.g. local builds).
+  // The GitHub Actions sentry-release workflow handles releases and source maps in CI.
+  disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
 };
 
 export default isAndroidBuild ? nextConfig : withSentryConfig(nextConfig, sentryConfig);
