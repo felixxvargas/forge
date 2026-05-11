@@ -997,7 +997,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const newHiddenLists = wasEmpty && games.length > 0
       ? hiddenLists.filter((k: string) => k !== key)
       : hiddenLists;
-    const updatedLists = { ...existing, [key]: games, hiddenLists: newHiddenLists };
+    const updatedLists = { ...existing, [key]: games, hiddenLists: newHiddenLists, _updateCount: (existing._updateCount ?? 0) + 1 };
     const updated = await profiles.update(session.user.id, { game_lists: updatedLists });
     const normalized = normalizeProfile(updated);
     currentUserRef.current = { ...normalized, communities: currentUserRef.current?.communities };

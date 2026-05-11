@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List } from 'lucide-react';
 
 interface AdminStats {
   users: { total: number; last7Days: number; last30Days: number; last90Days: number; last365Days: number };
@@ -10,6 +10,7 @@ interface AdminStats {
   games: { total: number; last30Days: number; last90Days: number; last365Days: number };
   communities: { total: number };
   flares: { total: number; last30Days: number; last90Days: number; last365Days: number };
+  lists: { total: number; customTotal: number; updateCount: number };
   recentUsers: { handle: string; display_name: string; created_at: string }[];
   generatedAt: string;
 }
@@ -203,6 +204,31 @@ export function Admin() {
               delta={pick(stats.flares, period)}
               period={period}
             />
+          </div>
+        </section>
+
+        {/* Lists */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lists</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <List className="w-4 h-4" />
+                <span className="text-xs font-medium uppercase tracking-wide">Total Lists</span>
+              </div>
+              <div className="text-3xl font-bold tabular-nums">{stats.lists?.total ?? 0}</div>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">{stats.lists?.customTotal ?? 0}</span> custom
+              </div>
+            </div>
+            <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-xs font-medium uppercase tracking-wide">List Updates</span>
+              </div>
+              <div className="text-3xl font-bold tabular-nums">{(stats.lists?.updateCount ?? 0).toLocaleString()}</div>
+              <div className="text-sm text-muted-foreground">Total edits across all users</div>
+            </div>
           </div>
         </section>
 

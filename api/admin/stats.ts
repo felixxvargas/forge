@@ -18,6 +18,28 @@ async function countTable(table: string, since?: string): Promise<number> {
   return parseInt(cr.split('/')[1] ?? '0', 10);
 }
 
+const STANDARD_LIST_KEYS = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library', 'completed', 'custom', 'lfg'];
+
+async function getListStats(): Promise<{ total: number; customTotal: number; updateCount: number }> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?select=game_lists&game_lists=not.is.null`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
+  );
+  const data = await res.json();
+  if (!Array.isArray(data)) return { total: 0, customTotal: 0, updateCount: 0 };
+
+  let standardTotal = 0, customTotal = 0, updateCount = 0;
+  for (const profile of data) {
+    const gl = profile.game_lists ?? {};
+    for (const key of STANDARD_LIST_KEYS) {
+      if (Array.isArray(gl[key]) && gl[key].length > 0) standardTotal++;
+    }
+    customTotal += (gl.customLists ?? []).length;
+    updateCount += gl._updateCount ?? 0;
+  }
+  return { total: standardTotal + customTotal, customTotal, updateCount };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'GET') return new Response('Method not allowed', { status: 405 });
 
@@ -65,6 +87,7 @@ export default async function handler(req: Request): Promise<Response> {
     totalUserGames, games30, games90, games365,
     totalCommunities,
     totalFlares, flares30, flares90, flares365,
+    listStats,
   ] = await Promise.all([
     countTable('profiles'), countTable('profiles', t7), countTable('profiles', t30),
     countTable('profiles', t90), countTable('profiles', t365),
@@ -74,6 +97,7 @@ export default async function handler(req: Request): Promise<Response> {
     countTable('communities'),
     countTable('lfg_flares'), countTable('lfg_flares', t30),
     countTable('lfg_flares', t90), countTable('lfg_flares', t365),
+    getListStats(),
   ]);
 
   const recentRes = await fetch(
@@ -88,6 +112,7 @@ export default async function handler(req: Request): Promise<Response> {
     games: { total: totalUserGames, last30Days: games30, last90Days: games90, last365Days: games365 },
     communities: { total: totalCommunities },
     flares: { total: totalFlares, last30Days: flares30, last90Days: flares90, last365Days: flares365 },
+    lists: listStats,
     recentUsers: recentUsers ?? [],
     generatedAt: new Date().toISOString(),
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
