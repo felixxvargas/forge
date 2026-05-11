@@ -85,7 +85,7 @@ app.post("/twitch-vod-archive/oauth-callback", async (c) => {
   const twitchUser = userData.data?.[0];
   if (!twitchUser) return c.json({ error: "No Twitch user found" }, 500);
 
-  await supabase.from("profiles").update({
+  const { error: profileUpdateErr } = await supabase.from("profiles").update({
     twitch_user_id: twitchUser.id,
     twitch_display_name: twitchUser.display_name,
     twitch_access_token: tokens.access_token,
@@ -93,6 +93,11 @@ app.post("/twitch-vod-archive/oauth-callback", async (c) => {
     twitch_token_expires_at: new Date(Date.now() + (tokens.expires_in ?? 14400) * 1000).toISOString(),
     twitch_archive_enabled: true,
   }).eq("id", user_id);
+
+  if (profileUpdateErr) {
+    console.error("[oauth-callback] profile update failed:", profileUpdateErr.message);
+    return c.json({ error: `Failed to save Twitch connection: ${profileUpdateErr.message}` }, 500);
+  }
 
   return c.json({ twitch_user_id: twitchUser.id, twitch_display_name: twitchUser.display_name });
 });

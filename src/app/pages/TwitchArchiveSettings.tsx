@@ -24,7 +24,7 @@ function formatDate(iso: string): string {
 export function TwitchArchiveSettings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentUser, updateCurrentUser } = useAppData();
+  const { currentUser, updateCurrentUser, refreshCurrentUser } = useAppData();
 
   const isConnected = !!(currentUser as any)?.twitch_user_id;
   const isEnabled = !!(currentUser as any)?.twitch_archive_enabled;
@@ -37,6 +37,11 @@ export function TwitchArchiveSettings() {
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number } | null>(null);
   const [toggling, setToggling] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [isExchanging, setIsExchanging] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const p = new URLSearchParams(window.location.search);
+    return p.get('state') === 'twitch-archive' && !!p.get('code');
+  });
   const [error, setError] = useState<string | null>(null);
 
   const loadArchives = useCallback(async () => {
@@ -58,8 +63,8 @@ export function TwitchArchiveSettings() {
 
     const exchangeCode = async () => {
       setError(null);
+      setIsExchanging(true);
       try {
-        // Exchange code for tokens via our edge function
         const session = (await supabase.auth.getSession()).data.session;
         if (!session) return;
 
@@ -75,16 +80,13 @@ export function TwitchArchiveSettings() {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error ?? 'OAuth exchange failed');
         }
-        const data = await res.json();
-        await updateCurrentUser({
-          twitch_user_id: data.twitch_user_id,
-          twitch_display_name: data.twitch_display_name,
-          twitch_archive_enabled: true,
-        } as any);
-        // Clear query params
+        // Re-fetch the full profile so currentUser reflects what the edge function wrote
+        await refreshCurrentUser();
         navigate('/settings/twitch-archive', { replace: true });
       } catch (e: any) {
         setError(e.message);
+      } finally {
+        setIsExchanging(false);
       }
     };
     exchangeCode();
@@ -236,6 +238,11 @@ export function TwitchArchiveSettings() {
               >
                 {disconnecting ? 'Disconnecting…' : 'Disconnect'}
               </button>
+            ) : isExchanging ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-purple-600/40 text-white text-sm font-medium rounded-lg">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Connecting…
+              </div>
             ) : (
               <button
                 onClick={handleConnect}
