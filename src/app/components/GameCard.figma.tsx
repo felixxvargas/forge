@@ -11,7 +11,7 @@ figma.connect(GameCard, 'https://www.figma.com/design/FLcTOqupDgGnxDlq76K8MP/For
   },
   example: ({ fullWidth, showHours }) => (
     <GameCard
-      game={{ id: 'example', title: 'Example Game', coverArt: '' }}
+      game={{ id: 'example', title: 'Example Game', coverArt: '', platform: 'steam', year: 2024 }}
       fullWidth={fullWidth}
       showHours={showHours}
     />
