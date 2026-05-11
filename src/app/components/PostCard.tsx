@@ -313,7 +313,7 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       className={`${
         isFlarePost
           ? 'relative overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-950/60 via-red-950/30 to-card'
-          : noBacker ? 'bg-transparent' : 'bg-card'
+          : noBacker ? 'bg-transparent' : 'bg-card border border-border'
       } p-4 ${showThreadLine ? 'relative' : ''} ${!isDetailView ? 'rounded-xl cursor-pointer transition-colors' : ''} ${
         isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-secondary/40' : ''
       }`}
