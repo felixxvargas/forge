@@ -50,11 +50,8 @@ export function Header({ title, showNotifications = true, showSettings = true }:
             >
               <Bell className="w-5 h-5" />
               {hasUnreadNotifications && (
-                <span className="relative">
-                  <span className="absolute inset-0 rounded-full bg-accent/50 animate-ping" aria-hidden="true" />
-                  <span className="relative flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-accent text-accent-foreground text-xs font-semibold rounded-full transition-shadow group-hover:shadow-[0_0_8px_rgba(231,255,196,0.65)]">
-                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount || ''}
-                  </span>
+                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-accent text-[#3f2d5f] text-xs font-semibold rounded-full shadow-[0_0_8px_rgba(231,255,196,0.65)]">
+                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount || ''}
                 </span>
               )}
             </button>

@@ -657,17 +657,17 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
               <div className="flex gap-1 shrink-0">
                 {list.covers && list.covers.length > 0 ? (
                   list.covers.slice(0, 4).map((c: string, i: number) => (
-                    <img key={i} src={c} alt="" className="w-10 h-14 object-cover rounded" />
+                    <img key={i} src={c} alt="" className={`w-9 h-12 md:w-10 md:h-14 object-cover rounded${i >= 2 ? ' hidden sm:block' : ''}`} />
                   ))
                 ) : (
-                  <div className="w-10 h-14 rounded bg-secondary flex items-center justify-center">
-                    <Gamepad2 className="w-5 h-5 text-muted-foreground" />
+                  <div className="w-9 h-12 md:w-10 md:h-14 rounded bg-secondary flex items-center justify-center">
+                    <Gamepad2 className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
                   </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="hidden sm:block text-xs text-accent font-medium mb-0.5 uppercase tracking-wide">Game List</p>
-                <p className="font-semibold text-sm">{list.title}</p>
+                <p className="font-semibold text-sm break-words">{list.title}</p>
                 <p className="text-xs text-muted-foreground">{list.gameCount} games</p>
               </div>
             </div>

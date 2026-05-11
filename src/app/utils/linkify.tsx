@@ -106,7 +106,7 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle, gameI
           <button
             key={`game-${match.index}`}
             onClick={(e) => { e.stopPropagation(); navigate(`/game/${game.id}`); }}
-            className="text-accent hover:underline font-bold"
+            className="inline align-baseline p-0 text-accent hover:underline font-bold"
           >
             {matchedText}
           </button>
