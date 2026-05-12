@@ -92,7 +92,8 @@ export const profiles = {
   },
 
   async getByHandle(handle: string) {
-    const stripped = handle.replace(/^@/, '');
+    const stripped = handle.replace(/^@/, '').slice(0, 30).replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!stripped) return null;
     // Try both with and without @ prefix, case-insensitive
     const { data } = await supabase
       .from('profiles')

@@ -58,8 +58,6 @@ export function ReviewSubmissions() {
     setSubmissions(updated);
     localStorage.setItem('forge-indie-game-submissions', JSON.stringify(updated));
     
-    // TODO: Add the game to the actual games database
-    
     setSelectedSubmission(null);
     setReviewNote('');
     setProcessing(false);

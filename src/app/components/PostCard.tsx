@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight, Tv2, PlayCircle } from 'lucide-react';
 
 import { useNavigate } from '@/compat/router';
@@ -30,7 +30,7 @@ function StreamPublishCard({ archiveIds, userId }: { archiveIds: string[]; userI
 
   useEffect(() => {
     if (archiveIds.length > 0) {
-      streamArchivesAPI.getByIds(archiveIds).then(setArchives).catch(() => {});
+      streamArchivesAPI.getByIds(archiveIds).then(setArchives).catch((e) => console.error('[StreamPublishCard] failed to load archives', e));
     }
   }, [archiveIds.join(',')]);
 
@@ -110,7 +110,7 @@ interface PostCardProps {
   showThreadLine?: boolean;
 }
 
-export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -950,4 +950,4 @@ export function PostCard({ post, user, onLike, onRepost, onComment, onDelete, on
       />
     </div>
   );
-}
+});

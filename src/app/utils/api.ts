@@ -48,6 +48,9 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
   }
 }
 
+// Singleton promise so concurrent callers share one refresh instead of racing
+let refreshPromise: Promise<string | null> | null = null;
+
 // Returns a valid (non-expired) access token, refreshing silently if needed
 async function getValidToken(): Promise<string | null> {
   let token = localStorage.getItem('forge-access-token');
@@ -57,7 +60,12 @@ async function getValidToken(): Promise<string | null> {
   if (token && isTokenExpired(token)) {
     const refreshToken = localStorage.getItem('forge-refresh-token');
     if (refreshToken) {
-      const newToken = await refreshAccessToken(refreshToken);
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken(refreshToken).finally(() => {
+          refreshPromise = null;
+        });
+      }
+      const newToken = await refreshPromise;
       if (newToken) return newToken;
     }
   }

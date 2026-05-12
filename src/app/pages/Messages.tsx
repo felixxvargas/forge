@@ -529,6 +529,15 @@ export function Messages() {
     return () => { if (addPeopleDebounce.current) clearTimeout(addPeopleDebounce.current); };
   }, [addPeopleQuery, currentUser?.id, selectedGroupThread?.participant_ids]);
 
+  // Clear typing/long-press timers on unmount
+  useEffect(() => {
+    return () => {
+      if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
+      if (myTypingDebounceRef.current) clearTimeout(myTypingDebounceRef.current);
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
+
   const openConversation = (partnerId: string, partnerProfile: any) => {
     setSelectedPartnerId(partnerId);
     setPartner(partnerProfile);

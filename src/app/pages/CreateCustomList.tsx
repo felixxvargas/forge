@@ -16,7 +16,6 @@ export function CreateCustomList() {
   const [selectedGames, setSelectedGames] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const searchTimer = useState<ReturnType<typeof setTimeout> | null>(null)[0];
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = (q: string) => {
