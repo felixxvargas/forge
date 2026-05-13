@@ -422,38 +422,35 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="flex gap-3 sm:gap-6 items-start">
-          {splitToColumns([true, false, false, true, false, true, false, false, true, false], numCols).map((colItems, colIdx) => (
-            <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
-              {colItems.map((hasImage, i) => {
-                const textWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full', 'w-2/3'];
-                return (
-                  <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                    <div className="flex gap-3">
-                      <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex gap-2 mb-2.5">
-                          <div className="h-3 bg-muted/50 rounded w-24" />
-                          <div className="h-3 bg-muted/30 rounded w-16" />
-                        </div>
-                        <div className="space-y-2 mb-3">
-                          <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
-                          <div className="h-3 bg-muted/40 rounded w-5/6" />
-                          {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
-                        </div>
-                        {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
-                        <div className="flex gap-4 pt-1">
-                          <div className="h-3 bg-muted/25 rounded w-8" />
-                          <div className="h-3 bg-muted/25 rounded w-8" />
-                          <div className="h-3 bg-muted/25 rounded w-8" />
-                        </div>
-                      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 items-start">
+          {[0,1,2,3,4,5,6,7,8,9].map((i) => {
+            const hasImage = [0, 3, 5, 8].includes(i);
+            const textWidths = ['w-full','w-5/6','w-full','w-4/5','w-11/12','w-full','w-3/4','w-5/6','w-full','w-2/3'];
+            return (
+              <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+                <div className="flex gap-3">
+                  <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex gap-2 mb-2.5">
+                      <div className="h-3 bg-muted/50 rounded w-24" />
+                      <div className="h-3 bg-muted/30 rounded w-16" />
+                    </div>
+                    <div className="space-y-2 mb-3">
+                      <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
+                      <div className="h-3 bg-muted/40 rounded w-5/6" />
+                      {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
+                    </div>
+                    {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
+                    <div className="flex gap-4 pt-1">
+                      <div className="h-3 bg-muted/25 rounded w-8" />
+                      <div className="h-3 bg-muted/25 rounded w-8" />
+                      <div className="h-3 bg-muted/25 rounded w-8" />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

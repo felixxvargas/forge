@@ -301,6 +301,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // On Android: intercept the OAuth deep link and forward params to /auth/callback.
+  // Supabase uses implicit flow by default — tokens arrive in the URL hash fragment
+  // (#access_token=...&refresh_token=...), not as a ?code= query param.
+  // We preserve the full path+hash so Supabase's detectSessionInUrl handles it on reload.
+  useEffect(() => {
+    let listenerHandle: { remove: () => void } | null = null;
+
+    (async () => {
+      const { Capacitor } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform()) return;
+
+      const { App } = await import('@capacitor/app');
+
+      const handleOAuthUrl = (url: string) => {
+        if (!url.includes('auth/callback')) return;
+        // Strip custom scheme, preserve query params and hash for Supabase detectSessionInUrl
+        const path = url.replace('app.forge.social://auth/callback', '/auth/callback');
+        window.location.replace(path);
+      };
+
+      // Cold start: app was launched from a killed state via the deep link
+      const launch = await App.getLaunchUrl();
+      if (launch?.url) handleOAuthUrl(launch.url);
+
+      // Warm start: app was in background and foregrounded via the deep link
+      listenerHandle = await App.addListener('appUrlOpen', ({ url }) => handleOAuthUrl(url));
+    })();
+
+    return () => { listenerHandle?.remove(); };
+  }, []);
+
 
   // Client-side replacement for pg_cron: check for expiring stream archives on login.
   // Runs once per session. Creates stream_expiry notifications for archives that are

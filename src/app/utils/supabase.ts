@@ -27,12 +27,13 @@ export const auth = {
   },
 
   async signInWithGoogle() {
+    const { Capacitor } = await import('@capacitor/core');
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'app.forge.social://auth/callback'
+      : `${window.location.origin}/auth/callback`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: { prompt: 'select_account' },
-      },
+      options: { redirectTo, queryParams: { prompt: 'select_account' } },
     });
     if (error) throw new Error(error.message);
     return data;
@@ -2075,7 +2076,7 @@ export interface StreamArchive {
   duration_seconds: number;
   thumbnail_url: string | null;
   storage_path: string | null;
-  download_status: 'pending' | 'downloading' | 'ready' | 'failed';
+  publish_status: 'unpublished' | 'published';
   recorded_at: string;
   created_at: string;
   retention_prompted_at: string | null;
@@ -2092,6 +2093,17 @@ export const streamArchivesAPI = {
       .eq('user_id', userId)
       .is('deleted_at', null)
       .order('recorded_at', { ascending: false });
+    return (data ?? []) as StreamArchive[];
+  },
+
+  async getForUserPaginated(userId: string, offset: number, limit: number): Promise<StreamArchive[]> {
+    const { data } = await supabase
+      .from('stream_archives')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .order('recorded_at', { ascending: false })
+      .range(offset, offset + limit - 1);
     return (data ?? []) as StreamArchive[];
   },
 

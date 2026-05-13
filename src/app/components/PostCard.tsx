@@ -110,6 +110,10 @@ interface PostCardProps {
   showThreadLine?: boolean;
 }
 
+function igdbThumb(url: string) {
+  return url.replace(/\/t_[^/]+\//, '/t_thumb/');
+}
+
 export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
@@ -666,11 +670,17 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                 onClick={(e) => { e.stopPropagation(); navigate(`/game/${encodeURIComponent(g.id)}`); }}
                 className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors max-w-[260px] text-left"
               >
-                {cover ? (
-                  <img src={cover} alt={g.title} className="w-8 h-10 rounded object-cover shrink-0" />
-                ) : (
-                  <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
-                )}
+                <div className="relative w-8 h-10 shrink-0">
+                  <Gamepad2 className="absolute inset-0 m-auto w-5 h-5 text-muted-foreground" />
+                  {cover && (
+                    <img
+                      src={igdbThumb(cover)}
+                      alt={g.title}
+                      className="absolute inset-0 w-full h-full rounded object-cover opacity-0 transition-opacity duration-200"
+                      onLoad={e => e.currentTarget.classList.replace('opacity-0', 'opacity-100')}
+                    />
+                  )}
+                </div>
                 <div className="min-w-0">
                   <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide leading-none mb-0.5">Game</p>
                   <p className="text-sm font-semibold truncate leading-tight">{g.title}</p>

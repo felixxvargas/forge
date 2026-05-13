@@ -1799,9 +1799,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {new Date(archive.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {dur}
                           </p>
-                          {isOwnProfile && archive.download_status === 'pending' && (
-                            <span className="text-xs text-amber-400">Pending</span>
-                          )}
                         </div>
                         {vodUrl && <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0 mr-3" />}
                       </div>

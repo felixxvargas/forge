@@ -52,13 +52,13 @@ export function SignUp() {
       const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
       // Mark this as a sign-up intent so AuthCallback can detect existing accounts
       localStorage.setItem('forge-oauth-intent', 'signup');
+      const { Capacitor } = await import('@capacitor/core');
+      const redirectTo = Capacitor.isNativePlatform()
+        ? 'app.forge.social://auth/callback'
+        : `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          // Force account picker so user can choose a different Google account
-          queryParams: { prompt: 'select_account' },
-        },
+        options: { redirectTo, queryParams: { prompt: 'select_account' } },
       });
       if (error) {
         localStorage.removeItem('forge-oauth-intent');

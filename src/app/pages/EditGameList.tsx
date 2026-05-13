@@ -705,7 +705,7 @@ export function EditGameList() {
                             disabled={isSelected}
                             className="shrink-0 w-[68px] text-left"
                           >
-                            <div className={`w-[68px] h-[90px] rounded-md overflow-hidden bg-muted/20 mb-1 relative ${isSelected ? 'ring-2 ring-accent' : 'hover:opacity-80 transition-opacity'}`}>
+                            <div className={`w-[68px] h-[90px] rounded-md overflow-hidden bg-muted/20 mb-1 relative border-2 ${isSelected ? 'border-accent' : 'border-transparent hover:opacity-80 transition-opacity'}`}>
                               {cover && <img src={cover} alt={game.title} className="w-full h-full object-cover" />}
                               {isSelected && (
                                 <div className="absolute inset-0 bg-accent/30 flex items-center justify-center">
@@ -713,7 +713,7 @@ export function EditGameList() {
                                 </div>
                               )}
                             </div>
-                            <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">{game.title}</p>
+                            <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2 min-h-[2.5em]">{game.title}</p>
                           </button>
                         );
                       })}

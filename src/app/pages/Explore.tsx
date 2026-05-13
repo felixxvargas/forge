@@ -126,6 +126,10 @@ export function Explore() {
   const loadingLfg = lfgSWRLoading && !lfgData;
 
   const showGamesSkeleton = useMemo(() => {
+    if (!searchQuery.trim()) {
+      if (gamesListData === undefined) return true;
+      if ((gamesListData as any[]).length > 0 && dbGames.length === 0) return true;
+    }
     if (loadingGames || loadingTrendingCounts || loadingExtraGames) return true;
     if (dbGames.length > 0) {
       const countedIds = new Set([...Object.keys(trendingCounts), ...Object.keys(listCounts)]);
@@ -135,7 +139,7 @@ export function Explore() {
       }
     }
     return false;
-  }, [loadingGames, loadingTrendingCounts, loadingExtraGames, dbGames, trendingCounts, listCounts]);
+  }, [loadingGames, loadingTrendingCounts, loadingExtraGames, dbGames, trendingCounts, listCounts, gamesListData, searchQuery]);
 
   const navigate = useNavigate();
   const navType = useNavigationType();

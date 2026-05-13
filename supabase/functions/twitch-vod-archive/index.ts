@@ -11,11 +11,12 @@ const supabase = createClient(
 
 const TWITCH_CLIENT_ID = Deno.env.get("TWITCH_CLIENT_ID") ?? "";
 const TWITCH_CLIENT_SECRET = Deno.env.get("TWITCH_CLIENT_SECRET") ?? "";
-const MAX_DURATION_SECONDS = 4 * 60 * 60; // 4 hours
+const FREE_MAX_DURATION = 4 * 60 * 60;    // 4 hours
+const PREMIUM_MAX_DURATION = 6 * 60 * 60; // 6 hours
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 app.use("/*", cors({ origin: "*", allowHeaders: ["Content-Type", "Authorization"], allowMethods: ["GET", "POST", "OPTIONS"] }));
 
-// Parse Twitch duration string like "4h30m10s" into seconds
 function parseTwitchDuration(dur: string): number {
   const h = dur.match(/(\d+)h/)?.[1] ?? "0";
   const m = dur.match(/(\d+)m/)?.[1] ?? "0";
@@ -38,18 +39,79 @@ async function refreshTwitchToken(refreshToken: string): Promise<{ access_token:
   return res.json();
 }
 
-async function getTwitchVods(userId: string, accessToken: string): Promise<any[]> {
-  const res = await fetch(
-    `https://api.twitch.tv/helix/videos?user_id=${userId}&type=archive&first=20`,
-    { headers: { "Client-ID": TWITCH_CLIENT_ID, "Authorization": `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) return [];
-  const json = await res.json();
-  return json.data ?? [];
+// Fetches all VODs from the last year, paginating via cursor.
+async function getTwitchVods(twitchUserId: string, accessToken: string): Promise<any[]> {
+  const cutoff = new Date(Date.now() - ONE_YEAR_MS).toISOString();
+  const all: any[] = [];
+  let cursor: string | undefined;
+
+  while (true) {
+    const url = new URL("https://api.twitch.tv/helix/videos");
+    url.searchParams.set("user_id", twitchUserId);
+    url.searchParams.set("type", "archive");
+    url.searchParams.set("first", "100");
+    if (cursor) url.searchParams.set("after", cursor);
+
+    const res = await fetch(url.toString(), {
+      headers: { "Client-ID": TWITCH_CLIENT_ID, "Authorization": `Bearer ${accessToken}` },
+    });
+    if (!res.ok) break;
+
+    const json = await res.json();
+    const vods: any[] = json.data ?? [];
+    if (vods.length === 0) break;
+
+    let reachedCutoff = false;
+    for (const vod of vods) {
+      if (vod.created_at < cutoff) { reachedCutoff = true; break; }
+      all.push(vod);
+    }
+
+    if (reachedCutoff || !json.pagination?.cursor) break;
+    cursor = json.pagination.cursor;
+  }
+
+  return all;
+}
+
+// Shared sync logic used by both oauth-callback (auto) and /sync (manual).
+async function syncVodsForUser(
+  userId: string,
+  twitchUserId: string,
+  accessToken: string,
+  isPremium: boolean,
+): Promise<{ synced: number; skipped: number; total: number }> {
+  const maxDuration = isPremium ? PREMIUM_MAX_DURATION : FREE_MAX_DURATION;
+  const vods = await getTwitchVods(twitchUserId, accessToken);
+  let synced = 0, skipped = 0;
+
+  for (const vod of vods) {
+    const durationSec = parseTwitchDuration(vod.duration ?? "");
+    if (durationSec > maxDuration) { skipped++; continue; }
+
+    const thumbnailUrl = (vod.thumbnail_url ?? "")
+      .replace("%{width}", "640")
+      .replace("%{height}", "360");
+
+    const { error } = await supabase.from("stream_archives").upsert({
+      user_id: userId,
+      twitch_vod_id: vod.id,
+      title: vod.title ?? "Untitled Stream",
+      duration_seconds: durationSec,
+      thumbnail_url: thumbnailUrl,
+      twitch_vod_url: vod.url ?? null,
+      publish_status: "unpublished",
+      recorded_at: vod.created_at,
+    }, { onConflict: "user_id,twitch_vod_id", ignoreDuplicates: true });
+
+    if (!error) synced++;
+  }
+
+  return { synced, skipped, total: vods.length };
 }
 
 // POST /twitch-vod-archive/oauth-callback
-// Exchanges Twitch OAuth code for tokens, stores on profile
+// Exchanges Twitch OAuth code for tokens, saves to profile, then auto-syncs VODs.
 app.post("/twitch-vod-archive/oauth-callback", async (c) => {
   const authHeader = c.req.header("Authorization") ?? "";
   const { code, redirect_uri, user_id } = await c.req.json().catch(() => ({}));
@@ -99,25 +161,40 @@ app.post("/twitch-vod-archive/oauth-callback", async (c) => {
     return c.json({ error: `Failed to save Twitch connection: ${profileUpdateErr.message}` }, 500);
   }
 
-  return c.json({ twitch_user_id: twitchUser.id, twitch_display_name: twitchUser.display_name });
+  // Auto-sync VODs from the last year immediately after connecting
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_premium")
+    .eq("id", user_id)
+    .maybeSingle();
+
+  const syncResult = await syncVodsForUser(
+    user_id,
+    twitchUser.id,
+    tokens.access_token,
+    profile?.is_premium ?? false,
+  );
+
+  return c.json({
+    twitch_user_id: twitchUser.id,
+    twitch_display_name: twitchUser.display_name,
+    synced: syncResult.synced,
+  });
 });
 
 // POST /twitch-vod-archive/sync
-// Body: { user_id: string }
-// Called by the frontend after Twitch OAuth to pull in VODs
+// Manual sync triggered by the user from settings.
 app.post("/twitch-vod-archive/sync", async (c) => {
   const authHeader = c.req.header("Authorization") ?? "";
   const { user_id } = await c.req.json().catch(() => ({}));
   if (!user_id) return c.json({ error: "Missing user_id" }, 400);
 
-  // Verify caller owns this user_id via JWT
   const { data: { user }, error: authErr } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
   if (authErr || !user || user.id !== user_id) return c.json({ error: "Unauthorized" }, 401);
 
-  // Fetch profile with Twitch tokens
   const { data: profile } = await supabase
     .from("profiles")
-    .select("twitch_user_id, twitch_access_token, twitch_refresh_token, twitch_token_expires_at, twitch_archive_enabled")
+    .select("twitch_user_id, twitch_access_token, twitch_refresh_token, twitch_token_expires_at, twitch_archive_enabled, is_premium")
     .eq("id", user_id)
     .maybeSingle();
 
@@ -143,35 +220,17 @@ app.post("/twitch-vod-archive/sync", async (c) => {
     }).eq("id", user_id);
   }
 
-  const vods = await getTwitchVods(profile.twitch_user_id, accessToken);
-  let synced = 0;
-  let skipped = 0;
-
-  for (const vod of vods) {
-    const durationSec = parseTwitchDuration(vod.duration ?? "");
-    if (durationSec > MAX_DURATION_SECONDS) { skipped++; continue; }
-
-    const thumbnailUrl = (vod.thumbnail_url ?? "").replace("%{width}", "640").replace("%{height}", "360");
-
-    const { error: upsertErr } = await supabase.from("stream_archives").upsert({
-      user_id,
-      twitch_vod_id: vod.id,
-      title: vod.title ?? "Untitled Stream",
-      duration_seconds: durationSec,
-      thumbnail_url: thumbnailUrl,
-      twitch_vod_url: vod.url ?? null,
-      download_status: "pending",
-      recorded_at: vod.created_at,
-    }, { onConflict: "user_id,twitch_vod_id", ignoreDuplicates: true });
-
-    if (!upsertErr) synced++;
-  }
-
-  return c.json({ synced, skipped, total: vods.length });
+  const result = await syncVodsForUser(
+    user_id,
+    profile.twitch_user_id,
+    accessToken,
+    profile.is_premium ?? false,
+  );
+  return c.json(result);
 });
 
 // POST /twitch-vod-archive/disconnect
-// Removes Twitch tokens from profile
+// Removes Twitch tokens from profile.
 app.post("/twitch-vod-archive/disconnect", async (c) => {
   const authHeader = c.req.header("Authorization") ?? "";
   const { user_id } = await c.req.json().catch(() => ({}));
@@ -193,7 +252,7 @@ app.post("/twitch-vod-archive/disconnect", async (c) => {
 });
 
 // POST /twitch-vod-archive/delete-archive
-// Soft-deletes a single archive entry
+// Soft-deletes a single archive entry.
 app.post("/twitch-vod-archive/delete-archive", async (c) => {
   const authHeader = c.req.header("Authorization") ?? "";
   const { archive_id } = await c.req.json().catch(() => ({}));
@@ -213,7 +272,7 @@ app.post("/twitch-vod-archive/delete-archive", async (c) => {
 });
 
 // POST /twitch-vod-archive/retention-response
-// Records that the user interacted with the retention prompt
+// Records that the user interacted with the retention prompt.
 app.post("/twitch-vod-archive/retention-response", async (c) => {
   const authHeader = c.req.header("Authorization") ?? "";
   const { archive_id, keep } = await c.req.json().catch(() => ({}));

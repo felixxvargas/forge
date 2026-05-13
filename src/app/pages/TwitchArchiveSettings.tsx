@@ -9,6 +9,7 @@ import { projectId } from '/utils/supabase/info';
 const TWITCH_CLIENT_ID = import.meta.env.VITE_TWITCH_CLIENT_ID ?? '';
 const REDIRECT_URI = `${window.location.origin}/settings/twitch-archive`;
 const TWITCH_SCOPES = 'user:read:email channel:read:subscriptions';
+const PAGE_SIZE = 20;
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -33,6 +34,8 @@ export function TwitchArchiveSettings() {
 
   const [archives, setArchives] = useState<StreamArchive[]>([]);
   const [loadingArchives, setLoadingArchives] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number } | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -50,12 +53,25 @@ export function TwitchArchiveSettings() {
     if (!currentUser?.id) return;
     setLoadingArchives(true);
     try {
-      const data = await streamArchivesAPI.getForUser(currentUser.id);
+      const data = await streamArchivesAPI.getForUserPaginated(currentUser.id, 0, PAGE_SIZE);
       setArchives(data);
+      setHasMore(data.length === PAGE_SIZE);
     } finally {
       setLoadingArchives(false);
     }
   }, [currentUser?.id]);
+
+  const handleLoadMore = async () => {
+    if (!currentUser?.id || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await streamArchivesAPI.getForUserPaginated(currentUser.id, archives.length, PAGE_SIZE);
+      setArchives(prev => [...prev, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Handle Twitch OAuth callback
   useEffect(() => {
@@ -83,6 +99,7 @@ export function TwitchArchiveSettings() {
           throw new Error(err.error ?? 'OAuth exchange failed');
         }
         await refreshCurrentUser();
+        await loadArchives();
         navigate('/settings/twitch-archive', { replace: true });
       } catch (e: any) {
         setError(e.message);
@@ -196,8 +213,9 @@ export function TwitchArchiveSettings() {
       const prevIds = new Set(archives.map(a => a.id));
       const result = await streamArchivesAPI.syncFromTwitch(currentUser.id, '');
       setSyncResult(result);
-      const updated = await streamArchivesAPI.getForUser(currentUser.id);
+      const updated = await streamArchivesAPI.getForUserPaginated(currentUser.id, 0, PAGE_SIZE);
       setArchives(updated);
+      setHasMore(updated.length === PAGE_SIZE);
 
       if (isAutoPost) {
         const newArchives = updated.filter(a => !prevIds.has(a.id));
@@ -301,7 +319,7 @@ export function TwitchArchiveSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">Auto-archive streams</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Save streams under 4 hours to your Forge media</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sync past streams to your Forge media library</p>
                 </div>
                 <button
                   onClick={handleToggleArchive}
@@ -341,7 +359,7 @@ export function TwitchArchiveSettings() {
               {syncResult && (
                 <p className="text-xs text-muted-foreground text-center">
                   Synced {syncResult.synced} stream{syncResult.synced !== 1 ? 's' : ''}
-                  {syncResult.skipped > 0 ? ` · ${syncResult.skipped} skipped (over 4 hours)` : ''}
+                  {syncResult.skipped > 0 ? ` · ${syncResult.skipped} skipped (too long)` : ''}
                 </p>
               )}
             </div>
@@ -355,7 +373,7 @@ export function TwitchArchiveSettings() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               {[
                 'Connect your Twitch account to Forge',
-                'Enable auto-archiving — streams under 4 hours are saved automatically',
+                'Past streams from the last year are loaded automatically on connect',
                 'Select which streams to push to your Forge profile and Media tab',
                 'Pushing streams creates a post on your profile so followers can see',
                 "You'll be reminded to review archives after 1 year",
@@ -432,9 +450,6 @@ export function TwitchArchiveSettings() {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formatDate(archive.recorded_at)} · {formatDuration(archive.duration_seconds)}
                       </p>
-                      {archive.download_status === 'pending' && (
-                        <span className="text-xs text-amber-400 mt-0.5">Pending download</span>
-                      )}
                     </div>
 
                     {/* Actions */}
@@ -456,6 +471,17 @@ export function TwitchArchiveSettings() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {hasMore && (
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="w-full mt-3 py-2.5 border border-border rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
             )}
           </div>
         )}
