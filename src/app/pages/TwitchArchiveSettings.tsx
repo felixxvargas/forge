@@ -7,7 +7,11 @@ import { supabase, streamArchivesAPI, type StreamArchive } from '../utils/supaba
 import { projectId } from '/utils/supabase/info';
 
 const TWITCH_CLIENT_ID = import.meta.env.VITE_TWITCH_CLIENT_ID ?? '';
-const REDIRECT_URI = `${window.location.origin}/settings/twitch-archive`;
+// Normalize to canonical production domain — forge-social.app redirects to www.forge-social.app
+// via Vercel, so the Twitch-registered redirect URI must use the www origin.
+const REDIRECT_URI = window.location.hostname.endsWith('forge-social.app')
+  ? 'https://www.forge-social.app/settings/twitch-archive'
+  : `${window.location.origin}/settings/twitch-archive`;
 const TWITCH_SCOPES = 'user:read:email channel:read:subscriptions';
 const PAGE_SIZE = 20;
 
