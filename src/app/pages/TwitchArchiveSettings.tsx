@@ -73,18 +73,29 @@ export function TwitchArchiveSettings() {
     }
   };
 
-  // Handle Twitch OAuth callback
+  // Handle Twitch OAuth callback — covers both success (?code=) and error (?error=) redirects
   useEffect(() => {
     const code = searchParams.get('code');
     const state = searchParams.get('state');
+    const twitchError = searchParams.get('error');
+    const twitchErrorDesc = searchParams.get('error_description');
+
+    // Twitch returned an error (e.g. user denied, redirect URI mismatch)
+    if (twitchError && state === 'twitch-archive') {
+      setError(twitchErrorDesc ?? twitchError ?? 'Twitch authorization failed');
+      setIsExchanging(false);
+      navigate('/settings/twitch-archive', { replace: true });
+      return;
+    }
+
     if (!code || state !== 'twitch-archive' || !currentUser?.id) return;
 
     const exchangeCode = async () => {
       setError(null);
       setIsExchanging(true);
       try {
-        const session = (await supabase.auth.getSession()).data.session;
-        if (!session) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Your session expired — please sign in again');
 
         const res = await fetch(
           `https://${projectId}.supabase.co/functions/v1/twitch-vod-archive/oauth-callback`,

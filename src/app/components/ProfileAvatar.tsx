@@ -11,6 +11,7 @@ interface ProfileAvatarProps {
 
 export function ProfileAvatar({ username, profilePicture, size = 'md', className = '', userId }: ProfileAvatarProps) {
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const sizeClasses = {
     sm: 'w-8 h-8 text-xs',
@@ -19,48 +20,28 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
     xl: 'w-24 h-24 text-xl',
   };
 
-  // If no direct profile picture, check the topic account cache by userId
   const resolvedPicture = profilePicture || (userId ? profileCache.get(userId)?.avatar : undefined);
-
-  // If there's a profile picture and it hasn't errored, show it
-  // bg-background ensures PNG transparency shows the theme background colour, not a white/clear hole
-  if (resolvedPicture && !imageError) {
-    return (
-      <div className={`${sizeClasses[size]} rounded-full overflow-hidden shrink-0 bg-background ${className}`}>
-        <img
-          src={resolvedPicture}
-          alt={username}
-          className="w-full h-full object-cover"
-          onError={() => setImageError(true)}
-        />
-      </div>
-    );
-  }
-
-  // If this is the @forge account, show the Forge logo
   const cleanName = (username ?? '').replace(/^@/, '').toLowerCase();
-  if (cleanName === 'forge') {
-    return (
-      <div className={`${sizeClasses[size]} rounded-full overflow-hidden shrink-0 bg-background ${className}`}>
-        <img
-          src="/forge-avatar.png"
-          alt="Forge"
-          className="w-full h-full object-cover"
-        />
-      </div>
-    );
-  }
-
-  // Default: two-letter initials on a fixed deep purple background
+  const imgSrc = cleanName === 'forge' ? '/forge-avatar.png' : (resolvedPicture ?? null);
+  const showImage = !!imgSrc && !imageError;
   const initials = (username ?? '').replace(/^@/, '').slice(0, 2).toUpperCase() || '??';
 
   return (
-    <div
-      className={`${sizeClasses[size]} rounded-full flex items-center justify-center font-semibold
-        bg-[#6b5a7e] text-white/90
-        ${className}`}
-    >
-      {initials}
+    <div className={`${sizeClasses[size]} rounded-full overflow-hidden shrink-0 relative ${className}`}>
+      {/* Initials always present as the base layer — never a blank state */}
+      <div className="absolute inset-0 flex items-center justify-center font-semibold bg-[#6b5a7e] text-white/90">
+        {initials}
+      </div>
+      {/* Image fades in on top once loaded; falls back to initials on error */}
+      {showImage && (
+        <img
+          src={imgSrc}
+          alt={username}
+          className={`absolute inset-0 w-full h-full object-cover bg-background transition-opacity duration-200 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+        />
+      )}
     </div>
   );
 }
