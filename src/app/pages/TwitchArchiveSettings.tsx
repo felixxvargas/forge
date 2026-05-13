@@ -339,7 +339,7 @@ export function TwitchArchiveSettings() {
                 <button
                   onClick={handleToggleArchive}
                   disabled={toggling}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${isEnabled ? 'bg-accent' : 'bg-muted'}`}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${isEnabled ? 'bg-purple-500' : 'bg-muted'}`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
@@ -354,7 +354,7 @@ export function TwitchArchiveSettings() {
                   </div>
                   <button
                     onClick={handleToggleAutoPost}
-                    className={`w-11 h-6 rounded-full transition-colors relative ${isAutoPost ? 'bg-accent' : 'bg-muted'}`}
+                    className={`w-11 h-6 rounded-full transition-colors relative ${isAutoPost ? 'bg-purple-500' : 'bg-muted'}`}
                   >
                     <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isAutoPost ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
