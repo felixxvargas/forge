@@ -82,6 +82,7 @@ export async function listGames(limit = 50, offset = 0) {
       artwork:forge_game_artwork_17285bd7(*)
     `)
     .or('hidden.is.null,hidden.eq.false')
+    .order('popularity_score', { ascending: false })
     .order('id')
     .range(offset, offset + limit - 1);
 
@@ -98,20 +99,42 @@ export async function listGames(limit = 50, offset = 0) {
  * for any titles not yet in the database (covers retro/handheld games etc.).
  */
 export async function searchGames(query: string, limit = 20) {
-  const { data: localData, error } = await supabase
-    .from('forge_games_17285bd7')
-    .select(`*, artwork:forge_game_artwork_17285bd7(*)`)
-    .ilike('title', `%${query}%`)
-    .or('hidden.is.null,hidden.eq.false')
-    .order('title')
-    .limit(limit);
+  // Try the ranked RPC first (uses pg_trgm similarity + popularity_score).
+  // Falls back to plain ilike if the RPC isn't available yet (pre-migration).
+  let local: any[] = [];
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('search_games_ranked', { p_query: query, p_limit: limit });
 
-  if (error) {
-    console.error('Error searching games:', error);
-    throw new Error(`Failed to search games: ${error.message}`);
+  if (!rpcError && Array.isArray(rpcData)) {
+    // Attach artwork separately (RPC doesn't join it)
+    const gameIds = rpcData.map((g: any) => g.id);
+    const { data: artworkRows } = gameIds.length > 0
+      ? await supabase
+          .from('forge_game_artwork_17285bd7')
+          .select('*')
+          .in('game_id', gameIds)
+      : { data: [] };
+    const artworkByGame = new Map<string, any[]>();
+    for (const row of artworkRows ?? []) {
+      if (!artworkByGame.has(row.game_id)) artworkByGame.set(row.game_id, []);
+      artworkByGame.get(row.game_id)!.push(row);
+    }
+    local = rpcData.map((g: any) => ({ ...g, artwork: artworkByGame.get(g.id) ?? [] }));
+  } else {
+    // Fallback: plain ilike
+    const { data: localData, error } = await supabase
+      .from('forge_games_17285bd7')
+      .select(`*, artwork:forge_game_artwork_17285bd7(*)`)
+      .ilike('title', `%${query}%`)
+      .or('hidden.is.null,hidden.eq.false')
+      .order('popularity_score', { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.error('Error searching games:', error);
+      throw new Error(`Failed to search games: ${error.message}`);
+    }
+    local = localData ?? [];
   }
-
-  const local = localData ?? [];
 
   // If we have enough local results, return early
   if (local.length >= limit) return local;

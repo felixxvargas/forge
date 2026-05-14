@@ -235,6 +235,9 @@ export const gamesAPI = {
       const isChildA = a.parent_game_id ? 1 : 0;
       const isChildB = b.parent_game_id ? 1 : 0;
       if (isChildA !== isChildB) return isChildA - isChildB;
+      // Use server-supplied popularity_score when available (RPC path)
+      const popDiff = (b.popularity_score ?? 0) - (a.popularity_score ?? 0);
+      if (popDiff !== 0) return popDiff;
       return titleScore(b.title ?? '') - titleScore(a.title ?? '');
     });
 
