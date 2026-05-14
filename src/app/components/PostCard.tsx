@@ -108,13 +108,14 @@ interface PostCardProps {
   onRemoveFromGroup?: () => void;
   hideGroupTag?: boolean;
   showThreadLine?: boolean;
+  avatarPriority?: boolean;
 }
 
 function igdbThumb(url: string) {
   return url.replace(/\/t_[^/]+\//, '/t_thumb/');
 }
 
-export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false, avatarPriority = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -229,9 +230,10 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
     });
   }, [post?.game_ids?.join(',') ?? post?.game_id]);
 
-  // Resolve profile picture: Bluesky avatar (topic accounts), then snake_case (Supabase),
-  // then camelCase (topic account User objects from data.ts), then undefined.
-  const blueskyData = useBlueskyData(user);
+  // Resolve profile picture: Bluesky avatar (topic accounts only — regular users have no
+  // Bluesky handle, so passing null avoids the hook fetching and avoids mid-render avatar swaps).
+  const isTopic = (user as any)?.account_type === 'topic';
+  const blueskyData = useBlueskyData(isTopic ? user : null);
   const resolvedProfilePicture = blueskyData.avatar
     || (user as any)?.profile_picture
     || (user as any)?.profilePicture
@@ -446,6 +448,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
             profilePicture={resolvedProfilePicture}
             size="md"
             userId={user.id}
+            priority={avatarPriority}
           />
         </div>
         <div className="flex-1 min-w-0">

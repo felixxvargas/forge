@@ -266,10 +266,11 @@ app.get("/forge-api/games/:gameId", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const game = await gamesAPI.getGame(gameId);
+    if (!game) return c.json({ error: "Game not found" }, 404);
     return c.json({ game });
   } catch (err) {
     console.error("[games/get] error:", err);
-    return c.json({ error: "Failed to fetch game" }, 404);
+    return c.json({ error: "Failed to fetch game" }, 500);
   }
 });
 

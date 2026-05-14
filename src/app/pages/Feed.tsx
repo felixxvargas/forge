@@ -456,26 +456,31 @@ export function Feed() {
 
       {!loading && (
         <div className="flex gap-3 sm:gap-6 items-start">
-          {splitToColumns(visiblePosts as any[], numCols).map((colPosts, colIdx) => (
-            <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
-              {colPosts.map(post => {
-                const user = post.author;
-                if (!user) return null;
-                return (
-                  <PostCard
-                    key={post.id + (post.repostedBy || '')}
-                    post={post}
-                    user={user}
-                    onLike={handleLikeToggle}
-                    onRepost={handleRepost}
-                    onComment={() => {}}
-                    onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
-                    showDelete={post.user_id === currentUser?.id}
-                  />
-                );
-              })}
-            </div>
-          ))}
+          {(() => {
+            // Mark first 6 posts (above fold on 1–3 column layouts) as priority for image loading.
+            const priorityIds = new Set((visiblePosts as any[]).slice(0, 6).map((p: any) => p.id));
+            return splitToColumns(visiblePosts as any[], numCols).map((colPosts, colIdx) => (
+              <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
+                {colPosts.map(post => {
+                  const user = post.author;
+                  if (!user) return null;
+                  return (
+                    <PostCard
+                      key={post.id + (post.repostedBy || '')}
+                      post={post}
+                      user={user}
+                      onLike={handleLikeToggle}
+                      onRepost={handleRepost}
+                      onComment={() => {}}
+                      onDelete={post.user_id === currentUser?.id ? deletePost : undefined}
+                      showDelete={post.user_id === currentUser?.id}
+                      avatarPriority={priorityIds.has(post.id)}
+                    />
+                  );
+                })}
+              </div>
+            ));
+          })()}
         </div>
       )}
 

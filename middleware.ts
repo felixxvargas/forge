@@ -35,13 +35,13 @@ export default async function middleware(request: Request): Promise<Response | u
     );
     if (!isNextNavigation) {
       if (segments[0] === 'post') {
-        return fetch(new URL(`/api/post-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+        try { return await fetch(new URL(`/api/post-og/${segments[1]}`, url.origin).toString(), { headers: request.headers }); } catch { /* fall through */ }
       }
       if (segments[0] === 'game') {
-        return fetch(new URL(`/api/game-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+        try { return await fetch(new URL(`/api/game-og/${segments[1]}`, url.origin).toString(), { headers: request.headers }); } catch { /* fall through */ }
       }
       if (segments[0] === 'group') {
-        return fetch(new URL(`/api/group-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+        try { return await fetch(new URL(`/api/group-og/${segments[1]}`, url.origin).toString(), { headers: request.headers }); } catch { /* fall through */ }
       }
     }
     return undefined;

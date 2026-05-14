@@ -27,7 +27,9 @@ interface ArtworkData {
 }
 
 /**
- * Get a game by ID
+ * Get a game by ID.
+ * Tries the primary `id` column first; if not found and the ID looks numeric,
+ * falls back to matching by `igdb_id` so posts tagged with raw IGDB IDs still resolve.
  */
 export async function getGame(gameId: string) {
   const { data, error } = await supabase
@@ -37,14 +39,36 @@ export async function getGame(gameId: string) {
       artwork:forge_game_artwork_17285bd7(*)
     `)
     .eq('id', gameId)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    console.error('Error fetching game:', error);
+    console.error('Error fetching game by id:', error);
     throw new Error(`Failed to fetch game: ${error.message}`);
   }
 
-  return data;
+  if (data) return data;
+
+  // Fallback: some older posts stored raw IGDB numeric IDs (e.g. "11194")
+  // while the DB row was later inserted with id="igdb-11194". Try igdb_id match.
+  const numericId = Number(gameId);
+  if (!Number.isNaN(numericId) && Number.isInteger(numericId)) {
+    const { data: fallback, error: fbError } = await supabase
+      .from('forge_games_17285bd7')
+      .select(`
+        *,
+        artwork:forge_game_artwork_17285bd7(*)
+      `)
+      .eq('igdb_id', numericId)
+      .maybeSingle();
+
+    if (fbError) {
+      console.error('Error fetching game by igdb_id:', fbError);
+    } else if (fallback) {
+      return fallback;
+    }
+  }
+
+  return null;
 }
 
 /**

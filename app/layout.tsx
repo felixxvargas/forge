@@ -26,6 +26,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://xmxeafjpscgqprrreulh.supabase.co" />
+        <link rel="dns-prefetch" href="https://xmxeafjpscgqprrreulh.supabase.co" />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

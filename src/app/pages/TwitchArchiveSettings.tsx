@@ -294,9 +294,22 @@ export function TwitchArchiveSettings() {
         {/* Connection status */}
         <div className="bg-card rounded-xl p-5">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-              <TwitchIcon className="w-5 h-5 text-white" />
-            </div>
+            {isConnected && (currentUser as any)?.profile_picture ? (
+              <div className="relative w-10 h-10 shrink-0">
+                <img
+                  src={(currentUser as any).profile_picture}
+                  alt={twitchName ?? ''}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center ring-2 ring-card">
+                  <TwitchIcon className="w-3 h-3 text-white" />
+                </div>
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center shrink-0">
+                <TwitchIcon className="w-5 h-5 text-white" />
+              </div>
+            )}
             <div className="flex-1">
               <p className="font-semibold">Twitch</p>
               {isConnected ? (
@@ -341,7 +354,7 @@ export function TwitchArchiveSettings() {
                   disabled={toggling}
                   className={`w-11 h-6 rounded-full transition-colors relative ${isEnabled ? 'bg-purple-500' : 'bg-muted'}`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
 
@@ -356,7 +369,7 @@ export function TwitchArchiveSettings() {
                     onClick={handleToggleAutoPost}
                     className={`w-11 h-6 rounded-full transition-colors relative ${isAutoPost ? 'bg-purple-500' : 'bg-muted'}`}
                   >
-                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isAutoPost ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isAutoPost ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
               )}

@@ -407,13 +407,22 @@ export function GameDetail() {
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 pt-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Back</span>
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back</span>
+          </button>
+          <button
+            onClick={() => setShareOpen(true)}
+            className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+            aria-label="Share game"
+          >
+            <Upload className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Hero: blurred background + portrait cover */}
@@ -491,7 +500,7 @@ export function GameDetail() {
               <button
                 type="button"
                 onClick={() => setDescExpanded(v => !v)}
-                className="mt-2 flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80 transition-colors"
+                className="mt-2 flex items-center gap-1 text-xs font-semibold text-white/70 hover:text-white/50 transition-colors"
               >
                 {descExpanded ? <>Show less <ChevronUp className="w-3.5 h-3.5" /></> : <>Read more <ChevronDown className="w-3.5 h-3.5" /></>}
               </button>
@@ -570,7 +579,7 @@ export function GameDetail() {
               <button
                 onClick={handleTogglePlayed}
                 disabled={togglingPlayed}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-medium text-sm transition-all ${
                   isPlayed
                     ? 'bg-emerald-500/20 border-2 border-emerald-500/60 text-emerald-400'
                     : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
@@ -582,7 +591,7 @@ export function GameDetail() {
               <button
                 onClick={handleToggleOwned}
                 disabled={togglingOwned}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-medium text-sm transition-all ${
                   isOwned
                     ? 'bg-sky-500/20 border-2 border-sky-500/60 text-sky-400'
                     : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
@@ -595,10 +604,10 @@ export function GameDetail() {
             <button
               onClick={handleToggleFollowed}
               disabled={togglingFollowed}
-              className={`w-full flex items-center justify-center gap-2 py-3 mb-3 rounded-xl font-semibold text-sm transition-all ${
+              className={`w-full flex items-center justify-center gap-2 h-11 mb-3 rounded-xl font-semibold text-sm transition-all ${
                 isFollowed
                   ? 'bg-accent text-accent-foreground hover:bg-accent/80'
-                  : 'bg-secondary border-2 border-border text-foreground hover:bg-secondary/80'
+                  : 'bg-secondary text-foreground hover:bg-secondary/80'
               }`}
             >
               {togglingFollowed ? (
@@ -610,23 +619,13 @@ export function GameDetail() {
               )}
               {isFollowed ? 'Following' : 'Follow Game'}
             </button>
-            {/* Add to List + Share row */}
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => setShowAddToListTray(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 transition-all"
-              >
-                <List className="w-4 h-4" />
-                Add to List
-              </button>
-              <button
-                onClick={() => setShareOpen(true)}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm bg-secondary border-2 border-border text-foreground hover:bg-secondary/80 transition-all"
-                aria-label="Share game"
-              >
-                <Upload className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={() => setShowAddToListTray(true)}
+              className="w-full flex items-center justify-center gap-2 h-11 mb-3 rounded-xl font-medium text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-all"
+            >
+              <List className="w-4 h-4" />
+              Add to List
+            </button>
 
             {/* LFG / LFM buttons — fire flare branding */}
             <div className="flex gap-3 mb-6">
@@ -653,7 +652,7 @@ export function GameDetail() {
               ) : (
                 <button
                   onClick={() => navigate(`/create-flare?type=lfg&gameId=${gameId}&gameTitle=${encodeURIComponent(game?.title ?? '')}`)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-medium text-sm bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/50 text-orange-300 hover:border-orange-400/80 hover:from-orange-500/15 hover:to-red-500/15 transition-all"
                 >
                   <Flame className="w-4 h-4" />
                   Looking for Group
@@ -699,7 +698,7 @@ export function GameDetail() {
         )}
 
         {/* Stats row */}
-        <div className="bg-card rounded-2xl p-4 mb-6 flex items-center divide-x divide-border">
+        <div className="bg-card rounded-2xl p-4 mb-6 flex items-center">
           <button
             onClick={() => navigate(`/game/${gameId}/players`)}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
@@ -710,6 +709,7 @@ export function GameDetail() {
               <span className="text-xs">Players</span>
             </div>
           </button>
+          <div className="w-px h-10 bg-border shrink-0" />
           <button
             onClick={() => navigate(`/game/${gameId}/players`)}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
@@ -720,6 +720,7 @@ export function GameDetail() {
               <span className="text-xs">Friends</span>
             </div>
           </button>
+          <div className="w-px h-10 bg-border shrink-0" />
           <button
             onClick={() => navigate(`/game/${gameId}/lists`)}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
@@ -730,6 +731,7 @@ export function GameDetail() {
               <span className="text-xs">On Lists</span>
             </div>
           </button>
+          <div className="w-px h-10 bg-border shrink-0" />
           <div className="flex-1 flex flex-col items-center py-2">
             <p className="text-2xl font-bold">{taggedPosts.length}</p>
             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
