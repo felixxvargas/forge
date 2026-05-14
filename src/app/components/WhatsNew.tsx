@@ -11,7 +11,7 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: 'v0.3.4',
+    version: 'v0.3.5',
     date: 'May 2026',
     title: "What's New in Forge",
     summary: "Smarter game search, Google Sign-In on Android, and a big round of performance and polish.",
@@ -24,8 +24,20 @@ export const RELEASES: Release[] = [
       'Feed skeleton loader now matches the real layout so the page feels stable from first render',
       'Twitch Archive now fetches your full year of VOD history with paginated browsing',
       'Error pages have a cleaner look with contextual icons instead of the Forge logo',
-      'Notification bell now shows your unread count with a glowing badge',
-      'Discover games while editing your library or lists — browse New Releases, Recently Added, and Popular on Forge',
+    ],
+  },
+  {
+    version: 'v0.3.4',
+    date: 'May 2026',
+    title: "What's New in Forge",
+    summary: "Notification improvements, list editor game discovery, and polish.",
+    highlights: [
+      'Notification bell now shows your unread count with a glowing badge — at a glance you can see exactly how many new notifications you have',
+      'Discover games while editing your library or lists — browse New Releases, Recently Added by Forge users, and Popular on Forge without leaving the editor',
+      'Cleaner game search results — DLCs, season passes, and duplicate edition variants are filtered out automatically',
+      'Game titles in post text now flow inline correctly on all screen sizes',
+      'List previews in posts display cleanly on tablet and mobile',
+      'Profile pages now use a wider desktop layout for better use of screen space',
     ],
   },
   {
