@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, ArrowLeft, Home, ChevronRight } from 'lucide-react';
-import ForgeSVG from '@/assets/forge-logo.svg?react';
+import { RefreshCw, ArrowLeft, Home, ChevronRight, FileQuestion, Unplug } from 'lucide-react';
 
 interface ErrorScreenProps {
   error?: Error & { digest?: string };
@@ -52,14 +51,17 @@ export function ErrorScreen({
           </div>
         )}
 
-        {/* Logo */}
+        {/* Icon */}
         <div className="mb-6 flex justify-center">
-          <div className="relative w-12 h-[38px] flex items-center justify-center">
+          <div className="relative w-16 h-16 flex items-center justify-center">
             <div
               className="absolute inset-0 pointer-events-none rounded-full"
-              style={{ background: 'radial-gradient(circle, rgba(231,255,196,0.4) 0%, rgba(167,139,250,0.35) 45%, transparent 70%)', filter: 'blur(18px)', transform: 'scale(3)' }}
+              style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.35) 0%, rgba(124,58,237,0.15) 50%, transparent 70%)', filter: 'blur(16px)', transform: 'scale(2.5)' }}
             />
-            <ForgeSVG className="relative w-full h-full" aria-hidden="true" />
+            {is404
+              ? <FileQuestion className="relative w-10 h-10 text-muted-foreground/60" aria-hidden="true" />
+              : <Unplug className="relative w-10 h-10 text-muted-foreground/60" aria-hidden="true" />
+            }
           </div>
         </div>
 

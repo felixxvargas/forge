@@ -231,6 +231,10 @@ export const gamesAPI = {
       const mainA = MAIN_CATEGORIES.has(Number(catA)) ? 0 : 1;
       const mainB = MAIN_CATEGORIES.has(Number(catB)) ? 0 : 1;
       if (mainA !== mainB) return mainA - mainB;
+      // Prefer parent / standalone games over expansion children
+      const isChildA = a.parent_game_id ? 1 : 0;
+      const isChildB = b.parent_game_id ? 1 : 0;
+      if (isChildA !== isChildB) return isChildA - isChildB;
       return titleScore(b.title ?? '') - titleScore(a.title ?? '');
     });
 

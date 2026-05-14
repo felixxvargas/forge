@@ -2196,3 +2196,34 @@ export const streamArchivesAPI = {
     return res.json();
   },
 };
+
+// ============================================================
+// ONBOARDING TELEMETRY
+// ============================================================
+
+/** Stable anonymous session ID for correlating pre-auth onboarding events. */
+function getOnboardingSessionId(): string {
+  const key = 'forge-onboarding-session-id';
+  let id = sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
+
+export const onboardingTelemetry = {
+  /** Fire-and-forget — never throws, never blocks the UI. */
+  track(event: string, step?: string, metadata?: Record<string, unknown>): void {
+    const sessionId = getOnboardingSessionId();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.from('forge_onboarding_events').insert({
+        session_id: sessionId,
+        user_id: session?.user?.id ?? null,
+        event,
+        step: step ?? null,
+        metadata: metadata ?? null,
+      }).then(() => {/* intentionally ignored */});
+    });
+  },
+};

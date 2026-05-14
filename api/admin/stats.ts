@@ -20,6 +20,48 @@ async function countTable(table: string, since?: string): Promise<number> {
 
 const STANDARD_LIST_KEYS = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library', 'completed', 'custom', 'lfg'];
 
+interface OnboardingFunnel {
+  started: number;
+  interests_started: number;
+  follow_started: number;
+  username_started: number;
+  completed: number;
+  errors: number;
+  completion_rate: number;
+}
+
+async function getOnboardingFunnel(since?: string): Promise<OnboardingFunnel> {
+  async function countWhere(filters: Record<string, string>): Promise<number> {
+    const p = new URLSearchParams({ select: 'id', limit: '1' });
+    for (const [k, v] of Object.entries(filters)) p.set(k, v);
+    if (since) p.set('created_at', `gte.${since}`);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/forge_onboarding_events?${p}`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: 'count=exact' },
+    });
+    const cr = res.headers.get('Content-Range') ?? '0-0/0';
+    return parseInt(cr.split('/')[1] ?? '0', 10);
+  }
+
+  const [started, interests, follow, username, completed, errors] = await Promise.all([
+    countWhere({ event: 'eq.onboarding_started' }),
+    countWhere({ event: 'eq.step_started', step: 'eq.interests' }),
+    countWhere({ event: 'eq.step_started', step: 'eq.follow' }),
+    countWhere({ event: 'eq.step_started', step: 'eq.username' }),
+    countWhere({ event: 'eq.onboarding_completed' }),
+    countWhere({ event: 'eq.onboarding_error' }),
+  ]);
+
+  return {
+    started,
+    interests_started: interests,
+    follow_started: follow,
+    username_started: username,
+    completed,
+    errors,
+    completion_rate: started > 0 ? Math.round((completed / started) * 100) : 0,
+  };
+}
+
 async function getListStats(): Promise<{ total: number; customTotal: number; updateCount: number }> {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?select=game_lists`,
@@ -88,6 +130,7 @@ export default async function handler(req: Request): Promise<Response> {
     totalCommunities,
     totalFlares, flares30, flares90, flares365,
     listStats,
+    onboardingAll, onboarding30,
   ] = await Promise.all([
     countTable('profiles'), countTable('profiles', t7), countTable('profiles', t30),
     countTable('profiles', t90), countTable('profiles', t365),
@@ -98,6 +141,8 @@ export default async function handler(req: Request): Promise<Response> {
     countTable('lfg_flares'), countTable('lfg_flares', t30),
     countTable('lfg_flares', t90), countTable('lfg_flares', t365),
     getListStats(),
+    getOnboardingFunnel(),
+    getOnboardingFunnel(t30),
   ]);
 
   const recentRes = await fetch(
@@ -113,6 +158,7 @@ export default async function handler(req: Request): Promise<Response> {
     communities: { total: totalCommunities },
     flares: { total: totalFlares, last30Days: flares30, last90Days: flares90, last365Days: flares365 },
     lists: listStats,
+    onboarding: { allTime: onboardingAll, last30Days: onboarding30 },
     recentUsers: recentUsers ?? [],
     generatedAt: new Date().toISOString(),
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });

@@ -8,7 +8,7 @@ import { InterestsScreen } from '../components/onboarding/InterestsScreen';
 import { FollowScreen } from '../components/onboarding/FollowScreen';
 import { UsernameScreen } from '../components/onboarding/UsernameScreen';
 import { topicAccounts } from '../data/data';
-import { profiles, supabase } from '../utils/supabase';
+import { profiles, supabase, onboardingTelemetry } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
 import type { User } from '../data/data';
 import type { Interest } from '../components/onboarding/InterestsScreen';
@@ -101,14 +101,23 @@ export function Onboarding() {
     loadSuggestedUsers();
   }, [step]);
 
+  // Track onboarding start on mount (skip if entering via ?step=interests from settings)
+  useEffect(() => {
+    if (startStep) return;
+    onboardingTelemetry.track('onboarding_started');
+    onboardingTelemetry.track('step_started', 'splash');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSplashComplete = () => {
+    onboardingTelemetry.track('step_completed', 'splash');
+    onboardingTelemetry.track('step_started', 'interests');
     setDirection(1);
     setStep('interests');
   };
 
   const handleInterestsComplete = async (interests: Interest[]) => {
     setSelectedInterests(interests);
-    
+
     // If coming from settings (step param), save interests and go back
     if (startStep === 'interests') {
       try {
@@ -122,13 +131,16 @@ export function Onboarding() {
       }
       return;
     }
-    
-    // Otherwise continue onboarding flow
+
+    onboardingTelemetry.track('step_completed', 'interests', { interestCount: interests.length });
+    onboardingTelemetry.track('step_started', 'follow');
     setDirection(1);
     setStep('follow');
   };
 
   const handleFollowComplete = (userIds: string[]) => {
+    onboardingTelemetry.track('step_completed', 'follow', { followCount: userIds.length });
+    onboardingTelemetry.track('step_started', 'username');
     setDirection(1);
     setFollowing(userIds);
     setStep('username');
@@ -149,8 +161,11 @@ export function Onboarding() {
       localStorage.removeItem('forge-signup-email');
       localStorage.removeItem('forge-signup-password');
       localStorage.setItem('forge-onboarding-complete', 'true');
-      // Refresh context so currentUser reflects the handle/display_name set above,
-      // not the stale email-derived values loaded by AppDataContext during sign-up.
+      onboardingTelemetry.track('onboarding_completed', 'username', {
+        hasInterests: selectedInterests.length > 0,
+        followCount: following.length,
+        hasPronouns: !!pronouns,
+      });
       await refreshCurrentUser();
       navigate('/feed');
     };
@@ -237,6 +252,7 @@ export function Onboarding() {
     } catch (error: any) {
       console.error('Onboarding error:', error);
       const msg = error.message || 'Failed to complete onboarding';
+      onboardingTelemetry.track('onboarding_error', 'username', { error: msg });
       if (msg.includes('Session expired') || msg.includes('sign in') || msg.includes('sign-up')) {
         alert(msg);
         navigate('/login');

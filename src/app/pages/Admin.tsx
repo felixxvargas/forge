@@ -2,7 +2,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight } from 'lucide-react';
+
+interface OnboardingFunnelData {
+  started: number;
+  interests_started: number;
+  follow_started: number;
+  username_started: number;
+  completed: number;
+  errors: number;
+  completion_rate: number;
+}
 
 interface AdminStats {
   users: { total: number; last7Days: number; last30Days: number; last90Days: number; last365Days: number };
@@ -11,6 +21,7 @@ interface AdminStats {
   communities: { total: number };
   flares: { total: number; last30Days: number; last90Days: number; last365Days: number };
   lists: { total: number; customTotal: number; updateCount: number };
+  onboarding?: { allTime: OnboardingFunnelData; last30Days: OnboardingFunnelData };
   recentUsers: { handle: string; display_name: string; created_at: string }[];
   generatedAt: string;
 }
@@ -231,6 +242,54 @@ export function Admin() {
             </div>
           </div>
         </section>
+
+        {/* Onboarding Funnel */}
+        {stats.onboarding && (() => {
+          const funnel = period === '30d' ? stats.onboarding.last30Days : stats.onboarding.allTime;
+          const steps = [
+            { label: 'Started', count: funnel.started },
+            { label: 'Interests', count: funnel.interests_started },
+            { label: 'Follow', count: funnel.follow_started },
+            { label: 'Username', count: funnel.username_started },
+            { label: 'Completed', count: funnel.completed },
+          ];
+          return (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Onboarding Funnel</h2>
+              <div className="bg-card rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {steps.map((s, i) => (
+                    <div key={s.label} className="flex items-center gap-3">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold tabular-nums">{s.count.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                        {i > 0 && steps[i - 1].count > 0 && (
+                          <p className="text-xs text-accent font-medium">
+                            {Math.round((s.count / steps[i - 1].count) * 100)}%
+                          </p>
+                        )}
+                      </div>
+                      {i < steps.length - 1 && <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-sm border-t border-border pt-3">
+                  <span className="text-muted-foreground">Overall completion rate</span>
+                  <span className="font-semibold text-accent">{funnel.completion_rate}%</span>
+                </div>
+                {funnel.errors > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Errors at username step</span>
+                    <span className="font-semibold text-red-400">{funnel.errors.toLocaleString()}</span>
+                  </div>
+                )}
+                {funnel.started === 0 && (
+                  <p className="text-xs text-muted-foreground/60 italic">No onboarding data yet — telemetry starts tracking new signups after this deploy.</p>
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Recent sign-ups */}
         <section className="space-y-3">

@@ -26,6 +26,9 @@ interface DraftData {
   imageUrls: string[];
   linkUrl: string;
   replyTo?: string;
+  pollOptions?: string[];
+  pollEndDate?: string;
+  openPanel?: string | null;
 }
 
 interface SavedDraft extends DraftData {
@@ -48,6 +51,9 @@ function parseAutoDraft(): DraftData {
       imageUrls,
       linkUrl: parsed.linkUrl ?? '',
       replyTo: parsed.replyTo,
+      pollOptions: parsed.pollOptions,
+      pollEndDate: parsed.pollEndDate,
+      openPanel: parsed.openPanel,
     };
   } catch {
     return { content: '', games: [], imageUrls: [], linkUrl: '' };
@@ -101,7 +107,9 @@ export function NewPost() {
   const [activeAltIndex, setActiveAltIndex] = useState<number | null>(null);
   const [uploadKey, setUploadKey] = useState(0);
   const [linkUrl, setLinkUrl] = useState(autoDraft.current.linkUrl);
-  const [openPanel, setOpenPanel] = useState<'image' | 'link' | 'game' | 'group' | 'list' | 'poll' | null>(null);
+  const [openPanel, setOpenPanel] = useState<'image' | 'link' | 'game' | 'group' | 'list' | 'poll' | null>(
+    autoDraft.current.openPanel === 'poll' ? 'poll' : null
+  );
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
   const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>(() => {
@@ -139,8 +147,8 @@ export function NewPost() {
   // Cancel confirmation
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Poll state
-  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
-  const [pollEndDate, setPollEndDate] = useState('');
+  const [pollOptions, setPollOptions] = useState<string[]>(autoDraft.current.pollOptions ?? ['', '']);
+  const [pollEndDate, setPollEndDate] = useState(autoDraft.current.pollEndDate ?? '');
   // List picker
   const [pickedListType, setPickedListType] = useState<string | undefined>(attachListType);
   const [pickedListUserId, setPickedListUserId] = useState<string | undefined>(attachListUserId);
@@ -181,35 +189,60 @@ export function NewPost() {
 
   // Auto-save to localStorage on every relevant change
   useEffect(() => {
-    const draft: DraftData = { content, games: selectedGames, imageUrls, linkUrl, replyTo };
-    if (content.trim() || selectedGames.length > 0 || imageUrls.length > 0 || linkUrl) {
+    const isPollOpen = openPanel === 'poll';
+    const hasPoll = isPollOpen && pollOptions.some(o => o.trim()) && pollEndDate;
+    const draft: DraftData = {
+      content, games: selectedGames, imageUrls, linkUrl, replyTo,
+      pollOptions: isPollOpen ? pollOptions : undefined,
+      pollEndDate: isPollOpen ? pollEndDate : undefined,
+      openPanel: openPanel ?? undefined,
+    };
+    if (content.trim() || selectedGames.length > 0 || imageUrls.length > 0 || linkUrl || hasPoll) {
       localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify(draft));
     } else {
       localStorage.removeItem(AUTO_DRAFT_KEY);
     }
-  }, [content, selectedGames, imageUrls, linkUrl]);
+  }, [content, selectedGames, imageUrls, linkUrl, openPanel, pollOptions, pollEndDate]);
+
+  // Refs for real-time poll state — the visibilitychange/pagehide flush runs outside React's
+  // render cycle, so stale closures can't see the latest state. Refs always hold current values.
+  const pollOptionsRef = useRef(pollOptions);
+  const pollEndDateRef = useRef(pollEndDate);
+  const openPanelRef   = useRef(openPanel);
+  useEffect(() => { pollOptionsRef.current = pollOptions; }, [pollOptions]);
+  useEffect(() => { pollEndDateRef.current = pollEndDate; }, [pollEndDate]);
+  useEffect(() => { openPanelRef.current   = openPanel;   }, [openPanel]);
 
   // Flush draft immediately when the page is hidden or unloaded (tab switch, app backgrounded, etc.)
   // useEffect auto-save is async — this catches any state that hasn't flushed yet.
   useEffect(() => {
     const flush = () => {
-      // Read current values via closure (stale ref for content is fine here since
-      // we're just flushing whatever was last rendered to localStorage)
-      const raw = localStorage.getItem(AUTO_DRAFT_KEY);
-      // If nothing is stored yet but the textarea has content, save it now
-      if (!raw) {
-        const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Post content"]');
-        if (el?.value.trim()) {
-          localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify({ content: el.value, games: [], imageUrls: [], linkUrl: '', replyTo }));
-        }
+      const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Post content"]');
+      const liveContent = el?.value ?? '';
+      let existing: Record<string, unknown> = {};
+      try { existing = JSON.parse(localStorage.getItem(AUTO_DRAFT_KEY) ?? '{}'); } catch { /* */ }
+
+      const isPollOpen = openPanelRef.current === 'poll';
+      const draft = {
+        ...existing,
+        ...(liveContent.trim() && { content: liveContent }),
+        pollOptions:  isPollOpen ? pollOptionsRef.current : undefined,
+        pollEndDate:  isPollOpen ? pollEndDateRef.current : undefined,
+        openPanel:    openPanelRef.current ?? undefined,
+      };
+
+      const hasContent =
+        (draft.content as string | undefined)?.trim() ||
+        (isPollOpen && pollOptionsRef.current.some(o => o.trim()));
+      if (hasContent) {
+        localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify(draft));
       }
     };
-    const onHide = () => flush();
-    document.addEventListener('visibilitychange', onHide);
-    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', flush);
+    window.addEventListener('pagehide', flush);
     return () => {
-      document.removeEventListener('visibilitychange', onHide);
-      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', flush);
+      window.removeEventListener('pagehide', flush);
     };
   }, []);
 
@@ -1285,6 +1318,47 @@ export function NewPost() {
                 className="w-full py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-40">
                 Set Poll
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Poll preview — shown after "Set Poll" is clicked */}
+        {openPanel !== 'poll' && pollOptions.filter(o => o.trim()).length >= 2 && pollEndDate && (
+          <div className="mt-3 rounded-xl border border-border bg-secondary/20 overflow-hidden">
+            <div className="px-3 pt-3 pb-1 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">
+                  Ends {new Date(pollEndDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOpenPanel('poll')}
+                  className="text-xs text-accent hover:text-accent/80 font-medium px-2 py-0.5 rounded transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPollOptions(['', '']); setPollEndDate(''); }}
+                  className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Remove poll"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="px-3 pb-3 space-y-2 mt-1">
+              {pollOptions.filter(o => o.trim()).map((option, i) => (
+                <div
+                  key={i}
+                  className="w-full text-left px-3 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground"
+                >
+                  <span className="line-clamp-2 break-words">{option}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}

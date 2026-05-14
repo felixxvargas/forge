@@ -328,6 +328,14 @@ export async function getSimilarGames(gameId: string, limit = 8) {
     );
   }
 
+  // Exclude direct children of the current game (they belong in Expansions & Versions)
+  candidates = candidates.filter((g: any) => g.parent_game_id !== gameId);
+
+  // Exclude the source game's own parent (avoid circular "similar" loop)
+  if (source?.parent_game_id) {
+    candidates = candidates.filter((g: any) => g.id !== source.parent_game_id);
+  }
+
   // Score by genre overlap (weighted 3×) + platform overlap (1×), then year desc
   const scored = candidates.map((g: any) => {
     const gGenres: string[] = g.genres ?? [];
@@ -366,8 +374,13 @@ export async function getGameVersions(gameId: string, title: string, limit = 6) 
     .ilike('title', `%${words}%`)
     .neq('id', gameId)
     .or('hidden.is.null,hidden.eq.false')
-    .limit(limit);
-  return data ?? [];
+    .limit(limit * 3); // fetch extra so we can filter post-query
+
+  const results = data ?? [];
+  // Exclude games that are children of this game (they appear in Expansions & Versions)
+  return results
+    .filter((g: any) => g.parent_game_id !== gameId)
+    .slice(0, limit);
 }
 
 /**
@@ -498,11 +511,12 @@ export async function getExpansions(gameId: string): Promise<{ expansions: any[]
       }
     }
 
-    // Fetch expansions of this game from IGDB (category 2=expansion, 4=standalone_expansion)
+    // Fetch expansions of this game from IGDB
+    // Categories: 2=expansion, 4=standalone_expansion, 8=remake, 9=remaster, 10=expanded_game, 14=update
     const expansionsRes = await fetch('https://api.igdb.com/v4/games', {
       method: 'POST',
       headers,
-      body: `fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category, parent_game; where parent_game = ${igdbId} & category = (2, 4); limit 20;`,
+      body: `fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, category, parent_game; where parent_game = ${igdbId} & category = (2, 4, 8, 9, 10, 14); limit 30;`,
     });
     const igdbExpansions: any[] = expansionsRes.ok ? (await expansionsRes.json()) : [];
 
