@@ -11,6 +11,9 @@ export const gameSearchCache = new Map<string, any[]>();
 /** Cover art URL cache: game_id → url (null if fetched but no cover). */
 export const gameCoverCache = new Map<string, string | null>();
 
+/** In-flight batch cover promises: game_id → resolves to cover url when batch completes. */
+export const gameCoverPromises = new Map<string, Promise<string | null>>();
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

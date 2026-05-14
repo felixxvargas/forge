@@ -11,6 +11,8 @@ import { LoginModule } from '../components/LoginModule';
 import { useAppData } from '../context/AppDataContext';
 import { useColumnCount, splitToColumns } from '../hooks/useColumnCount';
 import { posts as postsAPI } from '../utils/supabase';
+import { gamesAPI } from '../utils/api';
+import { gameCoverCache, gameCoverPromises } from '../utils/mentionHighlight';
 import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
 import { topicAccounts } from '../data/data';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
@@ -275,6 +277,37 @@ export function Feed() {
   const visiblePosts = filteredPosts.filter(post => !mutedUsers.has(post.user_id));
   const mutedFilteredPosts = filteredPosts.filter(post => mutedUsers.has(post.user_id) && !showMutedPosts.has(post.id));
 
+  // Batch-fetch game covers for all visible posts — reduces N individual edge fn calls to 1
+  useEffect(() => {
+    const gameIds = [...new Set(
+      (visiblePosts as any[]).flatMap(p =>
+        (p.game_ids?.length > 0 ? p.game_ids : p.game_id ? [p.game_id] : []) as string[]
+      )
+    )].filter(id => !gameCoverCache.has(id) && !gameCoverPromises.has(id));
+    if (gameIds.length === 0) return;
+
+    const resolvers = new Map<string, (url: string | null) => void>();
+    gameIds.forEach(id => {
+      gameCoverPromises.set(id, new Promise<string | null>(resolve => resolvers.set(id, resolve)));
+    });
+
+    gamesAPI.getGames(gameIds).then((data: any) => {
+      const games: any[] = Array.isArray(data) ? data : (data?.games ?? []);
+      const byId = new Map(games.map((g: any) => [String(g.id), g]));
+      gameIds.forEach(id => {
+        const game = byId.get(id);
+        const url = game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game?.artwork?.[0]?.url ?? null;
+        gameCoverCache.set(id, url);
+        resolvers.get(id)?.(url);
+      });
+    }).catch(() => {
+      gameIds.forEach(id => resolvers.get(id)?.(null));
+    }).finally(() => {
+      gameIds.forEach(id => gameCoverPromises.delete(id));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visiblePosts.slice(0, 30).map((p: any) => p.id).join(',')]);
+
   const getSelectedName = (): string => {
     if (feedMode === 'following') return 'Following';
     if (feedMode === 'for-you') return 'For You';
@@ -422,35 +455,39 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 items-start">
-          {[0,1,2,3,4,5,6,7,8,9].map((i) => {
-            const hasImage = [0, 3, 5, 8].includes(i);
-            const textWidths = ['w-full','w-5/6','w-full','w-4/5','w-11/12','w-full','w-3/4','w-5/6','w-full','w-2/3'];
-            return (
-              <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                <div className="flex gap-3">
-                  <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex gap-2 mb-2.5">
-                      <div className="h-3 bg-muted/50 rounded w-24" />
-                      <div className="h-3 bg-muted/30 rounded w-16" />
-                    </div>
-                    <div className="space-y-2 mb-3">
-                      <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
-                      <div className="h-3 bg-muted/40 rounded w-5/6" />
-                      {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
-                    </div>
-                    {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
-                    <div className="flex gap-4 pt-1">
-                      <div className="h-3 bg-muted/25 rounded w-8" />
-                      <div className="h-3 bg-muted/25 rounded w-8" />
-                      <div className="h-3 bg-muted/25 rounded w-8" />
+        <div className="flex gap-3 sm:gap-6 items-start">
+          {splitToColumns([0,1,2,3,4,5,6,7,8,9], numCols).map((colItems, colIdx) => (
+            <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
+              {colItems.map((i) => {
+                const hasImage = [0, 3, 5, 8].includes(i);
+                const textWidths = ['w-full','w-5/6','w-full','w-4/5','w-11/12','w-full','w-3/4','w-5/6','w-full','w-2/3'];
+                return (
+                  <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+                    <div className="flex gap-3">
+                      <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex gap-2 mb-2.5">
+                          <div className="h-3 bg-muted/50 rounded w-24" />
+                          <div className="h-3 bg-muted/30 rounded w-16" />
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          <div className={`h-3 bg-muted/40 rounded ${textWidths[i]}`} />
+                          <div className="h-3 bg-muted/40 rounded w-5/6" />
+                          {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
+                        </div>
+                        {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
+                        <div className="flex gap-4 pt-1">
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                          <div className="h-3 bg-muted/25 rounded w-8" />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 

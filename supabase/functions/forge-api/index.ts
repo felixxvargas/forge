@@ -224,7 +224,7 @@ app.post("/forge-api/upload", async (c) => {
 
 app.get("/forge-api/games", async (c) => {
   try {
-    const limit = parseInt(c.req.query("limit") || "50");
+    const limit = Math.max(0, Math.min(parseInt(c.req.query("limit") || "50"), 500));
     const offset = parseInt(c.req.query("offset") || "0");
     const games = await gamesAPI.listGames(limit, offset);
     return c.json({ games });
@@ -237,7 +237,7 @@ app.get("/forge-api/games", async (c) => {
 app.get("/forge-api/games/search/:query", async (c) => {
   try {
     const query = c.req.param("query");
-    const limit = parseInt(c.req.query("limit") || "20");
+    const limit = Math.max(0, Math.min(parseInt(c.req.query("limit") || "20"), 100));
     const games = await gamesAPI.searchGames(query, limit);
     return c.json({ games });
   } catch (err) {
@@ -277,7 +277,7 @@ app.get("/forge-api/games/:gameId", async (c) => {
 app.get("/forge-api/games/:gameId/similar", async (c) => {
   try {
     const gameId = c.req.param("gameId");
-    const limit = parseInt(c.req.query("limit") || "8");
+    const limit = Math.max(0, Math.min(parseInt(c.req.query("limit") || "8"), 50));
     const games = await gamesAPI.getSimilarGames(gameId, limit);
     return c.json({ games });
   } catch (err) {
@@ -290,7 +290,7 @@ app.get("/forge-api/games/:gameId/versions", async (c) => {
   try {
     const gameId = c.req.param("gameId");
     const title = c.req.query("title") || "";
-    const limit = parseInt(c.req.query("limit") || "6");
+    const limit = Math.max(0, Math.min(parseInt(c.req.query("limit") || "6"), 50));
     const games = await gamesAPI.getGameVersions(gameId, title, limit);
     return c.json({ games });
   } catch (err) {

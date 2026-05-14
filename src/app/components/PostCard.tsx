@@ -11,7 +11,7 @@ import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from './ProfileAvatar';
 import { useBlueskyData } from '../hooks/useBlueskyData';
 import { ShareModal } from './ShareModal';
-import { gameCoverCache } from '../utils/mentionHighlight';
+import { gameCoverCache, gameCoverPromises } from '../utils/mentionHighlight';
 import { gamesAPI } from '../utils/api';
 import { pollAPI, streamArchivesAPI, type StreamArchive } from '../utils/supabase';
 import { LinkPreview } from './LinkPreview';
@@ -209,6 +209,12 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
         gameCoverCache.set(g.id, url);
         setGameCovers(prev => new Map(prev).set(g.id, url));
       };
+
+      // Use in-flight batch promise if Feed.tsx already started a batch fetch
+      if (gameCoverPromises.has(g.id)) {
+        gameCoverPromises.get(g.id)!.then(applyUrl);
+        return;
+      }
 
       // Fallback: search by title when ID lookup yields no artwork (RAWG ID ≠ IGDB ID)
       const fetchByTitle = async () => {

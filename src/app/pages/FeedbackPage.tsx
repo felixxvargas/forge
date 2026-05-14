@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { useNavigate } from '@/compat/router';
+import { useNavigate, useSearchParams } from '@/compat/router';
 import { ArrowLeft, Send, Loader2, CheckCircle, Bug, Lightbulb, MessageSquare } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
@@ -12,10 +12,19 @@ const TYPES: { id: FeedbackType; label: string; icon: typeof Bug; description: s
   { id: 'general', label: 'General Feedback', icon: MessageSquare, description: 'Share your thoughts' },
 ];
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export function FeedbackPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentUser } = useAppData();
-  const [type, setType] = useState<FeedbackType>('feature_request');
+  const [type, setType] = useState<FeedbackType>(() => {
+    const param = searchParams.get('type');
+    if (param === 'bug' || param === 'general') return param;
+    return 'feature_request';
+  });
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const [title, setTitle] = useState('');
@@ -51,7 +60,7 @@ export function FeedbackPage() {
           to: 'felixvgiles@gmail.com',
           subject: `[Forge Feedback] ${TYPE_LABELS[type]}: ${title.trim()}`,
           recipientName: 'Felix',
-          body: `<strong>Type:</strong> ${TYPE_LABELS[type]}<br><strong>From:</strong> ${currentUser?.handle ?? 'Anonymous'}<br><br><strong>Title:</strong> ${title.trim()}<br><br><strong>Description:</strong><br>${description.trim().replace(/\n/g, '<br>')}`,
+          body: `<strong>Type:</strong> ${TYPE_LABELS[type]}<br><strong>From:</strong> ${escapeHtml(currentUser?.handle ?? 'Anonymous')}<br><br><strong>Title:</strong> ${escapeHtml(title.trim())}<br><br><strong>Description:</strong><br>${escapeHtml(description.trim()).replace(/\n/g, '<br>')}`,
         }),
       }).catch(() => {});
       setTimeout(() => navigate(-1), 2000);

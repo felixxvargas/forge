@@ -457,7 +457,7 @@ export function Settings() {
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
             <button
-              onClick={() => navigate('/settings/feedback')}
+              onClick={() => navigate('/settings/feedback?type=bug')}
               className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
             >
               <Bug className="w-5 h-5 text-muted-foreground" />

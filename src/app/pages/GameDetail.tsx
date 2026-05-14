@@ -17,6 +17,15 @@ import { loadRankMapOnly, getGameRank } from '../utils/gameRankings';
 
 type PostSort = 'latest' | 'top';
 
+type GDEntry<T> = { data: T; ts: number };
+const GD_TTL = 5 * 60 * 1000;
+const _gdCache = new Map<string, GDEntry<any>>();
+function gdGet<T>(key: string): T | null {
+  const e = _gdCache.get(key);
+  return e && Date.now() - e.ts < GD_TTL ? (e.data as T) : null;
+}
+function gdSet<T>(key: string, data: T): void { _gdCache.set(key, { data, ts: Date.now() }); }
+
 export function GameDetail() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -84,24 +93,33 @@ export function GameDetail() {
   const game = gameData ?? null;
   const loadingGame = gameSWRLoading && !gameData;
 
-  // Load dependent data once game is loaded
+  // Load dependent data once game is loaded — uses module-level cache to avoid re-fetching on nav
   useEffect(() => {
     if (!game || !gameId) return;
 
-    gamesAPI.getSimilarGames(gameId, 20)
-      .then((res: any) => setSimilarGames(Array.isArray(res) ? res : res?.games ?? []))
-      .catch(() => {});
+    const cachedSimilar = gdGet<any[]>(`similar:${gameId}`);
+    if (cachedSimilar) { setSimilarGames(cachedSimilar); }
+    else {
+      gamesAPI.getSimilarGames(gameId, 20)
+        .then((res: any) => { const d = Array.isArray(res) ? res : res?.games ?? []; setSimilarGames(d); gdSet(`similar:${gameId}`, d); })
+        .catch(() => {});
+    }
 
-    gamesAPI.getGameVersions(gameId, game.title, 6)
-      .then((res: any) => setGameVersions(Array.isArray(res) ? res : res?.games ?? []))
-      .catch(() => {});
+    const cachedVersions = gdGet<any[]>(`versions:${gameId}`);
+    if (cachedVersions) { setGameVersions(cachedVersions); }
+    else {
+      gamesAPI.getGameVersions(gameId, game.title, 6)
+        .then((res: any) => { const d = Array.isArray(res) ? res : res?.games ?? []; setGameVersions(d); gdSet(`versions:${gameId}`, d); })
+        .catch(() => {});
+    }
 
-    gamesAPI.getExpansions(gameId)
-      .then(({ expansions: exps, parentGame: pg }) => {
-        setExpansions(exps);
-        setParentGame(pg);
-      })
-      .catch(() => {});
+    const cachedExp = gdGet<{ expansions: any[]; parentGame: any }>(`expansions:${gameId}`);
+    if (cachedExp) { setExpansions(cachedExp.expansions); setParentGame(cachedExp.parentGame); }
+    else {
+      gamesAPI.getExpansions(gameId)
+        .then(({ expansions: exps, parentGame: pg }) => { setExpansions(exps); setParentGame(pg); gdSet(`expansions:${gameId}`, { expansions: exps, parentGame: pg }); })
+        .catch(() => {});
+    }
   }, [game?.id]);
 
   const { data: taggedPostsData, isLoading: taggedPostsSWRLoading } = useSWR(
@@ -137,22 +155,32 @@ export function GameDetail() {
 
   useEffect(() => {
     if (!gameId) return;
-    setLoadingPlayers(true);
-    userGamesAPI.getPlayersForGame(gameId)
-      .then(setPlayers)
-      .catch(() => {})
-      .finally(() => setLoadingPlayers(false));
-    userGamesAPI.getListCount(gameId)
-      .then(setListCount)
-      .catch(() => setListCount(0));
+    const cachedPlayers = gdGet<any[]>(`players:${gameId}`);
+    if (cachedPlayers) { setPlayers(cachedPlayers); }
+    else {
+      setLoadingPlayers(true);
+      userGamesAPI.getPlayersForGame(gameId)
+        .then(data => { setPlayers(data); gdSet(`players:${gameId}`, data); })
+        .catch(() => {})
+        .finally(() => setLoadingPlayers(false));
+    }
+    const cachedCount = gdGet<number>(`listCount:${gameId}`);
+    if (cachedCount !== null) { setListCount(cachedCount); }
+    else {
+      userGamesAPI.getListCount(gameId)
+        .then(count => { setListCount(count); gdSet(`listCount:${gameId}`, count); })
+        .catch(() => setListCount(0));
+    }
   }, [gameId]);
 
   // Load LFG flares for this game
   useEffect(() => {
     if (!gameId) return;
+    const cached = gdGet<LFGFlare[]>(`flares:${gameId}`);
+    if (cached) { setGameFlares(cached); return; }
     setLoadingFlares(true);
     lfgFlaresAPI.getActiveForGame(gameId)
-      .then(setGameFlares)
+      .then(data => { setGameFlares(data); gdSet(`flares:${gameId}`, data); })
       .catch(() => setGameFlares([]))
       .finally(() => setLoadingFlares(false));
   }, [gameId]);

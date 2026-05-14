@@ -31,6 +31,7 @@ interface AppDataContextType {
   blockedUsers: Set<string>;
   mutedUsers: Set<string>;
   isLoading: boolean;
+  isRefreshing: boolean;
   topicPostsReady: boolean;
   isAuthenticated: boolean;
   hasUnreadNotifications: boolean;
@@ -114,6 +115,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [topicPostsReady, setTopicPostsReady] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -437,10 +439,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
+      setIsRefreshing(false);
       setTopicPostsReady(false);
 
       try {
         let feedData = await refreshFeed();
+        setIsLoading(false);
+        setIsRefreshing(true);
         const loadedUsers: any[] = lastLoadedUsersRef.current;
         if (session?.user) {
           const loadResult = await loadUserData(session.user.id);
@@ -566,6 +571,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       } finally {
         setTopicPostsReady(true);
         setIsLoading(false);
+        setIsRefreshing(false);
       }
     };
     init();
@@ -1137,6 +1143,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       blockedUsers,
       mutedUsers,
       isLoading,
+      isRefreshing,
       topicPostsReady,
       isAuthenticated,
       hasUnreadNotifications,
