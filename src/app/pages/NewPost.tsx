@@ -128,7 +128,9 @@ export function NewPost() {
   const [mentionSuggestions, setMentionSuggestions] = useState<User[]>([]);
   const [atGameResults, setAtGameResults] = useState<any[]>([]);
   const [atGroupResults, setAtGroupResults] = useState<any[]>([]);
+  const [isAtGameSearching, setIsAtGameSearching] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
+  const [mentionDropdownStyle, setMentionDropdownStyle] = useState<{ bottom: number; left?: number; right?: number; width?: number } | null>(null);
   const [hashGameResults, setHashGameResults] = useState<any[]>([]);
   const [showHashGames, setShowHashGames] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(
@@ -186,6 +188,19 @@ export function NewPost() {
     vv.addEventListener('scroll', update);
     return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
   }, []);
+
+  useEffect(() => {
+    if (!showMentions) { setMentionDropdownStyle(null); return; }
+    const el = textareaRef.current;
+    if (!el) return;
+    const isDesktop = window.innerWidth >= 768;
+    if (isDesktop) {
+      const rect = el.getBoundingClientRect();
+      setMentionDropdownStyle({ bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width });
+    } else {
+      setMentionDropdownStyle({ bottom: viewportBottom + 4 });
+    }
+  }, [showMentions, viewportBottom]);
 
   // Auto-save to localStorage on every relevant change
   useEffect(() => {
@@ -416,7 +431,9 @@ export function NewPost() {
         const cacheKey = query.toLowerCase();
         if (gameSearchCache.has(cacheKey)) {
           setAtGameResults(gameSearchCache.get(cacheKey)!);
+          setIsAtGameSearching(false);
         } else {
+          setIsAtGameSearching(true);
           atGameSearchTimer.current = setTimeout(async () => {
             try {
               const results = await gamesAPI.searchGames(query, 5);
@@ -424,10 +441,12 @@ export function NewPost() {
               gameSearchCache.set(cacheKey, list);
               setAtGameResults(list);
             } catch { setAtGameResults([]); }
-          }, 150);
+            finally { setIsAtGameSearching(false); }
+          }, 300);
         }
       } else {
         setAtGameResults([]);
+        setIsAtGameSearching(false);
       }
       return;
     }
@@ -471,6 +490,7 @@ export function NewPost() {
     setShowHashGames(false);
     setAtGameResults([]);
     setAtGroupResults([]);
+    setIsAtGameSearching(false);
     mentionStartRef.current = -1;
   };
 
@@ -502,7 +522,8 @@ export function NewPost() {
     const startIdx = mentionStartRef.current;
     if (startIdx < 0) { setShowMentions(false); setAtGameResults([]); return; }
     const curPos = textareaRef.current?.selectionStart ?? content.length;
-    const newContent = content.slice(0, startIdx) + game.title + ' ' + content.slice(curPos);
+    const tag = '@' + game.title;
+    const newContent = content.slice(0, startIdx) + tag + ' ' + content.slice(curPos);
     setContent(newContent);
     const gameId = String(game.id ?? game.game_id ?? '');
     setSelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
@@ -512,7 +533,8 @@ export function NewPost() {
     setShowMentions(false);
     setMentionSuggestions([]);
     setAtGameResults([]);
-    placeCursor(startIdx + game.title.length + 1);
+    setIsAtGameSearching(false);
+    placeCursor(startIdx + tag.length + 1);
   };
 
   const handleAtGroupSelect = (group: any) => {
@@ -773,7 +795,7 @@ export function NewPost() {
             dangerouslySetInnerHTML={{
               __html: content
                 ? buildHighlightedHtml(content, users, selectedGames[0] ?? null, selectedGroup ? [selectedGroup] : [])
-                : '<span style="color:var(--muted-foreground)">What\'s on your mind? @mention people or games, #game to tag</span>',
+                : '<span style="color:var(--muted-foreground)">What\'s on your mind? Use @ to mention people, games or groups</span>',
             }}
           />
           <textarea
@@ -790,21 +812,24 @@ export function NewPost() {
           />
         </div>
 
-        {/* @Mention + @Game + @Group suggestions — fixed above the OSK */}
-        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0 || atGroupResults.length > 0) && (
+        {/* @Mention + @Game + @Group suggestions — fixed above the OSK / textarea on desktop */}
+        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0 || isAtGameSearching || atGroupResults.length > 0) && mentionDropdownStyle && (
           <div
-            className="fixed left-2 right-2 z-50 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
-            style={{ bottom: viewportBottom + 4 }}
+            className="fixed z-[60] bg-sidebar border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+            style={mentionDropdownStyle.left != null
+              ? { bottom: mentionDropdownStyle.bottom, left: mentionDropdownStyle.left, width: mentionDropdownStyle.width }
+              : { bottom: mentionDropdownStyle.bottom, left: '0.5rem', right: '0.5rem' }
+            }
           >
             {mentionSuggestions.length > 0 && (
               <>
-                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">People</div>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-white/5">People</div>
                 {mentionSuggestions.map(user => (
                   <button
                     key={user.id}
                     type="button"
                     onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(user); }}
-                    className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
+                    className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
                   >
                     <ProfileAvatar
                       username={(user as any).display_name || user.handle || '?'}
@@ -820,36 +845,46 @@ export function NewPost() {
                 ))}
               </>
             )}
-            {atGameResults.length > 0 && (
+            {(atGameResults.length > 0 || isAtGameSearching) && (
               <>
-                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">Games</div>
-                {atGameResults.map((game: any, i) => (
-                  <button
-                    key={game.id ?? game.game_id ?? i}
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); handleAtGameSelect(game); }}
-                    className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
-                  >
-                    {(game.cover || game.artwork?.[0]?.url) && (
-                      <img src={game.cover ?? game.artwork[0].url} alt="" className="w-8 h-10 rounded object-cover shrink-0" />
-                    )}
-                    <div>
-                      <p className="font-medium text-sm">{game.title}</p>
-                      {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
-                    </div>
-                  </button>
-                ))}
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-white/5">Games</div>
+                {isAtGameSearching && atGameResults.length === 0 && (
+                  <div className="px-3 py-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin shrink-0" />
+                    Searching games…
+                  </div>
+                )}
+                {atGameResults.map((game: any, i) => {
+                  const coverUrl = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
+                  return (
+                    <button
+                      key={game.id ?? game.game_id ?? i}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); handleAtGameSelect(game); }}
+                      className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
+                    >
+                      {coverUrl
+                        ? <img src={coverUrl} alt="" className="w-8 h-10 rounded object-cover shrink-0" />
+                        : <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                      }
+                      <div>
+                        <p className="font-medium text-sm">{game.title}</p>
+                        {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
+                      </div>
+                    </button>
+                  );
+                })}
               </>
             )}
             {atGroupResults.length > 0 && (
               <>
-                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-secondary/50">Groups</div>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-white/5">Groups</div>
                 {atGroupResults.map((group: any) => (
                   <button
                     key={group.id}
                     type="button"
                     onMouseDown={(e) => { e.preventDefault(); handleAtGroupSelect(group); }}
-                    className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
+                    className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
                   >
                     <Users className="w-4 h-4 text-muted-foreground shrink-0" />
                     <p className="font-medium text-sm">{group.name}</p>
@@ -863,23 +898,29 @@ export function NewPost() {
         {/* #Game hash suggestions — fixed above the OSK */}
         {showHashGames && hashGameResults.length > 0 && (
           <div
-            className="fixed left-2 right-2 z-50 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+            className="fixed left-2 right-2 z-[60] bg-sidebar border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
             style={{ bottom: viewportBottom + 4 }}
           >
-            {hashGameResults.map((game: any, i) => (
-              <button
-                key={game.id ?? i}
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); handleHashGameSelect(game); }}
-                className="w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors text-left"
-              >
-                <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                <div>
-                  <p className="font-medium text-sm">{game.title}</p>
-                  {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
-                </div>
-              </button>
-            ))}
+            {hashGameResults.map((game: any, i) => {
+              const coverUrl = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
+              return (
+                <button
+                  key={game.id ?? i}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); handleHashGameSelect(game); }}
+                  className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
+                >
+                  {coverUrl
+                    ? <img src={coverUrl} alt="" className="w-8 h-10 rounded object-cover shrink-0" />
+                    : <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                  }
+                  <div>
+                    <p className="font-medium text-sm">{game.title}</p>
+                    {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -1399,7 +1440,7 @@ export function NewPost() {
 
         {/* Selected game tags */}
         {selectedGames.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 mb-3 sm:mb-5 flex flex-wrap gap-2">
             {selectedGames.map(g => {
               const cover = gameCoverCache.get(g.id) ?? null;
               return (
