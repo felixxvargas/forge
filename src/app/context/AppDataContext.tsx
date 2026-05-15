@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, us
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
-import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI } from '../utils/supabase';
+import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI, sessionTelemetry, gameTimelineAPI } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
 import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
 
@@ -303,6 +303,54 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Session telemetry: track time-spent per authenticated session
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const userId = session.user.id;
+    let teardown: (() => void) | null = null;
+    let cancelled = false;
+
+    (async () => {
+      let platform: 'web' | 'android' = 'web';
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (Capacitor.isNativePlatform()) platform = 'android';
+      } catch { /* non-Capacitor env */ }
+
+      if (cancelled) return;
+
+      sessionTelemetry.start(userId, platform);
+
+      const heartbeat = setInterval(() => {
+        sessionTelemetry.heartbeat(userId, platform);
+      }, 5 * 60 * 1000);
+
+      const handleUnload = () => sessionTelemetry.end(userId, platform);
+      window.addEventListener('beforeunload', handleUnload);
+
+      let appListener: { remove: () => void } | null = null;
+      if (platform === 'android') {
+        try {
+          const { App } = await import('@capacitor/app');
+          appListener = await App.addListener('appStateChange', ({ isActive }) => {
+            if (!isActive) sessionTelemetry.end(userId, platform);
+          });
+        } catch { /* ignore */ }
+      }
+
+      teardown = () => {
+        clearInterval(heartbeat);
+        window.removeEventListener('beforeunload', handleUnload);
+        appListener?.remove();
+      };
+    })();
+
+    return () => {
+      cancelled = true;
+      teardown?.();
+    };
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // On Android: intercept the OAuth deep link and forward params to /auth/callback.
   // Supabase uses implicit flow by default — tokens arrive in the URL hash fragment
   // (#access_token=...&refresh_token=...), not as a ?code= query param.
@@ -576,6 +624,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
     init();
   }, [session, loadUserData, refreshFeed]);
+
+  // Snapshot last month's recently-played games once per login
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    gameTimelineAPI.computeAndSavePrevMonth(session.user.id).catch(() => {});
+  }, [session?.user?.id]);
 
   const signIn = async (email: string, password: string, captchaToken?: string) => {
     await auth.signIn(email, password, captchaToken);
@@ -1028,6 +1082,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const key = keyMap[listType];
     if (!key) return;
     const existing = currentUser.game_lists ?? {} as any;
+
+    // Diff old vs new for gaming timeline event log
+    const userId = session.user.id;
+    const oldIds = new Set<string>((existing[key] ?? []).map((g: any) => String(g.id)));
+    const newIds = new Set<string>(games.map((g: any) => String(g.id)));
+    const timelineEvents: { user_id: string; game_id: string; list_type: string; event: 'added' | 'removed' }[] = [];
+    for (const id of newIds) {
+      if (!oldIds.has(id)) timelineEvents.push({ user_id: userId, game_id: id, list_type: listType, event: 'added' });
+    }
+    for (const id of oldIds) {
+      if (!newIds.has(id)) timelineEvents.push({ user_id: userId, game_id: id, list_type: listType, event: 'removed' });
+    }
+    if (timelineEvents.length > 0) {
+      void supabase.from('game_list_events').insert(timelineEvents); // fire-and-forget
+    }
+
     // Auto-show lists when they receive their first games (newly created list becomes visible).
     const wasEmpty = (existing[key] ?? []).length === 0;
     const hiddenLists: string[] = existing.hiddenLists ?? [];
@@ -1050,7 +1120,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       'wishlist': 'owned',
     };
     const status = statusMap[listType] ?? 'owned';
-    const userId = session.user.id;
     const entries = games
       .filter((g: any) => g?.id)
       .map((g: any) => ({ user_id: userId, game_id: String(g.id), status }));

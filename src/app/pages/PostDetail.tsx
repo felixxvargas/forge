@@ -26,6 +26,8 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   } = useAppData() as any;
 
   const repliesRef = useRef<HTMLDivElement>(null);
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [mentionDropdownPos, setMentionDropdownPos] = useState<{ bottom: number; left: number; width: number } | null>(null);
 
   const [replies, setReplies] = useState<any[]>([]);
   const [reposters, setReposters] = useState<any[]>([]);
@@ -329,6 +331,15 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     setShowMentions(false);
     setMentionSuggestions([]);
   };
+
+  useEffect(() => {
+    if (showMentions && mentionSuggestions.length > 0 && replyTextareaRef.current) {
+      const rect = replyTextareaRef.current.getBoundingClientRect();
+      setMentionDropdownPos({ bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width });
+    } else {
+      setMentionDropdownPos(null);
+    }
+  }, [showMentions, mentionSuggestions]);
 
   const handleReplyGameSearch = (q: string) => {
     setReplyGameQuery(q);
@@ -718,8 +729,36 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
 
           {/* Reply Tray — fullscreen on mobile, centered dialog on desktop */}
           {showReplyTray && (
+            <>
+            {/* Mention suggestions — fixed outside overflow-hidden modal */}
+            {mentionDropdownPos && (
+              <div
+                className="fixed z-[60] bg-card border border-border rounded-xl shadow-lg overflow-hidden"
+                style={{ bottom: mentionDropdownPos.bottom, left: mentionDropdownPos.left, width: mentionDropdownPos.width }}
+              >
+                {mentionSuggestions.map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-secondary transition-colors text-left"
+                  >
+                    <ProfileAvatar
+                      username={u.display_name || u.handle || '?'}
+                      profilePicture={u.profile_picture}
+                      userId={u.id}
+                      size="sm"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{u.display_name || u.handle}</p>
+                      <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="fixed inset-0 z-50 flex flex-col sm:items-end sm:justify-end md:items-center md:justify-center sm:bg-black/60">
-              <div className="w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card/80 backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl">
+              <div className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card/80 backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl">
                 {/* Tray header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                   <button
@@ -748,32 +787,8 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                     size="md"
                   />
                   <div className="flex-1 min-w-0 relative">
-                    {/* Mention suggestions */}
-                    {showMentions && mentionSuggestions.length > 0 && (
-                      <div className="absolute bottom-full mb-2 left-0 right-0 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                        {mentionSuggestions.map(u => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
-                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-secondary transition-colors text-left"
-                          >
-                            <ProfileAvatar
-                              username={u.display_name || u.handle || '?'}
-                              profilePicture={u.profile_picture}
-                              userId={u.id}
-                              size="sm"
-                            />
-                            <div>
-                              <p className="text-sm font-medium">{u.display_name || u.handle}</p>
-                              <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
                     <textarea
+                      ref={replyTextareaRef}
                       autoFocus
                       value={newReply}
                       onChange={handleReplyChange}
@@ -1090,6 +1105,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {/* Replies List */}

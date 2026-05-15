@@ -15,6 +15,7 @@ import { PlatformIcon } from '../components/PlatformIcon';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
+import { GameTimeline } from '../components/GameTimeline';
 import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
@@ -54,7 +55,7 @@ function LinkifyMentions({ text }: { text: string }) {
   );
 }
 
-type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media';
+type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media' | 'timeline';
 
 // List type selection state type
 type ListTypeOption = 'recently-played' | 'favorite' | 'wishlist' | 'library';
@@ -1259,6 +1260,16 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             </button>
           )}
           <button
+            onClick={() => setActiveTab('timeline')}
+            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              activeTab === 'timeline'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Timeline
+          </button>
+          <button
             onClick={() => setActiveTab('about')}
             className={`lg:hidden px-4 py-3 font-medium transition-colors border-b-2 ${
               activeTab === 'about'
@@ -1868,6 +1879,12 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {effectiveTab === 'timeline' && (
+          <div className="pb-24">
+            <GameTimeline userId={profileUser.id} />
           </div>
         )}
 

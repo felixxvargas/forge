@@ -5,6 +5,9 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+// Module-level IGDB token cache — avoids a Twitch OAuth round-trip on every search
+let _igdbTokenCache: { token: string; expiresAt: number } | null = null;
+
 interface GameData {
   id: string;
   title: string;
@@ -171,43 +174,45 @@ export async function searchGames(query: string, limit = 20) {
     const localIds = new Set(local.map(g => `igdb-${(g as any).igdb_id}`));
     const toInsert = igdbGames.filter(g => !localIds.has(`igdb-${g.id}`));
 
-    const newGames: any[] = [];
-    for (const g of toInsert) {
-      try {
-        const gameId = `igdb-${g.id}`;
-        const coverUrl = g.cover?.image_id
-          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
-          : null;
-        const year = g.first_release_date
-          ? new Date(g.first_release_date * 1000).getFullYear()
-          : null;
+    const newGames = (await Promise.all(
+      toInsert.map(async (g: any) => {
+        try {
+          const gameId = `igdb-${g.id}`;
+          const coverUrl = g.cover?.image_id
+            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
+            : null;
+          const year = g.first_release_date
+            ? new Date(g.first_release_date * 1000).getFullYear()
+            : null;
 
-        const { data: upserted } = await supabase
-          .from('forge_games_17285bd7')
-          .upsert({
-            id: gameId,
-            title: g.name,
-            igdb_id: g.id,
-            year,
-            description: g.summary ?? null,
-            genres: g.genres?.map((x: any) => x.name) ?? [],
-            platforms: g.platforms?.map((x: any) => x.name) ?? [],
-          }, { onConflict: 'id', ignoreDuplicates: true })
-          .select()
-          .single();
+          const { data: upserted } = await supabase
+            .from('forge_games_17285bd7')
+            .upsert({
+              id: gameId,
+              title: g.name,
+              igdb_id: g.id,
+              year,
+              description: g.summary ?? null,
+              genres: g.genres?.map((x: any) => x.name) ?? [],
+              platforms: g.platforms?.map((x: any) => x.name) ?? [],
+            }, { onConflict: 'id', ignoreDuplicates: true })
+            .select()
+            .single();
 
-        if (coverUrl && upserted) {
-          await supabase
-            .from('forge_game_artwork_17285bd7')
-            .upsert({ game_id: gameId, artwork_type: 'cover', url: coverUrl }, { onConflict: 'game_id,artwork_type', ignoreDuplicates: true });
-          newGames.push({ ...upserted, artwork: [{ artwork_type: 'cover', url: coverUrl }] });
-        } else if (upserted) {
-          newGames.push({ ...upserted, artwork: [] });
+          if (coverUrl && upserted) {
+            await supabase
+              .from('forge_game_artwork_17285bd7')
+              .upsert({ game_id: gameId, artwork_type: 'cover', url: coverUrl }, { onConflict: 'game_id,artwork_type', ignoreDuplicates: true });
+            return { ...upserted, artwork: [{ artwork_type: 'cover', url: coverUrl }] };
+          } else if (upserted) {
+            return { ...upserted, artwork: [] };
+          }
+          return null;
+        } catch {
+          return null;
         }
-      } catch (_e) {
-        // skip individual failures
-      }
-    }
+      })
+    )).filter((g): g is NonNullable<typeof g> => g !== null);
 
     // Merge and return up to limit
     return [...local, ...newGames].slice(0, limit);
@@ -568,9 +573,14 @@ export async function getExpansions(gameId: string): Promise<{ expansions: any[]
 }
 
 /**
- * Get IGDB access token using OAuth
+ * Get IGDB access token using OAuth — cached at module level to avoid a round-trip on every search
  */
 async function getIGDBAccessToken(): Promise<string> {
+  // Return cached token if still valid (60-second buffer before expiry)
+  if (_igdbTokenCache && Date.now() < _igdbTokenCache.expiresAt - 60_000) {
+    return _igdbTokenCache.token;
+  }
+
   // IGDB uses Twitch OAuth — accept either IGDB_* or TWITCH_* credential names
   const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
   const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET') ?? Deno.env.get('TWITCH_CLIENT_SECRET');
@@ -590,7 +600,11 @@ async function getIGDBAccessToken(): Promise<string> {
   }
 
   const data = await response.json();
-  return data.access_token;
+  _igdbTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+  };
+  return _igdbTokenCache.token;
 }
 
 /**

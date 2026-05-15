@@ -11,7 +11,7 @@ async function fetchPost(postId: string | undefined) {
   try {
     const projectId = process.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
-    const url = `https://${projectId}.supabase.co/rest/v1/posts?select=*,profiles(id,display_name,handle,profile_picture,bio)&id=eq.${postId}&limit=1`;
+    const url = `https://${projectId}.supabase.co/rest/v1/posts?select=*,author:profiles!user_id(id,display_name,handle,profile_picture,bio)&id=eq.${postId}&limit=1`;
     const res = await fetch(url, {
       headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
     });

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe } from 'lucide-react';
 
 interface OnboardingFunnelData {
   started: number;
@@ -22,6 +22,7 @@ interface AdminStats {
   flares: { total: number; last30Days: number; last90Days: number; last365Days: number };
   lists: { total: number; customTotal: number; updateCount: number };
   onboarding?: { allTime: OnboardingFunnelData; last30Days: OnboardingFunnelData };
+  engagement?: { mau: number; wau: number; dau: number; avgSessionDurationS: number; platformSplit: Record<string, number> };
   recentUsers: { handle: string; display_name: string; created_at: string }[];
   generatedAt: string;
 }
@@ -182,6 +183,69 @@ export function Admin() {
             </div>
           </div>
         </section>
+
+        {/* Engagement */}
+        {stats.engagement && (() => {
+          const eng = stats.engagement!;
+          const totalSessions = Object.values(eng.platformSplit).reduce((a, b) => a + b, 0);
+          const fmtDuration = (s: number) => {
+            if (s === 0) return '—';
+            if (s < 60) return `${s}s`;
+            return `${Math.round(s / 60)}m`;
+          };
+          return (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Engagement</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Activity className="w-4 h-4" />
+                    <span className="text-xs font-medium uppercase tracking-wide">MAU</span>
+                  </div>
+                  <div className="text-3xl font-bold tabular-nums">{eng.mau.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Monthly active users</div>
+                </div>
+                <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Activity className="w-4 h-4" />
+                    <span className="text-xs font-medium uppercase tracking-wide">WAU / DAU</span>
+                  </div>
+                  <div className="text-3xl font-bold tabular-nums">{eng.wau.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-medium">{eng.dau.toLocaleString()}</span> today
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-xs font-medium uppercase tracking-wide">Avg Session</span>
+                  </div>
+                  <div className="text-3xl font-bold tabular-nums">{fmtDuration(eng.avgSessionDurationS)}</div>
+                  <div className="text-sm text-muted-foreground">Last 30 days</div>
+                </div>
+                <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Smartphone className="w-4 h-4" />
+                    <span className="text-xs font-medium uppercase tracking-wide">Platform Split</span>
+                  </div>
+                  <div className="space-y-1.5 text-sm pt-1">
+                    {[['web', <Globe key="web" className="w-3.5 h-3.5" />], ['android', <Smartphone key="android" className="w-3.5 h-3.5" />]] .map(([platform, icon]) => {
+                      const count = eng.platformSplit[platform as string] ?? 0;
+                      const pct = totalSessions > 0 ? Math.round((count / totalSessions) * 100) : 0;
+                      return (
+                        <div key={platform as string} className="flex justify-between items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">{icon}<span className="capitalize">{platform as string}</span></div>
+                          <span className="font-medium tabular-nums">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                    {totalSessions === 0 && <p className="text-muted-foreground text-xs">No sessions yet</p>}
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Content */}
         <section className="space-y-3">

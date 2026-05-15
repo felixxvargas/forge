@@ -378,6 +378,44 @@ interface Feedback {
 }
 ```
 
+### Session Events (`forge_session_events` table)
+Tracks user session lifecycle for engagement metrics. Written fire-and-forget by `sessionTelemetry` in `supabase.ts`.
+```typescript
+interface ForgeSessionEvent {
+  id: string;          // UUID
+  user_id: string;     // auth.users.id
+  session_id: string;  // random UUID per session
+  event: 'session_start' | 'heartbeat' | 'session_end';
+  platform: 'web' | 'android';
+  duration_s: number | null;  // only set on session_end
+  created_at: string;
+}
+```
+
+### Game List Events (`game_list_events` table)
+Immutable event log for add/remove actions on any game list. Written by `updateGameList()` in `AppDataContext`. Used to compute monthly gaming timeline summaries.
+```typescript
+interface GameListEvent {
+  id: string;       // UUID
+  user_id: string;  // auth.users.id
+  game_id: string;  // IGDB game ID (string)
+  list_type: string; // 'recentlyPlayed' | 'favorites' | etc.
+  event: 'added' | 'removed';
+  created_at: string;
+}
+```
+
+### Gaming Monthly Summaries (`gaming_monthly_summaries` table)
+One row per user per month; stores the set of games that were in recently-played at any point during that month. Only written for months where recently-played was updated.
+```typescript
+interface GamingMonthlySummary {
+  user_id: string;   // auth.users.id
+  month: string;     // ISO date string, always the 1st of the month (e.g. '2026-05-01')
+  game_ids: string[];
+  created_at: string;
+}
+```
+
 ---
 
 ## API Layer
@@ -424,8 +462,12 @@ npx supabase functions deploy twitch-vod-archive \
 | `POST /api/emails/send-notification` | Send transactional email via Resend |
 | `POST /api/stripe/create-payment-intent` | Create Stripe PaymentIntent for Premium (idempotency-keyed per userId) |
 | `POST /api/stripe/webhook` | Handle Stripe `payment_intent.succeeded`; returns 500 on DB failure so Stripe retries |
+| `GET /api/admin/stats` | Admin-only: returns user, post, game, community, onboarding, engagement metrics |
 
-All three are Vercel Edge Functions (runtime: `'edge'`).
+All are Vercel Edge Functions (`export const config = { runtime: 'edge' }`).
+
+**OG / metadata handlers** (also edge functions, called by middleware for social crawlers and direct navigation):
+`api/og.tsx`, `api/post-og/[postId].ts`, `api/profile-og/[handle].ts`, `api/game-og/[gameId].ts`, `api/group-og/[groupId].ts`, `api/android-beta-og.ts`, `api/list-og.ts`
 
 ### Client-Side API (`api.ts`)
 - `gamesAPI.searchGames(query)` — IGDB search with `deAccent()` normalization and client-side re-ranking
@@ -602,7 +644,7 @@ Provides global state:
 | Function | Notes |
 |----------|-------|
 | `updateCurrentUser(updates)` | Calls `profiles.update()` with snake_case payload |
-| `updateGameList(type, games)` | Updates `profiles.game_lists[key]`; auto-shows list when first populated |
+| `updateGameList(type, games)` | Updates `profiles.game_lists[key]`; auto-shows list when first populated; diffs old vs new game IDs and writes `added`/`removed` events to `game_list_events` |
 | `followGame(gameId)` | Adds to `_followedGames` in `profiles.game_lists` — NOT `user_games` |
 | `unfollowGame(gameId)` | Removes from `_followedGames` |
 | `createPost(...)` | Supports text, images, game tags, replies, quote posts, attached lists |
@@ -619,6 +661,11 @@ Provides global state:
 ---
 
 ## Observability
+
+### Session Telemetry
+`sessionTelemetry` (exported from `supabase.ts`) writes to `forge_session_events` via fire-and-forget inserts. Call `sessionTelemetry.start(userId, platform)` on login, `.heartbeat()` every 5 minutes, `.end()` on logout / tab close. The `AppDataContext` wires this up automatically. Platform is `'web'` for Next.js and `'android'` for Capacitor builds.
+
+The `get_auth_user_activity()` PostgreSQL RPC (created in migration `20260514000000`) returns `{ mau, wau, dau }` by querying `auth.users.last_sign_in_at`. Called by `api/admin/stats.ts` to populate the Admin Engagement section.
 
 ### Google Analytics 4
 - Initialized in `main.tsx` via `initAnalytics()` from `analytics.ts`
@@ -821,13 +868,49 @@ OG image generator: `api/og.tsx` — supports types `profile`, `post`, `game`, `
 
 ---
 
-**Last Updated**: May 9, 2026
-**Version**: v0.3.2
+**Last Updated**: May 14, 2026
+**Version**: v0.3.5
 **Maintainer**: Forge Development Team
 
 ---
 
 ## Changelog
+
+### v0.3.5 — May 2026 (current)
+- **Google Sign-In on Android**: Google OAuth now works in the Capacitor Android build.
+- **Smarter game search**: Fuzzy matching handles typos; parent game titles rank above expansions and remasters.
+- **Remasters/remakes linked**: Game detail pages now show and link remasters, remakes, and expanded editions correctly.
+- **Game detail performance**: Game pages load faster; data is cached and not re-fetched on reload.
+- **Avatar fade-in**: Profile pictures no longer flash/pop — they fade in smoothly with a skeleton placeholder.
+- **Feed skeleton**: Skeleton loader layout now mirrors the actual feed structure.
+- **Twitch Archive full history**: Paginated browsing of up to a full year of VODs; no longer limited to the most recent page.
+- **Branded error pages**: 404 and error screens are Forge-styled.
+- **OG handlers edge runtime**: All `api/*-og` handlers now declare `export const config = { runtime: 'edge' }`, fixing 500 errors on direct navigation to post/game/group/profile URLs (middleware was returning the handler's error response before this fix).
+- **PostgREST query fix**: `page.tsx` for posts now uses `author:profiles!user_id(...)` instead of the ambiguous `profiles(...)` embedded resource syntax.
+- **`increment_comment_count` / `decrement_comment_count` RPCs** (migration `20260514000002`): Atomic SQL functions to update `posts.comment_count`; eliminates the read-modify-write fallback.
+- **Search performance**: IGDB access token cached module-level in the `forge-api` Deno edge function (saves 200–400 ms per cold search). IGDB game upserts run in parallel via `Promise.all`. Search debounce reduced from 150 ms → 50 ms in `EditGameList.tsx`.
+- **Session telemetry** (`forge_session_events` table, migration `20260514000000`): Tracks `session_start`, `heartbeat`, and `session_end` events with `platform` and `duration_s`. `sessionTelemetry` exported from `supabase.ts`. `AppDataContext` fires these on login/logout/tab-close and app state changes on Android.
+- **`get_auth_user_activity()` RPC**: Queries `auth.users.last_sign_in_at` to return `{ mau, wau, dau }`.
+- **Game list events** (`game_list_events` table, migration `20260514000001`): Immutable event log for add/remove actions on game lists; `updateGameList()` in `AppDataContext` diffs old vs new IDs and writes events.
+- **Admin engagement metrics**: `api/admin/stats.ts` now returns MAU/WAU/DAU, avg session duration, and platform split. `Admin.tsx` has a new Engagement section.
+- **Gaming timeline — monthly snapshots** (`gaming_monthly_summaries` table, migration `20260514000003`): On login, `AppDataContext` checks if a summary is needed for the previous month (only written if recently-played was updated). Displayed as a **Timeline** tab on the Profile page via `GameTimeline.tsx`.
+
+### v0.3.4 — May 2026
+- **Notification badge**: Bell icon shows unread count with a glowing accent badge.
+- **Game discovery in list editor**: Browse New Releases, Recently Added, and Popular on Forge without leaving the game list editor.
+- **DLC/edition filtering**: DLCs, season passes, and duplicate edition variants are automatically filtered from game search results.
+- **Inline game title rendering**: Game titles tagged in post text now flow correctly on all screen sizes.
+- **List preview in posts**: Game list previews in posts render cleanly on tablet and mobile.
+- **Wider profile desktop layout**: Profile pages use a wider two-column layout for better use of desktop screen space.
+
+### v0.3.3 — April 2026
+- **DM read receipts**: "Read" appears below your last sent message when it's been seen.
+- **Group chat read receipts**: Tap the avatar stack under a message to see who has read it.
+- **Emoji reactions**: Long-press any DM or group message to react or delete.
+- **Typing indicators**: Real-time typing indicators in both DMs and group chats.
+- **Message previews**: Conversation list shows real message preview text instead of "New message".
+- **Context-aware compose**: Creating a post from a Game or Group page auto-tags that game or group.
+- **Floating compose button on Game Detail**: Persistent compose FAB on game detail pages.
 
 ### v0.3.1 — April 30, 2026
 - **Twitch Stream Archive**: Full Twitch OAuth integration on `/settings/twitch-archive` — connect account, auto-sync VODs, toggle auto-archive/auto-post, manual sync, soft-delete archives, 1-year retention prompts, and client-side auto-deletion after 3 months inactivity.

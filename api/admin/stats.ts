@@ -145,11 +145,41 @@ export default async function handler(req: Request): Promise<Response> {
     getOnboardingFunnel(t30),
   ]);
 
-  const recentRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/profiles?select=handle,display_name,created_at&order=created_at.desc&limit=10`,
-    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-  );
+  const [recentRes, mauRes, sessionRes] = await Promise.all([
+    fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=handle,display_name,created_at&order=created_at.desc&limit=10`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+    ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/get_auth_user_activity`,
+      { method: 'POST', headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' }, body: '{}' }
+    ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/forge_session_events?select=platform,duration_s,event&event=in.(session_start,session_end)&created_at=gte.${t30}`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+    ),
+  ]);
+
   const recentUsers = await recentRes.json();
+
+  let mau = 0, wau = 0, dau = 0;
+  if (mauRes.ok) {
+    const mauData = await mauRes.json().catch(() => ({}));
+    mau = mauData?.mau ?? 0;
+    wau = mauData?.wau ?? 0;
+    dau = mauData?.dau ?? 0;
+  }
+
+  let avgSessionDurationS = 0;
+  const platformSplit: Record<string, number> = { web: 0, android: 0 };
+  if (sessionRes.ok) {
+    const sessionRows: { platform: string; duration_s: number | null; event: string }[] = await sessionRes.json().catch(() => []);
+    const durations = sessionRows.filter(r => r.event === 'session_end' && r.duration_s != null).map(r => r.duration_s!);
+    if (durations.length > 0) avgSessionDurationS = Math.round(durations.reduce((a, b) => a + b, 0) / durations.length);
+    for (const r of sessionRows.filter(r => r.event === 'session_start')) {
+      platformSplit[r.platform] = (platformSplit[r.platform] ?? 0) + 1;
+    }
+  }
 
   return new Response(JSON.stringify({
     users: { total: totalUsers, last7Days: users7, last30Days: users30, last90Days: users90, last365Days: users365 },
@@ -159,6 +189,7 @@ export default async function handler(req: Request): Promise<Response> {
     flares: { total: totalFlares, last30Days: flares30, last90Days: flares90, last365Days: flares365 },
     lists: listStats,
     onboarding: { allTime: onboardingAll, last30Days: onboarding30 },
+    engagement: { mau, wau, dau, avgSessionDurationS, platformSplit },
     recentUsers: recentUsers ?? [],
     generatedAt: new Date().toISOString(),
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });

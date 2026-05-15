@@ -2227,3 +2227,143 @@ export const onboardingTelemetry = {
     });
   },
 };
+
+// ============================================================
+// SESSION TELEMETRY
+// ============================================================
+
+let _sessionId: string | null = null;
+let _sessionStartTime = 0;
+
+export const sessionTelemetry = {
+  start(userId: string, platform: 'web' | 'android'): void {
+    _sessionId = crypto.randomUUID();
+    _sessionStartTime = Date.now();
+    void supabase.from('forge_session_events').insert({
+      user_id: userId,
+      session_id: _sessionId,
+      event: 'session_start',
+      platform,
+      duration_s: null,
+    });
+  },
+
+  heartbeat(userId: string, platform: 'web' | 'android'): void {
+    if (!_sessionId) return;
+    void supabase.from('forge_session_events').insert({
+      user_id: userId,
+      session_id: _sessionId,
+      event: 'heartbeat',
+      platform,
+      duration_s: null,
+    });
+  },
+
+  end(userId: string, platform: 'web' | 'android'): void {
+    if (!_sessionId) return;
+    const durationS = Math.round((Date.now() - _sessionStartTime) / 1000);
+    void supabase.from('forge_session_events').insert({
+      user_id: userId,
+      session_id: _sessionId,
+      event: 'session_end',
+      platform,
+      duration_s: durationS,
+    });
+    _sessionId = null;
+  },
+};
+
+// ============================================================
+// GAMING TIMELINE
+// ============================================================
+export interface GamingMonthlySummary {
+  user_id: string;
+  month: string; // 'YYYY-MM-DD', always the 1st
+  game_ids: string[];
+  created_at: string;
+}
+
+export const gameTimelineAPI = {
+  async getSummaries(userId: string): Promise<GamingMonthlySummary[]> {
+    const { data, error } = await supabase
+      .from('gaming_monthly_summaries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('month', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
+  async upsertSummary(userId: string, month: string, gameIds: string[]): Promise<void> {
+    const { error } = await supabase
+      .from('gaming_monthly_summaries')
+      .upsert({ user_id: userId, month, game_ids: gameIds }, { onConflict: 'user_id,month' });
+    if (error) throw new Error(error.message);
+  },
+
+  async hasSummary(userId: string, month: string): Promise<boolean> {
+    const { data } = await supabase
+      .from('gaming_monthly_summaries')
+      .select('user_id')
+      .eq('user_id', userId)
+      .eq('month', month)
+      .maybeSingle();
+    return !!data;
+  },
+
+  async computeAndSavePrevMonth(userId: string): Promise<void> {
+    const now = new Date();
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthStr = prevMonthStart.toISOString().slice(0, 10);
+
+    // Skip if summary already exists
+    const exists = await gameTimelineAPI.hasSummary(userId, monthStr);
+    if (exists) return;
+
+    // Check if there were any recently-played events in the previous month
+    const { data: eventsThisMonth } = await supabase
+      .from('game_list_events')
+      .select('game_id, event')
+      .eq('user_id', userId)
+      .eq('list_type', 'recentlyPlayed')
+      .gte('created_at', prevMonthStart.toISOString())
+      .lt('created_at', thisMonthStart.toISOString())
+      .limit(1);
+
+    if (!eventsThisMonth || eventsThisMonth.length === 0) return;
+
+    // Reconstruct recentlyPlayed state at start of previous month
+    const { data: priorEvents } = await supabase
+      .from('game_list_events')
+      .select('game_id, event')
+      .eq('user_id', userId)
+      .eq('list_type', 'recentlyPlayed')
+      .lt('created_at', prevMonthStart.toISOString());
+
+    const stateAtStart = new Set<string>();
+    for (const ev of priorEvents ?? []) {
+      if (ev.event === 'added') stateAtStart.add(ev.game_id);
+      else stateAtStart.delete(ev.game_id);
+    }
+
+    // All games added during the month
+    const { data: monthEvents } = await supabase
+      .from('game_list_events')
+      .select('game_id, event')
+      .eq('user_id', userId)
+      .eq('list_type', 'recentlyPlayed')
+      .gte('created_at', prevMonthStart.toISOString())
+      .lt('created_at', thisMonthStart.toISOString());
+
+    const addedDuringMonth = new Set<string>();
+    for (const ev of monthEvents ?? []) {
+      if (ev.event === 'added') addedDuringMonth.add(ev.game_id);
+    }
+
+    const gameIds = Array.from(new Set([...stateAtStart, ...addedDuringMonth]));
+    if (gameIds.length > 0) {
+      await gameTimelineAPI.upsertSummary(userId, monthStr, gameIds);
+    }
+  },
+};

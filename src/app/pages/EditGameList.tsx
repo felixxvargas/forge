@@ -249,7 +249,7 @@ export function EditGameList() {
       } finally {
         setIsSearching(false);
       }
-    }, 150);
+    }, 50);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
