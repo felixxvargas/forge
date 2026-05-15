@@ -241,18 +241,22 @@ export const gamesAPI = {
       return titleScore(b.title ?? '') - titleScore(a.title ?? '');
     });
 
-    // Dedup edition variants: collapse entries with the same base title into the first (highest-ranked) result
-    const versionKey = (t: string) => deAccent(t)
-      .replace(/\s*[:\-–—]\s*/g, ' ')
-      .replace(/\bre:?\s*/gi, '')
-      .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary|enhanced|gold|ultimate|deluxe|premium|standard|special|collector|limited|game of the year|goty)\b/gi, '')
-      .replace(/\s*\([^)]*\)\s*/g, '')
-      .replace(/[''`,.!?™®]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    // Dedup edition variants: collapse entries with the same base title + year into the first (highest-ranked) result.
+    // Year is included in the key so FF7 (1997) and a same-named demake (2022) are never collapsed together.
+    const versionKey = (t: string, year?: number) => {
+      const base = deAccent(t)
+        .replace(/\s*[:\-–—]\s*/g, ' ')
+        .replace(/\bre:?\s*/gi, '')
+        .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary|enhanced|gold|ultimate|deluxe|premium|standard|special|collector|limited|game of the year|goty)\b/gi, '')
+        .replace(/\s*\([^)]*\)\s*/g, '')
+        .replace(/[''`,.!?™®]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return year ? `${base}|${year}` : base;
+    };
     const seenVersionKeys = new Set<string>();
     const deduped = filtered.filter(g => {
-      const vk = versionKey(g.title ?? '');
+      const vk = versionKey(g.title ?? '', g.year);
       if (seenVersionKeys.has(vk)) return false;
       seenVersionKeys.add(vk);
       return true;

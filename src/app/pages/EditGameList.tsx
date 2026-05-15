@@ -90,7 +90,8 @@ export function EditGameList() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const desktopSearchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialGamesRef = useRef<AnyGame[]>([]);
+  const addedThisSessionRef = useRef<Set<string>>(new Set());
+  const saveLockRef = useRef(false);
   const hasInitializedRef = useRef(false);
   const composerRef = useRef<HTMLDivElement>(null);
   const composerInitRef = useRef(false);
@@ -122,7 +123,6 @@ export function EditGameList() {
     hasInitializedRef.current = true;
 
     const games = getGamesForList(currentUser, listType);
-    initialGamesRef.current = games;
     try {
       const raw = localStorage.getItem(draftKey);
       const draft: AnyGame[] | null = raw ? JSON.parse(raw) : null;
@@ -224,17 +224,20 @@ export function EditGameList() {
           return 0;
         });
 
-        const versionKey = (t: string) => t.toLowerCase()
-          .replace(/\s*[:\-–]\s*/g, ' ')
-          .replace(/\bre:?\s*/gi, '')
-          .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary)\b/gi, '')
-          .replace(/\s*\([^)]*\)\s*/g, '')
-          .replace(/[''`,.!?™®]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
+        const versionKey = (t: string, year?: number) => {
+          const base = t.toLowerCase()
+            .replace(/\s*[:\-–]\s*/g, ' ')
+            .replace(/\bre:?\s*/gi, '')
+            .replace(/\b(hd|final mix|hd remix|remaster(?:ed)?|definitive|complete|director.?s cut|anniversary)\b/gi, '')
+            .replace(/\s*\([^)]*\)\s*/g, '')
+            .replace(/[''`,.!?™®]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          return year ? `${base}|${year}` : base;
+        };
         const seenVersionKeys = new Set<string>();
         const deduped = merged.filter(g => {
-          const vk = versionKey(g.title);
+          const vk = versionKey(g.title, (g as any).year);
           if (seenVersionKeys.has(vk)) return false;
           seenVersionKeys.add(vk);
           return true;
@@ -343,7 +346,10 @@ export function EditGameList() {
     if (!selectedGames.some(g => g.id === game.id)) {
       const next = [game, ...selectedGames];
       setSelectedGames(next);
-      updateGameList(listType, next);
+      addedThisSessionRef.current.add(String(game.id));
+      // Lock Save for 400ms so keyboard-dismiss on mobile can't phantom-tap it
+      saveLockRef.current = true;
+      setTimeout(() => { saveLockRef.current = false; }, 400);
       analytics.gameAddedToList(String(game.id), game.title, listType);
       setRecentSearches(prev => {
         const entry = { title: game.title, cover: getCoverUrl(game), id: String(game.id) };
@@ -382,17 +388,14 @@ export function EditGameList() {
   };
 
   const handleSave = async () => {
+    if (saveLockRef.current) return;
     await updateGameList(listType, selectedGames);
     await syncLibraryUserGames(selectedGames);
     localStorage.removeItem(draftKey);
     localStorage.removeItem(`forge-game-list-search-${listType}`);
-    const newlyAdded = selectedGames.filter(
-      g => !initialGamesRef.current.some(ig => String(ig.id) === String(g.id))
-    );
-    const removed = initialGamesRef.current.filter(
-      ig => !selectedGames.some(g => String(g.id) === String(ig.id))
-    ).length;
-    analytics.listUpdated(listType, selectedGames.length, newlyAdded.length, removed);
+    const addedIds = addedThisSessionRef.current;
+    const newlyAdded = selectedGames.filter(g => addedIds.has(String(g.id)));
+    analytics.listUpdated(listType, selectedGames.length, newlyAdded.length, 0);
     if (newlyAdded.length > 0) {
       const names = newlyAdded.map(g => g.title);
       const preview = names.length === 1
