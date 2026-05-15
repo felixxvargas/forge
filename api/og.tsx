@@ -1,9 +1,17 @@
-import { ImageResponse } from 'next/og';
+import { ImageResponse } from '@vercel/og';
 
-export const runtime = 'edge';
+// Runs as a Node.js Vercel Serverless Function (no edge config).
+// Keeping this outside app/ means it is excluded from Next.js static export
+// (Android build) and stays out of the Edge middleware bundle.
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
+function resolveUrl(req: Request): URL {
+  if (req.url.startsWith('http')) return new URL(req.url);
+  const host = req.headers.get('host') ?? 'forge-social.app';
+  return new URL(`https://${host}${req.url}`);
+}
+
+export default async function handler(req: Request) {
+  const url = resolveUrl(req);
   const type = url.searchParams.get('type');
   const name = url.searchParams.get('name');
   const handle = url.searchParams.get('handle');
