@@ -18,7 +18,7 @@ async function fetchPost(postId: string | undefined) {
     if (!res.ok) return null;
     const data = await res.json();
     if (!data[0]) return null;
-    return { ...data[0], author: data[0].profiles };
+    return data[0];
   } catch {
     return null;
   }
@@ -31,10 +31,28 @@ export async function generateMetadata(
   const post = await fetchPost(postId);
   if (!post) return { title: 'Post | Forge' };
   const author = (post.author as any)?.display_name ?? 'Forge user';
+  const authorHandle = (post.author as any)?.handle ?? '';
   const snippet = (post.content ?? '').slice(0, 150);
+  const images: string[] = Array.isArray(post.images) ? post.images : [];
+  const firstImage = images.find((img: string) => img && !img.endsWith('.mp4') && !img.endsWith('.webm'));
+  const ogImageUrl = firstImage ?? `/api/og?${new URLSearchParams({ type: 'post', content: (post.content ?? '').slice(0, 300), author, handle: authorHandle ? `@${authorHandle.replace(/^@/, '')}` : '' })}`;
+  const title = `${author} on Forge`;
   return {
-    title: `${author} on Forge`,
+    title,
     description: snippet || undefined,
+    openGraph: {
+      type: 'article',
+      siteName: 'Forge',
+      title,
+      description: snippet || undefined,
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: snippet || undefined,
+      images: [ogImageUrl],
+    },
   };
 }
 

@@ -3,6 +3,7 @@ import './globals.css';
 import { Providers } from '@/app/components/Providers';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://forge-social.app'),
   title: 'Forge | Gaming Social Network',
   description: 'Track your game library, connect with gamers, and share what you\'re playing.',
   manifest: '/manifest.json',

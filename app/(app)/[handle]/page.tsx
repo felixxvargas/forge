@@ -31,9 +31,29 @@ export async function generateMetadata(
   const profile = await fetchProfile(handle);
   if (!profile) return { title: handle && handle !== '_' ? `@${handle} | Forge` : 'Forge' };
   const stripped = (profile.handle ?? handle).replace(/^@/, '');
+  const title = `${profile.display_name ?? handle} (@${stripped}) | Forge`;
+  const ogImageUrl = `/api/og?${new URLSearchParams({
+    name: profile.display_name ?? handle,
+    handle: `@${stripped}`,
+    ...(profile.bio ? { bio: profile.bio } : {}),
+    ...(profile.profile_picture ? { avatar: profile.profile_picture } : {}),
+  })}`;
   return {
-    title: `${profile.display_name ?? handle} (@${stripped}) | Forge`,
+    title,
     description: profile.bio ?? undefined,
+    openGraph: {
+      type: 'profile',
+      siteName: 'Forge',
+      title,
+      description: profile.bio ?? undefined,
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: profile.bio ?? undefined,
+      images: [ogImageUrl],
+    },
   };
 }
 

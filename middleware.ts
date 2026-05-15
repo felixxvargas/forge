@@ -1,11 +1,8 @@
-// Vercel Edge Middleware — injects OG meta tags for profile handle URLs.
-// All requests to /:handle are proxied to the profile-og edge function, which:
-//   - Returns an HTML page with correct OG meta tags (display name, avatar, etc.)
-//   - Redirects human browsers back to the SPA via window.location.replace
-//   - Uses ?_r=1 to signal the redirect has already happened (breaks the loop)
-// This ensures iOS share previews, iMessage, and all social crawlers see correct OG data.
+// Vercel Edge Middleware — injects OG meta tags for social crawlers.
+// Human browsers go directly to Next.js (generateMetadata handles OG).
+// Crawlers are proxied through OG handlers for social preview cards.
+// If an OG handler fails, falls through to Next.js rather than serving a 500.
 
-// Known first-path-segments used by the SPA — these should never be treated as profile handles
 const APP_ROUTES = new Set([
   'feed', 'explore', 'profile', 'edit-profile', 'settings', 'notifications',
   'post', 'gaming-platforms', 'social-integrations', 'social-filtering',
@@ -17,6 +14,8 @@ const APP_ROUTES = new Set([
   'android-beta',
 ]);
 
+const CRAWLER_RE = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|discord|telegram|embedly|applebot|pinterest/i;
+
 export const config = {
   matcher: ['/((?!_next|api/).*)'],
 };
@@ -26,64 +25,76 @@ export default async function middleware(request: Request): Promise<Response | u
   const segments = url.pathname.split('/').filter(Boolean);
   const hasRedirectFlag = url.searchParams.has('_r');
 
-  // 2-segment routes that get custom OG injection (/post/:id, /game/:id, /group/:id)
+  const ua = request.headers.get('user-agent') ?? '';
+  const isCrawler = CRAWLER_RE.test(ua);
+
+  const isNextNavigation = !!(
+    request.headers.get('RSC') ||
+    request.headers.get('Next-Router-Prefetch') ||
+    request.headers.get('Next-Url')
+  );
+
+  // 2-segment content routes: /post/:id, /game/:id, /group/:id
+  // Only proxy social crawlers; humans go directly to Next.js
   if (segments.length === 2 && !hasRedirectFlag) {
-    const isNextNavigation = !!(
-      request.headers.get('RSC') ||
-      request.headers.get('Next-Router-Prefetch') ||
-      request.headers.get('Next-Url')
-    );
-    if (!isNextNavigation) {
+    if (isCrawler && !isNextNavigation) {
       if (segments[0] === 'post') {
-        try { return await fetch(new URL(`/api/post-og/${segments[1]}`, url.origin).toString(), { headers: request.headers }); } catch { /* fall through */ }
+        try {
+          const res = await fetch(new URL(`/api/post-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+          if (res.ok) return res;
+        } catch { /* fall through */ }
       }
       if (segments[0] === 'game') {
-        try { return await fetch(new URL(`/api/game-og/${segments[1]}`, url.origin).toString(), { headers: request.headers }); } catch { /* fall through */ }
+        try {
+          const res = await fetch(new URL(`/api/game-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+          if (res.ok) return res;
+        } catch { /* fall through */ }
       }
       if (segments[0] === 'group') {
-        try { return await fetch(new URL(`/api/group-og/${segments[1]}`, url.origin).toString(), { headers: request.headers }); } catch { /* fall through */ }
+        try {
+          const res = await fetch(new URL(`/api/group-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+          if (res.ok) return res;
+        } catch { /* fall through */ }
       }
     }
     return undefined;
   }
 
-  // Only continue for single-segment paths (potential profile handles or known pages)
+  // Only continue for single-segment paths
   if (segments.length !== 1) return undefined;
 
   const segment = segments[0];
 
-  // /android-beta — inject dedicated OG image for the beta sign-up page
-  // Skip for Next.js RSC/prefetch navigation to avoid returning HTML to the router
-  if (segment === 'android-beta' && !hasRedirectFlag) {
-    const isNextNavigation = !!(request.headers.get('RSC') || request.headers.get('Next-Router-Prefetch') || request.headers.get('Next-Url'));
-    if (!isNextNavigation) {
-      const target = new URL('/api/android-beta-og', url.origin);
-      return fetch(target.toString(), { headers: request.headers });
-    }
+  // /android-beta — inject OG image for crawlers only
+  if (segment === 'android-beta' && !hasRedirectFlag && isCrawler && !isNextNavigation) {
+    try {
+      const res = await fetch(new URL('/api/android-beta-og', url.origin).toString(), { headers: request.headers });
+      if (res.ok) return res;
+    } catch { /* fall through */ }
   }
 
-  // /list — inject list OG tags (has userId + type as query params)
-  if (segment === 'list' && url.searchParams.has('userId') && !hasRedirectFlag) {
-    const isNextNavigation = !!(
-      request.headers.get('RSC') ||
-      request.headers.get('Next-Router-Prefetch') ||
-      request.headers.get('Next-Url')
-    );
-    if (!isNextNavigation) {
+  // /list — inject list OG tags for crawlers only (has userId + type as query params)
+  if (segment === 'list' && url.searchParams.has('userId') && !hasRedirectFlag && isCrawler && !isNextNavigation) {
+    try {
       const target = new URL('/api/list-og', url.origin);
       target.search = url.search;
-      return fetch(target.toString(), { headers: request.headers });
-    }
+      const res = await fetch(target.toString(), { headers: request.headers });
+      if (res.ok) return res;
+    } catch { /* fall through */ }
   }
 
   // Skip known app routes and file-like paths
   if (APP_ROUTES.has(segment) || segment.includes('.')) return undefined;
 
-  // Skip if this request was already redirected from profile-og (loop breaker)
+  // Skip if already redirected from profile-og (loop breaker for crawlers)
   if (hasRedirectFlag) return undefined;
 
-  // Proxy the request to the profile-og edge function for all visitors
-  // (bots get OG tags; humans get OG tags + JS redirect back to SPA)
-  const target = new URL(`/api/profile-og/${segment}`, url.origin);
-  return fetch(target.toString(), { headers: request.headers });
+  // Profile handles: proxy crawlers to profile-og; humans go to Next.js
+  if (isCrawler && !isNextNavigation) {
+    try {
+      const res = await fetch(new URL(`/api/profile-og/${segment}`, url.origin).toString(), { headers: request.headers });
+      if (res.ok) return res;
+    } catch { /* fall through */ }
+  }
+  return undefined;
 }
