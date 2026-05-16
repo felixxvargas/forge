@@ -654,12 +654,12 @@ export function Explore() {
                         className="group cursor-pointer"
                         onClick={() => navigate(`/game/${game.id}`)}
                       >
-                        <div className="aspect-[3/4] lg:aspect-[3/2] rounded-lg overflow-hidden mb-1 bg-muted/20">
+                        <div className="aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-muted/20">
                           {coverArt && (
                             <img
                               src={coverArt}
                               alt={game.title}
-                              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               style={{ opacity: 0, transition: 'opacity 0.2s ease, transform 0.3s ease' }}
                               onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
                             />

@@ -15,6 +15,7 @@ import { gamesAPI } from '../utils/api';
 import { gameCoverCache, gameCoverPromises } from '../utils/mentionHighlight';
 import { fetchAllGamingMediaPosts, topicAccountBlueskyHandles } from '../utils/bluesky';
 import { topicAccounts } from '../data/data';
+import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
 import { BetaTag } from '../components/ui/BetaTag';
 
@@ -67,6 +68,9 @@ export function Feed() {
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
   const [groupNewPostCounts, setGroupNewPostCounts] = useState<Record<string, number>>({});
   const navigate = useNavigate();
+
+  // Populate profileCache for topic accounts so avatars load for all users (including guests)
+  useTopicAccountProfiles(topicAccounts.map(a => a.id));
 
   // Scroll direction for group banner hide/show
   const [scrolledDown, setScrolledDown] = useState(false);
