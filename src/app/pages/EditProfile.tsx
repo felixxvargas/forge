@@ -41,7 +41,8 @@ export function EditProfile() {
     socialHandles: currentUser.social_handles || currentUser.socialHandles || {} as Record<string, string>,
     showSocialHandles: currentUser.show_social_handles || currentUser.showSocialHandles || {} as Record<string, boolean>,
     displayedCommunities: currentUser.displayed_communities || currentUser.displayedCommunities || (currentUser.communities || []).slice(0, 4).map((m: any) => m.community_id || m.communityId),
-    profileLinks: (currentUser.profile_links || []) as { url: string; title: string }[]
+    profileLinks: (currentUser.profile_links || []) as { url: string; title: string }[],
+    showGamingTimeline: (currentUser as any).show_gaming_timeline !== false,
   });
 
   // Ref so handleSave always reads the latest uploaded URL regardless of
@@ -93,6 +94,7 @@ export function EditProfile() {
         show_social_handles: formData.showSocialHandles,
         displayed_communities: formData.displayedCommunities,
         profile_links: formData.profileLinks,
+        show_gaming_timeline: formData.showGamingTimeline,
       };
       if (handleChanged) {
         updates.handle = trimmedHandle;
@@ -589,6 +591,23 @@ export function EditProfile() {
             </div>
           </div>
         )}
+
+        {/* Gaming Timeline visibility */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setFormData(prev => ({ ...prev, showGamingTimeline: !prev.showGamingTimeline }))}
+            className="w-full flex items-center justify-between p-3 bg-secondary rounded-lg transition-colors hover:bg-secondary/80"
+          >
+            <div className="text-left">
+              <p className="text-sm font-medium">Gaming Timeline tab</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Show the Gaming Timeline tab on your profile</p>
+            </div>
+            <div className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 shrink-0 ${formData.showGamingTimeline ? 'bg-accent' : 'bg-muted'}`}>
+              <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${formData.showGamingTimeline ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Delete Profile Picture Confirmation */}

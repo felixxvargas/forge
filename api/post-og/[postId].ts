@@ -69,6 +69,7 @@ export default async function handler(req: Request): Promise<Response> {
       content: content.slice(0, 300),
       author: authorName,
       handle: authorHandle,
+      ...(author?.profile_picture ? { avatar: author.profile_picture } : {}),
     });
     ogImage = `${siteOrigin}/api/og?${ogParams.toString()}`;
   }

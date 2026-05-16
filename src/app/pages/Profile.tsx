@@ -565,7 +565,12 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   // so the empty Lists section (including "No game lists yet") is never shown.
   const _glCheck = (profileUser as any)?.game_lists ?? (profileUser as any)?.gameLists ?? {};
   const profileHasLists = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
-  const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists') ? 'posts' : activeTab;
+  const timelineVisible = isOwnProfile || (profileUser as any)?.show_gaming_timeline !== false;
+  const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists')
+    ? 'posts'
+    : (!timelineVisible && activeTab === 'timeline')
+    ? 'posts'
+    : activeTab;
 
   // About tab content — rendered in both desktop left column and mobile About tab
   const renderAboutContent = () => (
@@ -1259,16 +1264,18 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               Media
             </button>
           )}
-          <button
-            onClick={() => setActiveTab('timeline')}
-            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'timeline'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Timeline
-          </button>
+          {timelineVisible && (
+            <button
+              onClick={() => setActiveTab('timeline')}
+              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                activeTab === 'timeline'
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Timeline
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('about')}
             className={`lg:hidden px-4 py-3 font-medium transition-colors border-b-2 ${
@@ -1884,6 +1891,11 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
         {effectiveTab === 'timeline' && (
           <div className="pb-24">
+            {isOwnProfile && (profileUser as any)?.show_gaming_timeline === false && (
+              <div className="mx-4 mb-4 px-4 py-3 rounded-xl bg-secondary/50 border border-border text-sm text-muted-foreground">
+                Your Gaming Timeline is hidden from other users. You can show it again in <button className="text-accent underline" onClick={() => {}}>Edit Profile</button>.
+              </div>
+            )}
             <GameTimeline userId={profileUser.id} />
           </div>
         )}

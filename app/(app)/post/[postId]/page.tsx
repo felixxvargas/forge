@@ -35,7 +35,14 @@ export async function generateMetadata(
   const snippet = (post.content ?? '').slice(0, 150);
   const images: string[] = Array.isArray(post.images) ? post.images : [];
   const firstImage = images.find((img: string) => img && !img.endsWith('.mp4') && !img.endsWith('.webm'));
-  const ogImageUrl = firstImage ?? `/api/og?${new URLSearchParams({ type: 'post', content: (post.content ?? '').slice(0, 300), author, handle: authorHandle ? `@${authorHandle.replace(/^@/, '')}` : '' })}`;
+  const authorAvatar = (post.author as any)?.profile_picture ?? '';
+  const ogImageUrl = firstImage ?? `/api/og?${new URLSearchParams({
+    type: 'post',
+    content: (post.content ?? '').slice(0, 300),
+    author,
+    handle: authorHandle ? `@${authorHandle.replace(/^@/, '')}` : '',
+    ...(authorAvatar ? { avatar: authorAvatar } : {}),
+  })}`;
   const title = `${author} on Forge`;
   return {
     title,
