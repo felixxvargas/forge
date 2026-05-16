@@ -30,7 +30,7 @@ export function UserCard({ user }: UserCardProps) {
 
   return (
     <div
-      className="bg-card rounded-xl p-4 cursor-pointer hover:bg-card/80 transition-colors"
+      className="bg-card rounded-xl p-4 cursor-pointer hover:bg-secondary/40 transition-colors duration-200"
       onClick={handleCardClick}
     >
       <div className="flex items-start gap-3 mb-3">

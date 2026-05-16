@@ -1173,7 +1173,7 @@ export function Explore() {
                             <div
                               key={flare.id}
                               onClick={() => navigate(`/profile/${player.id}`)}
-                              className="p-3 bg-card border border-border rounded-lg hover:border-accent transition-colors cursor-pointer"
+                              className="p-3 bg-card border border-border rounded-lg hover:bg-secondary/40 transition-colors duration-200 cursor-pointer"
                             >
                               <div className="flex items-center gap-3 mb-2">
                                 {player.profile_picture ? (
@@ -1266,7 +1266,7 @@ function GroupCard({ group, gameTitles }: GroupCardProps) {
   return (
     <div
       onClick={() => navigate(`/group/${group.id}`)}
-      className="bg-card border border-border rounded-lg p-4 hover:border-accent transition-colors cursor-pointer"
+      className="bg-card border border-border rounded-lg p-4 hover:bg-secondary/40 transition-colors duration-200 cursor-pointer"
     >
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 flex items-center justify-center bg-secondary rounded-full text-accent flex-shrink-0 overflow-hidden">
