@@ -480,7 +480,7 @@ export function CommunityDetail() {
             {isAdmin && (
               <>
                 <button
-                  onClick={() => { setInviteSearch(''); setInviteResults([]); setInvitedUserIds(new Set()); setShowInviteModal(true); }}
+                  onClick={() => navigate(`/group/${communityId}/invite`)}
                   className="px-4 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium flex items-center gap-2"
                   title="Invite Users"
                 >

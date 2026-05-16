@@ -105,8 +105,10 @@ export async function searchGames(query: string, limit = 20) {
   // Try the ranked RPC first (uses pg_trgm similarity + popularity_score).
   // Falls back to plain ilike if the RPC isn't available yet (pre-migration).
   let local: any[] = [];
+  // Request at least 40 so AAA titles with low popularity survive client-side filtering
+  const rpcLimit = Math.max(limit, 40);
   const { data: rpcData, error: rpcError } = await supabase
-    .rpc('search_games_ranked', { p_query: query, p_limit: limit });
+    .rpc('search_games_ranked', { p_query: query, p_limit: rpcLimit });
 
   if (!rpcError && Array.isArray(rpcData)) {
     // Attach artwork separately (RPC doesn't join it)

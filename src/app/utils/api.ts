@@ -202,7 +202,9 @@ export const gamesAPI = {
 
   async searchGames(query: string, limit = 20) {
     const normalizedQuery = deAccent(query).trim() || query.trim();
-    const raw: any = await apiRequest(`/games/search/${encodeURIComponent(normalizedQuery)}?limit=${limit}`);
+    // Request more than needed from server so AAA titles survive client-side filtering & dedup
+    const serverLimit = Math.max(limit * 2, 40);
+    const raw: any = await apiRequest(`/games/search/${encodeURIComponent(normalizedQuery)}?limit=${serverLimit}`);
     const list: any[] = Array.isArray(raw) ? raw : raw?.games ?? [];
 
     // IGDB categories:
@@ -221,11 +223,22 @@ export const gamesAPI = {
     });
 
     const queryWords = deAccent(query).split(/\s+/).filter(Boolean);
+    const firstWord = queryWords[0] ?? '';
     const titleScore = (title: string) => {
       const t = deAccent(title);
       return queryWords.filter(w => t.includes(w)).length;
     };
+    // True when the title starts with the query's first word (word boundary)
+    const startsWithQuery = (title: string) => {
+      const t = deAccent(title).toLowerCase();
+      const q = firstWord.toLowerCase();
+      return q.length > 0 && (t === q || t.startsWith(q + ' ') || t.startsWith(q + ':') || t.startsWith(q + '-'));
+    };
     filtered.sort((a: any, b: any) => {
+      // Boost titles that start with the search term to the top (catches "World of Warcraft" for "world")
+      const startA = startsWithQuery(a.title ?? '') ? 0 : 1;
+      const startB = startsWithQuery(b.title ?? '') ? 0 : 1;
+      if (startA !== startB) return startA - startB;
       const catA = a.category ?? a.game_type ?? a.type ?? 0;
       const catB = b.category ?? b.game_type ?? b.type ?? 0;
       const mainA = MAIN_CATEGORIES.has(Number(catA)) ? 0 : 1;
@@ -262,8 +275,9 @@ export const gamesAPI = {
       return true;
     });
 
-    if (Array.isArray(raw)) return deduped;
-    return { ...raw, games: deduped };
+    const final = deduped.slice(0, limit);
+    if (Array.isArray(raw)) return final;
+    return { ...raw, games: final };
   },
 
   async getGames(gameIds: string[]) {

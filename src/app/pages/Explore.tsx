@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';
+import { GameCard } from '../components/GameCard';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
@@ -511,7 +512,7 @@ export function Explore() {
     const uid = p.user_id || p.userId || '';
     return !blockedUsers.has(uid);
   }).slice(0, 3);
-  const searchGameResults = searchGames.slice(0, 4);
+  const searchGameResults = searchGames.slice(0, 8);
 
   return (
     <div className="min-h-screen pb-20">
@@ -636,7 +637,7 @@ export function Explore() {
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-semibold">Games</h2>
-                  {searchGames.length > 4 && (
+                  {searchGames.length > 8 && (
                     <button
                       onClick={() => goToTab('games', true)}
                       className="flex items-center gap-1 text-sm text-accent hover:text-accent/80"
@@ -645,32 +646,10 @@ export function Explore() {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {searchGameResults.map(game => {
-                    const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url;
-                    return (
-                      <div
-                        key={game.id}
-                        className="group cursor-pointer"
-                        onClick={() => navigate(`/game/${game.id}`)}
-                      >
-                        <div className="aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-muted/20">
-                          {coverArt && (
-                            <img
-                              src={coverArt}
-                              alt={game.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              style={{ opacity: 0, transition: 'opacity 0.2s ease, transform 0.3s ease' }}
-                              onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
-                            />
-                          )}
-                        </div>
-                        <p className="text-xs font-medium line-clamp-2 group-hover:text-accent transition-colors">
-                          {game.title}
-                        </p>
-                      </div>
-                    );
-                  })}
+                <div className="flex flex-wrap gap-3">
+                  {searchGameResults.map(game => (
+                    <GameCard key={game.id} game={game} />
+                  ))}
                 </div>
               </section>
             )}

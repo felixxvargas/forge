@@ -1021,12 +1021,74 @@ export const groups = {
     ).catch(() => {});
   },
 
-  async addMember(communityId: string, userId: string) {
+  async addMember(communityId: string, userId: string, invitedById?: string) {
     const { error } = await supabase.rpc('add_community_member_invite', {
       p_community_id: communityId,
       p_user_id: userId,
     });
     if (error) throw new Error(error.message);
+    // Record invite history if inviter is known
+    if (invitedById) {
+      await supabase.from('group_invites').upsert({
+        group_id: communityId,
+        invited_user_id: userId,
+        invited_by_id: invitedById,
+      }, { onConflict: 'group_id,invited_user_id', ignoreDuplicates: true });
+    }
+  },
+
+  async getInvites(communityId: string) {
+    const { data, error } = await supabase
+      .from('group_invites')
+      .select(`
+        id, invited_at,
+        invited_user:profiles!invited_user_id(id, display_name, handle, profile_picture)
+      `)
+      .eq('group_id', communityId)
+      .order('invited_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+
+  async getMutualFollowers(userId: string) {
+    // People the current user follows who also follow them back (friends)
+    const { data, error } = await supabase.rpc('get_mutual_followers', { p_user_id: userId });
+    if (error) {
+      // Fallback: just return following list
+      const { data: fwd } = await supabase
+        .from('follows')
+        .select('following:profiles!following_id(id, display_name, handle, profile_picture)')
+        .eq('follower_id', userId)
+        .limit(30);
+      return (fwd ?? []).map((r: any) => r.following).filter(Boolean);
+    }
+    return data ?? [];
+  },
+
+  async getRecentlyInteracted(userId: string, limit = 20) {
+    // Users who have interacted with the current user's content recently (last 90 days)
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('actor:profiles!actor_id(id, display_name, handle, profile_picture)')
+      .eq('user_id', userId)
+      .gte('created_at', since)
+      .not('actor_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) return [];
+    // Deduplicate by profile id
+    const seen = new Set<string>();
+    const unique: any[] = [];
+    for (const row of data ?? []) {
+      const p = (row as any).actor;
+      if (p && !seen.has(p.id) && p.id !== userId) {
+        seen.add(p.id);
+        unique.push(p);
+        if (unique.length >= limit) break;
+      }
+    }
+    return unique;
   },
 
   async transferAdmin(communityId: string, newCreatorId: string) {
