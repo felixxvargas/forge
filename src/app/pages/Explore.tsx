@@ -24,21 +24,30 @@ export function Explore() {
   const { posts, users, getUserById, followingIds, currentUser, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, blockedUsers, mutedUsers, isLoading, followExternalUser, unfollowExternalUser, externalFollowIds, isAuthenticated } = useAppData() as any;
 
   const VALID_EXPLORE_TABS = new Set<ExploreTab>(['posts', 'users', 'games', 'groups']);
-  const [activeTab, setActiveTab] = useState<ExploreTab>(() => {
-    try {
-      const pathSegment = window.location.pathname.split('/').pop() as ExploreTab;
-      if (VALID_EXPLORE_TABS.has(pathSegment)) return pathSegment;
-      const saved = localStorage.getItem('explore-active-tab');
-      return (saved as ExploreTab) || 'posts';
-    } catch { return 'posts'; }
-  });
-
-  const [searchQuery, setSearchQuery] = useState(() => { try { return localStorage.getItem('explore-search-query') ?? ''; } catch { return ''; } });
+  const [activeTab, setActiveTab] = useState<ExploreTab>('posts');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showSearchHistory, setShowSearchHistory] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('forge-search-history') || '[]'); } catch { return []; }
-  });
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+
+  // Restore persisted state after mount — kept out of useState initializers to avoid
+  // SSR/client hydration mismatch (window + localStorage are browser-only).
+  useEffect(() => {
+    try {
+      const pathSegment = window.location.pathname.split('/').pop() as ExploreTab;
+      if (VALID_EXPLORE_TABS.has(pathSegment)) {
+        setActiveTab(pathSegment);
+      } else {
+        const saved = localStorage.getItem('explore-active-tab');
+        if (saved && VALID_EXPLORE_TABS.has(saved as ExploreTab)) setActiveTab(saved as ExploreTab);
+      }
+      const savedQuery = localStorage.getItem('explore-search-query');
+      if (savedQuery) setSearchQuery(savedQuery);
+      const savedHistory = localStorage.getItem('forge-search-history');
+      if (savedHistory) setSearchHistory(JSON.parse(savedHistory));
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const numCols = useColumnCount();
   const [showMutedPosts, setShowMutedPosts] = useState<Set<string>>(new Set());

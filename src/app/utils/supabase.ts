@@ -106,9 +106,13 @@ export const profiles = {
   },
 
   async update(id: string, updates: Record<string, any>) {
+    // Normalize accidental camelCase keys — PostgREST requires snake_case column names
+    const normalized = { ...updates };
+    if ('displayName' in normalized) { normalized.display_name = normalized.displayName; delete normalized.displayName; }
+    if ('profilePicture' in normalized) { normalized.profile_picture = normalized.profilePicture; delete normalized.profilePicture; }
     const { data, error } = await supabase
       .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...normalized, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();

@@ -216,23 +216,33 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
         return;
       }
 
-      // Fallback: search by title when ID lookup yields no artwork (RAWG ID ≠ IGDB ID)
-      const fetchByTitle = async () => {
-        if (!g.title) { applyUrl(null); return; }
-        try {
-          const sd: any = await gamesAPI.searchGames(g.title, 5);
-          const results: any[] = Array.isArray(sd) ? sd : (sd?.games ?? []);
-          const tl = g.title.toLowerCase();
-          const match = results.find(r => r.title?.toLowerCase() === tl) ?? results[0];
-          applyUrl(match?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? match?.artwork?.[0]?.url ?? null);
-        } catch { applyUrl(null); }
-      };
-
-      gamesAPI.getGame(g.id).then((data: any) => {
-        const game = data?.game ?? data;
-        const url = game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game?.artwork?.[0]?.url ?? null;
-        if (url) { applyUrl(url); } else { fetchByTitle(); }
-      }).catch(() => fetchByTitle());
+      // No batch promise in flight — start an individual fetch but register it as a shared
+      // promise first so concurrent PostCards for the same game piggyback instead of each
+      // firing their own request (prevents N+1 API calls).
+      const dedupePromise = new Promise<string | null>(resolve => {
+        const titleFallback = async () => {
+          if (!g.title) { resolve(null); return; }
+          try {
+            const sd: any = await gamesAPI.searchGames(g.title, 5);
+            const results: any[] = Array.isArray(sd) ? sd : (sd?.games ?? []);
+            const tl = g.title.toLowerCase();
+            const match = results.find(r => r.title?.toLowerCase() === tl) ?? results[0];
+            resolve(match?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? match?.artwork?.[0]?.url ?? null);
+          } catch { resolve(null); }
+        };
+        gamesAPI.getGame(g.id)
+          .then((data: any) => {
+            const game = data?.game ?? data;
+            const url = game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game?.artwork?.[0]?.url ?? null;
+            if (url) resolve(url); else titleFallback();
+          })
+          .catch(() => titleFallback());
+      });
+      gameCoverPromises.set(g.id, dedupePromise);
+      dedupePromise.then(url => {
+        applyUrl(url);
+        gameCoverPromises.delete(g.id);
+      });
     });
   }, [post?.game_ids?.join(',') ?? post?.game_id]);
 
