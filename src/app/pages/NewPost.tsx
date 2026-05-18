@@ -793,6 +793,55 @@ export function NewPost() {
         </div>
       )}
 
+      {/* Original post preview — shown when replying */}
+      {replyTo && replyToPost && (() => {
+        const author = replyToPost.author;
+        const handle = ((author?.handle ?? replyToPost.user_id) || '').replace(/^@/, '');
+        const images: string[] = Array.isArray(replyToPost.images) ? replyToPost.images : [];
+        const isVideo = (url: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+        return (
+          <div className="px-4 pt-4 pb-3">
+            {/* Poster info */}
+            <div className="flex items-center gap-2 mb-2">
+              <ProfileAvatar
+                username={author?.display_name || handle || '?'}
+                profilePicture={author?.profile_picture}
+                size="sm"
+              />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-sm font-semibold truncate">{author?.display_name || handle}</span>
+                <span className="text-xs text-muted-foreground truncate shrink-0">@{handle}</span>
+              </div>
+            </div>
+            {/* Post text */}
+            {replyToPost.content && (
+              <p className="text-sm text-foreground/80 line-clamp-4 leading-relaxed mb-2">
+                {replyToPost.content}
+              </p>
+            )}
+            {/* Image / video thumbnails */}
+            {images.length > 0 && (
+              <div className="flex gap-1.5">
+                {images.slice(0, 4).map((url: string, i: number) => (
+                  isVideo(url) ? (
+                    <div key={i} className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                      <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <img key={i} src={url} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                  )
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Divider between post preview and compose area */}
+      {replyTo && <div className="border-t border-border" />}
+
       {/* User info */}
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <ProfileAvatar
@@ -805,18 +854,6 @@ export function NewPost() {
           <p className="text-sm text-muted-foreground">{currentUser?.handle}</p>
         </div>
       </div>
-
-      {/* Replying-to context — shown when opened via post reply route */}
-      {replyTo && replyToPost && (
-        <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl border border-border bg-secondary/30">
-          <p className="text-xs text-muted-foreground mb-1">
-            Replying to <span className="text-foreground font-medium">@{((replyToPost.author?.handle ?? replyToPost.user_id) || '').replace(/^@/, '')}</span>
-          </p>
-          {replyToPost.content && (
-            <p className="text-sm text-foreground/70 line-clamp-2 leading-relaxed">{replyToPost.content}</p>
-          )}
-        </div>
-      )}
 
       {/* Content area — no height constraint on mobile so the page grows with the textarea */}
       <div className="p-4 relative sm:flex-1 sm:overflow-y-auto">
