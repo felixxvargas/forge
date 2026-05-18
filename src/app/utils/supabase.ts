@@ -177,10 +177,15 @@ export const profiles = {
         .contains('game_lists', { _topicFollows: [userId] });
       return data ?? [];
     }
-    // Check if this is a topic account — if so, followers are stored in _topicFollows of each follower's profile
-    const profileResult = await supabase.from('profiles').select('account_type, handle').eq('id', userId).maybeSingle();
-    if (profileResult.data?.account_type === 'topic') {
-      const rawHandle = (profileResult.data.handle || '').replace(/^@/, '').toLowerCase();
+    // Run the account_type check and the followers join in parallel to avoid a serial waterfall.
+    const [typeResult, followsResult] = await Promise.allSettled([
+      supabase.from('profiles').select('account_type, handle').eq('id', userId).maybeSingle(),
+      supabase.from('follows').select('follower:profiles!follower_id(*)').eq('following_id', userId),
+    ]);
+    const accountType = typeResult.status === 'fulfilled' ? typeResult.value.data?.account_type : null;
+    if (accountType === 'topic') {
+      const handle = typeResult.status === 'fulfilled' ? (typeResult.value.data?.handle || '') : '';
+      const rawHandle = handle.replace(/^@/, '').toLowerCase();
       const syntheticId = `user-${rawHandle}`;
       const { data: followerProfiles } = await supabase
         .from('profiles')
@@ -188,12 +193,10 @@ export const profiles = {
         .contains('game_lists', { _topicFollows: [syntheticId] });
       return followerProfiles ?? [];
     }
-    const { data, error } = await supabase
-      .from('follows')
-      .select('follower:profiles!follower_id(*)')
-      .eq('following_id', userId);
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((r: any) => r.follower);
+    if (followsResult.status === 'fulfilled' && !followsResult.value.error) {
+      return (followsResult.value.data ?? []).map((r: any) => r.follower);
+    }
+    return [];
   },
 
   async getFollowing(userId: string) {
@@ -2427,5 +2430,77 @@ export const gameTimelineAPI = {
     if (gameIds.length > 0) {
       await gameTimelineAPI.upsertSummary(userId, monthStr, gameIds);
     }
+  },
+};
+
+// ============================================================
+export const savedPostsAPI = {
+  async save(userId: string, postId: string) {
+    const { error } = await supabase.from('saved_posts').insert({ user_id: userId, post_id: postId });
+    if (error && error.code !== '23505') throw new Error(error.message);
+  },
+  async unsave(userId: string, postId: string) {
+    const { error } = await supabase.from('saved_posts').delete().eq('user_id', userId).eq('post_id', postId);
+    if (error) throw new Error(error.message);
+  },
+  async getIds(userId: string): Promise<string[]> {
+    const { data } = await supabase.from('saved_posts').select('post_id').eq('user_id', userId);
+    return (data ?? []).map((r: any) => r.post_id);
+  },
+  async getAll(userId: string) {
+    const { data } = await supabase
+      .from('saved_posts')
+      .select('post_id, saved_at')
+      .eq('user_id', userId)
+      .order('saved_at', { ascending: false });
+    return (data ?? []).map((r: any) => r.post_id) as string[];
+  },
+  async getCount(postId: string): Promise<number> {
+    const { count } = await supabase
+      .from('saved_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId);
+    return count ?? 0;
+  },
+};
+
+// ============================================================
+export const vipListAPI = {
+  async grant(ownerId: string, viewerId: string) {
+    const { error } = await supabase
+      .from('handle_visibility_permissions')
+      .insert({ owner_id: ownerId, viewer_id: viewerId });
+    if (error && error.code !== '23505') throw new Error(error.message);
+  },
+  async revoke(ownerId: string, viewerId: string) {
+    const { error } = await supabase
+      .from('handle_visibility_permissions')
+      .delete()
+      .eq('owner_id', ownerId)
+      .eq('viewer_id', viewerId);
+    if (error) throw new Error(error.message);
+  },
+  async getViewerIds(ownerId: string): Promise<string[]> {
+    const { data } = await supabase
+      .from('handle_visibility_permissions')
+      .select('viewer_id')
+      .eq('owner_id', ownerId);
+    return (data ?? []).map((r: any) => r.viewer_id);
+  },
+  async getViewers(ownerId: string) {
+    const { data } = await supabase
+      .from('handle_visibility_permissions')
+      .select('viewer:profiles!viewer_id(id, handle, display_name, profile_picture, bio)')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: false });
+    return (data ?? []).map((r: any) => r.viewer);
+  },
+  async checkAccess(ownerId: string, viewerId: string): Promise<boolean> {
+    const { count } = await supabase
+      .from('handle_visibility_permissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', ownerId)
+      .eq('viewer_id', viewerId);
+    return (count ?? 0) > 0;
   },
 };

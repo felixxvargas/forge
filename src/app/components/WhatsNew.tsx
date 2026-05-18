@@ -16,12 +16,10 @@ export const RELEASES: Release[] = [
     title: "What's New in Forge",
     summary: "Weekly digests, post previews, @ game mentions, and Gaming Timeline controls.",
     highlights: [
-      'Weekly activity digest — get a weekly email summary of your notifications and activity on Forge.',
-      'Post link previews now show a real post card with your avatar, username, and post copy when shared on iMessage, Discord, and other platforms.',
-      '@ mentions now support tagging games — search by name and see cover art in the dropdown.',
-      'Hide or show the Gaming Timeline tab on your profile from Edit Profile settings.',
-      'Topic account profile pictures (IGN, Xbox, PC Gamer, and more) now load correctly for all users.',
-      'Explore search game cards now show full cover art without cropping.',
+      'Weekly activity digest; get a weekly email summary of your notifications and activity on Forge.',
+      'Post link previews now show a real post card when shared on iMessage, Discord, and other platforms.',
+      '@ mentions now support tagging games; search by name and see cover art in the dropdown.',
+      'Hide or show the new Gaming Timeline tab on your profile via Edit Profile settings.',
     ],
   },
   {
@@ -31,8 +29,7 @@ export const RELEASES: Release[] = [
     summary: "Smarter game search, Google Sign-In on Android, and better performance.",
     highlights: [
       'Improved Search: fuzzy matching for typos and base games rank higher than other versions.',
-      'Remasters, remakes, and expanded games now appear correctly on game pages and are linked together.',
-      'Profile avatars no longer flash or pop in; photos fade in smoothly.',
+      'Remasters, remakes, and expanded games now appear correctly on game pages and are linked together.',,
       'Feed skeleton loader layout updated to mirror page structure.',
       'Twitch Archive now fetches a full year of VOD history.', 
     ],

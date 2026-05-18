@@ -1,6 +1,6 @@
 'use client';
 import { useParams, useNavigate, useLocation } from '@/compat/router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useAppData } from '../context/AppDataContext';
@@ -988,8 +988,16 @@ export function GameDetail() {
             className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl rounded-t-2xl pb-safe"
             onClick={e => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-4" />
-            <p className="text-center font-semibold mb-3 px-4">Add to List</p>
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-3" />
+            <div className="flex items-center justify-between px-4 mb-3">
+              <p className="font-semibold">Add to List</p>
+              <button
+                onClick={() => setShowAddToListTray(false)}
+                className="p-1.5 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <div className="divide-y divide-border border-t border-border">
               {addToListOptions.map(({ listType, label, key }) => {
                 const inList = isGameInList(key);

@@ -1018,14 +1018,14 @@ export function Explore() {
                       const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
                       const score = (trendingCounts[game.id] ?? 0) + (listCounts[game.id] ?? 0);
                       return (
-                        <div key={game.id} className="group cursor-pointer relative" onClick={() => navigate(`/game/${game.id}`)}>
-                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20">
+                        <div key={game.id} className="group cursor-pointer relative hover:bg-secondary/40 rounded-lg transition-colors duration-200" onClick={() => navigate(`/game/${game.id}`)}>
+                          <div className="aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-muted/20 transition-transform duration-300 ease-out group-hover:scale-[1.03]">
                             {coverArt && (
                               <img
                                 src={coverArt}
                                 alt={game.title}
-                                className="w-full h-full object-cover group-hover:scale-105"
-                                style={{ opacity: 0, transition: 'opacity 0.25s ease, transform 0.3s ease' }}
+                                className="w-full h-full object-cover"
+                                style={{ opacity: 0, transition: 'opacity 0.25s ease' }}
                                 onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = '1'; }}
                               />
                             )}

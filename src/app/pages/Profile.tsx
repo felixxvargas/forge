@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from '@/compat/router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
 import { isMentorHandle } from '../utils/mentors';
 import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
@@ -11,7 +11,7 @@ import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { GameList } from '../components/GameList';
 import { ProfilePictureLightbox } from '../components/ProfilePictureLightbox';
-import { PlatformIcon } from '../components/PlatformIcon';
+import { PlatformIcon, getHandleLabel } from '../components/PlatformIcon';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
@@ -20,7 +20,8 @@ import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
 import { formatNumber } from '../utils/formatNumber';
 import { useBlueskyData } from '../hooks/useBlueskyData';
-import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, streamArchivesAPI, top8API } from '../utils/supabase';
+import { profiles as profilesAPI, posts as postsAPI, profiles, lfgFlares as lfgFlaresAPI, streamArchivesAPI, top8API, vipListAPI } from '../utils/supabase';
+import { toast } from 'sonner';
 import useSWR from 'swr';
 import type { LFGFlare, StreamArchive } from '../utils/supabase';
 
@@ -65,7 +66,7 @@ const BIO_MAX_LENGTH = 150;
 export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const navigate = useNavigate();
   const { userId, handle } = useParams();
-  const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds } = useAppData();
+  const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds, addToVIPList, removeFromVIPList, vipListIds } = useAppData() as any;
   const normalizedHandle = handle ? handle.replace(/^@/, '').toLowerCase() : null;
   const { data: swrHandleProfile } = useSWR(
     normalizedHandle ? `profile-handle:${normalizedHandle}` : null,
@@ -121,6 +122,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
   const [freshFollowerCount, setFreshFollowerCount] = useState<number | null>(null);
   const [freshFollowingCount, setFreshFollowingCount] = useState<number | null>(null);
+  const [canViewHandles, setCanViewHandles] = useState(false);
+  const [handlePopup, setHandlePopup] = useState<{ platform: string; handle: string; label: string } | null>(null);
 
   // LFG Flare state
   const [activeFlares, setActiveFlares] = useState<LFGFlare[]>([]);
@@ -211,6 +214,23 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       .then(setMutualFollowers)
       .catch(() => setMutualFollowers([]));
   }, [isOwnProfile, currentUser?.id, profileUser?.id]);
+
+  // Determine if current viewer can see handle strings on this profile
+  useEffect(() => {
+    if (isOwnProfile) { setCanViewHandles(true); return; }
+    if (!profileUser?.id) { setCanViewHandles(false); return; }
+    const visibility: string[] = (profileUser as any).platform_tags_visibility ?? ['all'];
+    if (visibility.includes('all')) { setCanViewHandles(true); return; }
+    if (!currentUser?.id) { setCanViewHandles(false); return; }
+    if (visibility.includes('followers') && followingIds.has(profileUser.id)) { setCanViewHandles(true); return; }
+    if (visibility.includes('vip_list')) {
+      vipListAPI.checkAccess(profileUser.id, currentUser.id)
+        .then((ok: boolean) => setCanViewHandles(ok))
+        .catch(() => setCanViewHandles(false));
+    } else {
+      setCanViewHandles(false);
+    }
+  }, [isOwnProfile, profileUser?.id, (profileUser as any)?.platform_tags_visibility, currentUser?.id, followingIds]);
 
   // Load the profile user's posts + reposts directly from Supabase
   useEffect(() => {
@@ -504,6 +524,15 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const isBlocked = blockedUsers.has(profileUser?.id || '');
   const isMuted = mutedUsers.has(profileUser?.id || '');
 
+  const handlePlatformTagClick = async (platform: string, fullHandle: string) => {
+    if (!canViewHandles) return;
+    const label = getHandleLabel(platform);
+    const toCopy = platform === 'nintendo' ? fullHandle.replace(/-/g, '') : fullHandle;
+    try { await navigator.clipboard.writeText(toCopy); } catch {}
+    toast.success(`${label} copied to clipboard`);
+    setHandlePopup({ platform, handle: fullHandle, label });
+  };
+
   const handleLikeToggle = (postId: string) => {
     if (likedPosts.has(postId)) {
       unlikePost(postId);
@@ -634,8 +663,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             {profileUser.platforms.map((platform: string) => {
               const platformHandle = profileUser.platformHandles?.[platform] ?? (profileUser as any).platform_handles?.[platform];
               const showHandle = profileUser.showPlatformHandles?.[platform] ?? (profileUser as any).show_platform_handles?.[platform];
-              return (
-                <PlatformIcon key={platform} platform={platform} userHandle={showHandle && platformHandle ? platformHandle : undefined} showHandle={true} />
+              const displayHandle = canViewHandles && showHandle && platformHandle ? platformHandle : undefined;
+              const clickable = canViewHandles && showHandle && platformHandle;
+              return clickable ? (
+                <button key={platform} onClick={() => handlePlatformTagClick(platform, platformHandle)} className="cursor-pointer">
+                  <PlatformIcon platform={platform} userHandle={displayHandle} showHandle={true} />
+                </button>
+              ) : (
+                <PlatformIcon key={platform} platform={platform} userHandle={displayHandle} showHandle={true} />
               );
             })}
           </div>
@@ -823,6 +858,24 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                           <Mail className="w-4 h-4 mr-2" />
                           Send Message
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {(vipListIds as Set<string>)?.has(profileUser.id) ? (
+                          <DropdownMenuItem onClick={() => {
+                            removeFromVIPList(profileUser.id);
+                            toast.success(`${profileUser.display_name || ('@' + (profileUser.handle || '').replace(/^@/, ''))} removed from your VIP list`);
+                          }}>
+                            <Minus className="w-4 h-4 mr-2" />
+                            Remove from VIP
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => {
+                            addToVIPList(profileUser.id);
+                            toast.success(`${profileUser.display_name || ('@' + (profileUser.handle || '').replace(/^@/, ''))} added to your VIP list`);
+                          }}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add to VIP
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                       </>
                     )}
@@ -1021,13 +1074,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                     profileUser.showPlatformHandles?.[platform] ??
                     (profileUser as any).show_platform_handles?.[platform];
                   
-                  return (
-                    <PlatformIcon 
-                      key={platform} 
-                      platform={platform} 
-                      userHandle={showHandle && platformHandle ? platformHandle : undefined}
-                      showHandle={true}
-                    />
+                  const displayHandle = canViewHandles && showHandle && platformHandle ? platformHandle : undefined;
+                  const clickable = canViewHandles && showHandle && platformHandle;
+                  return clickable ? (
+                    <button key={platform} onClick={() => handlePlatformTagClick(platform, platformHandle)} className="cursor-pointer">
+                      <PlatformIcon platform={platform} userHandle={displayHandle} showHandle={true} />
+                    </button>
+                  ) : (
+                    <PlatformIcon key={platform} platform={platform} userHandle={displayHandle} showHandle={true} />
                   );
                 })}
               </div>
@@ -1986,13 +2040,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                     const showHandle =
                       profileUser.showPlatformHandles?.[platform] ??
                       (profileUser as any).show_platform_handles?.[platform];
-                    return (
-                      <PlatformIcon
-                        key={platform}
-                        platform={platform}
-                        userHandle={showHandle && platformHandle ? platformHandle : undefined}
-                        showHandle={true}
-                      />
+                    const displayHandle = canViewHandles && showHandle && platformHandle ? platformHandle : undefined;
+                    const clickable = canViewHandles && showHandle && platformHandle;
+                    return clickable ? (
+                      <button key={platform} onClick={() => handlePlatformTagClick(platform, platformHandle)} className="cursor-pointer">
+                        <PlatformIcon platform={platform} userHandle={displayHandle} showHandle={true} />
+                      </button>
+                    ) : (
+                      <PlatformIcon key={platform} platform={platform} userHandle={displayHandle} showHandle={true} />
                     );
                   })}
                 </div>
@@ -2279,6 +2334,45 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Handle popup modal */}
+      {handlePopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setHandlePopup(null)}
+        >
+          <div
+            className="bg-card rounded-2xl w-full max-w-xs p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">{handlePopup.label}</h2>
+              <button
+                onClick={() => setHandlePopup(null)}
+                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-3 bg-secondary rounded-xl px-4 py-3">
+              <p className="flex-1 font-mono text-sm break-all">{handlePopup.handle}</p>
+              <button
+                onClick={async () => {
+                  const toCopy = handlePopup.platform === 'nintendo'
+                    ? handlePopup.handle.replace(/-/g, '')
+                    : handlePopup.handle;
+                  try { await navigator.clipboard.writeText(toCopy); } catch {}
+                  toast.success(`${handlePopup.label} copied to clipboard`);
+                }}
+                className="shrink-0 p-2 rounded-lg hover:bg-card transition-colors text-muted-foreground hover:text-foreground"
+                title={`Copy ${handlePopup.label}`}
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

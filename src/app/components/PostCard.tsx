@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight, Tv2, PlayCircle } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight, Tv2, PlayCircle, Bookmark } from 'lucide-react';
 
 import { useNavigate } from '@/compat/router';
 import type { Post, User, SocialPlatform } from '../data/data';
@@ -914,6 +914,23 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
           </button>
         )}
 
+        {isAuthenticated && !isExternalPost && (() => {
+          const isSaved = (context as any)?.savedPostIds?.has(post.id) ?? false;
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                isSaved
+                  ? (context as any)?.unsavePost?.(post.id)
+                  : (context as any)?.savePost?.(post.id);
+              }}
+              className={`flex items-center gap-2 text-sm transition-colors ${isSaved ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+              title={isSaved ? 'Remove bookmark' : 'Save post'}
+            >
+              <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
+            </button>
+          );
+        })()}
         <button
           onClick={(e) => {
             e.stopPropagation();

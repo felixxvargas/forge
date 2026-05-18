@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, us
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { type User, type Post, type GameListType, type SocialPlatform, topicAccounts } from '../data/data';
-import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI, sessionTelemetry, gameTimelineAPI } from '../utils/supabase';
+import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI, sessionTelemetry, gameTimelineAPI, savedPostsAPI, vipListAPI } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
 import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
 
@@ -73,6 +73,12 @@ interface AppDataContextType {
   followExternalUser: (user: { id: string; platform: string; handle: string; displayName: string; avatar?: string; instance?: string; accountId?: string; did?: string }) => Promise<void>;
   unfollowExternalUser: (id: string) => Promise<void>;
   refreshCurrentUser: () => Promise<void>;
+  savedPostIds: Set<string>;
+  savePost: (postId: string) => Promise<void>;
+  unsavePost: (postId: string) => Promise<void>;
+  vipListIds: Set<string>;
+  addToVIPList: (viewerId: string) => Promise<void>;
+  removeFromVIPList: (viewerId: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -113,6 +119,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
   const [mutedUsers, setMutedUsers] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
+  const [vipListIds, setVipListIds] = useState<Set<string>>(new Set());
   const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -170,7 +178,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profile = fetched;
       }
 
-      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships] = await Promise.all([
+      const [likedIds, repostedIds, blockedIds, mutedIds, followingIdList, unreadCount, memberships, savedIds, vipIds] = await Promise.all([
         postsAPI.getLikedIds(userId),
         postsAPI.getRepostedIds(userId),
         profiles.getBlockedIds(userId),
@@ -178,6 +186,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         profiles.getFollowingIds(userId),
         notificationsAPI.getUnreadCount(userId),
         groupsAPI.getUserMemberships(userId),
+        savedPostsAPI.getIds(userId).catch(() => [] as string[]),
+        vipListAPI.getViewerIds(userId).catch(() => [] as string[]),
       ]);
       // Followed game IDs are stored in game_lists._followedGames (reliable, uses profiles table)
       const followedGameIds: string[] = profile?.game_lists?._followedGames ?? [];
@@ -198,6 +208,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const mergedFollowingIds = [...followingIdList, ...topicFollows];
       followingIdsRef.current = mergedFollowingIds;
       setFollowingIds(new Set(mergedFollowingIds));
+      setSavedPostIds(new Set(savedIds));
+      setVipListIds(new Set(vipIds));
       setHasUnreadNotifications(unreadCount > 0);
       setUnreadNotificationCount(unreadCount);
       const externalFollowsList: any[] = (profile?.game_lists?._externalFollows) ?? [];
@@ -1173,6 +1185,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const savePost = useCallback(async (postId: string) => {
+    const userId = sessionRef.current?.user?.id;
+    if (!userId) return;
+    setSavedPostIds(prev => new Set([...prev, postId]));
+    try { await savedPostsAPI.save(userId, postId); } catch { setSavedPostIds(prev => { const s = new Set(prev); s.delete(postId); return s; }); }
+  }, []);
+
+  const unsavePost = useCallback(async (postId: string) => {
+    const userId = sessionRef.current?.user?.id;
+    if (!userId) return;
+    setSavedPostIds(prev => { const s = new Set(prev); s.delete(postId); return s; });
+    try { await savedPostsAPI.unsave(userId, postId); } catch { setSavedPostIds(prev => new Set([...prev, postId])); }
+  }, []);
+
+  const addToVIPList = useCallback(async (viewerId: string) => {
+    const userId = sessionRef.current?.user?.id;
+    if (!userId) return;
+    setVipListIds(prev => new Set([...prev, viewerId]));
+    try { await vipListAPI.grant(userId, viewerId); } catch { setVipListIds(prev => { const s = new Set(prev); s.delete(viewerId); return s; }); }
+  }, []);
+
+  const removeFromVIPList = useCallback(async (viewerId: string) => {
+    const userId = sessionRef.current?.user?.id;
+    if (!userId) return;
+    setVipListIds(prev => { const s = new Set(prev); s.delete(viewerId); return s; });
+    try { await vipListAPI.revoke(userId, viewerId); } catch { setVipListIds(prev => new Set([...prev, viewerId])); }
+  }, []);
+
   // Merge DB posts with topic account posts (kept separate so refreshFeed doesn't wipe topic posts)
   const mergedPosts = useMemo(() => {
     const combined = topicPosts.length === 0 ? postList : (() => {
@@ -1254,6 +1294,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       followExternalUser,
       unfollowExternalUser,
       refreshCurrentUser,
+      savedPostIds,
+      savePost,
+      unsavePost,
+      vipListIds,
+      addToVIPList,
+      removeFromVIPList,
     }}>
       {children}
     </AppDataContext.Provider>

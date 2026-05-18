@@ -174,11 +174,16 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
 
   const label = PLATFORM_LABELS[key] ?? key;
 
-  if (showHandle && userHandle) {
+  // Nintendo friend codes are long — truncate after 11 chars on the pill only
+  const displayHandle = userHandle
+    ? (key === 'nintendo' && userHandle.length > 11 ? userHandle.slice(0, 11) + '…' : userHandle)
+    : undefined;
+
+  if (showHandle && displayHandle) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg">
         {renderIcon()}
-        <span className="text-sm font-medium">@{userHandle}</span>
+        <span className="text-sm font-medium">{key === 'nintendo' || key === 'xbox' ? '' : '@'}{displayHandle}</span>
       </div>
     );
   }
@@ -193,4 +198,11 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
   }
 
   return renderIcon();
+}
+
+export function getHandleLabel(platform: string): 'Friend Code' | 'Gamer Tag' | 'Handle' {
+  const key = platform?.toLowerCase();
+  if (key === 'nintendo') return 'Friend Code';
+  if (key === 'xbox') return 'Gamer Tag';
+  return 'Handle';
 }

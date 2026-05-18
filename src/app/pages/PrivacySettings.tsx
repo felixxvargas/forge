@@ -1,7 +1,8 @@
 ﻿import { useState } from 'react';
 import { useNavigate, Link } from '@/compat/router';
-import { ArrowLeft, MessageCircle, Lock, FileText, User, Filter, Share2, Repeat2, Heart } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Lock, FileText, User, Filter, Share2, Repeat2, Heart, Crown, ChevronRight } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import { supabase } from '../utils/supabase';
 
 function Toggle({ on }: { on: boolean }) {
   return (
@@ -20,6 +21,9 @@ export function PrivacySettings() {
   const [listsPublic, setListsPublic] = useState<boolean>(currentUser?.lists_public !== false);
   const [postsPublic, setPostsPublic] = useState<boolean>(currentUser?.posts_public !== false);
   const [likesPublic, setLikesPublic] = useState<boolean>(currentUser?.likes_public !== false);
+  const [platformTagsVisibility, setPlatformTagsVisibility] = useState<string[]>(
+    () => (currentUser as any)?.platform_tags_visibility ?? ['all']
+  );
   const [defaultCommentsDisabled, setDefaultCommentsDisabled] = useState(
     () => localStorage.getItem('forge-default-comments-disabled') === 'true'
   );
@@ -52,6 +56,21 @@ export function PrivacySettings() {
     setDefaultRepostsDisabled(next);
     localStorage.setItem('forge-default-reposts-disabled', String(next));
   };
+
+  const savePlatformTagsVisibility = async (next: string[]) => {
+    setPlatformTagsVisibility(next);
+    try {
+      await supabase.from('profiles').update({ platform_tags_visibility: next }).eq('id', currentUser?.id ?? '');
+    } catch { /* ignore */ }
+  };
+
+  const togglePlatformTagsOption = (option: string) => {
+    const current = platformTagsVisibility.filter(v => v !== 'all');
+    const next = current.includes(option) ? current.filter(v => v !== option) : [...current, option];
+    savePlatformTagsVisibility(next.length > 0 ? next : ['all']);
+  };
+
+  const isAllCanView = platformTagsVisibility.includes('all');
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -138,6 +157,57 @@ export function PrivacySettings() {
               <Toggle on={likesPublic} />
             </button>
           </div>
+        </div>
+
+        {/* Platform Tags */}
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Platform Tags</h2>
+          <p className="text-xs text-muted-foreground mb-3 -mt-2">Choose who can see your social & gaming handles on your profile.</p>
+          <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            <button
+              onClick={() => savePlatformTagsVisibility(['all'])}
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isAllCanView ? 'border-accent bg-accent' : 'border-muted-foreground/50'}`}>
+                {isAllCanView && <div className="w-2 h-2 rounded-full bg-white" />}
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-medium">All can view</p>
+                <p className="text-sm text-muted-foreground">Anyone can see your handles</p>
+              </div>
+            </button>
+            {(['following', 'followers', 'vip_list'] as const).map(option => {
+              const labels: Record<string, string> = {
+                following: 'People you follow',
+                followers: 'People who follow you',
+                vip_list: 'My VIP List',
+              };
+              const checked = !isAllCanView && platformTagsVisibility.includes(option);
+              return (
+                <button
+                  key={option}
+                  onClick={() => !isAllCanView && togglePlatformTagsOption(option)}
+                  disabled={isAllCanView}
+                  className={`w-full px-4 py-4 flex items-center gap-3 transition-colors ${isAllCanView ? 'opacity-40 cursor-not-allowed' : 'hover:bg-secondary'}`}
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? 'border-accent bg-accent' : 'border-muted-foreground/50'}`}>
+                    {checked && (
+                      <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    )}
+                  </div>
+                  <p className="font-medium">{labels[option]}</p>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => navigate('/vip-list')}
+            className="mt-3 w-full px-4 py-3 flex items-center gap-3 bg-card rounded-xl hover:bg-secondary transition-colors"
+          >
+            <Crown className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="flex-1 text-left font-medium text-sm">Manage My VIP List</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
         </div>
 
         {/* Post Defaults */}

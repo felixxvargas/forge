@@ -97,7 +97,9 @@ export function GamingPlatforms() {
                 <div className="flex items-center gap-3">
                   {isSelected && (
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-xs text-muted-foreground">Show Handle</span>
+                      <span className="text-xs text-muted-foreground">
+                        {platform.id === 'nintendo' ? 'Show Friend Code' : platform.id === 'xbox' ? 'Show Gamer Tag' : 'Show Handle'}
+                      </span>
                       <input
                         type="checkbox"
                         checked={showPlatformHandles[platform.id] || false}
