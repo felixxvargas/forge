@@ -848,7 +848,13 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                   size="sm"
                 />
                 <button
-                  onClick={() => setShowReplyTray(true)}
+                  onClick={() => {
+                    if (!isExternalPost && window.innerWidth < 640) {
+                      navigate(`/new-post?replyTo=${encodeURIComponent(postId!)}`);
+                    } else {
+                      setShowReplyTray(true);
+                    }
+                  }}
                   className="flex-1 px-4 py-2.5 bg-secondary rounded-xl border border-border text-sm text-muted-foreground text-left cursor-text hover:bg-secondary/80 transition-colors"
                 >
                   {isExternalPost ? 'Post a comment…' : 'Post a reply…'}

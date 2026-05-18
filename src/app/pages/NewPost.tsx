@@ -8,6 +8,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import { useNavigate, useSearchParams, useBlocker, useLocation } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
+import { posts as postsAPI } from '../utils/supabase';
 import { ImageUpload } from '../components/ImageUpload';
 import { LinkPreview } from '../components/LinkPreview';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -99,6 +100,13 @@ export function NewPost() {
   // Scroll to top when compose screen opens
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
+  useEffect(() => {
+    if (!replyTo) return;
+    const fromContext = (contextPosts as any[]).find((p: any) => p.id === replyTo);
+    if (fromContext) { setReplyToPost(fromContext); return; }
+    postsAPI.getById(replyTo).then(setReplyToPost).catch(() => {});
+  }, [replyTo]);
+
   const autoDraft = useRef<DraftData>(parseAutoDraft());
 
   const [content, setContent] = useState(autoDraft.current.content);
@@ -154,6 +162,8 @@ export function NewPost() {
   // List picker
   const [pickedListType, setPickedListType] = useState<string | undefined>(attachListType);
   const [pickedListUserId, setPickedListUserId] = useState<string | undefined>(attachListUserId);
+  // Parent post when replying
+  const [replyToPost, setReplyToPost] = useState<any>(null);
 
   // Build attached list snapshot from state (set either via URL params or in-compose picker)
   const attachedListData = useCallback((): object | undefined => {
@@ -643,8 +653,10 @@ export function NewPost() {
         is_poll: !!pollData,
         is_thread: threadPosts.filter(p => p.trim()).length > 0,
       });
-      // After posting to a group, go back to the group page so the post appears immediately
-      if (activeCommunityId) {
+      // After replying, go back to the parent post; after a group post, go to the group page
+      if (replyTo) {
+        navigate(`/post/${encodeURIComponent(replyTo)}`, { replace: true });
+      } else if (activeCommunityId) {
         navigate(`/group/${activeCommunityId}`, { replace: true });
       } else {
         navigate('/feed', { replace: true });
@@ -755,7 +767,7 @@ export function NewPost() {
               disabled={!content.trim() || isPosting || content.length > POST_MAX_LENGTH}
               className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isPosting ? 'Posting...' : 'Post'}
+              {isPosting ? 'Posting...' : replyTo ? 'Reply' : 'Post'}
             </button>
           </div>
         </div>
@@ -794,6 +806,18 @@ export function NewPost() {
         </div>
       </div>
 
+      {/* Replying-to context — shown when opened via post reply route */}
+      {replyTo && replyToPost && (
+        <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl border border-border bg-secondary/30">
+          <p className="text-xs text-muted-foreground mb-1">
+            Replying to <span className="text-foreground font-medium">@{((replyToPost.author?.handle ?? replyToPost.user_id) || '').replace(/^@/, '')}</span>
+          </p>
+          {replyToPost.content && (
+            <p className="text-sm text-foreground/70 line-clamp-2 leading-relaxed">{replyToPost.content}</p>
+          )}
+        </div>
+      )}
+
       {/* Content area — no height constraint on mobile so the page grows with the textarea */}
       <div className="p-4 relative sm:flex-1 sm:overflow-y-auto">
         <div className="relative">
@@ -804,7 +828,7 @@ export function NewPost() {
             dangerouslySetInnerHTML={{
               __html: content
                 ? buildHighlightedHtml(content, users, selectedGames[0] ?? null, selectedGroup ? [selectedGroup] : [])
-                : '<span style="color:var(--muted-foreground)">What\'s on your mind? Use @ to mention people, games or groups</span>',
+                : `<span style="color:var(--muted-foreground)">${replyTo ? 'Post a reply… Use @ to mention people, games or groups' : "What\\'s on your mind? Use @ to mention people, games or groups"}</span>`,
             }}
           />
           <textarea
