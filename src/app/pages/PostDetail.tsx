@@ -33,7 +33,8 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
 
   const repliesRef = useRef<HTMLDivElement>(null);
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const [mentionDropdownPos, setMentionDropdownPos] = useState<{ bottom: number; left: number; width: number } | null>(null);
+  const [mentionDropdownPos, setMentionDropdownPos] = useState<{ bottom: number; left?: number | null; width?: number | null } | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const [replies, setReplies] = useState<any[]>([]);
   const [reposters, setReposters] = useState<any[]>([]);
@@ -85,6 +86,10 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   const [replyGameResults, setReplyGameResults] = useState<any[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
   const gameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [atReplyGameResults, setAtReplyGameResults] = useState<any[]>([]);
+  const [atReplyGroupResults, setAtReplyGroupResults] = useState<any[]>([]);
+  const [isAtReplyGameSearching, setIsAtReplyGameSearching] = useState(false);
+  const atReplyGameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Group tagging in reply
   const [replySelectedGroup, setReplySelectedGroup] = useState<{ id: string; name: string } | null>(null);
@@ -109,6 +114,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
 
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => { window.scrollTo(0, 0); setShowParentContext(false); }, [postId]);
 
   // Auto-reveal parent context when user scrolls back up to the top
@@ -309,21 +315,59 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     setNewReply(val);
     const cursorPos = e.target.selectionStart ?? val.length;
     const before = val.slice(0, cursorPos);
-    const mentionMatch = before.match(/@(\w*)$/);
+    const mentionMatch = before.match(/@([\wÀ-ɏḀ-ỿ ''\-]*)$/);
     if (mentionMatch) {
       mentionTriggerIndex.current = before.lastIndexOf('@');
-      const query = mentionMatch[1].toLowerCase();
+      const query = mentionMatch[1].trim().toLowerCase();
+      const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const normQuery = norm(query);
       const filtered = users
         .filter(u =>
-          (u.handle || '').toLowerCase().replace(/^@/, '').includes(query) ||
-          (u.display_name || '').toLowerCase().includes(query)
+          norm((u.handle || '').replace(/^@/, '')).includes(normQuery) ||
+          norm(u.display_name || '').includes(normQuery)
         )
-        .slice(0, 5);
+        .slice(0, 4);
       setMentionSuggestions(filtered);
-      setShowMentions(filtered.length > 0);
+
+      if (query.length >= 1) {
+        const groupMatches = (contextGroups as any[])
+          .filter((g: any) => norm(g.name || '').includes(normQuery))
+          .slice(0, 3);
+        setAtReplyGroupResults(groupMatches);
+      } else {
+        setAtReplyGroupResults([]);
+      }
+
+      setShowMentions(true);
+
+      if (atReplyGameSearchTimer.current) clearTimeout(atReplyGameSearchTimer.current);
+      if (query.length >= 1) {
+        const cacheKey = query.toLowerCase();
+        if (gameSearchCache.has(cacheKey)) {
+          setAtReplyGameResults(gameSearchCache.get(cacheKey)!);
+          setIsAtReplyGameSearching(false);
+        } else {
+          setIsAtReplyGameSearching(true);
+          atReplyGameSearchTimer.current = setTimeout(async () => {
+            try {
+              const results = await gamesAPI.searchGames(query, 5);
+              const list = Array.isArray(results) ? results : (results as any)?.games ?? [];
+              gameSearchCache.set(cacheKey, list);
+              setAtReplyGameResults(list);
+            } catch { setAtReplyGameResults([]); }
+            finally { setIsAtReplyGameSearching(false); }
+          }, 300);
+        }
+      } else {
+        setAtReplyGameResults([]);
+        setIsAtReplyGameSearching(false);
+      }
     } else {
       setShowMentions(false);
       setMentionSuggestions([]);
+      setAtReplyGameResults([]);
+      setAtReplyGroupResults([]);
+      setIsAtReplyGameSearching(false);
     }
   };
 
@@ -331,23 +375,57 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     const startIdx = mentionTriggerIndex.current;
     if (startIdx < 0) { setShowMentions(false); return; }
     const handle = (user.handle || '').startsWith('@') ? user.handle : `@${user.handle}`;
-    const afterAt = newReply.slice(startIdx + 1);
-    const wordEnd = afterAt.search(/[^\w]/);
-    const tokenEnd = wordEnd === -1 ? newReply.length : startIdx + 1 + wordEnd;
-    setNewReply(newReply.slice(0, startIdx) + handle + ' ' + newReply.slice(tokenEnd));
+    const curPos = replyTextareaRef.current?.selectionStart ?? newReply.length;
+    setNewReply(newReply.slice(0, startIdx) + handle + ' ' + newReply.slice(curPos));
     mentionTriggerIndex.current = -1;
     setShowMentions(false);
     setMentionSuggestions([]);
+    setAtReplyGameResults([]);
+    setAtReplyGroupResults([]);
+  };
+
+  const handleAtReplyGameSelect = (game: any) => {
+    const startIdx = mentionTriggerIndex.current;
+    if (startIdx < 0) { setShowMentions(false); setAtReplyGameResults([]); return; }
+    const curPos = replyTextareaRef.current?.selectionStart ?? newReply.length;
+    const tag = '@' + game.title;
+    setNewReply(newReply.slice(0, startIdx) + tag + ' ' + newReply.slice(curPos));
+    const gameId = String(game.id ?? game.game_id ?? '');
+    setReplySelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
+    const cover = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url ?? null;
+    if (!gameCoverCache.has(gameId)) gameCoverCache.set(gameId, cover);
+    mentionTriggerIndex.current = -1;
+    setShowMentions(false);
+    setMentionSuggestions([]);
+    setAtReplyGameResults([]);
+    setAtReplyGroupResults([]);
+    setIsAtReplyGameSearching(false);
+  };
+
+  const handleAtReplyGroupSelect = (group: any) => {
+    const startIdx = mentionTriggerIndex.current;
+    if (startIdx < 0) { setShowMentions(false); setAtReplyGroupResults([]); return; }
+    const curPos = replyTextareaRef.current?.selectionStart ?? newReply.length;
+    setNewReply(newReply.slice(0, startIdx) + group.name + ' ' + newReply.slice(curPos));
+    setReplySelectedGroup({ id: group.id, name: group.name });
+    mentionTriggerIndex.current = -1;
+    setShowMentions(false);
+    setMentionSuggestions([]);
+    setAtReplyGameResults([]);
+    setAtReplyGroupResults([]);
   };
 
   useEffect(() => {
-    if (showMentions && mentionSuggestions.length > 0 && replyTextareaRef.current) {
-      const rect = replyTextareaRef.current.getBoundingClientRect();
+    if (!showMentions) { setMentionDropdownPos(null); return; }
+    if (!replyTextareaRef.current) return;
+    const rect = replyTextareaRef.current.getBoundingClientRect();
+    const isDesktop = window.innerWidth >= 768;
+    if (isDesktop) {
       setMentionDropdownPos({ bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width });
     } else {
-      setMentionDropdownPos(null);
+      setMentionDropdownPos({ bottom: window.innerHeight - rect.top + 8, left: null, width: null });
     }
-  }, [showMentions, mentionSuggestions]);
+  }, [showMentions]);
 
   const handleReplyGameSearch = (q: string) => {
     setReplyGameQuery(q);
@@ -482,7 +560,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     }
   };
 
-  if (loadingBluesky) {
+  if (!mounted || loadingBluesky) {
     return (
       <div className="min-h-screen pb-20">
         {/* Header */}
@@ -783,34 +861,84 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
           {showReplyTray && (
             <>
             {/* Mention suggestions — fixed outside overflow-hidden modal */}
-            {mentionDropdownPos && (
+            {mentionDropdownPos && showMentions && (mentionSuggestions.length > 0 || atReplyGameResults.length > 0 || isAtReplyGameSearching || atReplyGroupResults.length > 0) && (
               <div
-                className="fixed z-[60] bg-card border border-border rounded-xl shadow-lg overflow-hidden"
-                style={{ bottom: mentionDropdownPos.bottom, left: mentionDropdownPos.left, width: mentionDropdownPos.width }}
+                className="fixed z-[60] bg-sidebar border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
+                style={mentionDropdownPos.left != null
+                  ? { bottom: mentionDropdownPos.bottom, left: mentionDropdownPos.left, width: mentionDropdownPos.width }
+                  : { bottom: mentionDropdownPos.bottom, left: '0.5rem', right: '0.5rem' }
+                }
               >
-                {mentionSuggestions.map(u => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-secondary transition-colors text-left"
-                  >
-                    <ProfileAvatar
-                      username={u.display_name || u.handle || '?'}
-                      profilePicture={u.profile_picture}
-                      userId={u.id}
-                      size="sm"
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{u.display_name || u.handle}</p>
-                      <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
-                    </div>
-                  </button>
-                ))}
+                {mentionSuggestions.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-white/5">People</div>
+                    {mentionSuggestions.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u); }}
+                        className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
+                      >
+                        <ProfileAvatar username={u.display_name || u.handle || '?'} profilePicture={u.profile_picture} userId={u.id} size="sm" />
+                        <div>
+                          <p className="font-medium text-sm">{u.display_name || u.handle}</p>
+                          <p className="text-xs text-muted-foreground">@{(u.handle || '').replace(/^@/, '')}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {(atReplyGameResults.length > 0 || isAtReplyGameSearching) && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-white/5">Games</div>
+                    {isAtReplyGameSearching && atReplyGameResults.length === 0 && (
+                      <div className="px-3 py-3 flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin shrink-0" />
+                        Searching games…
+                      </div>
+                    )}
+                    {atReplyGameResults.map((game: any, i) => {
+                      const coverUrl = game.cover ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
+                      return (
+                        <button
+                          key={game.id ?? game.game_id ?? i}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); handleAtReplyGameSelect(game); }}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
+                        >
+                          {coverUrl
+                            ? <img src={coverUrl} alt="" className="w-8 h-10 rounded object-cover shrink-0" />
+                            : <Gamepad2 className="w-5 h-5 text-muted-foreground shrink-0" />
+                          }
+                          <div>
+                            <p className="font-medium text-sm">{game.title}</p>
+                            {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+                {atReplyGroupResults.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-white/5">Groups</div>
+                    {atReplyGroupResults.map((group: any) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAtReplyGroupSelect(group); }}
+                        className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
+                      >
+                        <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <p className="font-medium text-sm">{group.name}</p>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             )}
             <div className="fixed inset-0 z-50 flex flex-col sm:items-end sm:justify-end md:items-center md:justify-center sm:bg-black/60">
-              <div className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card/80 backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl">
+              <div className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card sm:bg-card/85 sm:backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl">
                 {/* Tray header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                   <button

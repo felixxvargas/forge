@@ -304,6 +304,15 @@ export function NewPost() {
   }, [blocker.state]);
 
   const handleCancel = () => {
+    if (showMentions || showHashGames) {
+      setShowMentions(false);
+      setShowHashGames(false);
+      setMentionSuggestions([]);
+      setAtGameResults([]);
+      setAtGroupResults([]);
+      setHashGameResults([]);
+      return;
+    }
     if (isDirty) {
       setShowCancelConfirm(true);
     } else {
