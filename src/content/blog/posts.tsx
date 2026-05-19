@@ -18,10 +18,10 @@ function AnnouncingForgeContent() {
   return (
     <article>
       <p>
-        Today we're launching Forge — a social platform built specifically for the gaming community.
+        Today we're launching Forge, a social platform built specifically for the gaming community.
       </p>
       <p>
-        We've been building it because we think gaming deserves its own social space. One that puts
+        We're building Forge because we think gaming deserves its own social space. One that puts
         the games first and the algorithm second. One that doesn't treat your gaming activity as
         an afterthought buried in a general-purpose feed.
       </p>
@@ -30,18 +30,18 @@ function AnnouncingForgeContent() {
       <p>
         At its core, Forge is a place to share what you're playing, connect with other players, and
         talk about games the way you actually talk about games. Every post can be tagged to a game
-        from our full IGDB library — cover art, year, everything — so your content is always in
+        from our full IGDB library with cover art, year, and more metadata so your content is always in
         context.
       </p>
       <p>
         Your profile is your gaming library. Favorites, wishlist, recently played, completed,
-        looking-for-group, custom lists — your gaming history lives on Forge, and you can share any
-        of those lists as a post.
+        looking-for-group, custom lists; your gaming history lives on Forge, and you can share any
+        of those lists as a post and broadcast updates to your gaming lineup.
       </p>
       <p>
         We also built Groups, so communities around specific games and genres have a proper home.
         And because the gaming community already lives across a lot of platforms, we connected Forge
-        to the fediverse: post once on Forge and it can reach your followers on Bluesky or Mastodon too.
+        to the fediverse: view posts across the fediverse and, once we have our own servers on Forge, you'll be able to communicate with your followers on Bluesky and Mastodon too.
       </p>
 
       <h2>What's available today</h2>
@@ -50,23 +50,23 @@ function AnnouncingForgeContent() {
         <li>Posts with images, video, links, and game tags</li>
         <li>Full game library tracking (8 list categories)</li>
         <li>Groups and communities</li>
-        <li>Bluesky and Mastodon federation</li>
+        <li>Bluesky and Mastodon federation (partial)</li>
         <li>Replies, reposts, quotes, likes, and polls</li>
-        <li>Notifications and profile pages</li>
+        <li>Notifications, Settings, and profile pages</li>
       </ul>
 
       <h2>How to get access</h2>
       <p>
-        We're starting with an invite-based beta so we can pay attention to feedback and build the
+        We're starting with an open beta on web; we want to pay attention to feedback and build the
         right things early. Sign up at <a href="https://forge-social.app">forge-social.app</a> and
-        we'll send you an invite as we expand access.
+        starting using Forge today.
       </p>
       <p>
-        If you're already in the beta — thank you. What you tell us over the next few months will
+        If you're already in the beta, thank you so much. Your feedback over the next few months will
         shape what Forge becomes.
       </p>
 
-      <p className="author-close">— The Forge Team</p>
+      <p className="author-close">— Felix</p>
     </article>
   );
 }
@@ -119,7 +119,7 @@ function AndroidBetaContent() {
         Thanks for being part of this.
       </p>
 
-      <p className="author-close">— The Forge Team</p>
+      <p className="author-close">— Felix</p>
     </article>
   );
 }
@@ -141,7 +141,7 @@ function RoadmapContent() {
 
       <h2>What we've shipped</h2>
 
-      <h3>March 18 — Launch</h3>
+      <h3>March 18 - Launch</h3>
       <p>
         The full social layer shipped on day one: following, For You, Trending, and per-game feeds.
         Posts with images, video, links, polls, and inline game tagging against the full IGDB
@@ -149,19 +149,19 @@ function RoadmapContent() {
         across eight categories. Groups. Direct federation with Bluesky and Mastodon. Notifications.
       </p>
 
-      <h3>April 28 — Android closed beta</h3>
+      <h3>April 28 - Android closed beta</h3>
       <p>
         The full Forge experience as a native Android app. Feed, compose, groups, game library,
         fediverse sync — all of it. Built with Capacitor for native gesture and media support.
       </p>
 
-      <h3>April – May — Platform refinements</h3>
+      <h3>May 19 — Platform refinements</h3>
       <p>
         Since launch we've shipped a steady stream of improvements: a redesigned reply compose
         screen with a sticky bottom bar that expands in-place on mobile; a full post toolbar
         (images, links, game tags, groups, lists) inside replies; game tag search via{' '}
         <code>@mentions</code> and <code>#tags</code> with cover art previews; post embeds so you
-        can share a Forge post on any website; VIP lists; list sharing inside posts; feed skeleton
+        can share a Forge post on any website; VIP lists; list sharing in posts; feed skeleton
         loaders; and a lot of smaller fixes.
       </p>
 
@@ -169,8 +169,8 @@ function RoadmapContent() {
 
       <h3>Open beta</h3>
       <p>
-        We're planning to remove the invite gate in Q3. Anyone will be able to create an account
-        and bring their friends. This is the biggest milestone on the roadmap.
+        We're planning to move into Open Beta for Android devices in early June. Anyone will be able to create an account
+        and bring their friends. This is the biggest milestone on the roadmap to date.
       </p>
 
       <h3>iOS</h3>
@@ -181,27 +181,9 @@ function RoadmapContent() {
 
       <h3>Search and discovery</h3>
       <p>
-        Today's search is basic. We're building full-text search across posts, games, and people —
+        Today's search is basic. We're building full-text search across posts, games, and people;
         with filters for game, date range, and content type. Following recommendations will also
         improve significantly.
-      </p>
-
-      <h3>Direct messaging</h3>
-      <p>
-        Private conversations between users. Planned for Q3. This is one of the most-requested
-        features since launch.
-      </p>
-
-      <h3>Creator tools</h3>
-      <p>
-        Post analytics, subscriber-only content, and direct support via Stripe. We want to make
-        it possible for gaming creators to build on Forge, not just post on it.
-      </p>
-
-      <h3>Community and events</h3>
-      <p>
-        Group events, game night scheduling, and tournament brackets inside communities. This is
-        an area where we think Forge can do something genuinely different.
       </p>
 
       <h3>Fediverse improvements</h3>
