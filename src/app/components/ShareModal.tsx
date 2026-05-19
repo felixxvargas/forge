@@ -1,4 +1,4 @@
-import { X, Link as LinkIcon, Check, Mail, User as UserIcon } from 'lucide-react';
+import { X, Link as LinkIcon, Check, Mail, User as UserIcon, Code } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Post, User } from '../data/data';
@@ -21,6 +21,8 @@ interface ShareModalProps {
 
 export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(false);
 
   // Generate shareable URL based on what's being shared
   const getShareUrl = () => {
@@ -62,6 +64,19 @@ export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProp
   const url = getShareUrl();
   const title = getShareTitle();
   const description = getShareDescription();
+
+  const embedCode = post
+    ? `<iframe src="${typeof window !== 'undefined' ? window.location.origin : 'https://forge-social.app'}/embed/post/${post.id}" width="550" height="420" frameborder="0" scrolling="no" style="border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;"></iframe>`
+    : null;
+
+  const handleCopyEmbed = async () => {
+    if (!embedCode) return;
+    try {
+      await navigator.clipboard.writeText(embedCode);
+      setEmbedCopied(true);
+      setTimeout(() => setEmbedCopied(false), 2000);
+    } catch {}
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -200,6 +215,41 @@ export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProp
                   <p className="text-xs text-muted-foreground truncate">{url}</p>
                 </div>
               </button>
+
+              {/* Embed code (posts only) */}
+              {embedCode && (
+                <div>
+                  <button
+                    onClick={() => setShowEmbed(v => !v)}
+                    className="w-full flex items-center gap-3 p-3 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+                      <Code className="w-5 h-5 text-accent" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium">Embed post</p>
+                      <p className="text-xs text-muted-foreground">Copy iframe code for your website</p>
+                    </div>
+                  </button>
+                  {showEmbed && (
+                    <div className="mt-2 rounded-lg bg-black/30 border border-border overflow-hidden">
+                      <pre className="px-3 py-2.5 text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+                        {embedCode}
+                      </pre>
+                      <button
+                        onClick={handleCopyEmbed}
+                        className="w-full px-3 py-2 border-t border-border text-xs font-medium text-center transition-colors hover:bg-white/5 flex items-center justify-center gap-1.5"
+                      >
+                        {embedCopied ? (
+                          <><Check className="w-3.5 h-3.5 text-accent" /><span className="text-accent">Copied!</span></>
+                        ) : (
+                          <><Code className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">Copy embed code</span></>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Social Media Shares */}
               <div className="flex gap-2">

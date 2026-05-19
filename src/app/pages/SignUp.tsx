@@ -293,6 +293,12 @@ export function SignUp() {
               <Link to="/privacy" className="underline hover:text-muted-foreground">Privacy Policy</Link>
             </p>
           </div>
+
+          <div className="mt-3 text-center">
+            <Link to="/blog" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors underline">
+              Forge Blog
+            </Link>
+          </div>
         </div>
       </div>
 

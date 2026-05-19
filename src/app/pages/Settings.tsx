@@ -1,6 +1,6 @@
 import { useNavigate } from '@/compat/router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Bookmark } from 'lucide-react';
+import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Bookmark, BookOpen } from 'lucide-react';
 import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
@@ -503,6 +503,17 @@ export function Settings() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
+            <a
+              href="/blog"
+              className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+            >
+              <BookOpen className="w-5 h-5 text-muted-foreground" />
+              <div className="text-left flex-1">
+                <p className="font-medium">Blog</p>
+                <p className="text-sm text-muted-foreground">Updates, roadmap, and announcements</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
           </div>
         </div>
 
