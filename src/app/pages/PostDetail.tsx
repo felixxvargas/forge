@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'motion/react';
-import { useParams, useNavigate } from '@/compat/router';
+import { useParams, useNavigate, useSearchParams } from '@/compat/router';
 import { ArrowLeft, AlertTriangle, Repeat2, Gamepad2, X as XIcon, Search, Image as ImageIcon, Link as LinkIcon, Heart, MessageCircle, Quote, Users, LayoutList } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -23,6 +23,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   // Decode URL-encoded external post IDs (at:// URIs encoded as %3A%2F%2F etc.)
   const postId = rawPostId ? decodeURIComponent(rawPostId) : undefined;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     posts, getUserById, users, currentUser,
     likePost, unlikePost, likedPosts,
@@ -283,6 +284,20 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
 
   const isLoadingReplies = repliesSWRLoading && !repliesData;
 
+  // When navigating back from the compose-reply route, a newReply param carries the
+  // freshly created reply ID so it appears immediately without waiting for SWR revalidation.
+  useEffect(() => {
+    const newReplyId = searchParams.get('newReply');
+    if (!newReplyId || isExternalPost) return;
+    postsAPI.getById(newReplyId).then(replyPost => {
+      if (!replyPost) return;
+      addPosts([replyPost]);
+      setReplies(prev => prev.some(r => r.id === newReplyId) ? prev : [replyPost, ...prev]);
+      // Strip the param from the URL so a hard refresh doesn't re-insert it
+      navigate(`/post/${encodeURIComponent(postId!)}`, { replace: true });
+    }).catch(() => {});
+  }, [searchParams.get('newReply')]);
+
   // Load Forge comments on external posts (stored with url = 'forge-comment:{externalId}')
   useEffect(() => {
     if (!postId || !isExternalPost) return;
@@ -388,7 +403,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     const startIdx = mentionTriggerIndex.current;
     if (startIdx < 0) { setShowMentions(false); setAtReplyGameResults([]); return; }
     const curPos = replyTextareaRef.current?.selectionStart ?? newReply.length;
-    const tag = '@' + game.title;
+    const tag = game.title;
     setNewReply(newReply.slice(0, startIdx) + tag + ' ' + newReply.slice(curPos));
     const gameId = String(game.id ?? game.game_id ?? '');
     setReplySelectedGames(prev => prev.some(g => g.id === gameId) ? prev : [...prev, { id: gameId, title: game.title }]);
@@ -642,7 +657,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   };
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-36 sm:pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="w-full px-4 h-14 flex items-center gap-4">
@@ -838,9 +853,9 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
 
         {/* Replies Section */}
         <div ref={repliesRef} id="comments">
-          {/* Compact reply trigger */}
+          {/* Compact reply trigger — hidden on mobile for Forge posts (sticky bar handles it there) */}
           {currentUser && (isExternalPost || !activePost.comments_disabled) && (
-            <div className="px-4 py-4">
+            <div className={`px-4 py-4 ${!isExternalPost ? 'hidden sm:block' : ''}`}>
               <div className="flex gap-3 items-center">
                 <ProfileAvatar
                   username={currentUser.display_name || currentUser.handle || '?'}
@@ -848,13 +863,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                   size="sm"
                 />
                 <button
-                  onClick={() => {
-                    if (!isExternalPost && window.innerWidth < 640) {
-                      navigate(`/new-post?replyTo=${encodeURIComponent(postId!)}`);
-                    } else {
-                      setShowReplyTray(true);
-                    }
-                  }}
+                  onClick={() => setShowReplyTray(true)}
                   className="flex-1 px-4 py-2.5 bg-secondary rounded-xl border border-border text-sm text-muted-foreground text-left cursor-text hover:bg-secondary/80 transition-colors"
                 >
                   {isExternalPost ? 'Post a comment…' : 'Post a reply…'}
@@ -943,8 +952,13 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                 )}
               </div>
             )}
-            <div className="fixed inset-0 z-50 flex flex-col sm:items-end sm:justify-end md:items-center md:justify-center sm:bg-black/60">
-              <div className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card sm:bg-card/85 sm:backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl">
+            <div className="fixed inset-0 z-50 sm:flex sm:items-end sm:justify-end md:items-center md:justify-center sm:bg-black/60">
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 42 }}
+                className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-background sm:bg-card/85 sm:backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl"
+              >
                 {/* Tray header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                   <button
@@ -964,6 +978,31 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                     {isSubmitting ? 'Posting…' : isExternalPost ? 'Comment' : 'Reply'}
                   </button>
                 </div>
+
+                {/* Original post preview — mobile only, shows context for what's being replied to */}
+                {!isExternalPost && (
+                  <div className="sm:hidden px-4 pt-3 pb-3 border-b border-border shrink-0">
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center shrink-0">
+                        <ProfileAvatar
+                          username={activeUser?.display_name || activeUser?.handle || '?'}
+                          profilePicture={activeUser?.profile_picture}
+                          size="sm"
+                        />
+                        <div className="w-0.5 flex-1 bg-border/50 mt-1.5 min-h-[20px]" />
+                      </div>
+                      <div className="flex-1 min-w-0 pb-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-sm font-semibold truncate">{activeUser?.display_name || activeUser?.handle}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">@{(activeUser?.handle || '').replace(/^@/, '')}</span>
+                        </div>
+                        {activePost.content && (
+                          <p className="text-sm text-foreground/70 line-clamp-3 leading-relaxed">{activePost.content}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Scrollable body */}
                 <div className="flex gap-3 px-4 pt-4 pb-2 flex-1 overflow-y-auto min-h-0">
@@ -1289,7 +1328,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                   )}
                   {replyError && <p className="ml-2 text-xs text-destructive flex-1">{replyError}</p>}
                 </div>
-              </div>
+              </motion.div>
             </div>
             </>
           )}
@@ -1604,6 +1643,28 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky reply bar — mobile only, sits above the bottom nav bar */}
+      {currentUser && !isExternalPost && !activePost.comments_disabled && (
+        <div
+          className={`sm:hidden fixed bottom-16 left-0 right-0 z-40 bg-background border-t border-border px-4 py-2.5 transition-opacity duration-150 ${showReplyTray ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="flex gap-3 items-center">
+            <ProfileAvatar
+              username={currentUser.display_name || currentUser.handle || '?'}
+              profilePicture={currentUser.profile_picture}
+              size="sm"
+            />
+            <button
+              onClick={() => setShowReplyTray(true)}
+              className="flex-1 px-4 py-2.5 bg-secondary rounded-xl border border-border text-sm text-muted-foreground text-left cursor-text hover:bg-secondary/80 transition-colors"
+            >
+              Post a reply…
+            </button>
           </div>
         </div>
       )}

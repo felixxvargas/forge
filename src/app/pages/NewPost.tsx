@@ -541,7 +541,7 @@ export function NewPost() {
     const startIdx = mentionStartRef.current;
     if (startIdx < 0) { setShowMentions(false); setAtGameResults([]); return; }
     const curPos = textareaRef.current?.selectionStart ?? content.length;
-    const tag = '@' + game.title;
+    const tag = game.title;
     const newContent = content.slice(0, startIdx) + tag + ' ' + content.slice(curPos);
     setContent(newContent);
     const gameId = String(game.id ?? game.game_id ?? '');
@@ -655,7 +655,7 @@ export function NewPost() {
       });
       // After replying, go back to the parent post; after a group post, go to the group page
       if (replyTo) {
-        navigate(`/post/${encodeURIComponent(replyTo)}`, { replace: true });
+        navigate(`/post/${encodeURIComponent(replyTo)}?newReply=${lastPostId ?? ''}`, { replace: true });
       } else if (activeCommunityId) {
         navigate(`/group/${activeCommunityId}`, { replace: true });
       } else {
