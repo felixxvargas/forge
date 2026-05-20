@@ -10,6 +10,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { lfgFlares as flaresAPI, groupThreads as threadAPI, groups as groupsAPI, supabase } from '../utils/supabase';
 import type { LFGFlare } from '../utils/supabase';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
+import { profilePath } from '../utils/profilePath';
 
 function timeUntil(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
@@ -370,7 +371,7 @@ export function FlareDetail() {
 
           {flare.user && (
             <button
-              onClick={() => navigate(`/profile/${flare.user.id}`)}
+              onClick={() => navigate(profilePath(flare.user))}
               className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
             >
               <ProfileAvatar
@@ -447,7 +448,7 @@ export function FlareDetail() {
               {members.map(member => (
                 <button
                   key={member.id}
-                  onClick={() => navigate(`/profile/${member.id}`)}
+                  onClick={() => navigate(profilePath(member))}
                   className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/40 transition-colors text-left"
                 >
                   <ProfileAvatar
@@ -483,7 +484,7 @@ export function FlareDetail() {
                 const busy = actionUserId === req.id;
                 return (
                   <div key={req.id} className="flex items-center gap-3 px-5 py-3.5">
-                    <button onClick={() => navigate(`/profile/${req.id}`)} className="hover:opacity-80 transition-opacity">
+                    <button onClick={() => navigate(profilePath(req))} className="hover:opacity-80 transition-opacity">
                       <ProfileAvatar
                         username={req.display_name || req.handle || '?'}
                         profilePicture={req.profile_picture}

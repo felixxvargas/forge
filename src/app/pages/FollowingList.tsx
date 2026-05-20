@@ -5,6 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { profiles } from '../utils/supabase';
+import { profilePath } from '../utils/profilePath';
 import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 import useSWR from 'swr';
 
@@ -90,7 +91,7 @@ export function FollowingList() {
           <div className="space-y-3">
             {following.map(user => (
               <div key={user.id} className="bg-card rounded-xl p-4 flex items-center gap-3">
-                <div onClick={() => navigate(`/profile/${user.id}`)} className="cursor-pointer">
+                <div onClick={() => navigate(profilePath(user))} className="cursor-pointer">
                   <ProfileAvatar
                     username={user.display_name || user.handle || '?'}
                     profilePicture={user.profile_picture}
@@ -99,10 +100,10 @@ export function FollowingList() {
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <button onClick={() => navigate(`/profile/${user.id}`)} className="font-medium hover:underline block truncate">
+                  <button onClick={() => navigate(profilePath(user))} className="font-medium hover:underline block truncate">
                     {user.display_name || user.handle}
                   </button>
-                  <button onClick={() => navigate(`/profile/${user.id}`)} className="text-sm text-muted-foreground hover:underline block truncate">
+                  <button onClick={() => navigate(profilePath(user))} className="text-sm text-muted-foreground hover:underline block truncate">
                     @{(user.handle || '').replace(/^@/, '')}
                   </button>
                   {user.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>}

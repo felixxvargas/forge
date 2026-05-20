@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { useNavigate } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
+import { profilePath } from './profilePath';
 
 interface LinkifyMentionsProps {
   text: string;
@@ -66,7 +67,7 @@ export function LinkifyMentions({ text, onMentionClick, gameId, gameTitle, gameI
                 onMentionClick(handle);
               } else {
                 const user = getUserByHandle(handleWithoutAt);
-                if (user) navigate(`/profile/${user.id}`);
+                if (user) navigate(profilePath(user));
               }
             }}
             className="text-accent hover:underline font-bold"

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList, Users, BarChart2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -865,7 +866,7 @@ export function NewPost() {
             dangerouslySetInnerHTML={{
               __html: content
                 ? buildHighlightedHtml(content, users, selectedGames[0] ?? null, selectedGroup ? [selectedGroup] : [])
-                : `<span style="color:var(--muted-foreground)">${replyTo ? 'Post a reply… Use @ to mention people, games or groups' : "What\\'s on your mind? Use @ to mention people, games or groups"}</span>`,
+                : `<span style="color:var(--muted-foreground)">${replyTo ? 'Post a reply… Use @ to mention people, games or groups' : "What's on your mind? Use @ to mention people, games or groups"}</span>`,
             }}
           />
           <textarea
@@ -882,8 +883,8 @@ export function NewPost() {
           />
         </div>
 
-        {/* @Mention + @Game + @Group suggestions — fixed above the OSK / textarea on desktop */}
-        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0 || isAtGameSearching || atGroupResults.length > 0) && mentionDropdownStyle && (
+        {/* @Mention + @Game + @Group suggestions — portalled to body so backdrop-filter on the compose module doesn't clip it */}
+        {showMentions && (mentionSuggestions.length > 0 || atGameResults.length > 0 || isAtGameSearching || atGroupResults.length > 0) && mentionDropdownStyle && typeof document !== 'undefined' && createPortal(
           <div
             className="fixed z-[60] bg-sidebar border border-border rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto"
             style={mentionDropdownStyle.left != null
@@ -962,7 +963,8 @@ export function NewPost() {
                 ))}
               </>
             )}
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* #Game hash suggestions — fixed above the OSK */}

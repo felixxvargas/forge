@@ -5,6 +5,7 @@ import { type User, type Post, type GameListType, type SocialPlatform, topicAcco
 import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications as notificationsAPI, userGamesAPI, supabase, streamArchivesAPI, sessionTelemetry, gameTimelineAPI, savedPostsAPI, vipListAPI } from '../utils/supabase';
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
 import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
+import { initPushNotifications } from '../utils/pushNotifications';
 
 // Quick lookup: topicId → User object (for attaching author to external posts)
 const topicAccountById: Record<string, User> = Object.fromEntries(
@@ -142,6 +143,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // without needing session in its dependency array (avoids double-fetch loops)
   const sessionRef = useRef(session);
   useEffect(() => { sessionRef.current = session; }, [session]);
+
+  // Initialize Android push notifications once the user is authenticated
+  useEffect(() => {
+    if (currentUser?.id) initPushNotifications(currentUser.id);
+  }, [currentUser?.id]);
 
   // Both a state (exposed to UI) and a ref (used in refreshFeed closure)
   const [followedGameIds, setFollowedGameIds] = useState<Set<string>>(new Set());

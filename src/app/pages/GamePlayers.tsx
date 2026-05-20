@@ -6,6 +6,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
 import { userGamesAPI } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
+import { profilePath } from '../utils/profilePath';
 
 type Tab = 'all' | 'friends';
 
@@ -94,7 +95,7 @@ export function GamePlayers() {
             {displayed.map((player) => (
               <button
                 key={player.id}
-                onClick={() => navigate(player.id === currentUser?.id ? '/profile' : `/profile/${player.id}`)}
+                onClick={() => navigate(player.id === currentUser?.id ? '/profile' : profilePath(player))}
                 className="w-full flex items-center gap-3 p-3 bg-card rounded-xl hover:bg-card/80 transition-colors text-left"
               >
                 <ProfileAvatar

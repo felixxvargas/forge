@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 import { loadRankMapOnly, getGameRank } from '../utils/gameRankings';
+import { profilePath } from '../utils/profilePath';
 
 type PostSort = 'latest' | 'top';
 
@@ -800,7 +801,7 @@ export function GameDetail() {
                   <div
                     key={flare.id}
                     className="flex items-start gap-3 p-3 bg-card rounded-xl mb-2 cursor-pointer hover:bg-card/80 transition-colors"
-                    onClick={() => navigate(`/profile/${player.id}`)}
+                    onClick={() => navigate(profilePath(player))}
                   >
                     <ProfileAvatar
                       username={player.display_name || player.handle || '?'}

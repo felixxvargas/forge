@@ -7,6 +7,7 @@ import { GroupIcon } from '../components/GroupIcon';
 import { useAppData } from '../context/AppDataContext';
 import { userGamesAPI } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
+import { profilePath } from '../utils/profilePath';
 
 type Tab = 'people' | 'groups' | 'lists';
 
@@ -56,7 +57,7 @@ export function GameLists() {
   const renderPlayer = (player: any) => (
     <button
       key={player.id}
-      onClick={() => navigate(player.id === currentUser?.id ? '/profile' : `/profile/${player.id}`)}
+      onClick={() => navigate(player.id === currentUser?.id ? '/profile' : profilePath(player))}
       className="w-full flex items-center gap-3 p-3 bg-card rounded-xl hover:bg-card/80 transition-colors text-left"
     >
       <ProfileAvatar
@@ -159,7 +160,7 @@ export function GameLists() {
               {listEntries.map((entry) => (
                 <button
                   key={entry.userId}
-                  onClick={() => navigate(entry.userId === currentUser?.id ? '/profile' : `/profile/${entry.userId}`)}
+                  onClick={() => navigate(entry.userId === currentUser?.id ? '/profile' : profilePath({ id: entry.userId, handle: entry.handle }))}
                   className="w-full flex items-center gap-3 p-3 bg-card rounded-xl hover:bg-card/80 transition-colors text-left"
                 >
                   <ProfileAvatar

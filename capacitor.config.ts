@@ -12,6 +12,9 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
   },
   plugins: {
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,

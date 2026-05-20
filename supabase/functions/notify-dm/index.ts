@@ -10,6 +10,47 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+async function getFcmAccessToken(sa: {
+  client_email: string;
+  private_key: string;
+  project_id: string;
+}): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (obj: object) =>
+    btoa(JSON.stringify(obj)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const header = { alg: "RS256", typ: "JWT" };
+  const claim = {
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now,
+  };
+  const signingInput = `${encode(header)}.${encode(claim)}`;
+  const pemContent = sa.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----\n?/, "")
+    .replace(/\n?-----END PRIVATE KEY-----\n?/, "")
+    .replace(/\n/g, "");
+  const keyBytes = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8", keyBytes, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sigBytes = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5", cryptoKey, new TextEncoder().encode(signingInput),
+  );
+  const sig = btoa(String.fromCharCode(...new Uint8Array(sigBytes)))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const jwt = `${signingInput}.${sig}`;
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  const tokenData = await tokenRes.json() as { access_token?: string };
+  if (!tokenData.access_token) throw new Error("Failed to get FCM access token");
+  return tokenData.access_token;
+}
+
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -144,6 +185,39 @@ Deno.serve(async (req) => {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
+  }
+
+  // Also send FCM push notification if the recipient has a device token
+  const saRaw = Deno.env.get("FCM_SERVICE_ACCOUNT");
+  if (saRaw) {
+    try {
+      const { data: tokenRow } = await supabase
+        .from("device_tokens")
+        .select("token")
+        .eq("user_id", recipientId)
+        .maybeSingle();
+      if (tokenRow?.token) {
+        const sa = JSON.parse(saRaw) as { client_email: string; private_key: string; project_id: string };
+        const accessToken = await getFcmAccessToken(sa);
+        await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: {
+              token: tokenRow.token,
+              notification: {
+                title: senderDisplay,
+                body: messagePreview ? messagePreview.slice(0, 100) : "New message",
+              },
+              data: { url: "/messages" },
+              android: { priority: "high" },
+            },
+          }),
+        });
+      }
+    } catch (err) {
+      console.warn("FCM push failed:", err);
+    }
   }
 
   return new Response(JSON.stringify({ success: true }), {

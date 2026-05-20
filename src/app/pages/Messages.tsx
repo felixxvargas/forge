@@ -7,6 +7,7 @@ import { MessageCircle, ArrowLeft, Send, Plus, Search, X, Loader2, Users, Chevro
 import { useAppData } from '../context/AppDataContext';
 import { directMessages as dmAPI, groupThreads as groupAPI, profiles, supabase, dmReactionsAPI, groupReactionsAPI, groupThreadReadsAPI } from '../utils/supabase';
 import { initEncryptionKeys, getMyPublicKeyJwk, encryptMessage, decryptMessage } from '../utils/crypto';
+import { profilePath } from '../utils/profilePath';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
@@ -855,7 +856,7 @@ export function Messages() {
                 {groupParticipants.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => navigate(p.id === currentUser?.id ? '/profile' : `/profile/${p.id}`)}
+                    onClick={() => navigate(p.id === currentUser?.id ? '/profile' : profilePath(p))}
                     className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
                   >
                     <ProfileAvatar
@@ -912,13 +913,13 @@ export function Messages() {
             return (
               <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} group`}>
                 {!isMe && (
-                  <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="shrink-0 self-end mb-5">
+                  <button onClick={() => navigate(sender ? profilePath(sender) : `/profile/${msg.sender_id}`)} className="shrink-0 self-end mb-5">
                     <ProfileAvatar username={sender?.display_name || sender?.handle || '?'} profilePicture={sender?.profile_picture ?? null} size="sm" userId={msg.sender_id} />
                   </button>
                 )}
                 <div className={`max-w-[70%] flex flex-col relative ${isMe ? 'items-end' : 'items-start'}`}>
                   {!isMe && sender && (
-                    <button onClick={() => navigate(`/profile/${msg.sender_id}`)} className="text-xs mb-0.5 transition-colors" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    <button onClick={() => navigate(sender ? profilePath(sender) : `/profile/${msg.sender_id}`)} className="text-xs mb-0.5 transition-colors" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                       {sender.display_name || sender.handle}
                     </button>
                   )}
@@ -997,7 +998,7 @@ export function Messages() {
                               {readers.map(p => (
                                 <button
                                   key={p.id}
-                                  onClick={() => { setReadReceiptPopupOpen(false); navigate(`/profile/${p.id}`); }}
+                                  onClick={() => { setReadReceiptPopupOpen(false); navigate(profilePath(p)); }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-secondary transition-colors text-left"
                                 >
                                   <ProfileAvatar username={p.display_name || p.handle || '?'} profilePicture={p.profile_picture ?? null} size="sm" userId={p.id} />
@@ -1163,7 +1164,7 @@ export function Messages() {
                 {readReceiptSheetUsers.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => { setShowReadReceiptSheet(false); navigate(p.id === currentUser?.id ? '/profile' : `/profile/${p.id}`); }}
+                    onClick={() => { setShowReadReceiptSheet(false); navigate(p.id === currentUser?.id ? '/profile' : profilePath(p)); }}
                     className="w-full flex items-center gap-3 py-3 hover:bg-secondary/50 rounded-xl px-2 transition-colors text-left"
                   >
                     <ProfileAvatar
@@ -1228,7 +1229,7 @@ export function Messages() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <button
-              onClick={() => navigate(partner.id === currentUser?.id ? '/profile' : `/profile/${partner.id}`)}
+              onClick={() => navigate(partner.id === currentUser?.id ? '/profile' : profilePath(partner))}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
             >
               <ProfileAvatar

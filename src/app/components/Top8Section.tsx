@@ -5,6 +5,7 @@ import { ProfileAvatar } from './ProfileAvatar';
 import { top8API, supabase } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
 import { useAppData } from '../context/AppDataContext';
+import { profilePath } from '../utils/profilePath';
 
 interface Top8FriendsProps {
   friendIds: string[];
@@ -34,7 +35,7 @@ export function Top8Friends({ friendIds, isOwnProfile, onRemove, onAdd, canAdd }
         {profiles.map(profile => (
           <div key={profile.id} className="relative group/tf">
             <button
-              onClick={() => navigate(`/profile/${profile.id}`)}
+              onClick={() => navigate(profilePath(profile))}
               className="flex flex-col items-center gap-1 w-14"
             >
               <ProfileAvatar

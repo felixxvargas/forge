@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, ShieldOff, UserMinus, Crown, ShieldCheck } from 'lu
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { groups as groupsAPI } from '../utils/supabase';
+import { profilePath } from '../utils/profilePath';
 
 export function CommunityMembers() {
   const { groupId } = useParams();
@@ -119,7 +120,7 @@ export function CommunityMembers() {
                 >
                   <button
                     className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                    onClick={() => navigate(`/profile/${member.id}`)}
+                    onClick={() => navigate(profilePath(member))}
                   >
                     <ProfileAvatar
                       username={member.display_name || member.handle || '?'}

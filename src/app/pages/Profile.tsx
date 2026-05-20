@@ -949,7 +949,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h1 className="text-xl font-semibold line-clamp-2 break-words">{profileUser.display_name || profileUser.handle}</h1>
-                  <UserBadgeIcons handle={profileUser.handle || ''} createdAt={profileUser.created_at} />
+                  <UserBadgeIcons handle={profileUser.handle || ''} createdAt={profileUser.created_at} accountType={(profileUser as any).account_type} />
                 </div>
                 <p className="text-muted-foreground">@{(profileUser.handle || '').replace(/^@/, '')}</p>
                 {profileUser.pronouns && (

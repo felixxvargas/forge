@@ -17,6 +17,7 @@ import { fetchAllGamingMediaPosts, searchBlueskyUsers, topicAccountBlueskyHandle
 import { searchMastodonUsers } from '../utils/fediverse';
 import type { LFGFlare } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
+import { profilePath } from '../utils/profilePath';
 
 type ExploreTab = 'posts' | 'users' | 'games' | 'groups';
 
@@ -1181,7 +1182,7 @@ export function Explore() {
                           return (
                             <div
                               key={flare.id}
-                              onClick={() => navigate(`/profile/${player.id}`)}
+                              onClick={() => navigate(profilePath(player))}
                               className="p-3 bg-card border border-border rounded-lg hover:bg-secondary/40 transition-colors duration-200 cursor-pointer"
                             >
                               <div className="flex items-center gap-3 mb-2">

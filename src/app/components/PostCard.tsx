@@ -13,6 +13,7 @@ import { useBlueskyData } from '../hooks/useBlueskyData';
 import { ShareModal } from './ShareModal';
 import { gameCoverCache, gameCoverPromises } from '../utils/mentionHighlight';
 import { gamesAPI } from '../utils/api';
+import { profilePath } from '../utils/profilePath';
 import { pollAPI, streamArchivesAPI, type StreamArchive } from '../utils/supabase';
 import { LinkPreview } from './LinkPreview';
 import { BlurredImage } from './BlurredImage';
@@ -294,7 +295,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
     if (onUserClick) {
       onUserClick(e);
     } else {
-      navigate(`/profile/${user.id}`);
+      navigate(profilePath(user));
     }
   };
 
@@ -909,7 +910,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                 if (isDetailView) {
                   onComment?.(post.id);
                 } else {
-                  navigate(`/post/${encodeURIComponent(post.id)}#comments`);
+                  navigate(`/post/${encodeURIComponent(post.id)}?reply=1`);
                 }
               });
             }}

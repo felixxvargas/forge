@@ -23,7 +23,7 @@ export function ProfileAvatar({ username, profilePicture, size = 'md', className
 
   const resolvedPicture = profilePicture || (userId ? profileCache.get(userId)?.avatar : undefined);
   const cleanName = (username ?? '').replace(/^@/, '').toLowerCase();
-  const imgSrc = cleanName === 'forge' ? '/forge-avatar.png' : (resolvedPicture ?? null);
+  const imgSrc = resolvedPicture ?? null;
   const showImage = !!imgSrc && !imageError;
   const initials = (username ?? '').replace(/^@/, '').slice(0, 2).toUpperCase() || '??';
 

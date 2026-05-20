@@ -1,5 +1,6 @@
 import { useNavigate } from '@/compat/router';
 import { ProfileAvatar } from './ProfileAvatar';
+import { profilePath } from '../utils/profilePath';
 
 import { PlatformIcon } from './PlatformIcon';
 import { FollowButton } from './FollowButton';
@@ -23,7 +24,7 @@ export function UserCard({ user }: UserCardProps) {
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
-    navigate(`/profile/${user.id}`);
+    navigate(profilePath(user));
   };
 
   if (user.id === currentUser?.id) return null;

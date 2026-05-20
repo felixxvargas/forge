@@ -10,6 +10,7 @@ import { GroupIcon } from '../components/GroupIcon';
 
 import { gamesAPI } from '../utils/api';
 import { analytics } from '../utils/analytics';
+import { profilePath } from '../utils/profilePath';
 import { groups as groupsAPI, profiles as profilesAPI, lfgFlares as flaresAPI, posts as postsAPI } from '../utils/supabase';
 
 function getCoverUrl(game: any): string | null {
@@ -405,7 +406,7 @@ export function CommunityDetail() {
               {/* Admin */}
               {adminUser && (
                 <button
-                  onClick={() => navigate(`/profile/${adminUser.id}`)}
+                  onClick={() => navigate(profilePath(adminUser))}
                   className="text-xs text-muted-foreground hover:opacity-80 transition-opacity"
                 >
                   Admin: <span className="font-bold text-accent">{adminUser.display_name || adminUser.handle}</span>

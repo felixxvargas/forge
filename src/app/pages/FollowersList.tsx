@@ -6,6 +6,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { useMemo } from 'react';
 import { profiles } from '../utils/supabase';
+import { profilePath } from '../utils/profilePath';
 import useSWR from 'swr';
 
 export function FollowersList() {
@@ -114,7 +115,7 @@ export function FollowersList() {
                     </p>
                   )}
                   <div className="bg-card rounded-xl p-4 flex items-center gap-3">
-                    <div onClick={() => navigate(`/profile/${user.id}`)} className="cursor-pointer">
+                    <div onClick={() => navigate(profilePath(user))} className="cursor-pointer">
                       <ProfileAvatar
                         username={user.display_name || user.handle || '?'}
                         profilePicture={user.profile_picture}
@@ -123,10 +124,10 @@ export function FollowersList() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <button onClick={() => navigate(`/profile/${user.id}`)} className="font-medium hover:underline block truncate text-left">
+                      <button onClick={() => navigate(profilePath(user))} className="font-medium hover:underline block truncate text-left">
                         {user.display_name || user.handle}
                       </button>
-                      <button onClick={() => navigate(`/profile/${user.id}`)} className="text-sm text-muted-foreground hover:underline block truncate text-left">
+                      <button onClick={() => navigate(profilePath(user))} className="text-sm text-muted-foreground hover:underline block truncate text-left">
                         @{(user.handle || '').replace(/^@/, '')}
                       </button>
                       {user.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>}

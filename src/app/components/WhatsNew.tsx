@@ -11,6 +11,19 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.3.7',
+    date: 'May 2026',
+    title: "What's New in Forge",
+    summary: "Alpha Tester badge, clean profile URLs, reply highlighting, and Android push notifications.",
+    highlights: [
+      'Alpha Tester badge: founding members who joined during alpha get a ruby flask icon on their profile.',
+      'Profile URLs now use your handle — share your profile as forge-social.app/yourhandle.',
+      'Tapping the comment icon on a post now opens the reply tray with a smooth slide-up animation.',
+      'Game mentions in the reply tray are now highlighted in accent green and bold, matching the compose post experience.',
+      'Android push notifications: stay informed of DMs and activity even when the app is closed (beta).',
+    ],
+  },
+  {
     version: 'v0.3.6',
     date: 'May 2026',
     title: "What's New in Forge",

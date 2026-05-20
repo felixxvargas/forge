@@ -9,7 +9,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { useAppData } from '../context/AppDataContext';
 import { posts as postsAPI, savedPostsAPI } from '../utils/supabase';
 import { gamesAPI } from '../utils/api';
-import { gameSearchCache, gameCoverCache } from '../utils/mentionHighlight';
+import { gameSearchCache, gameCoverCache, buildHighlightedHtml } from '../utils/mentionHighlight';
 import { ImageUpload } from '../components/ImageUpload';
 
 function formatCount(n: number): string {
@@ -36,6 +36,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [mentionDropdownPos, setMentionDropdownPos] = useState<{ bottom: number; left?: number | null; width?: number | null } | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const [replies, setReplies] = useState<any[]>([]);
   const [reposters, setReposters] = useState<any[]>([]);
@@ -115,8 +116,16 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
   const post = posts.find(p => p.id === postId && !p.repostedBy) ?? posts.find(p => p.id === postId);
   const postUser = post?.author ?? (post?.user_id ? getUserById(post.user_id) : null) ?? (post?.userId ? getUserById(post.userId) : null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); setIsDesktop(window.innerWidth >= 768); }, []);
   useEffect(() => { window.scrollTo(0, 0); setShowParentContext(false); }, [postId]);
+
+  // Auto-open reply tray when navigated with ?reply=1
+  useEffect(() => {
+    if (mounted && searchParams.get('reply') === '1') {
+      setShowReplyTray(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [mounted, searchParams]);
 
   // Auto-reveal parent context when user scrolls back up to the top
   useEffect(() => {
@@ -318,12 +327,6 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     savedPostsAPI.getCount(postId).then(setSaveCount).catch(() => {});
   }, [postId, isExternalPost]);
 
-  // Scroll to replies if navigated with #comments hash
-  useEffect(() => {
-    if (window.location.hash === '#comments' && repliesRef.current && !isLoadingReplies) {
-      setTimeout(() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  }, [isLoadingReplies]);
 
   const handleReplyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -712,7 +715,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
             user={activeUser}
             onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
             onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-            onComment={() => repliesRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            onComment={() => setShowReplyTray(true)}
             onDelete={currentUser && activePost.user_id === currentUser.id
               ? async (id) => { await deletePost(id); navigate(-1); }
               : undefined}
@@ -773,7 +776,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                 )}
               </div>
               {/* Desktop: detailed rows with avatar stacks */}
-              <div className="hidden md:block divide-y divide-border">
+              {isDesktop && <div className="divide-y divide-border">
                 {likers.length > 0 && (
                   <button
                     onClick={() => navigate(`/post/${encodeURIComponent(postId!)}/interactions?tab=likes`)}
@@ -846,7 +849,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                     </span>
                   </button>
                 )}
-              </div>
+              </div>}
             </div>
           )}
         </div>
@@ -1005,21 +1008,31 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                 )}
 
                 {/* Scrollable body */}
-                <div className="flex gap-3 px-4 pt-4 pb-2 flex-1 overflow-y-auto min-h-0">
+                <div className="flex gap-3 px-4 pt-4 pb-4 flex-1 overflow-y-auto min-h-0">
                   <ProfileAvatar
                     username={currentUser.display_name || currentUser.handle || '?'}
                     profilePicture={currentUser.profile_picture}
                     size="md"
                   />
                   <div className="flex-1 min-w-0 relative">
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 text-base pointer-events-none select-none overflow-visible text-foreground"
+                      style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: 0 }}
+                      dangerouslySetInnerHTML={{
+                        __html: newReply
+                          ? buildHighlightedHtml(newReply, users, replySelectedGames[0] ?? null, replySelectedGroup ? [replySelectedGroup] : [])
+                          : ''
+                      }}
+                    />
                     <textarea
                       ref={replyTextareaRef}
                       autoFocus
                       value={newReply}
                       onChange={handleReplyChange}
                       placeholder={isExternalPost ? 'Post a comment… Use @ to mention' : 'Post a reply… Use @ to mention'}
-                      style={{ fontSize: '16px' }}
-                      className="w-full bg-transparent outline-none resize-none text-foreground placeholder:text-muted-foreground min-h-[120px]"
+                      style={{ fontSize: '16px', color: 'transparent', caretColor: 'var(--foreground)' }}
+                      className="relative w-full bg-transparent outline-none resize-none placeholder:text-muted-foreground min-h-[120px]"
                       rows={5}
                     />
 

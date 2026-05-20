@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { Profile } from '@/app/pages/Profile';
 import type { Metadata } from 'next';
 
@@ -39,5 +40,9 @@ export async function generateMetadata(
 export default async function Page({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params;
   const initialProfile = await fetchProfile(userId);
+  if (initialProfile?.handle) {
+    const stripped = (initialProfile.handle as string).replace(/^@/, '');
+    redirect(`/${stripped}`);
+  }
   return <Suspense><Profile initialProfile={initialProfile ?? undefined} /></Suspense>;
 }
