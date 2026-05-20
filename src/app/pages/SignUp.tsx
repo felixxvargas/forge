@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, Link } from '@/compat/router';
-import { Mail, Eye, EyeOff, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Eye, EyeOff, CheckCircle2, XCircle, ArrowLeft, Gamepad2, Users, Tv2, Flame, Search } from 'lucide-react';
 import { BetaTag } from '../components/ui/BetaTag';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import { toast } from 'sonner';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
-import { useRef } from 'react';
+import ForgeSVG from '../../assets/forge-logo.svg?react';
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string;
 
@@ -130,24 +129,50 @@ export function SignUp() {
           style={{ background: 'radial-gradient(circle, rgba(88,28,135,0.22) 0%, transparent 70%)', filter: 'blur(70px)' }} />
       </div>
 
-      <div className="w-full max-w-md flex-1 flex flex-col justify-center pt-16 sm:pt-0 relative z-10">
+      {/* Desktop feature points + form side-by-side */}
+      <div className="w-full lg:max-w-4xl flex-1 flex flex-col lg:flex-row lg:items-center lg:gap-16 pt-20 sm:pt-0 relative z-10 lg:px-4">
+
+        {/* Feature points — desktop left column only */}
+        <div className="hidden lg:flex flex-col gap-6 flex-1 max-w-sm rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div>
+            <h2 className="text-3xl font-black text-foreground leading-tight mb-2">
+              The social network<br/>built for gamers.
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Track your library, connect with the community, and share what you're playing.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {[
+              { icon: Gamepad2, title: 'Track your game library', desc: 'Organize games you\'ve played, want to play, and your all-time favorites.' },
+              { icon: Users, title: 'Connect with gamers', desc: 'Follow friends, join communities, and see what everyone is playing.' },
+              { icon: Search, title: 'Discover new games', desc: 'Get recommendations from people with the same gaming taste as you.' },
+              { icon: Flame, title: 'Find teammates with LFG', desc: 'Post a flare when you need a squad and get matched instantly.' },
+              { icon: Tv2, title: 'Auto Twitch stream archives', desc: 'Your Twitch VODs are automatically saved and shared to your profile.' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex gap-3 items-start">
+                <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon className="w-4.5 h-4.5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full max-w-md flex-1 lg:flex-none flex flex-col justify-center">
+
         {/* Logo section */}
         <div className="text-center mb-8">
-          <div className="inline-block px-6 pt-5 pb-4 rounded-2xl mb-1"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            {/* Logo with extended glow covering wordmark */}
-            <div className="relative w-16 h-[51px] sm:w-24 sm:h-[77px] mx-auto mb-3 flex items-center justify-center">
-              <svg viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative w-full h-full">
-                <path d="M23.8546 22.0745C23.7979 22.282 23.7454 22.5338 23.5728 22.7707C23.5288 23.1602 15.1934 22.7982 14.7127 22.7861C14.2111 22.7735 14.1341 22.1925 14.2267 21.8101C14.4018 21.0873 14.3769 20.9666 13.4012 20.9113C12.5315 20.862 12.1966 20.8773 11.1815 20.8909C10.5502 20.8993 10.3816 20.9074 10.1126 21.6804C9.99697 22.0128 9.64876 22.8544 9.27062 22.8359C8.44573 22.7954 4.60944 23.0175 3.78419 23.0361C2.63975 23.062 1.45237 23.1342 0.410346 22.9347C-0.760071 22.6379 0.894435 18.5131 1.39725 16.955C1.90006 15.3969 2.56631 12.3622 4.16834 11.5331C6.34674 10.4057 9.05856 10.4719 10.9357 8.62745C11.583 7.99141 11.6584 7.36046 11.7806 6.62056C11.8589 6.14617 11.5027 5.70097 11.0902 5.39449C10.8029 5.18109 10.5792 5.00749 9.59795 4.65701C8.70017 4.33633 8.3743 4.21834 7.18528 4.01055C6.3735 3.86869 4.77876 4.05397 4.77876 3.24283C4.77876 2.87926 5.36739 0.899542 5.47746 0.622489C5.47741 -0.174039 6.13479 0.0211001 9.17101 0.0211077C14.9725 0.0211221 20.6141 0.0731651 26.4059 0.0732023C27.31 0.0732081 28.5337 0.0732023 29.2956 0.0732023C28.8365 2.44179 28.4822 3.21115 27.3705 3.38842C26.0435 3.60001 23.1275 4.35326 21.7334 4.95082C21.1549 5.25938 20.7193 5.52426 20.2956 5.78788C19.4622 6.30628 19.2417 7.64898 19.3112 8.67594C19.4076 10.101 23.3879 10.5443 25.071 11.5331C26.6525 11.8949 25.2559 16.7747 25.071 17.3973C24.5922 19.0097 24.2238 20.7229 23.8546 22.0745Z" fill="#E7FFC4"/>
-              </svg>
-            </div>
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <h1 className="text-4xl font-black tracking-tight text-accent font-sora">Forge</h1>
-              <BetaTag className="hidden sm:inline-flex" />
-            </div>
-            <BetaTag className="sm:hidden mb-1" />
-            <p className="text-muted-foreground text-sm">Connect with gamers across all platforms</p>
+          <div className="relative flex items-center justify-center gap-2.5 mb-2">
+            <ForgeSVG width="32" height="26" aria-hidden="true" />
+            <span className="font-black text-2xl text-accent tracking-tight">Forge</span>
+            <BetaTag size="sm" />
           </div>
+          <p className="text-sm text-muted-foreground">Your gaming social network</p>
         </div>
 
         {/* Glass card */}
@@ -298,6 +323,22 @@ export function SignUp() {
             <Link to="/blog" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors underline">
               Forge Blog
             </Link>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* App Store Badges */}
+      <div className="w-full max-w-md mt-8 mb-6 relative z-10">
+        <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
+        <div className="flex items-center justify-center gap-6 pb-4">
+          <Link to="/android-beta" className="relative group">
+            <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10 group-hover:opacity-80 transition-opacity" />
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-accent tracking-wide font-medium">Join Beta</span>
+          </Link>
+          <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
+            <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-7 grayscale" />
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
           </div>
         </div>
       </div>
