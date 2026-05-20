@@ -453,14 +453,15 @@ export const posts = {
   },
 
   async getTrendingFeed(limit = 30) {
-    // Fetch recent posts (last 14 days) and rank by total engagement
+    const FORGE_USER_ID = 'dfa8b7a1-b930-4ee8-a14a-5cb9aa48c5d3';
     const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`)
-      .gte('created_at', cutoff)
-      .order('like_count', { ascending: false })
-      .limit(limit * 3);
+    const forgeCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const SELECT = `*, author:profiles!user_id(id, handle, display_name, profile_picture, created_at)`;
+
+    const [{ data, error }, { data: forgePosts }] = await Promise.all([
+      supabase.from('posts').select(SELECT).gte('created_at', cutoff).order('like_count', { ascending: false }).limit(limit * 3),
+      supabase.from('posts').select(SELECT).eq('user_id', FORGE_USER_ID).gte('created_at', forgeCutoff).order('created_at', { ascending: false }).limit(5),
+    ]);
     if (error) throw new Error(error.message);
     const posts = (data ?? []).filter((p: any) => p.content?.trim() && !p.reply_to);
     // Re-rank by composite engagement score
@@ -469,7 +470,10 @@ export const posts = {
       const scoreB = (b.like_count ?? 0) + (b.repost_count ?? 0) * 2 + (b.comment_count ?? 0) * 3;
       return scoreB - scoreA;
     });
-    return posts.slice(0, limit);
+    // Prepend @forge posts regardless of engagement (dedup against scored list)
+    const seenIds = new Set(posts.map((p: any) => p.id));
+    const forgeInjected = (forgePosts ?? []).filter((p: any) => p.content?.trim() && !p.reply_to && !seenIds.has(p.id));
+    return [...forgeInjected, ...posts].slice(0, limit);
   },
 
   async getForYouFeed(userId: string, followedGameIds: string[] = [], limit = 30) {

@@ -459,9 +459,9 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="flex gap-3 sm:gap-6 items-start">
+        <div className="flex gap-3 md:gap-6 items-start">
           {splitToColumns([0,1,2,3,4,5,6,7,8,9], numCols).map((colItems, colIdx) => (
-            <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
+            <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
               {colItems.map((i) => {
                 const hasImage = [0, 3, 5, 8].includes(i);
                 const textWidths = ['w-full','w-5/6','w-full','w-4/5','w-11/12','w-full','w-3/4','w-5/6','w-full','w-2/3'];
@@ -496,12 +496,12 @@ export function Feed() {
       )}
 
       {!loading && (
-        <div className="flex gap-3 sm:gap-6 items-start">
+        <div className="flex gap-3 md:gap-6 items-start">
           {(() => {
             // Mark first 6 posts (above fold on 1–3 column layouts) as priority for image loading.
             const priorityIds = new Set((visiblePosts as any[]).slice(0, 6).map((p: any) => p.id));
             return splitToColumns(visiblePosts as any[], numCols).map((colPosts, colIdx) => (
-              <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
+              <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
                 {colPosts.map(post => {
                   const user = post.author;
                   if (!user) return null;
@@ -528,9 +528,9 @@ export function Feed() {
       {!loading && mutedFilteredPosts.length > 0 && (
         <div className="mt-4">
           <div className="text-sm text-muted-foreground mb-2">Muted Posts</div>
-          <div className="flex gap-3 sm:gap-6 items-start">
+          <div className="flex gap-3 md:gap-6 items-start">
             {splitToColumns(mutedFilteredPosts as any[], numCols).map((colPosts, colIdx) => (
-              <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-6 min-w-0">
+              <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
                 {colPosts.map(post => {
                   const user = post.author;
                   if (!user) return null;

@@ -5,6 +5,15 @@ import { blogPosts } from '@/content/blog/posts';
 export const metadata: Metadata = {
   title: 'Blog | Forge',
   description: 'Updates, product roadmap, and announcements from the Forge team.',
+  openGraph: {
+    title: 'Blog | Forge',
+    description: 'Updates, product roadmap, and announcements from the Forge team.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/og-image.png'],
+  },
 };
 
 function formatDate(iso: string): string {

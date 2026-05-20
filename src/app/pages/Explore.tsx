@@ -1017,7 +1017,7 @@ export function Explore() {
                       ))}
                     </div>
                   </>
-                ) : (isSearchActive ? searchGames : filteredGames).length === 0 ? (
+                ) : (!searchLoading && (isSearchActive ? searchGames : filteredGames).length === 0) ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Gamepad2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>{isSearchActive ? `No games found for "${searchQuery}"` : 'No games found'}</p>

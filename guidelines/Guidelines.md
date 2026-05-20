@@ -178,7 +178,7 @@ Plus: `lfg` (Looking for Group), custom lists (Premium only).
 ### 3. Social Feed
 **Two main feeds:**
 - **Following**: Posts from users you follow + cross-posted content from Bluesky/Mastodon topic accounts. Bluesky fetch uses `limit * 5` from the API and slices after filtering reposts to guarantee non-repost posts are returned.
-- **Trending**: Algorithmic/most-engaged content
+- **Trending**: Algorithmic/most-engaged content. @forge posts (UUID `dfa8b7a1-b930-4ee8-a14a-5cb9aa48c5d3`) are always injected at the top regardless of engagement via `getTrendingFeed()` in `supabase.ts`.
 
 **Post Features:** Text, images (with ALT text), link previews, game tags (IGDB), like/repost/quote/comment, attached game list previews, threaded replies
 
@@ -235,6 +235,7 @@ Profile section showing up to 8 friends and 8 games the user highlights. Display
 | Badge | Condition |
 |-------|-----------|
 | Sprout 🌱 | Account < 91 days old |
+| Alpha Tester | Founding members who joined during alpha — displays a ruby flask icon on their profile |
 | Mentor | Manual/admin-assigned |
 | Forge Pioneer | Early adopter designation |
 
@@ -378,6 +379,35 @@ interface Feedback {
 }
 ```
 
+### device_tokens
+Stores FCM push notification tokens per user/platform.
+```typescript
+interface DeviceToken {
+  id: string;        // UUID
+  user_id: string;   // FK → profiles(id), cascade delete
+  token: string;     // FCM registration token
+  platform: string;  // 'android' (default)
+  created_at: string;
+  // UNIQUE(user_id, platform) — one token per platform per user
+}
+```
+
+### scheduled_posts
+Auto-publish queue for @forge account posts.
+```typescript
+interface ScheduledPost {
+  id: string;
+  user_id: string;           // FK → profiles(id)
+  content: string;           // max 500 chars
+  game_ids: string[];
+  game_titles: string[];
+  scheduled_at: string;      // UTC timestamp to publish
+  status: 'pending' | 'published';
+  published_post_id: string | null;  // FK → posts(id) after publish
+  created_at: string;
+}
+```
+
 ### Session Events (`forge_session_events` table)
 Tracks user session lifecycle for engagement metrics. Written fire-and-forget by `sessionTelemetry` in `supabase.ts`.
 ```typescript
@@ -454,6 +484,14 @@ npx supabase functions deploy forge-api \
 # Twitch VOD archive
 npx supabase functions deploy twitch-vod-archive \
   --project-ref xmxeafjpscgqprrreulh
+
+# Push notifications (triggered by DB webhook on notifications INSERT)
+npx supabase functions deploy send-push-notification \
+  --project-ref xmxeafjpscgqprrreulh
+
+# DM notifications (email + FCM push)
+npx supabase functions deploy notify-dm \
+  --project-ref xmxeafjpscgqprrreulh
 ```
 
 ### Vercel API Routes (`/api/*`)
@@ -463,6 +501,8 @@ npx supabase functions deploy twitch-vod-archive \
 | `POST /api/stripe/create-payment-intent` | Create Stripe PaymentIntent for Premium (idempotency-keyed per userId) |
 | `POST /api/stripe/webhook` | Handle Stripe `payment_intent.succeeded`; returns 500 on DB failure so Stripe retries |
 | `GET /api/admin/stats` | Admin-only: returns user, post, game, community, onboarding, engagement metrics |
+| `POST /api/push/register-token` | Upsert FCM device token for a user into `device_tokens` table |
+| `GET /api/cron/publish-scheduled-posts` | Publish pending @forge scheduled posts; secured with `Authorization: Bearer CRON_SECRET` |
 
 All are Vercel Edge Functions (`export const config = { runtime: 'edge' }`).
 
@@ -734,6 +774,8 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 | `VITE_TWITCH_CLIENT_ID` | Frontend | Twitch OAuth client ID (initiates auth flow) |
 | `TWITCH_CLIENT_ID` | Supabase secrets | Twitch API — used in `twitch-vod-archive` edge function |
 | `TWITCH_CLIENT_SECRET` | Supabase secrets | Twitch API — used in `twitch-vod-archive` edge function |
+| `FCM_SERVICE_ACCOUNT` | Supabase secrets | Full Firebase service account JSON for FCM HTTP v1 push notifications |
+| `CRON_SECRET` | Vercel env vars | Secures `GET /api/cron/publish-scheduled-posts` (Bearer token) |
 
 ---
 
@@ -859,6 +901,16 @@ Desktop: sidebar (info, games, flares) on **left** (`lg:w-80`), posts feed on **
 
 OG image generator: `api/og.tsx` — supports types `profile`, `post`, `game`, `group`, `list`.
 
+Static OG image (`/og-image.png`) is used for all non-UGC pages (Feed, Explore, Login, Sign Up, Messages, Settings, Blog, Terms). Defined in `app/layout.tsx` as the default `openGraph.images` fallback; blog pages override with their own `generateMetadata`.
+
+---
+
+## Brand Voice & Content Writing
+
+- **No em dashes**: Do not use em dashes (—) in any in-app copy, post copy, notifications, email, or UI text. Use a period, comma, or colon instead.
+- **Tone**: Direct, conversational, gamer-native. Avoid corporate filler.
+- **@forge posts**: 500-character limit. Weekly cadence. No em dashes.
+
 ---
 
 ## Git Conventions
@@ -868,15 +920,30 @@ OG image generator: `api/og.tsx` — supports types `profile`, `post`, `game`, `
 
 ---
 
-**Last Updated**: May 14, 2026
-**Version**: v0.3.5
+**Last Updated**: May 20, 2026
+**Version**: v0.3.7
 **Maintainer**: Forge Development Team
 
 ---
 
 ## Changelog
 
-### v0.3.5 — May 2026 (current)
+### v0.3.7 — May 2026 (current)
+- **Handle-based profile URLs**: Profiles are accessible at `forge-social.app/yourhandle`. The `/profile/:userId` route server-redirects to the handle URL. `profilePath()` utility in `src/app/utils/profilePath.ts` handles all internal navigation.
+- **Alpha Tester badge**: Founding members who joined during alpha get a ruby flask badge on their profile.
+- **Reply tray animation**: Tapping the comment icon on a post opens the reply tray with a smooth slide-up animation.
+- **Game mentions in reply tray**: @ game mentions are highlighted in accent green and bold inside the reply compose tray.
+- **Android push notifications (beta)**: FCM HTTP v1 push for DMs and all notification types (likes, comments, mentions, follows, Top 8 requests). Service account JWT via `FCM_SERVICE_ACCOUNT` secret. Device tokens in `device_tokens` table. DB webhook on `notifications` INSERT triggers `send-push-notification` edge function; `notify-dm` sends FCM push after email.
+- **Scheduled posts system**: `scheduled_posts` Supabase table + hourly Vercel cron (`/api/cron/publish-scheduled-posts`, secured by `CRON_SECRET`). @forge account auto-publishes release announcements and blog shares.
+- **Static OG images for non-UGC pages**: `/og-image.png` set as default in `app/layout.tsx` openGraph metadata. Covers Feed, Explore, Login, Sign Up, Messages, Settings, Blog, Terms.
+- **Forge Blog OG images**: Blog post and blog index pages include explicit OG image metadata for proper social preview cards.
+
+### v0.3.6 — May 2026
+- **@ game mentions**: Type `@` in any post or reply to search and tag a game from the IGDB library. Tagged games display cover art previews.
+- **Post link previews**: Forge post URLs render an embedded post card when shared on iMessage and Discord (OG metadata via middleware + `api/post-og`).
+- **Weekly activity digest emails**: Automated weekly digest sent via Resend summarizing activity for the week.
+
+### v0.3.5 — May 2026
 - **Google Sign-In on Android**: Google OAuth now works in the Capacitor Android build.
 - **Smarter game search**: Fuzzy matching handles typos; parent game titles rank above expansions and remasters.
 - **Remasters/remakes linked**: Game detail pages now show and link remasters, remakes, and expanded editions correctly.

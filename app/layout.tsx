@@ -6,6 +6,18 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://forge-social.app'),
   title: 'Forge | Gaming Social Network',
   description: 'Track your game library, connect with gamers, and share what you\'re playing.',
+  openGraph: {
+    title: 'Forge | Gaming Social Network',
+    description: 'Track your game library, connect with gamers, and share what you\'re playing.',
+    url: 'https://forge-social.app',
+    siteName: 'Forge',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Forge — Gaming Social Network' }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/og-image.png'],
+  },
   manifest: '/manifest.json',
   icons: {
     icon: [
