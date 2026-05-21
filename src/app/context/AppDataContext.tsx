@@ -153,6 +153,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [followedGameIds, setFollowedGameIds] = useState<Set<string>>(new Set());
   const followedGameIdsRef = useRef<string[]>([]);
   const memberGroupIdsRef = useRef<string[]>([]);
+  // Track the last user ID that completed a full init so token refreshes don't re-trigger it
+  const initializedUserIdRef = useRef<string | null | undefined>(undefined);
+  // Track when the feed was last fetched for stale-while-revalidate on tab return
+  const lastFetchTimeRef = useRef<number>(0);
 
   const loadUserData = useCallback(async (userId: string) => {
     try {
@@ -501,9 +505,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => { supabase.removeChannel(channel); };
   }, [session?.user?.id]);
 
+  // Background refresh when user returns to the tab after 5+ minutes away — no skeleton
+  useEffect(() => {
+    const STALE_MS = 5 * 60 * 1000;
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (initializedUserIdRef.current === undefined) return;
+      if (Date.now() - lastFetchTimeRef.current < STALE_MS) return;
+      refreshFeed().then(() => { lastFetchTimeRef.current = Date.now(); }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [refreshFeed]);
+
   // Load data when session changes
   useEffect(() => {
     const init = async () => {
+      const userId = session?.user?.id ?? null;
+      // Skip full re-init on token refreshes — same authenticated user, data already loaded
+      if (initializedUserIdRef.current === userId && userId !== null) return;
+      initializedUserIdRef.current = userId;
       setIsLoading(true);
       setIsRefreshing(false);
       setTopicPostsReady(false);
@@ -638,6 +659,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setTopicPostsReady(true);
         setIsLoading(false);
         setIsRefreshing(false);
+        lastFetchTimeRef.current = Date.now();
       }
     };
     init();
