@@ -138,7 +138,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       <ScrollRestoration />
       <DesktopSidebar />
       <motion.div
-        className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4 max-md:overflow-x-hidden"
+        className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4"
         initial={false}
         animate={{ marginLeft: sidebarMargin }}
         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}

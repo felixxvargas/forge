@@ -1271,6 +1271,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {/* Tabs */}
+        <div className="overflow-x-hidden">
         <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
@@ -1345,6 +1346,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           >
             About
           </button>
+        </div>
         </div>
 
         {/* Tab Content */}

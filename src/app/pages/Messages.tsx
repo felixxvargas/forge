@@ -1388,7 +1388,7 @@ export function Messages() {
           </button>
         </div>
 
-        {(loadingConvos || (allConvos.length > 0 && !profilePicsReady)) ? (
+        {(!currentUser?.id || loadingConvos || (allConvos.length > 0 && !profilePicsReady)) ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="bg-card rounded-xl flex items-center gap-3 p-4 animate-pulse">
