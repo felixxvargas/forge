@@ -13,6 +13,30 @@ interface LinkMetadata {
   siteName?: string;
 }
 
+// Module-level cache: same URL across any number of PostCards shares one in-flight request
+const previewCache = new Map<string, Promise<LinkMetadata | null>>();
+
+function fetchPreview(url: string): Promise<LinkMetadata | null> {
+  if (!previewCache.has(url)) {
+    previewCache.set(url,
+      fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.status !== 'success') return null;
+          const d = json.data ?? {};
+          return {
+            title: d.title ?? undefined,
+            description: d.description ?? undefined,
+            image: d.image?.url ?? d.screenshot?.url ?? undefined,
+            siteName: d.publisher ?? new URL(url).hostname,
+          };
+        })
+        .catch(() => null)
+    );
+  }
+  return previewCache.get(url)!;
+}
+
 export function LinkPreview({ url, noImage = false }: LinkPreviewProps) {
   const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,21 +48,10 @@ export function LinkPreview({ url, noImage = false }: LinkPreviewProps) {
     setFailed(false);
     setMetadata(null);
 
-    fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`)
-      .then(r => r.json())
-      .then(json => {
-        if (!mounted) return;
-        if (json.status !== 'success') { setFailed(true); return; }
-        const d = json.data ?? {};
-        setMetadata({
-          title: d.title ?? undefined,
-          description: d.description ?? undefined,
-          image: d.image?.url ?? d.screenshot?.url ?? undefined,
-          siteName: d.publisher ?? new URL(url).hostname,
-        });
-      })
-      .catch(() => { if (mounted) setFailed(true); })
-      .finally(() => { if (mounted) setIsLoading(false); });
+    fetchPreview(url).then(data => {
+      if (!mounted) return;
+      if (!data) { setFailed(true); } else { setMetadata(data); }
+    }).finally(() => { if (mounted) setIsLoading(false); });
 
     return () => { mounted = false; };
   }, [url]);

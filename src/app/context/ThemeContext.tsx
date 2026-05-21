@@ -10,16 +10,18 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    const saved = localStorage.getItem('forge-theme');
-    return (saved as Theme) || 'dark';
-  });
+  // Always start with 'dark' on both server and client to avoid hydration mismatch.
+  // localStorage is read once after mount and reconciled via the effect below.
+  const [theme, setTheme] = useState<Theme>('dark');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('forge-theme') as Theme | null;
+    if (saved && saved !== theme) setTheme(saved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('forge-theme', theme);
-    
-    // Update the document class
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');

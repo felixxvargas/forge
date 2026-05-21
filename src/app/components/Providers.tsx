@@ -9,6 +9,10 @@ import { OnboardingTooltip } from './OnboardingTooltip';
 import { GlowBackground } from './GlowBackground';
 import { initAnalytics } from '../utils/analytics';
 
+function isChunkError(msg: string) {
+  return msg.includes('dynamically imported module') || msg.includes('Importing a module script failed');
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Strip OG redirect marker (?_r=1) added by middleware loop-breaker
@@ -18,6 +22,13 @@ export function Providers({ children }: { children: ReactNode }) {
       window.history.replaceState({}, '', clean.pathname + (clean.search || '') + (clean.hash || ''));
     }
     initAnalytics();
+
+    // Reload when a stale chunk from a previous deployment can't be fetched
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      if (isChunkError(e.reason?.message ?? '')) window.location.reload();
+    };
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => window.removeEventListener('unhandledrejection', handleRejection);
   }, []);
 
   return (

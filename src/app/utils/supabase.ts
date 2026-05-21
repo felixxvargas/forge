@@ -110,6 +110,7 @@ export const profiles = {
     const normalized = { ...updates };
     if ('displayName' in normalized) { normalized.display_name = normalized.displayName; delete normalized.displayName; }
     if ('profilePicture' in normalized) { normalized.profile_picture = normalized.profilePicture; delete normalized.profilePicture; }
+    if ('displayedCommunities' in normalized) { normalized.displayed_communities = normalized.displayedCommunities; delete normalized.displayedCommunities; }
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...normalized, updated_at: new Date().toISOString() })

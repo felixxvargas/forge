@@ -7,6 +7,12 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
+    // Stale chunk from a previous deployment — reload silently instead of showing error UI
+    const msg = error?.message ?? '';
+    if (msg.includes('dynamically imported module') || msg.includes('Importing a module script failed')) {
+      window.location.reload();
+      return;
+    }
     Sentry.captureException(error);
   }, [error]);
 
