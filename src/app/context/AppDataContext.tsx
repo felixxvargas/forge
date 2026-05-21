@@ -87,6 +87,24 @@ AppDataContext.displayName = 'AppDataContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const FEED_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+function readFeedCache(userId: string): { posts: any[]; groups: any[] } | null {
+  try {
+    const raw = localStorage.getItem(`forge-feed-${userId}`);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as { posts: any[]; groups: any[]; ts: number };
+    if (Date.now() - cached.ts > FEED_CACHE_TTL) return null;
+    return { posts: cached.posts, groups: cached.groups };
+  } catch { return null; }
+}
+
+function writeFeedCache(userId: string, posts: any[], groups: any[]): void {
+  try {
+    localStorage.setItem(`forge-feed-${userId}`, JSON.stringify({ posts, groups, ts: Date.now() }));
+  } catch { /* storage quota exceeded */ }
+}
+
 /** Ensure profile objects never carry null/undefined on fields the UI depends on. */
 function normalizeProfile(profile: any): any {
   if (!profile) return profile;
@@ -512,7 +530,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState !== 'visible') return;
       if (initializedUserIdRef.current === undefined) return;
       if (Date.now() - lastFetchTimeRef.current < STALE_MS) return;
-      refreshFeed().then(() => { lastFetchTimeRef.current = Date.now(); }).catch(() => {});
+      refreshFeed().then((data) => {
+        lastFetchTimeRef.current = Date.now();
+        const uid = sessionRef.current?.user?.id;
+        if (uid && data?.posts && data?.groups) writeFeedCache(uid, data.posts, data.groups);
+      }).catch(() => {});
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
@@ -525,20 +547,36 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // Skip full re-init on token refreshes — same authenticated user, data already loaded
       if (initializedUserIdRef.current === userId && userId !== null) return;
       initializedUserIdRef.current = userId;
-      setIsLoading(true);
-      setIsRefreshing(false);
+
+      // Seed from cache immediately so the skeleton never shows on reload
+      const cached = userId ? readFeedCache(userId) : null;
+      if (cached) {
+        setPostList(cached.posts);
+        setGroupsList(cached.groups);
+        setIsLoading(false);
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+        setIsRefreshing(false);
+      }
       setTopicPostsReady(false);
 
       try {
         let feedData = await refreshFeed();
-        setIsLoading(false);
-        setIsRefreshing(true);
+        // Always update cache after a fresh fetch
+        if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
+        if (!cached) {
+          setIsLoading(false);
+          setIsRefreshing(true);
+        }
         const loadedUsers: any[] = lastLoadedUsersRef.current;
         if (session?.user) {
           const loadResult = await loadUserData(session.user.id);
           // Re-fetch the feed now that game/group IDs are populated in refs
           if (followedGameIdsRef.current.length > 0 || memberGroupIdsRef.current.length > 0) {
             feedData = await refreshFeed();
+            // Overwrite cache with the personalized result
+            if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
           }
           const topicFollows = loadResult?.topicFollows ?? [];
           const rawFollowingIdList = loadResult?.followingIdList ?? [];
