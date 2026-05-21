@@ -460,7 +460,7 @@ export function Feed() {
 
       {loading && (
         <div className="flex gap-3 md:gap-6 items-start">
-          {splitToColumns([0,1,2,3,4,5,6,7,8,9], numCols).map((colItems, colIdx) => (
+          {splitToColumns(numCols === 1 ? [0,1,2,3,4] : [0,1,2,3,4,5,6,7,8,9], numCols).map((colItems, colIdx) => (
             <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
               {colItems.map((i) => {
                 const hasImage = [0, 3, 5, 8].includes(i);
@@ -479,7 +479,7 @@ export function Feed() {
                           <div className="h-3 bg-muted/40 rounded w-5/6" />
                           {i % 3 !== 2 && <div className="h-3 bg-muted/30 rounded w-2/3" />}
                         </div>
-                        {hasImage && <div className="h-40 bg-muted/20 rounded-xl mb-3" />}
+                        {hasImage && <div className="hidden md:block h-40 bg-muted/20 rounded-xl mb-3" />}
                         <div className="flex gap-4 pt-1">
                           <div className="h-3 bg-muted/25 rounded w-8" />
                           <div className="h-3 bg-muted/25 rounded w-8" />
