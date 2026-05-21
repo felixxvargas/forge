@@ -80,7 +80,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         ? initialProfile
         : undefined,
       revalidateOnFocus: false,
-      keepPreviousData: false,
+      keepPreviousData: true,
     }
   );
   const handleFetchedUser = swrHandleProfile ?? null;
