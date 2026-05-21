@@ -697,10 +697,10 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
                 const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
                 return (
-                  <div key={platform} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm">
+                  <div key={platform} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]">
                     <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
-                    <span className="font-medium">{getSocialPlatformLabel(platform)}</span>
-                    {showHandle && handle && <span className="text-muted-foreground">· @{handle}</span>}
+                    <span className="font-medium shrink-0">{getSocialPlatformLabel(platform)}</span>
+                    {showHandle && handle && <span className="text-muted-foreground truncate">· @{handle}</span>}
                   </div>
                 );
               })}
@@ -817,7 +817,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     <div className="min-h-screen pb-20 overflow-x-hidden">
       <Header />
 
-      <div className="w-full max-w-2xl lg:max-w-7xl mx-auto overflow-x-hidden">
+      <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
         <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:pl-12 lg:pr-6">
         {/* LEFT COLUMN — profile header + about (desktop) */}
         <div className="lg:w-[340px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
@@ -975,7 +975,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           </div>
 
           {/* Bio */}
-          <p className="mb-3 text-[0.9375rem]">
+          <p className="mb-3 text-[0.9375rem] break-words">
             <LinkifyMentions text={profileUser.bio} />
           </p>
 
@@ -2079,12 +2079,12 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                       return (
                         <div
                           key={platform}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]"
                         >
                           <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
-                          <span className="font-medium">{getSocialPlatformLabel(platform)}</span>
+                          <span className="font-medium shrink-0">{getSocialPlatformLabel(platform)}</span>
                           {showHandle && handle && (
-                            <span className="text-muted-foreground">· @{handle}</span>
+                            <span className="text-muted-foreground truncate">· @{handle}</span>
                           )}
                         </div>
                       );

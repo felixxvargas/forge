@@ -181,9 +181,9 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
 
   if (showHandle && displayHandle) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg max-w-[220px]">
         {renderIcon()}
-        <span className="text-sm font-medium">{key === 'nintendo' || key === 'xbox' ? '' : '@'}{displayHandle}</span>
+        <span className="text-sm font-medium truncate">{key === 'nintendo' || key === 'xbox' ? '' : '@'}{displayHandle}</span>
       </div>
     );
   }

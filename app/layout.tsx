@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://xmxeafjpscgqprrreulh.supabase.co" />
         <link rel="dns-prefetch" href="https://xmxeafjpscgqprrreulh.supabase.co" />
       </head>
-      <body>
+      <body className="overflow-x-hidden max-w-screen">
         <Providers>{children}</Providers>
       </body>
     </html>
