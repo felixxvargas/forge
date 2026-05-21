@@ -814,7 +814,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   );
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden">
+    <div className="min-h-screen pb-20">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
@@ -1166,7 +1166,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>{/* end left column */}
 
         {/* RIGHT COLUMN — LFG, tabs, tab content */}
-        <div className="overflow-x-hidden lg:flex-1 lg:min-w-0 lg:max-w-2xl">
+        <div className="lg:flex-1 lg:min-w-0 lg:max-w-2xl">
 
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
