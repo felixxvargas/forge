@@ -74,9 +74,9 @@ export function SignUp() {
   const doSignUp = (token: string | null) => {
     setIsLoading(true);
     try {
-      localStorage.setItem('forge-signup-email', email);
-      localStorage.setItem('forge-signup-password', password);
-      if (token) localStorage.setItem('forge-signup-captcha', token);
+      sessionStorage.setItem('forge-signup-email', email);
+      sessionStorage.setItem('forge-signup-password', password);
+      if (token) sessionStorage.setItem('forge-signup-captcha', token);
       navigate('/splash');
     } catch (err: any) {
       setError(err.message || 'Sign-up failed. Please try again.');
@@ -132,17 +132,17 @@ export function SignUp() {
       {/* Desktop feature points + form side-by-side */}
       <div className="w-full lg:max-w-4xl flex-1 flex flex-col lg:flex-row lg:items-center lg:gap-16 pt-20 sm:pt-0 relative z-10 lg:px-4">
 
-        {/* Feature points — desktop left column only */}
-        <div className="hidden lg:flex flex-col gap-6 flex-1 max-w-sm rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Feature points — full width on mobile, left column on desktop */}
+        <div className="flex flex-col gap-4 lg:gap-6 flex-1 max-w-sm rounded-2xl p-5 lg:p-6" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div>
-            <h2 className="text-3xl font-black text-foreground leading-tight mb-2">
+            <h2 className="text-xl lg:text-3xl font-black text-foreground leading-tight mb-2">
               The social network<br/>built for gamers.
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Track your library, connect with the community, and share what you're playing.
             </p>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             {[
               { icon: Gamepad2, title: 'Track your game library', desc: 'Organize games you\'ve played, want to play, and your all-time favorites.' },
               { icon: Users, title: 'Connect with gamers', desc: 'Follow friends, join communities, and see what everyone is playing.' },

@@ -8,10 +8,11 @@ import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '
 import { ShareModal } from '../components/ShareModal';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
+import { ProfileSkeleton } from '../components/ProfileSkeleton';
 import { PostCard } from '../components/PostCard';
 import { GameList } from '../components/GameList';
 import { ProfilePictureLightbox } from '../components/ProfilePictureLightbox';
-import { PlatformIcon, getHandleLabel } from '../components/PlatformIcon';
+import { PlatformIcon, getHandleLabel, getPlatformName } from '../components/PlatformIcon';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
@@ -327,139 +328,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   // If profile not loaded yet, show skeleton
   if (!profileUser) {
-    const GameListCardSkeleton = () => (
-      <div className="rounded-xl bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="h-4 bg-muted/40 rounded w-32" />
-          <div className="h-4 bg-muted/20 rounded w-12" />
-        </div>
-        <div className="flex gap-2 overflow-hidden">
-          {Array.from({ length: 6 }).map((_, j) => (
-            <div key={j} className="shrink-0 rounded-lg bg-muted/30" style={{ width: 68, aspectRatio: '3/4' }} />
-          ))}
-        </div>
-      </div>
-    );
-
-    return (
-      <div className="min-h-screen">
-        <Header />
-        {/* ── Mobile skeleton ── */}
-        <div className="lg:hidden animate-pulse">
-          {/* Profile header card */}
-          <div className="bg-card px-5 pt-5 pb-4 rounded-b-2xl mb-3">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
-              <div className="flex-1 pt-1 space-y-2">
-                <div className="h-5 bg-muted/50 rounded w-36" />
-                <div className="h-3.5 bg-muted/30 rounded w-24" />
-              </div>
-              <div className="w-9 h-9 rounded-lg bg-muted/30 shrink-0" />
-            </div>
-            <div className="space-y-1.5 mb-4">
-              <div className="h-3.5 bg-muted/35 rounded w-full" />
-              <div className="h-3.5 bg-muted/35 rounded w-2/3" />
-            </div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-5">
-                <div className="space-y-1">
-                  <div className="h-5 bg-muted/50 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-16" />
-                </div>
-                <div className="space-y-1">
-                  <div className="h-5 bg-muted/50 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-16" />
-                </div>
-              </div>
-              <div className="h-9 bg-muted/35 rounded-xl w-24" />
-            </div>
-            <div className="flex gap-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />
-              ))}
-            </div>
-          </div>
-          {/* Tab bar */}
-          <div className="flex border-b border-border/50 mb-4">
-            {[36, 40, 32, 40, 44].map((w, i) => (
-              <div key={i} className="flex-1 flex justify-center py-3">
-                <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
-              </div>
-            ))}
-          </div>
-          {/* Game list cards — matches Lists tab default */}
-          <div className="px-4 space-y-4 pb-20">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <GameListCardSkeleton key={i} />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Desktop skeleton — 2-column layout matching actual profile ── */}
-        <div className="hidden lg:flex lg:flex-row lg:gap-6 lg:items-start lg:pt-8 lg:px-6 w-full max-w-7xl mx-auto animate-pulse">
-          {/* Left col: profile card + about card */}
-          <div className="w-[340px] shrink-0 sticky top-[72px] self-start space-y-4">
-            <div className="rounded-2xl bg-card p-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-muted/50 shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-muted/50 rounded w-32" />
-                  <div className="h-3.5 bg-muted/30 rounded w-20" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <div className="h-3.5 bg-muted/35 rounded w-full" />
-                <div className="h-3.5 bg-muted/35 rounded w-4/5" />
-              </div>
-              <div className="flex gap-5">
-                <div className="space-y-1">
-                  <div className="h-5 bg-muted/50 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-16" />
-                </div>
-                <div className="space-y-1">
-                  <div className="h-5 bg-muted/50 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-16" />
-                </div>
-              </div>
-              <div className="h-9 bg-muted/35 rounded-xl w-full" />
-              <div className="flex gap-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-muted/25" />
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl bg-card px-5 py-4 space-y-3">
-              <div className="h-4 bg-muted/40 rounded w-16" />
-              <div className="space-y-1.5">
-                <div className="h-3.5 bg-muted/25 rounded w-full" />
-                <div className="h-3.5 bg-muted/25 rounded w-4/5" />
-                <div className="h-3.5 bg-muted/25 rounded w-3/5" />
-              </div>
-              <div className="flex gap-2 flex-wrap pt-1">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-7 bg-muted/20 rounded-full w-20" />
-                ))}
-              </div>
-            </div>
-          </div>
-          {/* Right col: tab bar + game list cards */}
-          <div className="flex-1 min-w-0">
-            <div className="flex border-b border-border/50 mb-5">
-              {[36, 40, 32, 44, 40].map((w, i) => (
-                <div key={i} className="px-4 py-3">
-                  <div className="h-4 bg-muted/25 rounded" style={{ width: w }} />
-                </div>
-              ))}
-            </div>
-            <div className="space-y-5">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <GameListCardSkeleton key={i} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   // Suspended account — show limited view for anyone viewing it
@@ -814,7 +683,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   );
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden">
+    <div className="min-h-screen pb-20">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
@@ -1961,210 +1830,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
         {effectiveTab === 'about' && (
           <div className="lg:hidden px-4 pb-24">
-            {profileUser.interests && profileUser.interests.length > 0 && (() => {
-              const playstyleInterests = profileUser.interests!.filter(i => i.category === 'playstyle');
-              const genreInterests = profileUser.interests!.filter(i => i.category === 'genre');
-              const platformInterests = profileUser.interests!.filter(i => i.category === 'platform');
-              return (
-                <>
-                  {/* Playstyle — dedicated section */}
-                  {playstyleInterests.length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Trophy className="w-4 h-4 text-muted-foreground" />
-                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Playstyle</h3>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {playstyleInterests.map(interest => (
-                          <span
-                            key={interest.id}
-                            className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium"
-                          >
-                            {interest.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Favorite Genres */}
-                  {genreInterests.length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Gamepad2 className="w-4 h-4 text-muted-foreground" />
-                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Genres</h3>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {genreInterests.map(interest => (
-                          <span
-                            key={interest.id}
-                            className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium"
-                          >
-                            {interest.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Platforms */}
-                  {platformInterests.length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Monitor className="w-4 h-4 text-muted-foreground" />
-                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Platforms</h3>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {platformInterests.map(interest => (
-                          <span
-                            key={interest.id}
-                            className="px-3 py-1.5 bg-secondary text-foreground rounded-full text-sm font-medium"
-                          >
-                            {interest.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-
-            {/* Gaming Platforms with gamertags */}
-            {profileUser.platforms && profileUser.platforms.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <Gamepad2 className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gaming Platforms</h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {profileUser.platforms.map((platform: string) => {
-                    const platformHandle =
-                      profileUser.platformHandles?.[platform] ??
-                      (profileUser as any).platform_handles?.[platform];
-                    const showHandle =
-                      profileUser.showPlatformHandles?.[platform] ??
-                      (profileUser as any).show_platform_handles?.[platform];
-                    const displayHandle = canViewHandles && showHandle && platformHandle ? platformHandle : undefined;
-                    const clickable = canViewHandles && showHandle && platformHandle;
-                    return clickable ? (
-                      <button key={platform} onClick={() => handlePlatformTagClick(platform, platformHandle)} className="cursor-pointer">
-                        <PlatformIcon platform={platform} userHandle={displayHandle} showHandle={true} />
-                      </button>
-                    ) : (
-                      <PlatformIcon key={platform} platform={platform} userHandle={displayHandle} showHandle={true} />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Social Accounts */}
-            {(() => {
-              const selectedPlatforms: SocialPlatform[] = (profileUser as any).social_platforms ?? (profileUser as any).socialPlatforms ?? [];
-              const platformsWithHandles = selectedPlatforms.filter(platform => {
-                const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
-                return !!handle;
-              });
-              if (platformsWithHandles.length === 0) return null;
-              return (
-                <div className="mb-6">
-                  <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
-                    Social Accounts
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {platformsWithHandles.map(platform => {
-                      const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
-                      const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
-                      return (
-                        <div
-                          key={platform}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]"
-                        >
-                          <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
-                          <span className="font-medium shrink-0">{getSocialPlatformLabel(platform)}</span>
-                          {showHandle && handle && (
-                            <span className="text-muted-foreground truncate">· @{handle}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Bluesky / Mastodon links for topic accounts */}
-            {isUnclaimedAccount && (() => {
-              const handle = (profileUser.handle || '').replace(/^@/, '');
-              if (!handle) return null;
-              const links: { label: string; url: string }[] = [];
-              const isMastodon = (profileUser as any).platform === 'mastodon';
-              if (isMastodon) {
-                links.push({ label: 'Mastodon', url: `https://mastodon.social/@${handle}` });
-              } else {
-                links.push({ label: 'Bluesky', url: `https://bsky.app/profile/${handle}` });
-              }
-              return (
-                <div className="mb-6">
-                  <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
-                    External Links
-                  </h3>
-                  <div className="space-y-2">
-                    {links.map(link => (
-                      <a
-                        key={link.label}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg hover:bg-secondary/70 transition-colors"
-                      >
-                        <span className="text-sm font-medium">{link.label}</span>
-                        <span className="text-sm text-accent text-xs">View profile →</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Links */}
-            {(() => {
-              const links: { url: string; title: string }[] = profileUser.profile_links ?? (profileUser as any).profileLinks ?? [];
-              if (links.length === 0) return null;
-              return (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {links.slice(1, 4).map((link, i) => {
-                      let domain = link.url;
-                      try { domain = new URL(link.url).hostname.replace('www.', ''); } catch {}
-                      const label = link.title || domain;
-                      return (
-                        <a
-                          key={i}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors group"
-                        >
-                          <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-accent shrink-0 transition-colors" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate group-hover:text-accent transition-colors">{label}</p>
-                            {link.title && <p className="text-xs text-muted-foreground truncate">{domain}</p>}
-                          </div>
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Groups */}
+            {renderAboutContent()}
             {profileUser.communities && profileUser.communities.length > 0 && (() => {
               const rawDisplayIds = localDisplayedIds !== undefined
                 ? localDisplayedIds
@@ -2197,10 +1863,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                       const currentShown = rawDisplayIds ?? allIds;
                       const isVisible = currentShown.includes(membership.community_id);
                       return (
-                        <div
-                          key={membership.community_id}
-                          className="flex items-center justify-between gap-2"
-                        >
+                        <div key={membership.community_id} className="flex items-center justify-between gap-2">
                           <button
                             onClick={() => navigate(`/group/${group.id}`)}
                             className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm text-left"
@@ -2213,12 +1876,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                               </div>
                             )}
                             <span className="truncate font-medium">{group.name}</span>
-                            {membership.role === 'creator' && (
-                              <Crown className="w-3.5 h-3.5 text-accent shrink-0" />
-                            )}
-                            {membership.role === 'moderator' && (
-                              <Shield className="w-3.5 h-3.5 text-accent shrink-0" />
-                            )}
+                            {membership.role === 'creator' && <Crown className="w-3.5 h-3.5 text-accent shrink-0" />}
+                            {membership.role === 'moderator' && <Shield className="w-3.5 h-3.5 text-accent shrink-0" />}
                           </button>
                           {isOwnProfile && (
                             <button
@@ -2236,16 +1895,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 </div>
               );
             })()}
-
-            {/* About Description */}
-            {profileUser.about && (
-              <div>
-                <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
-                  About
-                </h3>
-                <p className="text-sm leading-relaxed">{profileUser.about}</p>
-              </div>
-            )}
           </div>
         )}
         </div>{/* end right column */}
@@ -2350,11 +1999,11 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           onClick={() => setHandlePopup(null)}
         >
           <div
-            className="bg-card rounded-2xl w-full max-w-xs p-6 space-y-4"
+            className="bg-sidebar rounded-2xl w-full max-w-xs p-6 space-y-4"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">{handlePopup.label}</h2>
+              <h2 className="text-base font-semibold">{getPlatformName(handlePopup.platform)}</h2>
               <button
                 onClick={() => setHandlePopup(null)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
@@ -2362,21 +2011,24 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 <XIcon className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex items-center gap-3 bg-secondary rounded-xl px-4 py-3">
-              <p className="flex-1 font-mono text-sm break-all">{handlePopup.handle}</p>
-              <button
-                onClick={async () => {
-                  const toCopy = handlePopup.platform === 'nintendo'
-                    ? handlePopup.handle.replace(/-/g, '')
-                    : handlePopup.handle;
-                  try { await navigator.clipboard.writeText(toCopy); } catch {}
-                  toast.success(`${handlePopup.label} copied to clipboard`);
-                }}
-                className="shrink-0 p-2 rounded-lg hover:bg-card transition-colors text-muted-foreground hover:text-foreground"
-                title={`Copy ${handlePopup.label}`}
-              >
-                <Copy className="w-4 h-4" />
-              </button>
+            <div className="bg-secondary rounded-xl px-4 py-3 space-y-1">
+              <p className="text-xs text-muted-foreground">{handlePopup.label}</p>
+              <div className="flex items-center gap-3">
+                <p className="flex-1 font-mono text-sm break-all">{handlePopup.handle}</p>
+                <button
+                  onClick={async () => {
+                    const toCopy = handlePopup.platform === 'nintendo'
+                      ? handlePopup.handle.replace(/-/g, '')
+                      : handlePopup.handle;
+                    try { await navigator.clipboard.writeText(toCopy); } catch {}
+                    toast.success(`${handlePopup.label} copied to clipboard`);
+                  }}
+                  className="shrink-0 p-2 rounded-lg hover:bg-card transition-colors text-muted-foreground hover:text-foreground"
+                  title={`Copy ${handlePopup.label}`}
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

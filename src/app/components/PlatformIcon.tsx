@@ -206,3 +206,18 @@ export function getHandleLabel(platform: string): 'Friend Code' | 'Gamer Tag' | 
   if (key === 'xbox') return 'Gamer Tag';
   return 'Handle';
 }
+
+export function getPlatformName(platform: string): string {
+  const key = platform?.toLowerCase();
+  if (key === 'psn') return 'PlayStation';
+  if (key === 'xbox') return 'Xbox';
+  if (key === 'nintendo') return 'Nintendo Switch';
+  if (key === 'steam') return 'Steam';
+  if (key === 'epicgames') return 'Epic Games';
+  if (key === 'battlenet') return 'Battle.net';
+  if (key === 'roblox') return 'Roblox';
+  if (key === 'leagueoflegends') return 'League of Legends';
+  if (key === 'valorant') return 'Valorant';
+  if (key === 'discord') return 'Discord';
+  return platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'Handle';
+}

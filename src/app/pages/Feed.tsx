@@ -461,7 +461,7 @@ export function Feed() {
       {loading && (
         <div className="flex gap-3 md:gap-6 items-start">
           {Array.from({ length: numCols }).map((_, colIdx) => (
-            <div key={colIdx} className="flex-1 flex flex-col gap-2 md:gap-4 min-w-0">
+            <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                   <div className="flex gap-3">

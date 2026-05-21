@@ -158,8 +158,8 @@ export function Onboarding() {
       if (following.length > 0) {
         await Promise.all(following.map(id => profiles.follow(userId, id)));
       }
-      localStorage.removeItem('forge-signup-email');
-      localStorage.removeItem('forge-signup-password');
+      sessionStorage.removeItem('forge-signup-email');
+      sessionStorage.removeItem('forge-signup-password');
       localStorage.setItem('forge-onboarding-complete', 'true');
       onboardingTelemetry.track('onboarding_completed', 'username', {
         hasInterests: selectedInterests.length > 0,
@@ -178,22 +178,22 @@ export function Onboarding() {
         return;
       }
 
-      // 2. Email signup flow — credentials stored in localStorage by SignUp.tsx
-      const signupEmail = localStorage.getItem('forge-signup-email');
-      const signupPassword = localStorage.getItem('forge-signup-password');
+      // 2. Email signup flow — credentials stored in sessionStorage by SignUp.tsx
+      const signupEmail = sessionStorage.getItem('forge-signup-email');
+      const signupPassword = sessionStorage.getItem('forge-signup-password');
 
       if (!signupEmail || !signupPassword) {
         throw new Error('Session expired. Please sign in again.');
       }
 
       // Try creating the account now (deferred from SignUp.tsx so we have all profile data)
-      const signupCaptcha = localStorage.getItem('forge-signup-captcha') ?? undefined;
+      const signupCaptcha = sessionStorage.getItem('forge-signup-captcha') ?? undefined;
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: signupCaptcha ? { captchaToken: signupCaptcha } : undefined,
       });
-      localStorage.removeItem('forge-signup-captcha');
+      sessionStorage.removeItem('forge-signup-captcha');
 
       if (signUpData?.session?.user) {
         // Email confirmation is disabled — we have a session immediately
@@ -211,9 +211,9 @@ export function Onboarding() {
           interests: selectedInterests,
           following,
         }));
-        localStorage.removeItem('forge-signup-email');
-        localStorage.removeItem('forge-signup-password');
-        localStorage.removeItem('forge-signup-captcha');
+        sessionStorage.removeItem('forge-signup-email');
+        sessionStorage.removeItem('forge-signup-password');
+        sessionStorage.removeItem('forge-signup-captcha');
         toast.info('Check your email to verify your account, then sign in.');
         navigate('/login');
         return;
@@ -240,9 +240,9 @@ export function Onboarding() {
           interests: selectedInterests,
           following,
         }));
-        localStorage.removeItem('forge-signup-email');
-        localStorage.removeItem('forge-signup-password');
-        localStorage.removeItem('forge-signup-captcha');
+        sessionStorage.removeItem('forge-signup-email');
+        sessionStorage.removeItem('forge-signup-password');
+        sessionStorage.removeItem('forge-signup-captcha');
         toast.info('Check your email to verify your account, then sign in.');
         navigate('/login');
         return;
