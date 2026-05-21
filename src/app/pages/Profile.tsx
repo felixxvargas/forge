@@ -1140,7 +1140,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
             const hasLists = ['recentlyPlayed','playedBefore','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);
