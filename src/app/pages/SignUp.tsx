@@ -132,8 +132,8 @@ export function SignUp() {
       {/* Desktop feature points + form side-by-side */}
       <div className="w-full lg:max-w-4xl flex-1 flex flex-col lg:flex-row lg:items-center lg:gap-16 pt-20 sm:pt-0 relative z-10 lg:px-4">
 
-        {/* Feature points — full width on mobile, left column on desktop */}
-        <div className="flex flex-col gap-4 lg:gap-6 flex-1 max-w-sm rounded-2xl p-5 lg:p-6" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Feature points — below form on mobile, left column on desktop */}
+        <div className="order-last lg:order-first flex flex-col gap-4 lg:gap-6 flex-1 max-w-sm rounded-2xl p-5 lg:p-6" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div>
             <h2 className="text-xl lg:text-3xl font-black text-foreground leading-tight mb-2">
               The social network<br/>built for gamers.
