@@ -34,7 +34,7 @@ export default async function middleware(request: Request): Promise<Response | u
     request.headers.get('Next-Url')
   );
 
-  // 2-segment content routes: /post/:id, /game/:id, /group/:id
+  // 2-segment content routes: /post/:id, /game/:id, /group/:id, /profile/:handle
   // Only proxy social crawlers; humans go directly to Next.js
   if (segments.length === 2 && !hasRedirectFlag) {
     if (isCrawler && !isNextNavigation) {
@@ -53,6 +53,12 @@ export default async function middleware(request: Request): Promise<Response | u
       if (segments[0] === 'group') {
         try {
           const res = await fetch(new URL(`/api/group-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
+          if (res.ok) return res;
+        } catch { /* fall through */ }
+      }
+      if (segments[0] === 'profile' && segments[1] && !APP_ROUTES.has(segments[1])) {
+        try {
+          const res = await fetch(new URL(`/api/profile-og/${segments[1]}`, url.origin).toString(), { headers: request.headers });
           if (res.ok) return res;
         } catch { /* fall through */ }
       }

@@ -19,11 +19,12 @@ export default async function handler(req: Request): Promise<Response> {
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           Accept: 'application/json',
         },
+        signal: AbortSignal.timeout(3000),
       });
       const data = await res.json();
       profile = Array.isArray(data) && data.length > 0 ? data[0] : null;
-    } catch {
-      // Fall back to generic
+    } catch (err) {
+      console.error('[profile-og] Supabase fetch failed:', err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -33,15 +34,18 @@ export default async function handler(req: Request): Promise<Response> {
   const avatar = profile?.profile_picture || '';
   const siteOrigin = `https://${url.host}`;
 
-  const ogImageParams = new URLSearchParams({
-    name: displayName,
-    handle: displayHandle,
-    ...(bio ? { bio } : {}),
-    ...(avatar ? { avatar } : {}),
-  });
-  const ogImage = `${siteOrigin}/api/og?${ogImageParams.toString()}`;
-  // ?_r=1 signals the middleware to pass through (loop breaker)
-  const profileUrl = `${siteOrigin}/${displayHandle.replace(/^@/, '')}?_r=1`;
+  // If Supabase data is available generate a rich dynamic card; otherwise fall back to static brand image
+  const ogImage = profile
+    ? `${siteOrigin}/api/og?${new URLSearchParams({
+        name: displayName,
+        handle: displayHandle,
+        ...(bio ? { bio } : {}),
+        ...(avatar ? { avatar } : {}),
+      }).toString()}`
+    : `${siteOrigin}/og-image.png`;
+
+  // ?_r=1 signals middleware to pass through (loop breaker)
+  const profileUrl = `${siteOrigin}/profile/${displayHandle.replace(/^@/, '')}?_r=1`;
   const title = `${displayName} (@${displayHandle.replace(/^@/, '')}) · Forge`;
   const description = bio;
 

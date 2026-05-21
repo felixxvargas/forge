@@ -2,6 +2,7 @@ export const config = { runtime: 'edge' };
 
 const SUPABASE_PROJECT_ID = process.env.VITE_SUPABASE_PROJECT_ID ?? '';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY ?? '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 function escHtml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -13,36 +14,45 @@ export default async function handler(req: Request): Promise<Response> {
   const siteOrigin = `https://${url.host}`;
   const pageUrl = `${siteOrigin}/post/${postId}?_r=1`;
 
+  // Prefer service role key so RLS can't silently block reads; fall back to anon key
+  const authKey = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+
   let post: { content?: string; images?: string[]; user_id?: string } | null = null;
   let author: { display_name?: string; handle?: string; profile_picture?: string } | null = null;
 
-  if (SUPABASE_PROJECT_ID && SUPABASE_ANON_KEY && postId) {
+  if (SUPABASE_PROJECT_ID && authKey && postId) {
     try {
       const apiUrl = `https://${SUPABASE_PROJECT_ID}.supabase.co/rest/v1/posts?id=eq.${encodeURIComponent(postId)}&select=content,images,user_id&limit=1`;
       const res = await fetch(apiUrl, {
         headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          apikey: authKey,
+          Authorization: `Bearer ${authKey}`,
           Accept: 'application/json',
         },
+        signal: AbortSignal.timeout(3000),
       });
       const data = await res.json();
       post = Array.isArray(data) && data.length > 0 ? data[0] : null;
-    } catch { /* fallback */ }
+    } catch (err) {
+      console.error('[post-og] post fetch failed:', err instanceof Error ? err.message : String(err));
+    }
 
     if (post?.user_id) {
       try {
         const profileUrl = `https://${SUPABASE_PROJECT_ID}.supabase.co/rest/v1/profiles?id=eq.${encodeURIComponent(post.user_id)}&select=display_name,handle,profile_picture&limit=1`;
         const res = await fetch(profileUrl, {
           headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: authKey,
+            Authorization: `Bearer ${authKey}`,
             Accept: 'application/json',
           },
+          signal: AbortSignal.timeout(3000),
         });
         const data = await res.json();
         author = Array.isArray(data) && data.length > 0 ? data[0] : null;
-      } catch { /* fallback */ }
+      } catch (err) {
+        console.error('[post-og] author fetch failed:', err instanceof Error ? err.message : String(err));
+      }
     }
   }
 
@@ -59,11 +69,11 @@ export default async function handler(req: Request): Promise<Response> {
     ? (content.length > 200 ? content.slice(0, 197).trimEnd() + '…' : content)
     : 'Check out this post on Forge — the gaming social network.';
 
-  // Use the post's own image if available; otherwise generate a text card
+  // Use the post's own image if available; otherwise generate a text card; static brand image as last resort
   let ogImage: string;
   if (firstImage) {
     ogImage = firstImage;
-  } else {
+  } else if (content) {
     const ogParams = new URLSearchParams({
       type: 'post',
       content: content.slice(0, 300),
@@ -72,6 +82,8 @@ export default async function handler(req: Request): Promise<Response> {
       ...(author?.profile_picture ? { avatar: author.profile_picture } : {}),
     });
     ogImage = `${siteOrigin}/api/og?${ogParams.toString()}`;
+  } else {
+    ogImage = `${siteOrigin}/og-image.png`;
   }
 
   const html = `<!DOCTYPE html>
@@ -88,7 +100,7 @@ export default async function handler(req: Request): Promise<Response> {
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:url" content="${escHtml(pageUrl)}">
-  <meta name="twitter:card" content="${firstImage ? 'summary_large_image' : 'summary_large_image'}">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escHtml(postTitle)}">
   <meta name="twitter:description" content="${escHtml(postDescription)}">
   <meta name="twitter:image" content="${escHtml(ogImage)}">

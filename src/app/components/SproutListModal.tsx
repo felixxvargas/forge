@@ -51,7 +51,7 @@ export function SproutListModal({ onClose }: Props) {
             users.map(u => (
               <button
                 key={u.id}
-                onClick={() => { onClose(); navigate(`/${(u.handle || '').replace(/^@/, '')}`); }}
+                onClick={() => { onClose(); navigate(`/profile/${(u.handle || '').replace(/^@/, '')}`); }}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left"
               >
                 <ProfileAvatar

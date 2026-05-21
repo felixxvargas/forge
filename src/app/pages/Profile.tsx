@@ -145,9 +145,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
 
 
-  // Scroll to top when navigating to a new profile
+  // Scroll to top only when navigating to a different profile, not on remount of the same one
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const key = 'forge-last-profile';
+    const current = (handle ?? userId ?? '').replace(/^@/, '').toLowerCase();
+    if (sessionStorage.getItem(key) !== current) {
+      sessionStorage.setItem(key, current);
+      window.scrollTo(0, 0);
+    }
   }, [userId, handle]);
 
   // Determine which user profile to show

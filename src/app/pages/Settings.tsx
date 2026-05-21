@@ -35,7 +35,7 @@ export function Settings() {
   const [profileUrl, setProfileUrl] = useState('');
 
   useEffect(() => {
-    setProfileUrl(`${window.location.origin}/${(currentUser?.handle || '').replace(/^@/, '')}`);
+    setProfileUrl(`${window.location.origin}/profile/${(currentUser?.handle || '').replace(/^@/, '')}`);
   }, [currentUser?.handle]);
 
   // Load hasPosted for onboarding task check

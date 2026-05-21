@@ -530,6 +530,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState !== 'visible') return;
       if (initializedUserIdRef.current === undefined) return;
       if (Date.now() - lastFetchTimeRef.current < STALE_MS) return;
+      // Profile pages have their own SWR — refreshing the global feed there is unnecessary noise
+      if (window.location.pathname.startsWith('/profile/')) return;
       refreshFeed().then((data) => {
         lastFetchTimeRef.current = Date.now();
         const uid = sessionRef.current?.user?.id;
