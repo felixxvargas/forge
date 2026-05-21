@@ -20,7 +20,7 @@
 .forge-scroll::-webkit-scrollbar-thumb { background: rgba(167, 139, 250, 0.30); border-radius: 4px; }
 .forge-scroll::-webkit-scrollbar-thumb:hover { background: rgba(167, 139, 250, 0.55); }
 
-html { scroll-behavior: smooth; background-color: var(--background); }
+html { scroll-behavior: smooth; background-color: var(--background); overflow-x: hidden; }
 body { background: transparent; overflow-x: hidden; }
 
 /* Prevent iOS Safari zoom on input focus */

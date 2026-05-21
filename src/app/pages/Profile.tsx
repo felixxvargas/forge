@@ -942,8 +942,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           )}
           
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setIsLightboxOpen(true)} className="cursor-pointer">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <button onClick={() => setIsLightboxOpen(true)} className="cursor-pointer shrink-0">
                 <ProfileAvatar
                   username={profileUser.display_name || profileUser.handle || '?'}
                   profilePicture={profilePicture}
@@ -951,7 +951,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   userId={profileUser.id}
                 />
               </button>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h1 className="text-xl font-semibold line-clamp-2 break-words">{profileUser.display_name || profileUser.handle}</h1>
                   <UserBadgeIcons handle={profileUser.handle || ''} createdAt={profileUser.created_at} accountType={(profileUser as any).account_type} />
@@ -1271,7 +1271,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-4 border-b border-border px-4">
+        <div className="flex gap-2 mb-4 border-b border-border px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
             const hasLists = ['recentlyPlayed','playedBefore','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);
@@ -1279,7 +1279,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             return (
               <button
                 onClick={() => setActiveTab('lists')}
-                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
                   activeTab === 'lists'
                     ? 'border-accent text-accent'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1291,9 +1291,9 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           })()}
           <button
             onClick={() => setActiveTab('posts')}
-            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'posts' 
-                ? 'border-accent text-accent' 
+            className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
+              activeTab === 'posts'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -1302,7 +1302,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           {(isOwnProfile || profileUser?.likes_public !== false) && (
             <button
               onClick={() => setActiveTab('likes')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'likes'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1314,7 +1314,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           {(mediaPosts.length > 0 || streamArchives.length > 0) && (
             <button
               onClick={() => setActiveTab('media')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'media'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1326,7 +1326,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           {timelineVisible && (
             <button
               onClick={() => setActiveTab('timeline')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'timeline'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1337,7 +1337,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           )}
           <button
             onClick={() => setActiveTab('about')}
-            className={`lg:hidden px-4 py-3 font-medium transition-colors border-b-2 ${
+            className={`lg:hidden shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
               activeTab === 'about'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
