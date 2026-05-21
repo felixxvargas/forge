@@ -814,7 +814,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   );
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 overflow-x-hidden">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
@@ -1166,7 +1166,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>{/* end left column */}
 
         {/* RIGHT COLUMN — LFG, tabs, tab content */}
-        <div className="lg:flex-1 lg:min-w-0 lg:max-w-2xl">
+        <div className="min-w-0 lg:flex-1 lg:max-w-2xl">
 
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
@@ -1271,7 +1271,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {/* Tabs */}
-        <div className="overflow-x-hidden">
         <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
@@ -1346,7 +1345,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           >
             About
           </button>
-        </div>
         </div>
 
         {/* Tab Content */}
