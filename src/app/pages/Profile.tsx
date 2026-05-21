@@ -814,7 +814,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   );
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-clip">
+    <div className="min-h-screen pb-20 overflow-x-hidden">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
@@ -1166,7 +1166,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>{/* end left column */}
 
         {/* RIGHT COLUMN — LFG, tabs, tab content */}
-        <div className="w-full min-w-0 lg:flex-1 lg:max-w-2xl">
+        <div className="overflow-x-hidden lg:flex-1 lg:min-w-0 lg:max-w-2xl">
 
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
@@ -1345,7 +1345,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           >
             About
           </button>
-          <div className="w-4 shrink-0" aria-hidden="true" />
         </div>
 
         {/* Tab Content */}
