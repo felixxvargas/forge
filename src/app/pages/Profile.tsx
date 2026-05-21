@@ -814,7 +814,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   );
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden">
+    <div className="min-h-screen pb-20 overflow-x-clip">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
@@ -1166,7 +1166,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>{/* end left column */}
 
         {/* RIGHT COLUMN — LFG, tabs, tab content */}
-        <div className="lg:flex-1 lg:min-w-0 lg:max-w-2xl">
+        <div className="w-full min-w-0 lg:flex-1 lg:max-w-2xl">
 
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
@@ -1271,7 +1271,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-4 border-b border-border px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
             const hasLists = ['recentlyPlayed','playedBefore','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);
@@ -1345,6 +1345,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           >
             About
           </button>
+          <div className="w-4 shrink-0" aria-hidden="true" />
         </div>
 
         {/* Tab Content */}
