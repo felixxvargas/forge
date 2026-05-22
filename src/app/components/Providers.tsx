@@ -10,7 +10,11 @@ import { GlowBackground } from './GlowBackground';
 import { initAnalytics } from '../utils/analytics';
 
 function isChunkError(msg: string) {
-  return msg.includes('dynamically imported module') || msg.includes('Importing a module script failed');
+  return (
+    msg.includes('dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes("Cannot read properties of undefined (reading 'call')")
+  );
 }
 
 export function Providers({ children }: { children: ReactNode }) {

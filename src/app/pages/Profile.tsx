@@ -121,8 +121,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
-  const [freshFollowerCount, setFreshFollowerCount] = useState<number | null>(null);
-  const [freshFollowingCount, setFreshFollowingCount] = useState<number | null>(null);
+  const [freshFollowerCount, setFreshFollowerCount] = useState<number>(0);
+  const [freshFollowingCount, setFreshFollowingCount] = useState<number>(0);
   const [canViewHandles, setCanViewHandles] = useState(false);
   const [handlePopup, setHandlePopup] = useState<{ platform: string; handle: string; label: string } | null>(null);
 
@@ -652,9 +652,9 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
             {isAlphaTester && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-full">
-                <FlaskConical className="w-3.5 h-3.5 text-red-400" />
-                <span className="text-xs font-semibold text-red-400">Alpha Tester</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-fuchsia-500/10 border border-fuchsia-500/30 rounded-full">
+                <FlaskConical className="w-3.5 h-3.5 text-fuchsia-300" />
+                <span className="text-xs font-semibold text-fuchsia-300">Alpha Tester</span>
               </div>
             )}
             {isForgeSprite && (
@@ -885,14 +885,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 onClick={() => navigate(isOwnProfile ? '/followers' : `/followers/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{freshFollowerCount !== null ? formatNumber(freshFollowerCount) : '—'}</p>
+                <p className="text-xl font-semibold">{formatNumber(freshFollowerCount)}</p>
                 <p className="text-sm text-muted-foreground">Followers</p>
               </button>
               <button
                 onClick={() => navigate(isOwnProfile ? '/following' : `/following/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{isOwnProfile ? formatNumber(followingIds.size) : (freshFollowingCount !== null ? formatNumber(freshFollowingCount) : '—')}</p>
+                <p className="text-xl font-semibold">{isOwnProfile ? formatNumber(followingIds.size) : formatNumber(freshFollowingCount)}</p>
                 <p className="text-sm text-muted-foreground">Following</p>
               </button>
             </div>

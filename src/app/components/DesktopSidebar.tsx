@@ -359,7 +359,7 @@ export function DesktopSidebar() {
 
             <button
               onClick={() => setShowAccountMenu(v => !v)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 w-full transition-colors hover:bg-sidebar-accent"
+              className={`flex items-center rounded-lg py-2.5 w-full transition-colors hover:bg-sidebar-accent ${isOpen ? 'gap-3 px-3' : 'justify-center'}`}
             >
               <ProfileAvatar
                 username={currentUser.display_name || currentUser.handle || '?'}

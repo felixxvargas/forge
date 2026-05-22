@@ -9,7 +9,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   useEffect(() => {
     // Stale chunk from a previous deployment — reload silently instead of showing error UI
     const msg = error?.message ?? '';
-    if (msg.includes('dynamically imported module') || msg.includes('Importing a module script failed')) {
+    if (
+      msg.includes('dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes("Cannot read properties of undefined (reading 'call')")
+    ) {
       window.location.reload();
       return;
     }
