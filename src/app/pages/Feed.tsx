@@ -352,11 +352,12 @@ export function Feed() {
     || (dynamicLoading && dynamicPosts === null)
     || (feedMode === 'following' && isAuthenticated && !topicPostsReady && contextPosts.length === 0);
   const numCols = useColumnCount();
+  const feedGap = numCols === 1 ? 'gap-3' : numCols === 2 ? 'gap-4' : 'gap-6';
 
   const feedContent = (
-    <div className="w-full px-4 lg:px-6 py-3 md:py-6">
+    <div className="w-full px-4 lg:px-6 py-3 lg:py-6">
       {/* Feed selector */}
-      <div className="mb-3 md:mb-6 relative">
+      <div className="mb-3 lg:mb-6 relative">
         <button
           onClick={() => isAuthenticated && setShowDropdown(!showDropdown)}
           className={`flex items-center gap-2 text-2xl font-extrabold transition-colors ${isAuthenticated ? 'hover:text-accent cursor-pointer' : 'cursor-default'}`}
@@ -459,9 +460,9 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className="flex gap-3 md:gap-6 items-start">
+        <div className={`flex ${feedGap} items-start`}>
           {Array.from({ length: numCols }).map((_, colIdx) => (
-            <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
+            <div key={colIdx} className={`flex-1 flex flex-col ${feedGap} min-w-0`}>
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                   <div className="flex gap-3 mb-3">
@@ -493,12 +494,12 @@ export function Feed() {
       )}
 
       {!loading && (
-        <div className="flex gap-3 md:gap-6 items-start">
+        <div className={`flex ${feedGap} items-start`}>
           {(() => {
             // Mark first 6 posts (above fold on 1–3 column layouts) as priority for image loading.
             const priorityIds = new Set((visiblePosts as any[]).slice(0, 6).map((p: any) => p.id));
             return splitToColumns(visiblePosts as any[], numCols).map((colPosts, colIdx) => (
-              <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
+              <div key={colIdx} className={`flex-1 flex flex-col ${feedGap} min-w-0`}>
                 {colPosts.map(post => {
                   const user = post.author;
                   if (!user) return null;
@@ -525,9 +526,9 @@ export function Feed() {
       {!loading && mutedFilteredPosts.length > 0 && (
         <div className="mt-4">
           <div className="text-sm text-muted-foreground mb-2">Muted Posts</div>
-          <div className="flex gap-3 md:gap-6 items-start">
+          <div className={`flex ${feedGap} items-start`}>
             {splitToColumns(mutedFilteredPosts as any[], numCols).map((colPosts, colIdx) => (
-              <div key={colIdx} className="flex-1 flex flex-col gap-3 md:gap-6 min-w-0">
+              <div key={colIdx} className={`flex-1 flex flex-col ${feedGap} min-w-0`}>
                 {colPosts.map(post => {
                   const user = post.author;
                   if (!user) return null;
