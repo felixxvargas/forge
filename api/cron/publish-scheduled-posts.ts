@@ -1,6 +1,6 @@
 // Vercel Cron Function — publishes scheduled @forge posts.
-// Schedule: vercel.json { "crons": [{ "path": "/api/cron/publish-scheduled-posts", "schedule": "0 * * * *" }] }
-// (Every hour on the hour)
+// Schedule: vercel.json { "crons": [{ "path": "/api/cron/publish-scheduled-posts", "schedule": "0 9 * * *" }] }
+// (Daily at 9am UTC)
 //
 // Required env vars: VITE_SUPABASE_PROJECT_ID, VITE_SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET
 
