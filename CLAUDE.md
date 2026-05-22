@@ -38,6 +38,12 @@ Route groups:
 - `app/(app)/` — authenticated app pages, wrapped by `<Layout>` from `src/`
 - `app/(auth)/` — login, signup, onboarding, splash
 
+**Profile routing (updated):** The canonical profile URL is `/profile/{handle}`. The old `/{handle}` catch-all now does a permanent redirect to `/profile/{handle}`.
+
+- `app/(app)/profile/[slug]/page.tsx` — merged primary route: UUID slugs fetch by ID and redirect to `/profile/{handle}`; handle slugs render `<Profile>` directly. Has full `generateMetadata` with OG tags.
+- `app/(app)/[handle]/page.tsx` — redirect-only to `/profile/{handle}`
+- `src/app/utils/profilePath.ts` — always returns `/profile/${handle}` or `/profile/${id}`; all callers (PostCard, UserCard, etc.) use this utility
+
 The root layout at `app/layout.tsx` wraps everything in `<Providers>` from `src/app/components/Providers.tsx`.
 
 ### Compatibility Shim

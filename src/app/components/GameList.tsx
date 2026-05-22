@@ -4,6 +4,7 @@ import { Edit2, ChevronRight, Trash2, Users, GripVertical, MoreHorizontal, Flame
 import { useNavigate } from '@/compat/router';
 import type { Game, GameListType } from '../data/data';
 import { GameCard } from './GameCard';
+import { GameListRow } from './GameListRow';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +67,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
 
   return (
     <div className={`mb-6 ${isLFG ? 'rounded-xl border-2 border-orange-400/40 bg-gradient-to-r from-orange-500/8 to-red-500/8 p-3' : ''}`}>
-      <div className="flex items-center justify-between mb-3">
+      <div className={`flex items-center justify-between mb-3${!isLFG ? ' px-4' : ''}`}>
         <div className="flex items-center gap-2">
           {dragHandle && (
             <GripVertical
@@ -148,7 +149,7 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
         )}
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+      <GameListRow inset={!isLFG}>
         {displayGames.map((game) => (
           <GameCard key={game.id} game={game} showHours={showHours} />
         ))}
@@ -163,13 +164,13 @@ export function GameList({ title, games, showHours = false, badges, sortable = f
             <span className="text-xs text-muted-foreground">more</span>
           </button>
         )}
-      </div>
+      </GameListRow>
 
       {/* View All link */}
       {games.length > PREVIEW_LIMIT && showFirstOnly && listType && (
         <button
           onClick={handleViewAll}
-          className="flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors mt-2"
+          className={`flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors mt-2${!isLFG ? ' px-4' : ''}`}
         >
           View All ({games.length})
           <ChevronRight className="w-4 h-4" />

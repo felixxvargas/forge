@@ -354,9 +354,9 @@ export function Feed() {
   const numCols = useColumnCount();
 
   const feedContent = (
-    <div className="w-full px-4 lg:px-6 py-3 sm:py-6">
+    <div className="w-full px-4 lg:px-6 py-3 md:py-6">
       {/* Feed selector */}
-      <div className="mb-3 sm:mb-6 relative">
+      <div className="mb-3 md:mb-6 relative">
         <button
           onClick={() => isAuthenticated && setShowDropdown(!showDropdown)}
           className={`flex items-center gap-2 text-2xl font-extrabold transition-colors ${isAuthenticated ? 'hover:text-accent cursor-pointer' : 'cursor-default'}`}

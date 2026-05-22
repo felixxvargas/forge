@@ -1043,7 +1043,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         </div>{/* end left column */}
 
         {/* RIGHT COLUMN — LFG, tabs, tab content */}
-        <div className="min-w-0 lg:flex-1 lg:max-w-2xl">
+        <div className="min-w-0 lg:flex-1 lg:max-w-2xl overflow-visible">
 
         {/* Active LFG Flares — preview first flare, link to full list */}
         {activeFlares.length > 0 && (
@@ -1102,7 +1102,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
         {/* Top 8 Friends & Games — always visible above tabs */}
         {(topFriendIds.length > 0 || topGameIds.length > 0) && (
-          <div className="px-4 mb-2 lg:mt-4 space-y-0">
+          <div className="mb-2 lg:mt-4 space-y-0">
             <Top8Friends
               friendIds={topFriendIds}
               isOwnProfile={isOwnProfile}
@@ -1226,7 +1226,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
         {/* Tab Content */}
         {effectiveTab === 'lists' && (
-          <div className="px-4 lg:pr-0 space-y-6">
+          <div className="space-y-6 overflow-visible">
 
             {(() => {
               const ALL_LISTS: { key: 'recentlyPlayed' | 'playedBefore' | 'favorites' | 'wishlist' | 'library' | 'completed'; listType: GameListType; label: string }[] = [
@@ -1333,7 +1333,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                       <div
                         key={listType}
                         ref={el => { listItemElsRef.current[i] = el; }}
-                        className={`rounded-xl transition-all duration-150 ${
+                        className={`rounded-xl overflow-visible transition-all duration-150 ${
                           isDragging ? 'opacity-30 scale-[0.98] pointer-events-none' : isOver ? 'ring-2 ring-accent/50 bg-accent/5 scale-[1.01]' : ''
                         }`}
                       >
@@ -1359,7 +1359,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
                   {/* Add Content module for own profile */}
                   {isOwnProfile && (
-                    <div>
+                    <div className="px-4">
                       {addContentOpen ? (
                         <div className="bg-card/50 border border-border rounded-xl p-4">
                           <p className="text-sm font-medium mb-3">Add content to your profile</p>
@@ -1455,7 +1455,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
                   {/* Media collage — up to 4 preview images/videos above Recent Posts */}
                   {mediaPosts.length > 0 && (
-                    <div className="mt-4">
+                    <div className="px-4 mt-4">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Media</h3>
                         <button onClick={() => setActiveTab('media')} className="text-xs text-accent hover:underline">

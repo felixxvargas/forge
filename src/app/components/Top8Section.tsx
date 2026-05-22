@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from '@/compat/router';
+import { GameListRow } from './GameListRow';
 import { Star, Plus, X, Search, Loader2, Gamepad2 } from 'lucide-react';
 import { ProfileAvatar } from './ProfileAvatar';
 import { top8API, supabase } from '../utils/supabase';
@@ -28,10 +29,10 @@ export function Top8Friends({ friendIds, isOwnProfile, onRemove, onAdd, canAdd }
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 px-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top Friends</h3>
       </div>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 px-4">
         {profiles.map(profile => (
           <div key={profile.id} className="relative group/tf">
             <button
@@ -104,7 +105,7 @@ export function Top8Games({ gameIds, isOwnProfile, onManage }: Top8GamesProps) {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 px-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex-1">Top Games</h3>
         {isOwnProfile && onManage && gameIds.length > 0 && (
           <button onClick={onManage} className="text-xs text-accent hover:underline">Edit</button>
@@ -112,16 +113,18 @@ export function Top8Games({ gameIds, isOwnProfile, onManage }: Top8GamesProps) {
       </div>
       {gameIds.length === 0 ? (
         isOwnProfile ? (
-          <button
-            onClick={onManage}
-            className="flex items-center gap-2 px-3 py-2 border border-dashed border-muted-foreground/30 rounded-lg text-sm text-muted-foreground hover:border-accent/60 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add top games
-          </button>
+          <div className="px-4">
+            <button
+              onClick={onManage}
+              className="flex items-center gap-2 px-3 py-2 border border-dashed border-muted-foreground/30 rounded-lg text-sm text-muted-foreground hover:border-accent/60 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add top games
+            </button>
+          </div>
         ) : null
       ) : (
-        <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
+        <GameListRow gap="2" className="pb-1">
           {games.map(game => {
             const cover = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.coverArt;
             return (
@@ -141,7 +144,7 @@ export function Top8Games({ gameIds, isOwnProfile, onManage }: Top8GamesProps) {
               </button>
             );
           })}
-        </div>
+        </GameListRow>
       )}
     </div>
   );

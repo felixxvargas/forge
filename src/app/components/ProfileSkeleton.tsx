@@ -2,12 +2,12 @@ import { Header } from './Header';
 
 function GameListCardSkeleton() {
   return (
-    <div className="rounded-xl bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="rounded-xl overflow-visible bg-card space-y-3">
+      <div className="flex items-center justify-between px-4 pt-4">
         <div className="h-4 bg-muted/40 rounded w-32" />
         <div className="h-4 bg-muted/20 rounded w-12" />
       </div>
-      <div className="flex gap-2 overflow-hidden">
+      <div className="flex gap-2 overflow-visible px-4">
         {Array.from({ length: 6 }).map((_, j) => (
           <div key={j} className="shrink-0 rounded-lg bg-muted/30" style={{ width: 68, aspectRatio: '3/4' }} />
         ))}
