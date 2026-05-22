@@ -17,7 +17,7 @@ export function GameListRow({ children, inset = true, className, gap = '3' }: Ga
   return (
     <div
       className={cn(
-        'flex pb-2 overflow-visible scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
+        'flex pb-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
         gap === '2' ? 'gap-2' : 'gap-3',
         inset && 'px-4',
         className,
