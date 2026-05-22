@@ -16,11 +16,10 @@ export const RELEASES: Release[] = [
     title: "What's New in Forge",
     summary: "Alpha Tester badge, clean profile URLs, reply highlighting, and Android push notifications.",
     highlights: [
-      'Alpha Tester badge: founding members who joined during alpha get a ruby flask icon on their profile.',
-      'Profile URLs now use your handle — share your profile as forge-social.app/yourhandle.',
+      'Profile URLs now use your handle; share your profile as forge-social.app/profile/yourhandle.',
       'Tapping the comment icon on a post now opens the reply tray with a smooth slide-up animation.',
-      'Game mentions in the reply tray are now highlighted in accent green and bold, matching the compose post experience.',
       'Android push notifications: stay informed of DMs and activity even when the app is closed (beta).',
+      'Alpha Tester badge: founding members who joined during alpha get a ruby flask icon on their profile.',
     ],
   },
   {
