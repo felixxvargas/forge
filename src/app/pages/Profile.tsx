@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from '@/compat/router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon, FlaskConical } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
 import { isMentorHandle } from '../utils/mentors';
 import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
@@ -646,9 +646,17 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         const joinYear = profileUser?.created_at ? new Date(profileUser.created_at).getFullYear() : null;
         const isEarlyAdopter = joinYear === 2026;
         const isMentor = isMentorHandle(profileUser.handle || '');
-        if (!isForgeSprite && !isEarlyAdopter && !isMentor) return null;
+        const ALPHA_CUTOFF = new Date('2026-05-19');
+        const isAlphaTester = !!profileUser.created_at && (profileUser as any).account_type !== 'topic' && new Date(profileUser.created_at) < ALPHA_CUTOFF;
+        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester) return null;
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
+            {isAlphaTester && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-full">
+                <FlaskConical className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-xs font-semibold text-red-400">Alpha Tester</span>
+              </div>
+            )}
             {isForgeSprite && (
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 rounded-full">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-violet-300 shrink-0">
@@ -823,7 +831,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h1 className="text-xl font-semibold line-clamp-2 break-words">{profileUser.display_name || profileUser.handle}</h1>
-                  <UserBadgeIcons handle={profileUser.handle || ''} createdAt={profileUser.created_at} accountType={(profileUser as any).account_type} />
+                  <UserBadgeIcons handle={profileUser.handle || ''} createdAt={profileUser.created_at} />
                 </div>
                 <p className="text-muted-foreground">@{(profileUser.handle || '').replace(/^@/, '')}</p>
                 {profileUser.pronouns && (
@@ -1140,7 +1148,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 mb-4 border-b border-border pl-4 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(() => {
             const gameLists = profileUser.game_lists ?? profileUser.gameLists ?? {};
             const hasLists = ['recentlyPlayed','playedBefore','favorites','wishlist','library'].some(k => (gameLists[k] ?? []).length > 0);

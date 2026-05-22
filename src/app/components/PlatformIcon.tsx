@@ -174,9 +174,9 @@ export function PlatformIcon({ platform, className = 'w-5 h-5', userHandle, show
 
   const label = PLATFORM_LABELS[key] ?? key;
 
-  // Nintendo friend codes are long — truncate after 11 chars on the pill only
+  // Nintendo friend codes are long — truncate after 7 chars on the pill only
   const displayHandle = userHandle
-    ? (key === 'nintendo' && userHandle.length > 11 ? userHandle.slice(0, 11) + '…' : userHandle)
+    ? (key === 'nintendo' && userHandle.length > 7 ? userHandle.slice(0, 7) + '…' : userHandle)
     : undefined;
 
   if (showHandle && displayHandle) {
