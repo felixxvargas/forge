@@ -460,34 +460,30 @@ export function Feed() {
       )}
 
       {loading && (
-        <div className={`flex ${feedGap} items-start`}>
-          {Array.from({ length: numCols }).map((_, colIdx) => (
-            <div key={colIdx} className={`flex-1 flex flex-col ${feedGap} min-w-0`}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                  <div className="flex gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="flex gap-2 mb-2">
-                        <div className="h-3 bg-muted/50 rounded w-24" />
-                        <div className="h-3 bg-muted/30 rounded w-16" />
-                      </div>
-                      <div className="h-3 bg-muted/30 rounded w-20" />
-                    </div>
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${feedGap}`}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+              <div className="flex gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <div className="flex gap-2 mb-2">
+                    <div className="h-3 bg-muted/50 rounded w-24" />
+                    <div className="h-3 bg-muted/30 rounded w-16" />
                   </div>
-                  <div className="space-y-2 mb-3">
-                    <div className="h-3 bg-muted/40 rounded w-full" />
-                    <div className="h-3 bg-muted/40 rounded w-5/6" />
-                    <div className="h-3 bg-muted/40 rounded w-3/4" />
-                  </div>
-                  <div className="h-36 bg-muted/25 rounded-lg mb-3" />
-                  <div className="flex gap-4">
-                    <div className="h-3 bg-muted/25 rounded w-8" />
-                    <div className="h-3 bg-muted/25 rounded w-8" />
-                    <div className="h-3 bg-muted/25 rounded w-8" />
-                  </div>
+                  <div className="h-3 bg-muted/30 rounded w-20" />
                 </div>
-              ))}
+              </div>
+              <div className="space-y-2 mb-3">
+                <div className="h-3 bg-muted/40 rounded w-full" />
+                <div className="h-3 bg-muted/40 rounded w-5/6" />
+                <div className="h-3 bg-muted/40 rounded w-3/4" />
+              </div>
+              <div className="h-36 bg-muted/25 rounded-lg mb-3" />
+              <div className="flex gap-4">
+                <div className="h-3 bg-muted/25 rounded w-8" />
+                <div className="h-3 bg-muted/25 rounded w-8" />
+                <div className="h-3 bg-muted/25 rounded w-8" />
+              </div>
             </div>
           ))}
         </div>
