@@ -16,6 +16,8 @@ interface GameData {
   description?: string;
   genres?: string[];
   platforms?: string[];
+  game_modes?: string[];
+  igdb_similar_game_ids?: number[];
   parent_game_id?: string | null;
   game_category?: number | null;
 }
@@ -156,7 +158,7 @@ export async function searchGames(query: string, limit = 20) {
     const igdbLimit = Math.min(limit * 2, 50);
     const body = `
       search "${query}";
-      fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id;
+      fields name, summary, first_release_date, genres.name, platforms.name, cover.image_id, game_modes.name, similar_games;
       limit ${igdbLimit};
     `;
 
@@ -197,6 +199,8 @@ export async function searchGames(query: string, limit = 20) {
               description: g.summary ?? null,
               genres: g.genres?.map((x: any) => x.name) ?? [],
               platforms: g.platforms?.map((x: any) => x.name) ?? [],
+              game_modes: g.game_modes?.map((x: any) => x.name) ?? [],
+              igdb_similar_game_ids: g.similar_games ?? [],
             }, { onConflict: 'id', ignoreDuplicates: true })
             .select()
             .single();
@@ -307,38 +311,95 @@ export async function getGameArtwork(gameId: string, artworkType?: string) {
 const MOD_CATEGORIES = new Set([5, 12]); // 5=mod, 12=fork
 
 /**
- * Get games with similar genres (for "Similar Games" module).
- * Looks up the source game's genres/platforms/category, then ranks candidates
- * by genre overlap. Mods are excluded unless the source game is itself a mod.
+ * Get similar games for a game detail page.
+ * Primary: resolves IGDB's curated similar_games list from local DB rows.
+ * Secondary: genre + game_modes weighted scoring from local DB.
+ * Lazy-fetches IGDB data for the source game if game_modes or similar IDs are missing.
  */
 export async function getSimilarGames(gameId: string, limit = 8) {
-  // Look up source game for genre/platform/category data
   const { data: source } = await supabase
     .from('forge_games_17285bd7')
-    .select('id, genres, platforms, game_category')
+    .select('id, igdb_id, igdb_similar_game_ids, game_modes, genres, platforms, game_category, parent_game_id')
     .eq('id', gameId)
     .single();
 
-  const genres: string[] = source?.genres ?? [];
-  const platforms: string[] = source?.platforms ?? [];
-  const sourceIsMod = source?.game_category != null && MOD_CATEGORIES.has(source.game_category);
+  if (!source) return [];
 
+  const genres: string[] = source.genres ?? [];
+  const platforms: string[] = source.platforms ?? [];
+  let gameModes: string[] = source.game_modes ?? [];
+  let igdbSimilarIds: number[] = source.igdb_similar_game_ids ?? [];
+  const sourceIsMod = source.game_category != null && MOD_CATEGORIES.has(source.game_category);
+
+  // Lazy-fetch from IGDB when game_modes or similar IDs haven't been stored yet
+  if (source.igdb_id && (igdbSimilarIds.length === 0 || gameModes.length === 0)) {
+    try {
+      const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
+      const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET') ?? Deno.env.get('TWITCH_CLIENT_SECRET');
+      if (clientId && clientSecret) {
+        const accessToken = await getIGDBAccessToken();
+        const res = await fetch('https://api.igdb.com/v4/games', {
+          method: 'POST',
+          headers: {
+            'Client-ID': clientId,
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'text/plain',
+          },
+          body: `fields similar_games, game_modes.name; where id = ${source.igdb_id};`,
+        });
+        if (res.ok) {
+          const igdbResults = await res.json() as any[];
+          const igdbData = igdbResults[0];
+          if (igdbData) {
+            const fetchedSimilarIds: number[] = igdbData.similar_games ?? [];
+            const fetchedModes: string[] = igdbData.game_modes?.map((m: any) => m.name) ?? [];
+            await supabase
+              .from('forge_games_17285bd7')
+              .update({ igdb_similar_game_ids: fetchedSimilarIds, game_modes: fetchedModes })
+              .eq('id', gameId);
+            if (fetchedSimilarIds.length > 0) igdbSimilarIds = fetchedSimilarIds;
+            if (fetchedModes.length > 0) gameModes = fetchedModes;
+          }
+        }
+      }
+    } catch {
+      // fall through to genre-based scoring
+    }
+  }
+
+  // Resolve IGDB curated similar IDs to local DB rows
+  let igdbCurated: any[] = [];
+  if (igdbSimilarIds.length > 0) {
+    const { data: curated } = await supabase
+      .from('forge_games_17285bd7')
+      .select('*, artwork:forge_game_artwork_17285bd7(*)')
+      .in('igdb_id', igdbSimilarIds)
+      .or('hidden.is.null,hidden.eq.false');
+    igdbCurated = curated ?? [];
+  }
+  const curatedLocalIds = new Set<string>(igdbCurated.map((g: any) => g.id));
+
+  // Fetch genre-overlapping candidates from local DB
   let candidates: any[] = [];
-
   if (genres.length > 0) {
-    // Find games sharing at least one genre (array overlap)
     const { data } = await supabase
       .from('forge_games_17285bd7')
       .select('*, artwork:forge_game_artwork_17285bd7(*)')
       .neq('id', gameId)
       .or('hidden.is.null,hidden.eq.false')
       .overlaps('genres', genres)
-      .limit(60);
+      .limit(80);
     candidates = data ?? [];
   }
 
-  // If too few genre matches, supplement with recent games
-  if (candidates.length < 3) {
+  // Merge: IGDB curated first, then genre candidates (deduplicated)
+  let allCandidates: any[] = [
+    ...igdbCurated,
+    ...candidates.filter((g: any) => !curatedLocalIds.has(g.id)),
+  ];
+
+  // Supplement with recent games if still too few
+  if (allCandidates.length < 3) {
     const { data } = await supabase
       .from('forge_games_17285bd7')
       .select('*, artwork:forge_game_artwork_17285bd7(*)')
@@ -346,35 +407,31 @@ export async function getSimilarGames(gameId: string, limit = 8) {
       .or('hidden.is.null,hidden.eq.false')
       .order('year', { ascending: false })
       .limit(60);
-    const extra = data ?? [];
-    const seen = new Set(candidates.map((g: any) => g.id));
-    candidates = [...candidates, ...extra.filter((g: any) => !seen.has(g.id))];
+    const seen = new Set<string>(allCandidates.map((g: any) => g.id));
+    allCandidates = [...allCandidates, ...(data ?? []).filter((g: any) => !seen.has(g.id))];
   }
 
-  // Exclude mods/forks unless the source game is also a mod
+  // Filter mods/forks, direct children, and the source's own parent
   if (!sourceIsMod) {
-    candidates = candidates.filter((g: any) =>
+    allCandidates = allCandidates.filter((g: any) =>
       g.game_category == null || !MOD_CATEGORIES.has(g.game_category)
     );
   }
-
-  // Exclude direct children of the current game (they belong in Expansions & Versions)
-  candidates = candidates.filter((g: any) => g.parent_game_id !== gameId);
-
-  // Exclude the source game's own parent (avoid circular "similar" loop)
-  if (source?.parent_game_id) {
-    candidates = candidates.filter((g: any) => g.id !== source.parent_game_id);
+  allCandidates = allCandidates.filter((g: any) => g.parent_game_id !== gameId);
+  if (source.parent_game_id) {
+    allCandidates = allCandidates.filter((g: any) => g.id !== source.parent_game_id);
   }
 
-  // Score by genre overlap (weighted 3×) + platform overlap (1×), then year desc
-  const scored = candidates.map((g: any) => {
+  // Score: IGDB curated bonus (15) + game_modes (4×) + genres (3×) + platforms (1×)
+  const scored = allCandidates.map((g: any) => {
     const gGenres: string[] = g.genres ?? [];
     const gPlatforms: string[] = g.platforms ?? [];
-    const genreMatches = genres.filter(genre => gGenres.includes(genre)).length;
-    const platformMatches = platforms.length > 0
-      ? platforms.filter((p: string) => gPlatforms.includes(p)).length
-      : 0;
-    return { ...g, _relevance: genreMatches * 3 + platformMatches };
+    const gModes: string[] = g.game_modes ?? [];
+    const igdbBonus = curatedLocalIds.has(g.id) ? 15 : 0;
+    const modeMatches = gameModes.filter((m: string) => gModes.includes(m)).length;
+    const genreMatches = genres.filter((genre: string) => gGenres.includes(genre)).length;
+    const platformMatches = platforms.filter((p: string) => gPlatforms.includes(p)).length;
+    return { ...g, _relevance: igdbBonus + modeMatches * 4 + genreMatches * 3 + platformMatches };
   });
 
   scored.sort((a: any, b: any) =>
@@ -435,6 +492,8 @@ async function upsertIGDBGame(g: any): Promise<any> {
       description: g.summary ?? null,
       genres: g.genres?.map((x: any) => x.name) ?? [],
       platforms: g.platforms?.map((x: any) => x.name) ?? [],
+      game_modes: g.game_modes?.map((x: any) => x.name) ?? [],
+      igdb_similar_game_ids: g.similar_games ?? [],
       game_category: g.category ?? null,
     }, { onConflict: 'id' })
     .select()
