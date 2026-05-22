@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';
 import { GameCard } from '../components/GameCard';
+import { GameListRow } from '../components/GameListRow';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
@@ -635,7 +636,7 @@ export function Explore() {
 
         {/* ── GLOBAL SEARCH OVERLAY ── (not shown on games tab — that tab handles its own search) */}
         {isSearchActive && activeTab !== 'games' ? (
-          <div className="space-y-6">
+          <div className="max-w-5xl mx-auto space-y-6">
             {searchLoading && (
               <div className="flex items-center justify-center py-6">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
@@ -656,11 +657,11 @@ export function Explore() {
                     </button>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <GameListRow inset={false}>
                   {searchGameResults.map(game => (
                     <GameCard key={game.id} game={game} />
                   ))}
-                </div>
+                </GameListRow>
               </section>
             )}
 
@@ -678,7 +679,7 @@ export function Explore() {
                     </button>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {searchUsers.map(user => (
                     <UserCard key={user.id} user={{ ...user, follower_count: realFollowerCounts[user.id] ?? user.follower_count }} />
                   ))}
@@ -701,7 +702,7 @@ export function Explore() {
                     </button>
                   )}
                 </div>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {searchPostResults.map(post => {
                     const user = post.author;
                     if (!user) return null;
@@ -807,7 +808,7 @@ export function Explore() {
                     </button>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {searchGroupResults.map(group => (
                     <GroupCard key={group.id} group={group} gameTitles={groupGameTitles} />
                   ))}
