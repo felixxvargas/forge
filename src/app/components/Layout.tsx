@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'motion/react';
@@ -21,6 +21,14 @@ function DraftResumeBanner() {
   const navigate = useNavigate();
   const { isOpen } = useSidebar();
   const [draft, setDraft] = useState<{ content: string; replyTo?: string } | null>(null);
+  const [isMdPlus, setIsMdPlus] = useState(false);
+
+  useLayoutEffect(() => {
+    setIsMdPlus(window.innerWidth >= 768);
+    const check = () => setIsMdPlus(window.innerWidth >= 768);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (location.pathname.startsWith('/new-post')) { setDraft(null); return; }
@@ -54,7 +62,7 @@ function DraftResumeBanner() {
   return (
     <motion.div
       className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-3 md:right-auto md:w-80 z-[45]"
-      animate={{ left: typeof window !== 'undefined' && window.innerWidth >= 768 ? (isOpen ? 220 : 60) + 16 : 12 }}
+      animate={{ left: isMdPlus ? (isOpen ? 220 : 60) + 16 : 12 }}
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
     >
       <div className="flex items-center gap-3 px-4 py-3 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl">
@@ -87,9 +95,10 @@ export function Layout({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isLoading, currentUser } = useAppData();
   const { isOpen } = useSidebar();
   const location = useLocation();
-  const [isMdPlus, setIsMdPlus] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
+  const [isMdPlus, setIsMdPlus] = useState(false); // SSR-safe: both server and client initial render agree
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    setIsMdPlus(window.innerWidth >= 768);
     const check = () => setIsMdPlus(window.innerWidth >= 768);
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -137,15 +146,12 @@ export function Layout({ children }: { children?: ReactNode }) {
     <div className="min-h-dvh relative">
       <ScrollRestoration />
       <DesktopSidebar />
-      <motion.div
-        className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4"
-        initial={false}
-        animate={{ marginLeft: sidebarMargin }}
-        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      <div
+        className="pb-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:pb-4 transition-[margin-left] duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={{ marginLeft: sidebarMargin }}
       >
         {children}
-      </motion.div>
+      </div>
       <BottomNav />
       {isAuthenticated && <WhatsNewModal />}
       {isAuthenticated && <DraftResumeBanner />}

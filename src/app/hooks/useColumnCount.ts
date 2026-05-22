@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 
 /** Returns the number of masonry columns based on viewport width. */
 function getColCount() {
-  if (typeof window === 'undefined') return 1;
   const w = window.innerWidth;
   return w >= 1024 ? 3 : w >= 768 ? 2 : 1;
 }
 
 export function useColumnCount(): number {
-  const [cols, setCols] = useState(getColCount);
-  useEffect(() => {
+  const [cols, setCols] = useState(1); // SSR-safe: server and client initial render agree
+  useLayoutEffect(() => {
+    setCols(getColCount());
     const update = () => setCols(getColCount());
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
