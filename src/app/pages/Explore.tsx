@@ -601,7 +601,7 @@ export function Explore() {
 
       {/* Tabs — always visible, dimmed when search active (except on games tab) */}
       {/* top-[130px] = h-14 header (56px) + search bar container (~74px) when visible */}
-      <div className={`sticky z-10 transition-all duration-300 border-b border-border bg-card/80 backdrop-blur-lg ${hideSearchBar ? 'top-14' : 'top-[130px]'} ${isSearchActive && activeTab !== 'games' ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className={`sticky z-10 transition-all duration-300 border-b border-border bg-card/80 backdrop-blur-lg ${hideSearchBar ? 'top-14' : 'top-[130px]'} ${isSearchActive && activeTab !== 'games' ? 'hidden' : ''}`}>
         <div className="w-full flex px-4 lg:px-6">
           {(['posts', 'users', 'games', 'groups'] as ExploreTab[]).map(tab => {
             const icons: Record<ExploreTab, React.ReactNode> = {
