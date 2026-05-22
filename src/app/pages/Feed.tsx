@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { ArrowRight, Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from '@/compat/router';
@@ -352,6 +352,8 @@ export function Feed() {
     || (dynamicLoading && dynamicPosts === null)
     || (feedMode === 'following' && isAuthenticated && !topicPostsReady && contextPosts.length === 0);
   const numCols = useColumnCount();
+  const [colsReady, setColsReady] = useState(false);
+  useLayoutEffect(() => { setColsReady(true); }, []);
   const feedGap = numCols === 1 ? 'gap-3' : numCols === 2 ? 'gap-4' : 'gap-6';
 
   const feedContent = (
@@ -489,8 +491,8 @@ export function Feed() {
               </div>
             ))}
           </div>
-          {/* Desktop: only enters DOM when numCols is confirmed 2+ — never renders on mobile */}
-          {numCols > 1 && (
+          {/* Desktop: colsReady latches after useLayoutEffect confirms the real viewport — prevents concurrent render races */}
+          {colsReady && numCols > 1 && (
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
