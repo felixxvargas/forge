@@ -461,7 +461,7 @@ export function Feed() {
 
       {loading && (
         <>
-          {/* Mobile skeleton — 1 column, 4 cards, hidden at md+ */}
+          {/* Mobile: always in DOM, CSS-hidden on md+ for resize safety */}
           <div className="flex flex-col gap-3 md:hidden">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
@@ -489,34 +489,36 @@ export function Feed() {
               </div>
             ))}
           </div>
-          {/* Desktop skeleton — CSS grid 2→3 columns, 12 cards, hidden below md */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                <div className="flex gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <div className="flex gap-2 mb-2">
-                      <div className="h-3 bg-muted/50 rounded w-24" />
-                      <div className="h-3 bg-muted/30 rounded w-16" />
+          {/* Desktop: only enters DOM when numCols is confirmed 2+ — never renders on mobile */}
+          {numCols > 1 && (
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+                  <div className="flex gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="flex gap-2 mb-2">
+                        <div className="h-3 bg-muted/50 rounded w-24" />
+                        <div className="h-3 bg-muted/30 rounded w-16" />
+                      </div>
+                      <div className="h-3 bg-muted/30 rounded w-20" />
                     </div>
-                    <div className="h-3 bg-muted/30 rounded w-20" />
+                  </div>
+                  <div className="space-y-2 mb-3">
+                    <div className="h-3 bg-muted/40 rounded w-full" />
+                    <div className="h-3 bg-muted/40 rounded w-5/6" />
+                    <div className="h-3 bg-muted/40 rounded w-3/4" />
+                  </div>
+                  <div className="h-36 bg-muted/25 rounded-lg mb-3" />
+                  <div className="flex gap-4">
+                    <div className="h-3 bg-muted/25 rounded w-8" />
+                    <div className="h-3 bg-muted/25 rounded w-8" />
+                    <div className="h-3 bg-muted/25 rounded w-8" />
                   </div>
                 </div>
-                <div className="space-y-2 mb-3">
-                  <div className="h-3 bg-muted/40 rounded w-full" />
-                  <div className="h-3 bg-muted/40 rounded w-5/6" />
-                  <div className="h-3 bg-muted/40 rounded w-3/4" />
-                </div>
-                <div className="h-36 bg-muted/25 rounded-lg mb-3" />
-                <div className="flex gap-4">
-                  <div className="h-3 bg-muted/25 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-8" />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
