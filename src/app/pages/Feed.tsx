@@ -459,9 +459,9 @@ export function Feed() {
         </button>
       )}
 
-      {loading && (
-        <>
-          <div className="flex flex-col gap-3">
+      {loading && (() => {
+        const col = (cls: string) => (
+          <div className={`${cls} flex-1 flex flex-col gap-3 md:gap-4 lg:gap-6 min-w-0`}>
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
                 <div className="flex gap-3 mb-3">
@@ -488,8 +488,15 @@ export function Feed() {
               </div>
             ))}
           </div>
-        </>
-      )}
+        );
+        return (
+          <div className="flex gap-3 md:gap-4 lg:gap-6 items-start">
+            {col('flex')}
+            {col('hidden md:flex')}
+            {col('hidden lg:flex')}
+          </div>
+        );
+      })()}
 
       {!loading && (
         <div className={`flex ${feedGap} items-start`}>
