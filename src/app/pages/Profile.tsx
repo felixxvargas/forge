@@ -66,7 +66,10 @@ const BIO_MAX_LENGTH = 150;
 
 export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const navigate = useNavigate();
-  const { userId, handle } = useParams();
+  const { userId: _userId, handle: _handle, slug: _slug } = useParams();
+  const _isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(_slug || '');
+  const userId = _userId || (_isUUID ? _slug : undefined);
+  const handle = _handle || (!_isUUID && _slug ? _slug : undefined);
   const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds, addToVIPList, removeFromVIPList, vipListIds } = useAppData() as any;
   const normalizedHandle = handle ? handle.replace(/^@/, '').toLowerCase() : null;
   const { data: swrHandleProfile } = useSWR(
@@ -695,7 +698,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
-        <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:pl-12 lg:pr-6 overflow-hidden">
+        <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:pl-12 lg:pr-6 overflow-hidden lg:overflow-visible">
         {/* LEFT COLUMN — profile header + about (desktop) */}
         <div className="lg:w-[340px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
