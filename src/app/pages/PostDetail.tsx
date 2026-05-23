@@ -127,6 +127,32 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
     }
   }, [mounted, searchParams]);
 
+  // Lock body scroll when reply tray is open so the background page can't scroll
+  // when the OSK appears on mobile (position:fixed is required for iOS Safari).
+  useEffect(() => {
+    if (!showReplyTray) return;
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, [showReplyTray]);
+
+  // Delay textarea focus until after the slide-up animation (~350ms) so the OSK
+  // doesn't appear mid-animation and cause a layout jump.
+  useEffect(() => {
+    if (!showReplyTray) return;
+    const t = setTimeout(() => replyTextareaRef.current?.focus(), 350);
+    return () => clearTimeout(t);
+  }, [showReplyTray]);
+
   // Auto-reveal parent context when user scrolls back up to the top
   useEffect(() => {
     if (!parentPost) return;
@@ -960,7 +986,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 42 }}
-                className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-background sm:bg-card/85 sm:backdrop-blur-xl flex flex-col overflow-hidden shadow-2xl"
+                className="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-t-2xl md:rounded-2xl bg-card/80 backdrop-blur-xl sm:bg-card/85 flex flex-col overflow-hidden shadow-2xl"
               >
                 {/* Tray header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
@@ -1027,7 +1053,6 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                     />
                     <textarea
                       ref={replyTextareaRef}
-                      autoFocus
                       value={newReply}
                       onChange={handleReplyChange}
                       placeholder={isExternalPost ? 'Post a comment… Use @ to mention' : 'Post a reply… Use @ to mention'}
