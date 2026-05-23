@@ -514,7 +514,10 @@ export function LoadingScreen({ path = '' }: LoadingScreenProps) {
       );
     }
 
-    /* ── generic feed (Feed, Explore, and other list paths) ── */
+    /* ── feed — Feed.tsx owns its own skeleton, suppress LoadingScreen body ── */
+    if (path === '/feed' || path === '/' || path === '') return null;
+
+    /* ── generic feed (Explore, and other list paths) ── */
     const contentWidths = ['w-full', 'w-5/6', 'w-full', 'w-4/5', 'w-11/12', 'w-full', 'w-3/4', 'w-5/6', 'w-full'];
     const cardCount = numCols === 1 ? 7 : numCols === 2 ? 10 : 14;
     const cards = Array.from({ length: cardCount }, (_, i) => ({ hasImage: i % 2 === 0, i }));
