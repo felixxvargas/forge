@@ -14,8 +14,10 @@ export const RELEASES: Release[] = [
     version: 'v0.3.7',
     date: 'May 2026',
     title: "What's New in Forge",
-    summary: "Alpha Tester badge, clean profile URLs, reply highlighting, and Android push notifications.",
+    summary: "Faster loading, Android nav fix, Alpha Tester badge, clean profile URLs, and push notifications.",
     highlights: [
+      'Feed loads significantly faster on login — now a single optimized request instead of two.',
+      'Android: fixed the bottom navigation bar appearing transparent for signed-out users.',
       'Profile URLs now use your handle; share your profile as forge-social.app/profile/yourhandle.',
       'Tapping the comment icon on a post now opens the reply tray with a smooth slide-up animation.',
       'Android push notifications: stay informed of DMs and activity even when the app is closed (beta).',
