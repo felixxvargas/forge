@@ -43,8 +43,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return;
 
   if (req.method === 'GET') {
-    const posts = await sb('GET', '/scheduled_posts?select=*,author:profiles!user_id(handle,display_name)&order=scheduled_at.desc');
-    return res.json(posts);
+    const posts = await sb<Array<{ user_id: string; [key: string]: unknown }>>('GET', '/scheduled_posts?select=*&order=scheduled_at.desc');
+    if (!posts.length) return res.json(posts);
+    // Fetch author handles in a second query — avoids PostgREST FK join syntax issues
+    const uniqueIds = [...new Set(posts.map(p => p.user_id))];
+    const profiles = await sb<Array<{ id: string; handle: string; display_name: string }>>(
+      'GET', `/profiles?id=in.(${uniqueIds.join(',')})&select=id,handle,display_name`
+    );
+    const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+    const enriched = posts.map(p => ({ ...p, author: profileMap[p.user_id] ?? null }));
+    return res.json(enriched);
   }
 
   if (req.method === 'PATCH') {
