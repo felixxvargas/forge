@@ -30,11 +30,25 @@ export default async function middleware(request: Request): Promise<Response | u
     const validUser = process.env.STORYBOOK_USER;
     const validPass = process.env.STORYBOOK_PASS;
     if (validUser && validPass) {
+      const expected = btoa(`${validUser}:${validPass}`);
+      // Check 30-day cookie first — avoids re-prompting on every visit
+      const cookies = request.headers.get('cookie') ?? '';
+      const cookieMatch = cookies.match(/(?:^|;\s*)sb_auth=([^;]+)/);
+      if (cookieMatch?.[1] === expected) return undefined;
+      // Fall back to Basic Auth header
       const authHeader = request.headers.get('authorization') ?? '';
-      const isBasic = authHeader.startsWith('Basic ');
-      if (isBasic) {
+      if (authHeader.startsWith('Basic ')) {
         const [user, pass] = atob(authHeader.slice(6)).split(':');
-        if (user === validUser && pass === validPass) return undefined; // allow
+        if (user === validUser && pass === validPass) {
+          // Set cookie and redirect so subsequent requests skip the prompt
+          return new Response(null, {
+            status: 302,
+            headers: {
+              'Location': request.url,
+              'Set-Cookie': `sb_auth=${expected}; Path=/storybook; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; Secure; SameSite=Lax`,
+            },
+          });
+        }
       }
       return new Response('Access to Forge Design System requires authentication.', {
         status: 401,
