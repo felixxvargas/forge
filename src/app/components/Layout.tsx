@@ -10,6 +10,7 @@ import { BottomNav } from './BottomNav';
 import { DesktopSidebar } from './DesktopSidebar';
 import { useAppData } from '../context/AppDataContext';
 import { LoadingScreen } from './LoadingScreen';
+import { OnboardingTooltip } from './OnboardingTooltip';
 
 const LoginModule = dynamic(() => import('./LoginModule').then(m => ({ default: m.LoginModule })), { ssr: false });
 const WhatsNewModal = dynamic(() => import('./WhatsNew').then(m => ({ default: m.WhatsNewModal })), { ssr: false });
@@ -155,6 +156,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       <BottomNav />
       {isAuthenticated && <WhatsNewModal />}
       {isAuthenticated && <DraftResumeBanner />}
+      {isAuthenticated && !location.pathname.startsWith('/admin') && <OnboardingTooltip />}
     </div>
   );
 }

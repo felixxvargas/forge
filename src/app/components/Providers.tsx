@@ -5,7 +5,6 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { AppDataProvider } from '../context/AppDataContext';
 import { SidebarProvider } from '../context/SidebarContext';
 import { Toaster } from './ui/sonner';
-import { OnboardingTooltip } from './OnboardingTooltip';
 import { GlowBackground } from './GlowBackground';
 import { initAnalytics } from '../utils/analytics';
 
@@ -45,7 +44,6 @@ export function Providers({ children }: { children: ReactNode }) {
         <div style={{ position: 'relative', zIndex: 1 }}>
           {children}
           <Toaster />
-          <OnboardingTooltip />
         </div>
       </AppDataProvider>
     </ThemeProvider>
