@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-DID7B_--.js";function t(e){let t=e.handle?.replace(/^@/,``);return t?`/profile/${t}`:`/profile/${e.id}`}var n=e((()=>{}));export{t as n,n as t};

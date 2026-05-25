@@ -1,9 +1,14 @@
 import type { Preview } from '@storybook/react';
 import { withThemeByClassName } from '@storybook/addon-themes';
+import { withMockAppData } from './decorators';
 import '../app/globals.css';
 
 const preview: Preview = {
+  initialGlobals: {
+    theme: 'Dark',
+  },
   decorators: [
+    withMockAppData,
     withThemeByClassName({
       themes: { Dark: 'dark', Light: '' },
       defaultTheme: 'Dark',

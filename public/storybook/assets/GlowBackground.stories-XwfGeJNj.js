@@ -1,0 +1,17 @@
+import{i as e,l as t}from"./preload-helper-DID7B_--.js";import{A as n,P as r}from"./iframe-DuOOc3vR.js";function i({children:e}){let[t,n]=(0,s.useState)(`dark`);return(0,s.useEffect)(()=>{let e=localStorage.getItem(`forge-theme`);e&&e!==t&&n(e)},[]),(0,s.useEffect)(()=>{localStorage.setItem(`forge-theme`,t);let e=document.documentElement;t===`dark`?e.classList.add(`dark`):e.classList.remove(`dark`)},[t]),(0,o.jsx)(c.Provider,{value:{theme:t,toggleTheme:()=>{n(e=>e===`dark`?`light`:`dark`)}},children:e})}function a(){let e=(0,s.useContext)(c);if(e===void 0)throw Error(`useTheme must be used within a ThemeProvider`);return e}var o,s,c,l=e((()=>{o=n(),s=t(r(),1),c=(0,s.createContext)(void 0),i.__docgenInfo={description:``,methods:[],displayName:`ThemeProvider`,props:{children:{required:!0,tsType:{name:`ReactNode`},description:``}}}}));function u(){let{theme:e}=a();return e===`dark`?(0,d.jsxs)(`div`,{className:`pointer-events-none fixed inset-0 overflow-hidden`,style:{zIndex:0,background:`linear-gradient(135deg, #140e22 0%, #1c1228 60%, #100b1e 100%)`,willChange:`transform`,transform:`translateZ(0)`},"aria-hidden":`true`,children:[(0,d.jsx)(`div`,{className:`absolute top-[-20%] left-[0%] w-[700px] h-[700px] rounded-full`,style:{background:`radial-gradient(circle, rgba(124,58,237,0.28) 0%, transparent 70%)`,filter:`blur(80px)`,transform:`translateZ(0)`}}),(0,d.jsx)(`div`,{className:`absolute bottom-[-15%] right-[-5%] w-[600px] h-[600px] rounded-full`,style:{background:`radial-gradient(circle, rgba(109,40,217,0.22) 0%, transparent 70%)`,filter:`blur(90px)`,transform:`translateZ(0)`}}),(0,d.jsx)(`div`,{className:`absolute top-[40%] right-[10%] w-[500px] h-[500px] rounded-full`,style:{background:`radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)`,filter:`blur(100px)`,transform:`translateZ(0)`}}),(0,d.jsx)(`div`,{className:`absolute bottom-[20%] left-[-5%] w-[450px] h-[450px] rounded-full`,style:{background:`radial-gradient(circle, rgba(88,28,135,0.20) 0%, transparent 70%)`,filter:`blur(70px)`,transform:`translateZ(0)`}})]}):null}var d,f=e((()=>{d=n(),l(),u.__docgenInfo={description:``,methods:[],displayName:`GlowBackground`}})),p,m,h,g;e((()=>{p=n(),f(),m={title:`Components/GlowBackground`,component:u,tags:[`autodocs`],parameters:{layout:`fullscreen`,backgrounds:{disable:!0}}},h={render:()=>(0,p.jsxs)(`div`,{style:{position:`relative`,height:`100vh`,background:`#0d0d14`},children:[(0,p.jsx)(u,{}),(0,p.jsxs)(`div`,{style:{position:`relative`,zIndex:1,padding:40},children:[(0,p.jsx)(`h1`,{className:`text-2xl font-bold text-foreground`,children:`Content over glow`}),(0,p.jsx)(`p`,{className:`text-muted-foreground mt-2`,children:`The ambient purple glow sits behind all page content.`})]})]})},h.parameters={...h.parameters,docs:{...h.parameters?.docs,source:{originalSource:`{
+  render: () => <div style={{
+    position: 'relative',
+    height: '100vh',
+    background: '#0d0d14'
+  }}>\r
+      <GlowBackground />\r
+      <div style={{
+      position: 'relative',
+      zIndex: 1,
+      padding: 40
+    }}>\r
+        <h1 className="text-2xl font-bold text-foreground">Content over glow</h1>\r
+        <p className="text-muted-foreground mt-2">The ambient purple glow sits behind all page content.</p>\r
+      </div>\r
+    </div>
+}`,...h.parameters?.docs?.source}}},g=[`Default`]}))();export{h as Default,g as __namedExportsOrder,m as default};

@@ -57,6 +57,10 @@ export default meta;
 type Story = StoryObj<typeof GameTile>;
 
 export const Default: Story = {
+  args: { game: exampleGame, postCount: 7, showPostCount: true, onClick: () => alert('Navigate to game') },
+};
+
+export const NoChip: Story = {
   args: { game: exampleGame, postCount: 0, showPostCount: false, onClick: () => alert('Navigate to game') },
 };
 
