@@ -57,23 +57,23 @@ export default meta;
 type Story = StoryObj<typeof GameTile>;
 
 export const Default: Story = {
-  args: { game: exampleGame, postCount: 0, showPostCount: false },
+  args: { game: exampleGame, postCount: 0, showPostCount: false, onClick: () => alert('Navigate to game') },
 };
 
 export const WithBadge: Story = {
-  args: { game: exampleGame, postCount: 7, showPostCount: true },
+  args: { game: exampleGame, postCount: 7, showPostCount: true, onClick: () => alert('Navigate to game') },
 };
 
 export const HighScore: Story = {
-  args: { game: exampleGame, postCount: 42, showPostCount: true },
+  args: { game: exampleGame, postCount: 42, showPostCount: true, onClick: () => alert('Navigate to game') },
 };
 
 export const LongTitle: Story = {
-  args: { game: longTitleGame, postCount: 3, showPostCount: true },
+  args: { game: longTitleGame, postCount: 3, showPostCount: true, onClick: () => alert('Navigate to game') },
 };
 
 export const NoArtwork: Story = {
-  args: { game: noArtGame, postCount: 0, showPostCount: false },
+  args: { game: noArtGame, postCount: 0, showPostCount: false, onClick: () => alert('Navigate to game') },
 };
 
 export const GridPreview: Story = {
@@ -81,10 +81,10 @@ export const GridPreview: Story = {
     (Story) => (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 160px)', gap: 16 }}>
         {[exampleGame, longTitleGame, exampleGame, longTitleGame].map((g, i) => (
-          <GameTile key={i} game={{ ...g, id: String(i) }} postCount={i * 3} showPostCount={true} />
+          <GameTile key={i} game={{ ...g, id: String(i) }} postCount={i * 3} showPostCount={true} onClick={() => {}} />
         ))}
       </div>
     ),
   ],
-  args: { game: exampleGame },
+  args: { game: exampleGame, onClick: () => {} },
 };

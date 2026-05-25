@@ -1,13 +1,13 @@
 import { Bell } from 'lucide-react';
-import { useAppData } from '../context/AppDataContext';
 
 interface NotificationBellProps {
   onClick?: () => void;
   className?: string;
+  hasUnreadNotifications?: boolean;
+  unreadNotificationCount?: number;
 }
 
-export function NotificationBell({ onClick, className }: NotificationBellProps) {
-  const { hasUnreadNotifications, unreadNotificationCount } = useAppData();
+export function NotificationBell({ onClick, className, hasUnreadNotifications = false, unreadNotificationCount = 0 }: NotificationBellProps) {
 
   return (
     <button

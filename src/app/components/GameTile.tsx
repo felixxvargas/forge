@@ -1,14 +1,13 @@
-import { useNavigate } from '@/compat/router';
 import { Flame } from 'lucide-react';
 
 interface GameTileProps {
   game: any;
   postCount?: number;
   showPostCount?: boolean;
+  onClick?: () => void;
 }
 
-export function GameTile({ game, postCount = 0, showPostCount = false }: GameTileProps) {
-  const navigate = useNavigate();
+export function GameTile({ game, postCount = 0, showPostCount = false, onClick }: GameTileProps) {
   const coverArt = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
     ?? game.artwork?.[0]?.url
     ?? game.coverArt;
@@ -16,7 +15,7 @@ export function GameTile({ game, postCount = 0, showPostCount = false }: GameTil
   return (
     <div
       className="group cursor-pointer relative hover:z-10 hover:bg-secondary/40 rounded-lg transition-colors duration-200"
-      onClick={() => navigate(`/game/${game.id}`)}
+      onClick={onClick}
     >
       <div className="relative aspect-[3/4] rounded-lg mb-2 bg-muted/20">
         {coverArt && (
