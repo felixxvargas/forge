@@ -4,6 +4,8 @@
 // If an OG handler fails, falls through to Next.js rather than serving a 500.
 // /storybook is protected by HTTP Basic Auth (STORYBOOK_USER / STORYBOOK_PASS env vars).
 
+import { NextResponse } from 'next/server';
+
 const APP_ROUTES = new Set([
   'feed', 'explore', 'profile', 'edit-profile', 'settings', 'notifications',
   'post', 'gaming-platforms', 'social-integrations', 'social-filtering',
@@ -38,16 +40,21 @@ export default async function middleware(request: Request): Promise<Response | u
       // Fall back to Basic Auth header
       const authHeader = request.headers.get('authorization') ?? '';
       if (authHeader.startsWith('Basic ')) {
-        const [user, pass] = atob(authHeader.slice(6)).split(':');
+        const decoded = atob(authHeader.slice(6));
+        const colonIdx = decoded.indexOf(':');
+        const user = decoded.slice(0, colonIdx);
+        const pass = decoded.slice(colonIdx + 1);
         if (user === validUser && pass === validPass) {
-          // Set cookie and redirect so subsequent requests skip the prompt
-          return new Response(null, {
-            status: 302,
-            headers: {
-              'Location': request.url,
-              'Set-Cookie': `sb_auth=${expected}; Path=/storybook; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; Secure; SameSite=Lax`,
-            },
+          // Pass through and set 30-day cookie — no redirect needed
+          const res = NextResponse.next();
+          res.cookies.set('sb_auth', expected, {
+            path: '/storybook',
+            maxAge: 60 * 60 * 24 * 30,
+            httpOnly: true,
+            secure: true,
+            sameSite: 'lax',
           });
+          return res;
         }
       }
       return new Response('Access to Forge Design System requires authentication.', {
