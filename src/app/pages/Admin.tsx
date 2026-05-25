@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus, BookOpen } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus } from 'lucide-react';
 
 interface OnboardingFunnelData {
   started: number;
@@ -148,8 +148,10 @@ export function Admin() {
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <BookOpen className="w-4 h-4" />
-            Design System
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#FF4785" d="M16.71.243l-.13 2.31a.19.19 0 00.31.17l.85-.7.84.7a.19.19 0 00.31-.17L18.71.243a.18.18 0 00-.18-.2H16.9a.18.18 0 00-.18.2zM24 2.5v19.07a.63.63 0 01-.57.63l-14.04 1.25a.63.63 0 01-.68-.63v-1.56L2.27 20.8a.63.63 0 01-.57-.63V3.83a.63.63 0 01.57-.63l6.44-.5V1.5a.63.63 0 01.68-.63L23.43 2a.63.63 0 01.57.63V2.5z"/>
+            </svg>
+            Storybook
           </a>
           <button
             onClick={load}
