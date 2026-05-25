@@ -43,6 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     content: string;
     game_ids: string[];
     game_titles: string[];
+    images: string[];
+    url: string | null;
   }>>('GET', `/scheduled_posts?status=eq.pending&scheduled_at=lte.${encodeURIComponent(now)}&select=*`);
 
   if (!pending.length) {
@@ -57,12 +59,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const postBody: Record<string, unknown> = {
         user_id: item.user_id,
         content: item.content,
-        images: [],
+        images: item.images ?? [],
         image_alts: [],
         game_ids: gameIds,
         game_titles: gameTitles,
         game_id: gameIds[0] ?? null,
         game_title: gameTitles[0] ?? null,
+        url: item.url ?? null,
       };
 
       const [newPost] = await supabase<Array<{ id: string }>>('POST', '/posts', postBody);

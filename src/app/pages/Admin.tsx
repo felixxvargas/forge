@@ -23,6 +23,7 @@ interface ScheduledPost {
   scheduled_at: string;
   status: 'pending' | 'published' | 'failed';
   published_post_id: string | null;
+  url: string | null;
   created_at: string;
 }
 
@@ -106,7 +107,8 @@ export function Admin() {
   const [triggeringNow, setTriggeringNow] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [composing, setComposing] = useState(false);
-  const [compose, setCompose] = useState({ content: '', scheduled_at: '', game_ids: '', game_titles: '' });
+  const [compose, setCompose] = useState({ content: '', scheduled_at: '', game_ids: '', game_titles: '', url: '' });
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
 
   const loadScheduledPosts = async (tok: string) => {
     setSpLoading(true); setSpError('');
@@ -148,11 +150,12 @@ export function Admin() {
           action: 'create',
           content: compose.content,
           scheduled_at: new Date(compose.scheduled_at).toISOString(),
+          url: compose.url || null,
           game_ids: compose.game_ids ? compose.game_ids.split(',').map(s => s.trim()).filter(Boolean) : [],
           game_titles: compose.game_titles ? compose.game_titles.split(',').map(s => s.trim()).filter(Boolean) : [],
         }),
       });
-      setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '' });
+      setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '', url: '' });
       setShowCompose(false);
       loadScheduledPosts(token);
     } finally {
@@ -573,6 +576,16 @@ export function Admin() {
                   />
                 </div>
                 <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Link URL (optional — shows preview card on post)</label>
+                  <input
+                    type="url"
+                    className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                    placeholder="https://forge-social.app/blog/..."
+                    value={compose.url}
+                    onChange={e => setCompose(c => ({ ...c, url: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Game titles (comma-separated, optional)</label>
                   <input
                     type="text"
@@ -595,7 +608,7 @@ export function Admin() {
               </div>
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
-                  onClick={() => { setShowCompose(false); setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '' }); }}
+                  onClick={() => { setShowCompose(false); setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '', url: '' }); }}
                   className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Cancel
@@ -622,7 +635,7 @@ export function Admin() {
               <ul className="divide-y divide-border">
                 {scheduledPosts.map(post => (
                   <li key={post.id} className="flex items-start gap-4 px-5 py-3">
-                    <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           post.status === 'pending' ? 'bg-amber-400/10 text-amber-400' :
@@ -636,9 +649,24 @@ export function Admin() {
                           <span className="text-xs text-muted-foreground/60">{post.game_titles.join(', ')}</span>
                         )}
                       </div>
-                      <p className="text-sm text-foreground/80 truncate">
-                        {post.content.length > 80 ? post.content.slice(0, 80) + '…' : post.content}
+                      <p
+                        className={`text-sm text-foreground/80 cursor-pointer select-none ${expandedPostId === post.id ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}
+                        onClick={() => setExpandedPostId(id => id === post.id ? null : post.id)}
+                        title={expandedPostId === post.id ? 'Click to collapse' : 'Click to expand'}
+                      >
+                        {post.content}
                       </p>
+                      {post.url && (
+                        <a
+                          href={post.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 bg-secondary/60 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors border border-border"
+                        >
+                          <span className="text-accent shrink-0">↗</span>
+                          <span className="truncate">{post.url}</span>
+                        </a>
+                      )}
                     </div>
                     {post.status === 'pending' && (
                       <button

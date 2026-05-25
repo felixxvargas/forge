@@ -63,12 +63,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (action === 'create') {
       if (!content || !scheduled_at) return res.status(400).json({ error: 'content and scheduled_at are required' });
+      const { url } = req.body ?? {};
       const ids: string[] = Array.isArray(game_ids) ? game_ids : [];
       const titles: string[] = Array.isArray(game_titles) ? game_titles : [];
       const [created] = await sb<Array<object>>('POST', '/scheduled_posts', {
         user_id: userId,
         content,
         scheduled_at,
+        url: url ?? null,
         game_ids: ids,
         game_titles: titles,
         status: 'pending',
