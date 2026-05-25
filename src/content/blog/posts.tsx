@@ -66,7 +66,7 @@ function AnnouncingForgeContent() {
         shape what Forge becomes.
       </p>
 
-      <p className="author-close">— Felix</p>
+      <p className="author-close">Felix</p>
     </article>
   );
 }
@@ -85,11 +85,10 @@ function AndroidBetaContent() {
 
       <h2>What's in the app</h2>
       <p>
-        The Android app is the full Forge experience — everything from the web version is there.
-        Your feed, game-tagged posts, group pages, game library, fediverse connection, and
-        notifications. We built it as a native Android app using Capacitor, which means it feels
-        at home on the platform: system back gestures work, the share sheet integrates with other
-        apps, and the media picker is native.
+        The Android app is the full Forge experience. Your feed, game-tagged posts, group pages,
+        game library, fediverse connection, and notifications are all there. We built it as a native
+        Android app using Capacitor, which means it feels at home on the platform: system back
+        gestures work, the share sheet integrates with other apps, and the media picker is native.
       </p>
       <p>
         We put real effort into the mobile-specific experience. The feed is snappy on slower
@@ -107,7 +106,7 @@ function AndroidBetaContent() {
 
       <h2>What's still coming on Android</h2>
       <p>
-        Push notifications are the most requested feature and they're in active development — they'll
+        Push notifications are the most requested feature and they're in active development. They'll
         land in a follow-up update. We also have a handful of gesture refinements and performance
         improvements queued up based on early tester feedback.
       </p>
@@ -119,7 +118,7 @@ function AndroidBetaContent() {
         Thanks for being part of this.
       </p>
 
-      <p className="author-close">— Felix</p>
+      <p className="author-close">Felix</p>
     </article>
   );
 }
@@ -135,8 +134,8 @@ function RoadmapContent() {
   return (
     <article>
       <p>
-        We're two months in. Here's what we've shipped, what we're building next, and — most
-        importantly — a question we need your help answering.
+        We're two months in. Here's what we've shipped, what we're building next, and most
+        importantly, a question we need your help answering.
       </p>
 
       <h2>What we've shipped</h2>
@@ -152,10 +151,10 @@ function RoadmapContent() {
       <h3>April 28 - Android closed beta</h3>
       <p>
         The full Forge experience as a native Android app. Feed, compose, groups, game library,
-        fediverse sync — all of it. Built with Capacitor for native gesture and media support.
+        fediverse sync, all of it. Built with Capacitor for native gesture and media support.
       </p>
 
-      <h3>May 19 — Platform refinements</h3>
+      <h3>May 19 - Platform refinements</h3>
       <p>
         Since launch we've shipped a steady stream of improvements: a redesigned reply compose
         screen with a sticky bottom bar that expands in-place on mobile; a full post toolbar
@@ -188,8 +187,8 @@ function RoadmapContent() {
 
       <h3>Fediverse improvements</h3>
       <p>
-        Better two-way sync with Bluesky and Mastodon — replies, follows, and notifications
-        flowing in both directions rather than just outbound.
+        Better two-way sync with Bluesky and Mastodon: replies, follows, and notifications
+        flowing in both directions, not just outbound.
       </p>
 
       <h3>Developer API</h3>
@@ -230,7 +229,7 @@ function RoadmapContent() {
         The team will be in the replies. Come find us.
       </p>
 
-      <p className="author-close">— The Forge Team</p>
+      <p className="author-close">The Forge Team</p>
     </article>
   );
 }
@@ -266,7 +265,7 @@ export const blogPosts: BlogPost[] = [
     date: '2026-03-18',
     author: 'The Forge Team',
     excerpt:
-      'Today we\'re launching Forge — a social platform that puts the games first and the algorithm second. Here\'s what we built and how to get early access.',
+      'Today we\'re launching Forge, a social platform that puts the games first and the algorithm second. Here\'s what we built and how to get early access.',
     tags: ['Launch', 'Announcement'],
     content: AnnouncingForgeContent,
   },
