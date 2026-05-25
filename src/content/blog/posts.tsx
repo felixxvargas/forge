@@ -129,7 +129,7 @@ function AndroidBetaContent() {
 // ---------------------------------------------------------------------------
 
 // Replace POLL_POST_ID with the actual post ID once available
-const POLL_POST_ID = 'POLL_POST_ID';
+const POLL_POST_ID = '9acadeca-e87c-4179-b4c2-f25dc9d5b7d6';
 
 function RoadmapContent() {
   return (
@@ -214,22 +214,16 @@ function RoadmapContent() {
         Vote in the poll below, or reply to tell us directly. Every response gets read.
       </p>
 
-      {/* Embedded Forge poll — replace POLL_POST_ID once available */}
+      {/* Embedded Forge poll */}
       <div className="my-6">
-        {POLL_POST_ID !== 'POLL_POST_ID' ? (
-          <iframe
-            src={`/embed/post/${POLL_POST_ID}`}
-            width="100%"
-            style={{ border: 'none', borderRadius: '12px', display: 'block', maxWidth: '550px' }}
-            height="280"
-            title="Forge community poll"
-            scrolling="no"
-          />
-        ) : (
-          <div className="rounded-xl border border-border bg-card/40 px-5 py-4 text-sm text-muted-foreground italic">
-            Community poll coming soon — check back shortly.
-          </div>
-        )}
+        <iframe
+          src={`/embed/post/${POLL_POST_ID}`}
+          width="100%"
+          style={{ border: 'none', borderRadius: '12px', display: 'block', maxWidth: '550px' }}
+          height="280"
+          title="Forge community poll"
+          scrolling="no"
+        />
       </div>
 
       <p>

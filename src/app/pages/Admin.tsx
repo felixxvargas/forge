@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus, Pencil } from 'lucide-react';
 
 interface OnboardingFunnelData {
   started: number;
@@ -25,6 +25,7 @@ interface ScheduledPost {
   published_post_id: string | null;
   url: string | null;
   created_at: string;
+  author?: { handle: string; display_name: string } | null;
 }
 
 interface AdminStats {
@@ -109,6 +110,8 @@ export function Admin() {
   const [composing, setComposing] = useState(false);
   const [compose, setCompose] = useState({ content: '', scheduled_at: '', game_ids: '', game_titles: '', url: '' });
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ content: '', scheduled_at: '', url: '' });
 
   const loadScheduledPosts = async (tok: string) => {
     setSpLoading(true); setSpError('');
@@ -121,6 +124,20 @@ export function Admin() {
     } finally {
       setSpLoading(false);
     }
+  };
+
+  const saveEditedPost = async (id: string) => {
+    await fetch(`/api/admin/scheduled-posts?id=${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: editDraft.content,
+        scheduled_at: new Date(editDraft.scheduled_at).toISOString(),
+        url: editDraft.url || null,
+      }),
+    });
+    setEditingPostId(null);
+    loadScheduledPosts(token);
   };
 
   const triggerPublish = async () => {
@@ -642,6 +659,9 @@ export function Admin() {
                           post.status === 'published' ? 'bg-accent/10 text-accent' :
                           'bg-red-400/10 text-red-400'
                         }`}>{post.status}</span>
+                        {post.author?.handle && (
+                          <span className="text-xs text-muted-foreground/60">@{post.author.handle}</span>
+                        )}
                         <span className="text-xs text-muted-foreground">
                           {new Date(post.scheduled_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                         </span>
@@ -649,32 +669,93 @@ export function Admin() {
                           <span className="text-xs text-muted-foreground/60">{post.game_titles.join(', ')}</span>
                         )}
                       </div>
-                      <p
-                        className={`text-sm text-foreground/80 cursor-pointer select-none ${expandedPostId === post.id ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}
-                        onClick={() => setExpandedPostId(id => id === post.id ? null : post.id)}
-                        title={expandedPostId === post.id ? 'Click to collapse' : 'Click to expand'}
-                      >
-                        {post.content}
-                      </p>
-                      {post.url && (
-                        <a
-                          href={post.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 bg-secondary/60 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors border border-border"
-                        >
-                          <span className="text-accent shrink-0">↗</span>
-                          <span className="truncate">{post.url}</span>
-                        </a>
+                      {editingPostId === post.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            className="w-full bg-secondary rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+                            rows={4}
+                            value={editDraft.content}
+                            onChange={e => setEditDraft(d => ({ ...d, content: e.target.value }))}
+                          />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input
+                              type="datetime-local"
+                              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                              value={editDraft.scheduled_at}
+                              onChange={e => setEditDraft(d => ({ ...d, scheduled_at: e.target.value }))}
+                            />
+                            <input
+                              type="url"
+                              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                              placeholder="Link URL (optional)"
+                              value={editDraft.url}
+                              onChange={e => setEditDraft(d => ({ ...d, url: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => saveEditedPost(post.id)}
+                              disabled={!editDraft.content || !editDraft.scheduled_at}
+                              className="px-3 py-1.5 bg-accent text-background rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-40"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingPostId(null)}
+                              className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p
+                            className={`text-sm text-foreground/80 cursor-pointer select-none ${expandedPostId === post.id ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}
+                            onClick={() => setExpandedPostId(id => id === post.id ? null : post.id)}
+                            title={expandedPostId === post.id ? 'Click to collapse' : 'Click to expand'}
+                          >
+                            {post.content}
+                          </p>
+                          {post.url && (
+                            <a
+                              href={post.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-3 py-2 bg-secondary/60 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors border border-border"
+                            >
+                              <span className="text-accent shrink-0">↗</span>
+                              <span className="truncate">{post.url}</span>
+                            </a>
+                          )}
+                        </>
                       )}
                     </div>
-                    {post.status === 'pending' && (
-                      <button
-                        onClick={() => deleteScheduledPost(post.id)}
-                        className="text-xs text-red-400/60 hover:text-red-400 transition-colors shrink-0 pt-0.5"
-                      >
-                        Delete
-                      </button>
+                    {post.status === 'pending' && editingPostId !== post.id && (
+                      <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                        <button
+                          onClick={() => {
+                            const localDt = new Date(post.scheduled_at);
+                            const offset = localDt.getTimezoneOffset();
+                            const local = new Date(localDt.getTime() - offset * 60000);
+                            setEditDraft({
+                              content: post.content,
+                              scheduled_at: local.toISOString().slice(0, 16),
+                              url: post.url ?? '',
+                            });
+                            setEditingPostId(post.id);
+                          }}
+                          className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors flex items-center gap-1"
+                        >
+                          <Pencil className="w-3 h-3" /> Edit
+                        </button>
+                        <button
+                          onClick={() => deleteScheduledPost(post.id)}
+                          className="text-xs text-red-400/60 hover:text-red-400 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     )}
                   </li>
                 ))}

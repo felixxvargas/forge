@@ -43,8 +43,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return;
 
   if (req.method === 'GET') {
-    const posts = await sb('GET', '/scheduled_posts?order=scheduled_at.desc&select=*');
+    const posts = await sb('GET', '/scheduled_posts?select=*,author:profiles!user_id(handle,display_name)&order=scheduled_at.desc');
     return res.json(posts);
+  }
+
+  if (req.method === 'PATCH') {
+    const id = req.query.id as string;
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    const { content, scheduled_at, url } = req.body ?? {};
+    const [post] = await sb<Array<{ status: string }>>('GET', `/scheduled_posts?id=eq.${id}&select=status&limit=1`);
+    if (!post) return res.status(404).json({ error: 'Not found' });
+    if (post.status !== 'pending') return res.status(409).json({ error: 'Only pending posts can be edited' });
+    const patch: Record<string, unknown> = {};
+    if (content !== undefined) patch.content = content;
+    if (scheduled_at !== undefined) patch.scheduled_at = new Date(scheduled_at).toISOString();
+    if (url !== undefined) patch.url = url || null;
+    const [updated] = await sb<Array<object>>('PATCH', `/scheduled_posts?id=eq.${id}`, patch);
+    return res.json(updated);
   }
 
   if (req.method === 'POST') {
