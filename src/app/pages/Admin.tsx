@@ -14,6 +14,18 @@ interface OnboardingFunnelData {
   completion_rate: number;
 }
 
+interface ScheduledPost {
+  id: string;
+  user_id: string;
+  content: string;
+  game_ids: string[] | null;
+  game_titles: string[] | null;
+  scheduled_at: string;
+  status: 'pending' | 'published' | 'failed';
+  published_post_id: string | null;
+  created_at: string;
+}
+
 interface AdminStats {
   users: { total: number; last7Days: number; last30Days: number; last90Days: number; last365Days: number };
   posts: { total: number; last30Days: number; last90Days: number; last365Days: number };
@@ -86,18 +98,89 @@ export function Admin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('30d');
+  const [token, setToken] = useState('');
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[] | null>(null);
+  const [spLoading, setSpLoading] = useState(false);
+  const [spError, setSpError] = useState('');
+  const [triggerMsg, setTriggerMsg] = useState('');
+  const [triggeringNow, setTriggeringNow] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const [compose, setCompose] = useState({ content: '', scheduled_at: '', game_ids: '', game_titles: '' });
+
+  const loadScheduledPosts = async (tok: string) => {
+    setSpLoading(true); setSpError('');
+    try {
+      const r = await fetch('/api/admin/scheduled-posts', { headers: { Authorization: `Bearer ${tok}` } });
+      if (r.ok) setScheduledPosts(await r.json());
+      else setSpError('Failed to load scheduled posts');
+    } catch {
+      setSpError('Failed to load scheduled posts');
+    } finally {
+      setSpLoading(false);
+    }
+  };
+
+  const triggerPublish = async () => {
+    setTriggeringNow(true);
+    try {
+      const r = await fetch('/api/admin/scheduled-posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'trigger' }),
+      });
+      const data = await r.json();
+      setTriggerMsg(data.published > 0 ? `Published ${data.published} post${data.published > 1 ? 's' : ''}` : 'Nothing due yet');
+      setTimeout(() => setTriggerMsg(''), 4000);
+      loadScheduledPosts(token);
+    } finally {
+      setTriggeringNow(false);
+    }
+  };
+
+  const createScheduledPost = async () => {
+    setComposing(true);
+    try {
+      await fetch('/api/admin/scheduled-posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          content: compose.content,
+          scheduled_at: new Date(compose.scheduled_at).toISOString(),
+          game_ids: compose.game_ids ? compose.game_ids.split(',').map(s => s.trim()).filter(Boolean) : [],
+          game_titles: compose.game_titles ? compose.game_titles.split(',').map(s => s.trim()).filter(Boolean) : [],
+        }),
+      });
+      setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '' });
+      setShowCompose(false);
+      loadScheduledPosts(token);
+    } finally {
+      setComposing(false);
+    }
+  };
+
+  const deleteScheduledPost = async (id: string) => {
+    await fetch(`/api/admin/scheduled-posts?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    loadScheduledPosts(token);
+  };
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { navigate('/'); return; }
-      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      const tok = session?.access_token;
+      if (!tok) { navigate('/'); return; }
+      setToken(tok);
+      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${tok}` } });
       if (res.status === 401 || res.status === 403) { navigate('/'); return; }
       if (!res.ok) throw new Error('Failed to load stats');
       setStats(await res.json());
+      loadScheduledPosts(tok);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -426,6 +509,145 @@ export function Admin() {
                       <span className="text-muted-foreground text-sm ml-2">@{u.handle}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">{fmt(u.created_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        {/* Scheduled Posts */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Scheduled Posts</h2>
+              {scheduledPosts && (() => {
+                const pending = scheduledPosts.filter(p => p.status === 'pending').length;
+                const published = scheduledPosts.filter(p => p.status === 'published').length;
+                const failed = scheduledPosts.filter(p => p.status === 'failed').length;
+                return (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-medium">Pending {pending}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">Published {published}</span>
+                    {failed > 0 && <span className="px-2 py-0.5 rounded-full bg-red-400/10 text-red-400 font-medium">Failed {failed}</span>}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="flex items-center gap-2">
+              {triggerMsg && <span className="text-xs text-accent font-medium">{triggerMsg}</span>}
+              <button
+                onClick={triggerPublish}
+                disabled={triggeringNow}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                {triggeringNow ? '…' : '▶'} Run Now
+              </button>
+              <button
+                onClick={() => setShowCompose(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                + New Post
+              </button>
+            </div>
+          </div>
+
+          {/* Compose form */}
+          {showCompose && (
+            <div className="bg-card rounded-xl p-5 space-y-3 border border-border">
+              <textarea
+                className="w-full bg-secondary rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+                rows={4}
+                placeholder="Post content…"
+                value={compose.content}
+                onChange={e => setCompose(c => ({ ...c, content: e.target.value }))}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Schedule date & time</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                    value={compose.scheduled_at}
+                    onChange={e => setCompose(c => ({ ...c, scheduled_at: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Game titles (comma-separated, optional)</label>
+                  <input
+                    type="text"
+                    className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                    placeholder="Elden Ring, Hades II"
+                    value={compose.game_titles}
+                    onChange={e => setCompose(c => ({ ...c, game_titles: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1 sm:col-start-2">
+                  <label className="text-xs text-muted-foreground">Game IDs (comma-separated, optional)</label>
+                  <input
+                    type="text"
+                    className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                    placeholder="119133, 119388"
+                    value={compose.game_ids}
+                    onChange={e => setCompose(c => ({ ...c, game_ids: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  onClick={() => { setShowCompose(false); setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '' }); }}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createScheduledPost}
+                  disabled={composing || !compose.content || !compose.scheduled_at}
+                  className="px-4 py-1.5 bg-accent text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                >
+                  {composing ? 'Scheduling…' : 'Schedule Post →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Posts table */}
+          <div className="bg-card rounded-xl overflow-hidden">
+            {spLoading && <p className="px-5 py-4 text-sm text-muted-foreground animate-pulse">Loading…</p>}
+            {spError && <p className="px-5 py-4 text-sm text-red-400">{spError}</p>}
+            {!spLoading && !spError && scheduledPosts?.length === 0 && (
+              <p className="px-5 py-4 text-sm text-muted-foreground">No scheduled posts yet.</p>
+            )}
+            {!spLoading && !spError && scheduledPosts && scheduledPosts.length > 0 && (
+              <ul className="divide-y divide-border">
+                {scheduledPosts.map(post => (
+                  <li key={post.id} className="flex items-start gap-4 px-5 py-3">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          post.status === 'pending' ? 'bg-amber-400/10 text-amber-400' :
+                          post.status === 'published' ? 'bg-accent/10 text-accent' :
+                          'bg-red-400/10 text-red-400'
+                        }`}>{post.status}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(post.scheduled_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </span>
+                        {post.game_titles && post.game_titles.length > 0 && (
+                          <span className="text-xs text-muted-foreground/60">{post.game_titles.join(', ')}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-foreground/80 truncate">
+                        {post.content.length > 80 ? post.content.slice(0, 80) + '…' : post.content}
+                      </p>
+                    </div>
+                    {post.status === 'pending' && (
+                      <button
+                        onClick={() => deleteScheduledPost(post.id)}
+                        className="text-xs text-red-400/60 hover:text-red-400 transition-colors shrink-0 pt-0.5"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
