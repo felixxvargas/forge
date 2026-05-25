@@ -107,6 +107,10 @@ export const analytics = {
   searchPerformed: (query: string, resultCount: number) =>
     trackEvent('search', { search_term: query, result_count: resultCount }),
 
+  // ── Social ──
+  followUser: (targetUserId: string) =>
+    trackEvent('follow_user', { target_user_id: targetUserId }),
+
   // ── Auth ──
   signUp: (method: 'email' | 'google') =>
     trackEvent('sign_up', { method }),

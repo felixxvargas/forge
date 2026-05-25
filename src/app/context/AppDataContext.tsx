@@ -6,6 +6,7 @@ import { auth, profiles, posts as postsAPI, groups as groupsAPI, notifications a
 import { fetchBlueskyPosts, fetchMassivelyOPPosts, topicAccountBlueskyHandles, likeAtProtoPost, unlikeAtProtoPost, repostAtProtoPost, unrepostAtProtoPost, followAtProtoAccount, fetchBlueskyPosts as fetchBskyPostsForHandle, getAtProtoSession } from '../utils/bluesky';
 import { favouriteMastodonPost, unfavouriteMastodonPost, boostMastodonPost, unboostMastodonPost, fetchMastodonAccountPosts, getStoredMastodonToken, followMastodonAccount } from '../utils/mastodonAuth';
 import { initPushNotifications } from '../utils/pushNotifications';
+import { analytics } from '../utils/analytics';
 
 // Quick lookup: topicId → User object (for attaching author to external posts)
 const topicAccountById: Record<string, User> = Object.fromEntries(
@@ -82,7 +83,7 @@ interface AppDataContextType {
   removeFromVIPList: (viewerId: string) => Promise<void>;
 }
 
-const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
+export const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 AppDataContext.displayName = 'AppDataContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,6 +105,9 @@ function writeFeedCache(userId: string, posts: any[], groups: any[]): void {
     localStorage.setItem(`forge-feed-${userId}`, JSON.stringify({ posts, groups, ts: Date.now() }));
   } catch { /* storage quota exceeded */ }
 }
+
+const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
+  Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
 /** Ensure profile objects never carry null/undefined on fields the UI depends on. */
 function normalizeProfile(profile: any): any {
@@ -564,21 +568,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTopicPostsReady(false);
 
       try {
-        let feedData = await refreshFeed();
-        // Always update cache after a fresh fetch
-        if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
-        if (!cached) {
-          setIsLoading(false);
-          setIsRefreshing(true);
-        }
+        let feedData: any;
         const loadedUsers: any[] = lastLoadedUsersRef.current;
         if (session?.user) {
+          // Load user data first so followed game/group IDs are available for a single personalized fetch
           const loadResult = await loadUserData(session.user.id);
-          // Re-fetch the feed now that game/group IDs are populated in refs
-          if (followedGameIdsRef.current.length > 0 || memberGroupIdsRef.current.length > 0) {
-            feedData = await refreshFeed();
-            // Overwrite cache with the personalized result
-            if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
+          feedData = await refreshFeed();
+          if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
+          if (!cached) {
+            setIsLoading(false);
+            setIsRefreshing(true);
           }
           const topicFollows = loadResult?.topicFollows ?? [];
           const rawFollowingIdList = loadResult?.followingIdList ?? [];
@@ -624,7 +623,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                     : Promise.resolve([]);
                 return { topicId, fetchJob };
               });
-              const results = await Promise.allSettled(fetchPairs.map((p: any) => p.fetchJob));
+              const results = await Promise.allSettled(fetchPairs.map((p: any) => withTimeout(p.fetchJob, 5000)));
               const topicPosts = results.flatMap((r, i) => {
                 if (r.status !== 'fulfilled') return [];
                 const { topicId } = fetchPairs[i];
@@ -661,9 +660,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 loadedExternalFollows.map(async (ef: any) => {
                   let rawPosts: any[] = [];
                   if (ef.platform === 'bluesky') {
-                    rawPosts = await fetchBskyPostsForHandle(ef.handle, 10).catch(() => []);
+                    rawPosts = await withTimeout(fetchBskyPostsForHandle(ef.handle, 10), 5000).catch(() => []);
                   } else if (ef.platform === 'mastodon' && ef.instance && ef.accountId) {
-                    rawPosts = await fetchMastodonAccountPosts(ef.instance, ef.accountId, 10).catch(() => []);
+                    rawPosts = await withTimeout(fetchMastodonAccountPosts(ef.instance, ef.accountId, 10), 5000).catch(() => []);
                   }
                   const syntheticAuthor = {
                     id: ef.id,
@@ -693,6 +692,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             }
           }
         } else {
+          // Unauthenticated — fetch generic feed
+          feedData = await refreshFeed();
           setCurrentUser(null);
         }
       } finally {
@@ -705,10 +706,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     init();
   }, [session, loadUserData, refreshFeed]);
 
-  // Snapshot last month's recently-played games once per login
+  // Snapshot last month's recently-played games once per calendar month per user
   useEffect(() => {
     if (!session?.user?.id) return;
-    gameTimelineAPI.computeAndSavePrevMonth(session.user.id).catch(() => {});
+    const monthKey = `timeline-${session.user.id}-${new Date().toISOString().slice(0, 7)}`;
+    if (!localStorage.getItem(monthKey)) {
+      gameTimelineAPI.computeAndSavePrevMonth(session.user.id)
+        .then(() => localStorage.setItem(monthKey, '1'))
+        .catch(() => {});
+    }
   }, [session?.user?.id]);
 
   const signIn = async (email: string, password: string, captchaToken?: string) => {
@@ -1004,6 +1010,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setCurrentUser((prev: any) => prev ? { ...prev, following_count: (prev.following_count ?? 0) + 1 } : prev);
     } else {
       await profiles.follow(session.user.id, userId);
+      analytics.followUser(userId);
       setFollowingIds(prev => new Set([...prev, userId]));
       setUsers(prev => prev.map(u =>
         u.id === userId ? { ...u, follower_count: (u.follower_count ?? 0) + 1 } : u

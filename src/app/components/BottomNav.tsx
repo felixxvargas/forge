@@ -23,7 +23,7 @@ export function BottomNav() {
     location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 md:hidden" style={{ backgroundColor: 'var(--sidebar, #2d1f47)' }}>
       <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
         <button
           onMouseEnter={() => router.prefetch('/feed')}
@@ -93,7 +93,7 @@ export function BottomNav() {
         </button>
       </div>
       {/* Safe-area extension */}
-      <div className="bg-sidebar" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px' }} />
+      <div className="bg-sidebar" style={{ height: 'env(safe-area-inset-bottom, 0px)', minHeight: '0px', backgroundColor: 'var(--sidebar, #2d1f47)' }} />
     </nav>
   );
 }

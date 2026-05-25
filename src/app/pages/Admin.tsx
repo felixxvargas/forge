@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus } from 'lucide-react';
 
 interface OnboardingFunnelData {
   started: number;
@@ -23,6 +23,12 @@ interface AdminStats {
   lists: { total: number; customTotal: number; updateCount: number };
   onboarding?: { allTime: OnboardingFunnelData; last30Days: OnboardingFunnelData };
   engagement?: { mau: number; wau: number; dau: number; avgSessionDurationS: number; platformSplit: Record<string, number> };
+  userActions?: {
+    follows: { last30Days: number; last90Days: number; last365Days: number };
+    groupJoins: { last30Days: number; last90Days: number; last365Days: number };
+    groupCreations: { last30Days: number; last90Days: number; last365Days: number };
+    posts: { last30Days: number; last90Days: number; last365Days: number };
+  };
   recentUsers: { handle: string; display_name: string; created_at: string }[];
   generatedAt: string;
 }
@@ -281,6 +287,43 @@ export function Admin() {
             />
           </div>
         </section>
+
+        {/* User Actions */}
+        {stats.userActions && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">User Actions</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard
+                icon={UserPlus}
+                label="Follows Given"
+                total={pick(stats.userActions.follows, period)}
+                delta={pick(stats.userActions.follows, period)}
+                period={period}
+              />
+              <StatCard
+                icon={MessageSquare}
+                label="Posts Created"
+                total={pick(stats.userActions.posts, period)}
+                delta={pick(stats.userActions.posts, period)}
+                period={period}
+              />
+              <StatCard
+                icon={Users}
+                label="Groups Joined"
+                total={pick(stats.userActions.groupJoins, period)}
+                delta={pick(stats.userActions.groupJoins, period)}
+                period={period}
+              />
+              <StatCard
+                icon={Users2}
+                label="Groups Created"
+                total={pick(stats.userActions.groupCreations, period)}
+                delta={pick(stats.userActions.groupCreations, period)}
+                period={period}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Lists */}
         <section className="space-y-3">

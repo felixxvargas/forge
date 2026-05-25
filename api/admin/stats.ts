@@ -131,6 +131,9 @@ export default async function handler(req: Request): Promise<Response> {
     totalFlares, flares30, flares90, flares365,
     listStats,
     onboardingAll, onboarding30,
+    follows30, follows90, follows365,
+    groupJoins30, groupJoins90, groupJoins365,
+    groupCreations30, groupCreations90, groupCreations365,
   ] = await Promise.all([
     countTable('profiles'), countTable('profiles', t7), countTable('profiles', t30),
     countTable('profiles', t90), countTable('profiles', t365),
@@ -143,6 +146,9 @@ export default async function handler(req: Request): Promise<Response> {
     getListStats(),
     getOnboardingFunnel(),
     getOnboardingFunnel(t30),
+    countTable('follows', t30), countTable('follows', t90), countTable('follows', t365),
+    countTable('community_members', t30), countTable('community_members', t90), countTable('community_members', t365),
+    countTable('communities', t30), countTable('communities', t90), countTable('communities', t365),
   ]);
 
   const [recentRes, mauRes, sessionRes] = await Promise.all([
@@ -190,6 +196,12 @@ export default async function handler(req: Request): Promise<Response> {
     lists: listStats,
     onboarding: { allTime: onboardingAll, last30Days: onboarding30 },
     engagement: { mau, wau, dau, avgSessionDurationS, platformSplit },
+    userActions: {
+      follows: { last30Days: follows30, last90Days: follows90, last365Days: follows365 },
+      groupJoins: { last30Days: groupJoins30, last90Days: groupJoins90, last365Days: groupJoins365 },
+      groupCreations: { last30Days: groupCreations30, last90Days: groupCreations90, last365Days: groupCreations365 },
+      posts: { last30Days: posts30, last90Days: posts90, last365Days: posts365 },
+    },
     recentUsers: recentUsers ?? [],
     generatedAt: new Date().toISOString(),
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });

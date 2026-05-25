@@ -3,6 +3,7 @@ import { useNavigate } from '@/compat/router';
 import { supabase, profiles } from '../utils/supabase';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { toast } from 'sonner';
+import { analytics } from '../utils/analytics';
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -99,12 +100,20 @@ export function AuthCallback() {
         const oauthIntent = localStorage.getItem('forge-oauth-intent');
         localStorage.removeItem('forge-oauth-intent');
 
+        const provider = session.user.app_metadata?.provider ?? 'email';
+        const method = provider === 'google' ? 'google' : 'email';
+
         if (oauthIntent === 'signup' && profile?.handle) {
           // User tried to sign up but already has a Forge account — log them in and inform them
           toast.info('You already have a Forge account. Welcome back!');
+          analytics.login(method);
           navigate('/feed');
+        } else if (!profile?.handle) {
+          analytics.signUp(method);
+          navigate('/onboarding');
         } else {
-          navigate(profile?.handle ? '/feed' : '/onboarding');
+          analytics.login(method);
+          navigate('/feed');
         }
       } else {
         navigate('/login');
