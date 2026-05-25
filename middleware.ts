@@ -2,6 +2,7 @@
 // Human browsers go directly to Next.js (generateMetadata handles OG).
 // Crawlers are proxied through OG handlers for social preview cards.
 // If an OG handler fails, falls through to Next.js rather than serving a 500.
+// /storybook is protected by HTTP Basic Auth (STORYBOOK_USER / STORYBOOK_PASS env vars).
 
 const APP_ROUTES = new Set([
   'feed', 'explore', 'profile', 'edit-profile', 'settings', 'notifications',
@@ -23,6 +24,25 @@ export const config = {
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const url = new URL(request.url);
   const segments = url.pathname.split('/').filter(Boolean);
+
+  // ── Storybook: HTTP Basic Auth ───────────────────────────────────────────────
+  if (segments[0] === 'storybook') {
+    const validUser = process.env.STORYBOOK_USER;
+    const validPass = process.env.STORYBOOK_PASS;
+    if (validUser && validPass) {
+      const authHeader = request.headers.get('authorization') ?? '';
+      const isBasic = authHeader.startsWith('Basic ');
+      if (isBasic) {
+        const [user, pass] = atob(authHeader.slice(6)).split(':');
+        if (user === validUser && pass === validPass) return undefined; // allow
+      }
+      return new Response('Access to Forge Design System requires authentication.', {
+        status: 401,
+        headers: { 'WWW-Authenticate': 'Basic realm="Forge Design System", charset="UTF-8"' },
+      });
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
   const hasRedirectFlag = url.searchParams.has('_r');
 
   const ua = request.headers.get('user-agent') ?? '';

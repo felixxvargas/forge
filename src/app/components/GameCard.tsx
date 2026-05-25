@@ -19,15 +19,15 @@ export function GameCard({ game, showHours = false, fullWidth = false }: GameCar
 
   return (
     <div
-      className={`group cursor-pointer hover:bg-secondary/40 rounded-lg transition-colors duration-200 ${fullWidth ? 'w-full' : 'flex-shrink-0 w-32'}`}
+      className={`group cursor-pointer hover:z-10 hover:bg-secondary/40 rounded-lg transition-colors duration-200 ${fullWidth ? 'w-full' : 'flex-shrink-0 w-32'}`}
       onClick={() => navigate(`/game/${encodeURIComponent(game.id)}`, { state: { fallbackGame: game } })}
     >
-      <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-secondary transition-transform duration-300 ease-out group-hover:scale-[1.03]">
+      <div className="relative aspect-[3/4] rounded-lg mb-2 bg-secondary">
         {coverUrl && !imgError ? (
           <img
             src={coverUrl}
             alt={game.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-lg transition-transform duration-300 ease-out group-hover:scale-[1.06]"
             onError={() => setImgError(true)}
           />
         ) : (

@@ -60,6 +60,13 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      // Storybook static build lives in public/storybook/ — redirect bare path to index
+      { source: '/storybook', destination: '/storybook/index.html', permanent: false },
+    ];
+  },
+
   async headers() {
     return [
       {

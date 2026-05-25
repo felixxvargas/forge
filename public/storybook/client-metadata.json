@@ -1,0 +1,15 @@
+{
+  "client_id": "https://forge-social.app/client-metadata.json",
+  "client_name": "Forge",
+  "client_uri": "https://forge-social.app",
+  "logo_uri": "https://forge-social.app/apple-touch-icon.png",
+  "tos_uri": "https://forge-social.app/terms",
+  "policy_uri": "https://forge-social.app/privacy",
+  "redirect_uris": ["https://forge-social.app/auth/bluesky/callback"],
+  "response_types": ["code"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "scope": "atproto transition:generic",
+  "token_endpoint_auth_method": "none",
+  "application_type": "web",
+  "dpop_bound_access_tokens": true
+}
