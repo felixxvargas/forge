@@ -550,7 +550,7 @@ export function Settings() {
       {/* QR Code Modal */}
       {showQRModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowQRModal(false)}>
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 flex flex-col items-center gap-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 flex flex-col items-center gap-5" onClick={e => e.stopPropagation()}>
             <div className="w-full flex items-center justify-between">
               <h2 className="text-xl font-semibold">Profile QR Code</h2>
               <button onClick={() => setShowQRModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
