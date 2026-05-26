@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Trigger publish endpoint
         run: |
-          response=$(curl -s -w "\n%{http_code}" \
+          response=$(curl -s -L -w "\n%{http_code}" \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             https://forge-social.app/api/cron/publish-scheduled-posts)
