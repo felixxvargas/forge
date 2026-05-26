@@ -10,7 +10,7 @@ BEGIN
 -- BLOG POSTS: 1 per blog, with url for link unfurl card
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Blog 1: "Introducing Forge" (Wed May 28, 2026 @ 1pm PST = 21:00 UTC)
+-- Blog 1: "Introducing Forge" (Tue May 27, 2026 @ 10am PST = 17:00 UTC)
 INSERT INTO scheduled_posts (user_id, content, url, scheduled_at, status, game_ids, game_titles, images)
 VALUES (
   v_uid,
@@ -20,10 +20,10 @@ Our first post covers why we built Forge — a social platform that puts the gam
 
 https://www.forge-social.app/blog/announcing-forge',
   'https://www.forge-social.app/blog/announcing-forge',
-  '2026-05-28T21:00:00Z', 'pending', '{}', '{}', '{}'
+  '2026-05-27T17:00:00Z', 'pending', '{}', '{}', '{}'
 );
 
--- Blog 2: "Forge on Android: Closed Beta Now Open" (Wed Jun 11, 2026 @ 1pm PST = 21:00 UTC)
+-- Blog 2: "Forge on Android: Closed Beta Now Open" (Tue Jun 10, 2026 @ 10am PST = 17:00 UTC)
 INSERT INTO scheduled_posts (user_id, content, url, scheduled_at, status, game_ids, game_titles, images)
 VALUES (
   v_uid,
@@ -35,10 +35,10 @@ Sign up at forge-social.app/android-beta to get an invite.
 
 https://www.forge-social.app/blog/android-closed-beta',
   'https://www.forge-social.app/blog/android-closed-beta',
-  '2026-06-11T21:00:00Z', 'pending', '{}', '{}', '{}'
+  '2026-06-10T17:00:00Z', 'pending', '{}', '{}', '{}'
 );
 
--- Blog 3: "2026 Product Roadmap" (Wed Jun 25, 2026 @ 1pm PST = 21:00 UTC)
+-- Blog 3: "2026 Product Roadmap" (Tue Jun 24, 2026 @ 10am PST = 17:00 UTC)
 INSERT INTO scheduled_posts (user_id, content, url, scheduled_at, status, game_ids, game_titles, images)
 VALUES (
   v_uid,
@@ -46,7 +46,7 @@ VALUES (
 
 https://www.forge-social.app/blog/roadmap-2026',
   'https://www.forge-social.app/blog/roadmap-2026',
-  '2026-06-25T21:00:00Z', 'pending', '{}', '{}', '{}'
+  '2026-06-24T17:00:00Z', 'pending', '{}', '{}', '{}'
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
