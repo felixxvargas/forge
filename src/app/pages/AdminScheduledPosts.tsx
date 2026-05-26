@@ -37,7 +37,7 @@ export function AdminScheduledPosts() {
   const loadScheduledPosts = async (tok: string) => {
     setSpLoading(true); setSpError('');
     try {
-      const r = await fetch('/api/admin/scheduled-posts', { headers: { Authorization: `Bearer ${tok}` } });
+      const r = await fetch('/api/admin/scheduled-posts', { headers: { Authorization: `Bearer ${tok}`, 'Cache-Control': 'no-cache' } });
       if (r.ok) setScheduledPosts(await r.json());
       else setSpError('Failed to load scheduled posts');
     } catch {

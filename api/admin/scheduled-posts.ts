@@ -43,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return;
 
   if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     const posts = await sb<Array<{ user_id: string; [key: string]: unknown }>>('GET', '/scheduled_posts?select=*&order=scheduled_at.desc');
     if (!posts.length) return res.json(posts);
     // Fetch author handles in a second query — avoids PostgREST FK join syntax issues
