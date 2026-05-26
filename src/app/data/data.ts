@@ -156,6 +156,7 @@ export interface Post {
   reposts_disabled?: boolean;
   comments_disabled?: boolean;
   reply_to?: string;
+  insight_id?: string;
 }
 
 // Sample game data

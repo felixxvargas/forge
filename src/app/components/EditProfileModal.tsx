@@ -42,9 +42,9 @@ export function EditProfileModal({ user, isOpen, onClose, onSave }: EditProfileM
   const toggleSocial = (social: SocialPlatform) => {
     setFormData(prev => ({
       ...prev,
-      socialPlatforms: prev.socialPlatforms.includes(social)
-        ? prev.socialPlatforms.filter(s => s !== social)
-        : [...prev.socialPlatforms, social]
+      socialPlatforms: (prev.socialPlatforms ?? []).includes(social)
+        ? (prev.socialPlatforms ?? []).filter(s => s !== social)
+        : [...(prev.socialPlatforms ?? []), social]
     }));
   };
 
@@ -209,7 +209,7 @@ export function EditProfileModal({ user, isOpen, onClose, onSave }: EditProfileM
                   key={social}
                   onClick={() => toggleSocial(social)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
-                    formData.socialPlatforms.includes(social)
+                    (formData.socialPlatforms ?? []).includes(social)
                       ? 'bg-secondary border-2 border-accent text-foreground'
                       : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                   }`}

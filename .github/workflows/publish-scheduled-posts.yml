@@ -11,7 +11,15 @@ jobs:
     steps:
       - name: Trigger publish endpoint
         run: |
-          curl -s -o /dev/null -w "%{http_code}" \
+          response=$(curl -s -w "\n%{http_code}" \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://forge-social.app/api/cron/publish-scheduled-posts
+            https://forge-social.app/api/cron/publish-scheduled-posts)
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "Status: $code"
+          echo "Body: $body"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "Cron endpoint returned $code — failing step"
+            exit 1
+          fi

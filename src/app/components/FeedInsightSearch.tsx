@@ -1,0 +1,482 @@
+'use client';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Search, Sparkles, Send, X, Pencil, Check, Gamepad2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '../utils/supabase';
+import { useAppData } from '../context/AppDataContext';
+import { gamesAPI } from '../utils/api';
+import { useNavigate } from '@/compat/router';
+
+type SearchState = 'idle' | 'loading' | 'result' | 'submitting' | 'submitted';
+
+interface SelectedGame {
+  id: string;
+  title: string;
+}
+
+interface GeminiResult {
+  answer: string;
+  remaining: number;
+}
+
+export function FeedInsightSearch() {
+  const { isAuthenticated } = useAppData() as any;
+  const navigate = useNavigate();
+
+  const [state, setState] = useState<SearchState>('idle');
+  const [query, setQuery] = useState('');
+  const [selectedGame, setSelectedGame] = useState<SelectedGame | null>(null);
+  const [result, setResult] = useState<GeminiResult | null>(null);
+  const [insightId, setInsightId] = useState<string | null>(null);
+
+  const [editingQuery, setEditingQuery] = useState(false);
+  const [editQueryText, setEditQueryText] = useState('');
+  const [editingResponse, setEditingResponse] = useState(false);
+  const [editResponseText, setEditResponseText] = useState('');
+
+  const [showGameSearch, setShowGameSearch] = useState(false);
+  const [gameQuery, setGameQuery] = useState('');
+  const [gameResults, setGameResults] = useState<any[]>([]);
+  const [gameSearching, setGameSearching] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const gameSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameSearchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const maxHeight = 24 * 4 + 16;
+    ta.style.height = Math.min(ta.scrollHeight, maxHeight) + 'px';
+    ta.style.overflowY = ta.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, [query]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (gameSearchContainerRef.current && !gameSearchContainerRef.current.contains(e.target as Node)) {
+        setShowGameSearch(false);
+        setGameQuery('');
+        setGameResults([]);
+      }
+    };
+    if (showGameSearch) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showGameSearch]);
+
+  const searchGames = useCallback(async (q: string) => {
+    if (!q.trim()) { setGameResults([]); return; }
+    setGameSearching(true);
+    try {
+      const res = await gamesAPI.searchGames(q, 8);
+      const games: any[] = Array.isArray(res) ? res : res?.games ?? [];
+      setGameResults(games);
+    } catch {
+      setGameResults([]);
+    } finally {
+      setGameSearching(false);
+    }
+  }, []);
+
+  const handleGameQueryChange = (val: string) => {
+    setGameQuery(val);
+    if (gameSearchTimerRef.current) clearTimeout(gameSearchTimerRef.current);
+    gameSearchTimerRef.current = setTimeout(() => searchGames(val), 300);
+  };
+
+  const selectGame = (game: any) => {
+    setSelectedGame({ id: String(game.id), title: game.title });
+    setShowGameSearch(false);
+    setGameQuery('');
+    setGameResults([]);
+  };
+
+  const askGemini = async (q: string, game: SelectedGame) => {
+    setState('loading');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch('/api/gemini/game-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ question: q.trim(), gameId: game.id, gameTitle: game.title }),
+      });
+
+      if (res.status === 429) {
+        const data = await res.json();
+        toast.error(data.error || 'Daily query limit reached');
+        setState('idle');
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to get answer');
+      }
+
+      const data = await res.json();
+      setResult({ answer: data.answer, remaining: data.remaining });
+      setState('result');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to get answer');
+      setState('idle');
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!query.trim()) return;
+    if (!selectedGame) { toast.error('Tag a game before asking'); return; }
+    if (!isAuthenticated) { toast.error('Sign in to use Forge AI Insights'); return; }
+    askGemini(query, selectedGame);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleSubmitInsight = async () => {
+    if (!result || !selectedGame) return;
+    setState('submitting');
+
+    const finalQuery = editingQuery ? editQueryText : query;
+    const finalAnswer = editingResponse ? editResponseText : result.answer;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch('/api/insights/game-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          gameId: selectedGame.id,
+          gameTitle: selectedGame.title,
+          query: finalQuery.trim(),
+          content: finalAnswer,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to submit insight');
+      }
+
+      const insight = await res.json();
+      setInsightId(insight.id);
+      setState('submitted');
+      toast.success('Insight submitted for community review!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit insight');
+      setState('result');
+    }
+  };
+
+  const handleShareAsPost = () => {
+    if (!selectedGame) return;
+    const finalQuery = editingQuery ? editQueryText : query;
+    const finalAnswer = result ? (editingResponse ? editResponseText : result.answer) : '';
+    const prefill = `${finalQuery}\n\n${finalAnswer}`;
+    navigate(
+      `/new-post?prefill=${encodeURIComponent(prefill)}&gameId=${selectedGame.id}&gameTitle=${encodeURIComponent(selectedGame.title)}${insightId ? `&insightId=${insightId}` : ''}`
+    );
+    reset();
+  };
+
+  const reset = () => {
+    setState('idle');
+    setQuery('');
+    setSelectedGame(null);
+    setResult(null);
+    setInsightId(null);
+    setEditingQuery(false);
+    setEditingResponse(false);
+  };
+
+  const saveEditQuery = () => {
+    const newQuery = editQueryText;
+    setQuery(newQuery);
+    setEditingQuery(false);
+    if (selectedGame) askGemini(newQuery, selectedGame);
+  };
+
+  const saveEditResponse = () => {
+    if (result) setResult({ ...result, answer: editResponseText });
+    setEditingResponse(false);
+  };
+
+  const isResultActive = state === 'result' || state === 'submitting' || state === 'submitted';
+
+  return (
+    <div className="mb-4">
+      {/* Input area — idle only */}
+      {state === 'idle' && (
+        <div className="bg-card border border-border rounded-xl overflow-visible hover:border-accent/30 transition-colors">
+          <div className="px-4 pt-3 pb-2">
+            <textarea
+              ref={textareaRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask Forge AI about any game..."
+              rows={1}
+              className="w-full bg-transparent text-sm placeholder-muted-foreground resize-none focus:outline-none leading-6"
+              style={{ minHeight: '1.5rem', maxHeight: 'calc(1.5rem * 4 + 1rem)', overflowY: 'hidden' }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between px-4 pb-3 gap-2">
+            <div className="flex-1 min-w-0">
+              {selectedGame ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/15 rounded-full text-xs font-medium text-accent">
+                  <span className="truncate max-w-[160px]">{selectedGame.title}</span>
+                  <button onClick={() => setSelectedGame(null)} className="shrink-0 hover:text-accent/70 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative" ref={gameSearchContainerRef}>
+                  <button
+                    onClick={() => setShowGameSearch(!showGameSearch)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  >
+                    <Gamepad2 className="w-3 h-3" />
+                    Tag a game
+                  </button>
+
+                  {showGameSearch && (
+                    <div className="absolute bottom-full mb-2 left-0 w-72 bg-sidebar border border-border rounded-xl shadow-xl z-50">
+                      <div className="p-2">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="Search for a game..."
+                            value={gameQuery}
+                            onChange={e => handleGameQueryChange(e.target.value)}
+                            className="w-full pl-8 pr-3 py-2 bg-secondary border border-border rounded-lg text-sm placeholder-muted-foreground focus:outline-none focus:border-accent"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+
+                      {gameSearching && (
+                        <div className="flex justify-center py-3">
+                          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+
+                      {gameResults.length > 0 && (
+                        <div className="max-h-52 overflow-y-auto pb-2">
+                          {gameResults.map(game => {
+                            const cover = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
+                            return (
+                              <button
+                                key={game.id}
+                                onClick={() => selectGame(game)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-secondary/80 transition-colors text-left"
+                              >
+                                {cover ? (
+                                  <img src={cover} alt={game.title} className="w-7 h-9 rounded object-cover shrink-0" />
+                                ) : (
+                                  <div className="w-7 h-9 rounded bg-secondary flex items-center justify-center shrink-0">
+                                    <Gamepad2 className="w-3 h-3 text-muted-foreground/40" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{game.title}</p>
+                                  {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {gameQuery.trim() && !gameSearching && gameResults.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-3 pb-4">No games found</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={!query.trim()}
+              className="shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-accent disabled:opacity-35 hover:bg-accent/80 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading spinner */}
+      {state === 'loading' && (
+        <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center gap-3">
+          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Asking Forge AI...</span>
+        </div>
+      )}
+
+      {/* Result cards */}
+      {isResultActive && result && (
+        <div className="space-y-3">
+          {/* Query card */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            {editingQuery ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editQueryText}
+                  onChange={e => setEditQueryText(e.target.value)}
+                  className="w-full bg-secondary rounded-lg px-3 py-2 text-sm font-semibold resize-none focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  rows={2}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveEditQuery}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
+                  >
+                    <Check className="w-3 h-3" />
+                    Re-ask
+                  </button>
+                  <button onClick={() => setEditingQuery(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold leading-snug">{query}</p>
+                {state === 'result' && (
+                  <button
+                    onClick={() => { setEditQueryText(query); setEditingQuery(true); }}
+                    className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Response card */}
+          <div className="bg-card border rounded-xl p-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>
+            <div className="flex items-center gap-1.5 mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <span className="text-xs font-semibold text-accent uppercase tracking-wide">Forge AI</span>
+            </div>
+
+            {editingResponse ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editResponseText}
+                  onChange={e => setEditResponseText(e.target.value)}
+                  className="w-full bg-secondary rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  rows={6}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveEditResponse}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
+                  >
+                    <Check className="w-3 h-3" />
+                    Save
+                  </button>
+                  <button onClick={() => setEditingResponse(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 flex-1">{result.answer}</p>
+                {state === 'result' && (
+                  <button
+                    onClick={() => { setEditResponseText(result.answer); setEditingResponse(true); }}
+                    className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Actions — result */}
+            {state === 'result' && !editingResponse && !editingQuery && (
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/50 flex-wrap">
+                {selectedGame && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 rounded-full text-xs font-medium text-accent">
+                    <Gamepad2 className="w-3 h-3" />
+                    <span className="truncate max-w-[130px]">{selectedGame.title}</span>
+                  </div>
+                )}
+                <button
+                  onClick={handleSubmitInsight}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent/15 text-accent rounded-lg hover:bg-accent/25 transition-colors"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Submit to Insights
+                </button>
+                <button
+                  onClick={reset}
+                  className="ml-auto p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-secondary"
+                  title="Clear"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Actions — submitting */}
+            {state === 'submitting' && (
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/50">
+                <div className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-muted-foreground">Submitting to community...</span>
+              </div>
+            )}
+
+            {/* Actions — submitted */}
+            {state === 'submitted' && (
+              <div className="mt-4 pt-3 border-t border-border/50 space-y-3">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5" />
+                  </div>
+                  <span className="text-xs font-medium">Submitted for community review</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Would you like to share this to the feed?</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleShareAsPost}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Add commentary + Post
+                  </button>
+                  <button
+                    onClick={reset}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-2"
+                  >
+                    Skip
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Divider — separates search results from feed below */}
+      {isResultActive && <hr className="mt-6 border-border" />}
+    </div>
+  );
+}

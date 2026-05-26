@@ -1180,7 +1180,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               <button
                 onClick={() => setActiveTab('lists')}
                 className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                  activeTab === 'lists'
+                  effectiveTab === 'lists'
                     ? 'border-accent text-accent'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
@@ -1192,7 +1192,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           <button
             onClick={() => setActiveTab('posts')}
             className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'posts'
+              effectiveTab === 'posts'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
@@ -1203,7 +1203,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             <button
               onClick={() => setActiveTab('likes')}
               className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                activeTab === 'likes'
+                effectiveTab === 'likes'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -1215,7 +1215,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             <button
               onClick={() => setActiveTab('media')}
               className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                activeTab === 'media'
+                effectiveTab === 'media'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -1227,7 +1227,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             <button
               onClick={() => setActiveTab('timeline')}
               className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                activeTab === 'timeline'
+                effectiveTab === 'timeline'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -1238,7 +1238,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           <button
             onClick={() => setActiveTab('about')}
             className={`lg:hidden shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-              activeTab === 'about'
+              effectiveTab === 'about'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}

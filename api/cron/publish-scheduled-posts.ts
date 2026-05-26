@@ -7,7 +7,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const SUPABASE_URL = `https://${process.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
-const SERVICE_KEY = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ?? '';
+const SERVICE_KEY = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 async function supabase<T = unknown>(method: string, path: string, body?: object): Promise<T> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {

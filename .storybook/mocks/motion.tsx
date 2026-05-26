@@ -10,12 +10,22 @@ const TAGS = [
 
 type AnyProps = Record<string, unknown>;
 
+const MOTION_PROPS = new Set([
+  'animate', 'initial', 'exit', 'transition', 'variants', 'whileHover', 'whileTap',
+  'whileFocus', 'whileInView', 'whileDrag', 'drag', 'dragConstraints', 'dragElastic',
+  'dragMomentum', 'layout', 'layoutId', 'onAnimationStart', 'onAnimationComplete',
+  'onUpdate', 'onDrag', 'onDragStart', 'onDragEnd', 'viewport', 'custom',
+]);
+
 export const motion = Object.fromEntries(
   TAGS.map(tag => [
     tag,
-    React.forwardRef<HTMLElement, AnyProps>(({ children, ...props }: AnyProps, ref) =>
-      React.createElement(tag, { ...props, ref }, children)
-    ),
+    React.forwardRef<HTMLElement, AnyProps>(({ children, ...props }: AnyProps, ref) => {
+      const safeProps = Object.fromEntries(
+        Object.entries(props).filter(([k]) => !MOTION_PROPS.has(k))
+      );
+      return React.createElement(tag, { ...safeProps, ref }, children);
+    }),
   ])
 ) as Record<string, React.ComponentType<AnyProps>>;
 

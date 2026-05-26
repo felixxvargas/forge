@@ -46,16 +46,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const token = req.headers['authorization']?.replace('Bearer ', '');
 
-  // GET — fetch insights for a game (public)
+  // GET — fetch insight(s) by insightId or by gameId+status
   if (req.method === 'GET') {
-    const { gameId, status } = req.query;
-    if (!gameId) return res.status(400).json({ error: 'gameId is required' });
+    const { gameId, status, insightId: qInsightId } = req.query;
 
-    const statusFilter = status ? `&status=eq.${status}` : '';
-    const insights = await sb<any[]>(
-      'GET',
-      `/game_insights?game_id=eq.${encodeURIComponent(gameId as string)}${statusFilter}&order=submitted_at.desc&limit=50&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
-    );
+    let insights: any[];
+    if (qInsightId) {
+      insights = await sb<any[]>(
+        'GET',
+        `/game_insights?id=eq.${encodeURIComponent(qInsightId as string)}&limit=1&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+      );
+    } else {
+      if (!gameId) return res.status(400).json({ error: 'gameId or insightId is required' });
+      const statusFilter = status ? `&status=eq.${status}` : '';
+      insights = await sb<any[]>(
+        'GET',
+        `/game_insights?game_id=eq.${encodeURIComponent(gameId as string)}${statusFilter}&order=submitted_at.desc&limit=50&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+      );
+    }
 
     // If authenticated, fetch current user's votes
     let myVotes: Record<string, string> = {};
@@ -68,7 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.json(insights.map((i: any) => ({ ...i, myVote: myVotes[i.id] ?? null })));
+    const result = insights.map((i: any) => ({ ...i, myVote: myVotes[i.id] ?? null }));
+    return res.json(qInsightId ? result[0] ?? null : result);
   }
 
   // POST — submit a new insight
@@ -100,8 +109,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(token);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { insightId, vote } = req.body ?? {};
+    const { insightId, vote, action } = req.body ?? {};
     if (!insightId) return res.status(400).json({ error: 'insightId is required' });
+
+    // Re-review action — owner resets an approved insight back to pending
+    if (action === 're-review') {
+      const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
+      if (!insight) return res.status(404).json({ error: 'Insight not found' });
+      if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can request re-review' });
+      if (insight.status !== 'approved') return res.status(400).json({ error: 'Only approved insights can be re-reviewed' });
+      if (insight.re_review_requested_at) return res.status(400).json({ error: 'Re-review already requested' });
+
+      await sb('DELETE', `/game_insight_votes?insight_id=eq.${insightId}`);
+      await sb('PATCH', `/game_insights?id=eq.${insightId}`, {
+        status: 'pending',
+        approve_count: 0,
+        reject_count: 0,
+        approved_at: null,
+        re_review_requested_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      return res.json({ success: true });
+    }
+
     if (vote !== 'approve' && vote !== 'reject') return res.status(400).json({ error: 'vote must be approve or reject' });
 
     // Fetch the insight

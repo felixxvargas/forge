@@ -17,6 +17,8 @@ import { topicAccounts } from '../data/data';
 import { useTopicAccountProfiles } from '../hooks/useTopicAccountProfiles';
 import ForgeSVG from '../../assets/forge-logo.svg?react';
 import { BetaTag } from '../components/ui/BetaTag';
+import { FeedInsightSearch } from '../components/FeedInsightSearch';
+import { PostCardSkeleton } from '../components/PostCardSkeleton';
 
 // Reverse map: Bluesky handle → topic account (built once at module level)
 const BSKY_HANDLE_TO_TOPIC: Record<string, any> = {};
@@ -389,6 +391,9 @@ export function Feed() {
 
   const feedContent = (
     <div className="w-full px-4 lg:px-6 py-3 lg:py-6">
+      {/* AI Insight Search Bar */}
+      {isAuthenticated && <FeedInsightSearch />}
+
       {/* Feed selector */}
       <div className="mb-3 lg:mb-6 relative">
         <button
@@ -475,61 +480,20 @@ export function Feed() {
         )}
       </div>
 
-      {/* Desktop-only compose bar */}
-      {isAuthenticated && (
-        <button
-          onClick={() => navigate('/new-post')}
-          className="hidden md:flex items-center gap-3 w-full md:max-w-xl mb-6 px-4 py-3 bg-card border border-border rounded-xl hover:border-accent/40 transition-colors group"
-        >
-          <div className="flex-1 text-left text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-            What's on your mind?
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors shrink-0">
-            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
-            <line x1="16" y1="8" x2="2" y2="22" />
-            <line x1="17.5" y1="15" x2="9" y2="15" />
-          </svg>
-        </button>
-      )}
 
-      {loading && (() => {
-        const col = (cls: string) => (
-          <div className={`${cls} flex-1 flex flex-col gap-3 md:gap-4 lg:gap-6 min-w-0`}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
-                <div className="flex gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-muted/40 shrink-0" />
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <div className="flex gap-2 mb-2">
-                      <div className="h-3 bg-muted/50 rounded w-24" />
-                      <div className="h-3 bg-muted/30 rounded w-16" />
-                    </div>
-                    <div className="h-3 bg-muted/30 rounded w-20" />
-                  </div>
-                </div>
-                <div className="space-y-2 mb-3">
-                  <div className="h-3 bg-muted/40 rounded w-full" />
-                  <div className="h-3 bg-muted/40 rounded w-5/6" />
-                  <div className="h-3 bg-muted/40 rounded w-3/4" />
-                </div>
-                <div className="h-36 bg-muted/25 rounded-lg mb-3" />
-                <div className="flex gap-4">
-                  <div className="h-3 bg-muted/25 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-8" />
-                  <div className="h-3 bg-muted/25 rounded w-8" />
-                </div>
-              </div>
-            ))}
+      {loading && (
+        <div className={`flex ${feedGap} items-start`}>
+          <div className={`flex flex-1 flex-col ${feedGap} min-w-0`}>
+            {[false, true, false, false].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
           </div>
-        );
-        return (
-          <div className="flex gap-3 md:gap-4 lg:gap-6 items-start">
-            {col('flex')}
-            {col('hidden md:flex')}
-            {col('hidden lg:flex')}
+          <div className={`hidden md:flex flex-1 flex-col ${feedGap} min-w-0`}>
+            {[true, false, false, true].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
           </div>
-        );
-      })()}
+          <div className={`hidden lg:flex flex-1 flex-col ${feedGap} min-w-0`}>
+            {[false, false, true, false].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
+          </div>
+        </div>
+      )}
 
       {!loading && (
         <div className={`flex ${feedGap} items-start`}>

@@ -59,6 +59,7 @@ const config: StorybookConfig = {
       ...config.resolve,
       alias: [
         { find: /^@\/compat\/router$/, replacement: resolve(__dirname, './mocks/compat-router.tsx') },
+        { find: 'next/navigation', replacement: resolve(__dirname, './mocks/next-navigation.tsx') },
         { find: 'motion/react', replacement: resolve(__dirname, './mocks/motion.tsx') },
         ...(Array.isArray(config.resolve?.alias)
           ? config.resolve.alias
