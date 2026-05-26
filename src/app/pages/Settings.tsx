@@ -523,6 +523,9 @@ export function Settings() {
           </div>
         </div>
 
+        {/* AI Insights */}
+        <AIInsightsToggle />
+
         {/* About */}
         <div className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">About</h2>
@@ -699,6 +702,42 @@ export function Settings() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AIInsightsToggle() {
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem('forge-auto-gemini') === 'true'; } catch { return false; }
+  });
+  const toggle = () => {
+    const next = !enabled;
+    setEnabled(next);
+    localStorage.setItem('forge-auto-gemini', String(next));
+  };
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">AI Insights</h2>
+      <div className="bg-card rounded-xl overflow-hidden">
+        <button
+          onClick={toggle}
+          className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+        >
+          <Sparkles className="w-5 h-5 text-muted-foreground" />
+          <div className="text-left flex-1">
+            <p className="font-medium">Auto Gemini Search</p>
+            <p className="text-sm text-muted-foreground">
+              Always show "Search with Forge AI" in Explore results
+            </p>
+          </div>
+          <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${enabled ? 'bg-accent' : 'bg-muted'}`}>
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground mt-2 px-1">
+        50 AI queries per day · requires a linked game
+      </p>
     </div>
   );
 }

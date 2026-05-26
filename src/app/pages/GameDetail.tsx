@@ -1,5 +1,5 @@
 'use client';
-import { useParams, useNavigate, useLocation } from '@/compat/router';
+import { useParams, useNavigate, useLocation, useSearchParams } from '@/compat/router';
 import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
@@ -8,6 +8,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
 import { ShareModal } from '../components/ShareModal';
+import { GameInsightsSection } from '../components/GameInsightsSection';
 
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
 import { toast } from 'sonner';
@@ -30,6 +31,7 @@ function gdSet<T>(key: string, data: T): void { _gdCache.set(key, { data, ts: Da
 export function GameDetail() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { gameId: rawGameId } = useParams();
   const gameId = rawGameId ? decodeURIComponent(rawGameId) : rawGameId;
   const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeedPosts, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
@@ -977,6 +979,16 @@ export function GameDetail() {
             </div>
           </div>
         )}
+        {/* Insights / Wiki section */}
+        {game && gameId && (
+          <GameInsightsSection
+            gameId={gameId}
+            gameTitle={game.title}
+            coverUrl={coverUrl ?? undefined}
+            initialTab={searchParams.get('tab') === 'insights' ? 'pending' : 'approved'}
+          />
+        )}
+
         </div>{/* end right column */}
         </div>{/* end lg:flex wrapper */}
       </div>

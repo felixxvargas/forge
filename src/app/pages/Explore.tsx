@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import useSWR from 'swr';
-import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame } from 'lucide-react';
+import { Search, MessageSquare, User as UserIcon, Gamepad2, UserPlus, Users, Lock, X, Plus, ChevronRight, Flame, Sparkles } from 'lucide-react';
 import { GameCard } from '../components/GameCard';
 import dynamic from 'next/dynamic';
 const GameListRow = dynamic(() => import('../components/GameListRow').then(m => ({ default: m.GameListRow })));
@@ -9,6 +9,7 @@ import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
 import { UserCard } from '../components/UserCard';
 import { GroupIcon } from '../components/GroupIcon';
+import { GameInsightModal } from '../components/GameInsightModal';
 import { useNavigate, useNavigationType } from '@/compat/router';
 import { useAppData } from '../context/AppDataContext';
 import { useColumnCount, splitToColumns } from '../hooks/useColumnCount';
@@ -72,6 +73,7 @@ export function Explore() {
   const [externalUsers, setExternalUsers] = useState<ExternalUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showInsightModal, setShowInsightModal] = useState(false);
   // Tracks extra game IDs fetched to fill engagement gaps — reset on tab change
   const fetchedExtraGameIds = useRef<Set<string>>(new Set());
 
@@ -643,6 +645,24 @@ export function Explore() {
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
               </div>
             )}
+
+            {/* Gemini AI Insights option */}
+            <button
+              onClick={() => setShowInsightModal(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all hover:scale-[1.01]"
+              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(109,40,217,0.08) 100%)', border: '1px solid rgba(139,92,246,0.25)' }}
+            >
+              <div className="w-9 h-9 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4.5 h-4.5 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Search with Forge AI</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  Ask Gemini about "<span className="text-accent">{searchQuery.length > 40 ? searchQuery.slice(0, 40) + '…' : searchQuery}</span>" and contribute to a game wiki
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-accent shrink-0" />
+            </button>
 
             {/* Games */}
             {searchGameResults.length > 0 && (
@@ -1226,6 +1246,12 @@ export function Explore() {
           </>
         )}
       </div>
+
+      {/* Gemini Insight Modal */}
+      <GameInsightModal
+        isOpen={showInsightModal}
+        onClose={() => setShowInsightModal(false)}
+      />
     </div>
   );
 }
