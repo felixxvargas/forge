@@ -1,25 +1,68 @@
 import type { Metadata } from 'next';
-import { Heart, MessageCircle, Repeat2, ExternalLink } from 'lucide-react';
 
 export const revalidate = 3600;
 export function generateStaticParams() { return [{ postId: '_' }]; }
 
+const projectId = process.env.VITE_SUPABASE_PROJECT_ID;
+const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
+const SUPABASE = `https://${projectId}.supabase.co/rest/v1`;
+const hdrs = { apikey: anonKey, Authorization: `Bearer ${anonKey}` };
+
 async function fetchPost(postId: string | undefined) {
   if (!postId || postId === '_') return null;
   try {
-    const projectId = process.env.VITE_SUPABASE_PROJECT_ID;
-    const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
-    const url = `https://${projectId}.supabase.co/rest/v1/posts?select=*,author:profiles!user_id(id,display_name,handle,profile_picture)&id=eq.${postId}&limit=1`;
-    const res = await fetch(url, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(
+      `${SUPABASE}/posts?select=*,author:profiles!user_id(id,display_name,handle,profile_picture)&id=eq.${postId}&limit=1`,
+      { headers: hdrs, next: { revalidate: 3600 } }
+    );
     if (!res.ok) return null;
     const data = await res.json();
     return data[0] ?? null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+async function fetchPollVotes(postId: string): Promise<Record<number, number>> {
+  try {
+    const res = await fetch(
+      `${SUPABASE}/poll_votes?select=option_index&post_id=eq.${postId}`,
+      { headers: hdrs, next: { revalidate: 60 } }
+    );
+    if (!res.ok) return {};
+    const rows: { option_index: number }[] = await res.json();
+    const counts: Record<number, number> = {};
+    for (const { option_index } of rows) counts[option_index] = (counts[option_index] ?? 0) + 1;
+    return counts;
+  } catch { return {}; }
+}
+
+async function fetchQuotedPost(quotePostId: string) {
+  try {
+    const res = await fetch(
+      `${SUPABASE}/posts?select=id,content,images,author:profiles!user_id(display_name,handle)&id=eq.${quotePostId}&limit=1`,
+      { headers: hdrs, next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data[0] ?? null;
+  } catch { return null; }
+}
+
+async function fetchLinkMeta(url: string) {
+  try {
+    const res = await fetch(
+      `https://api.microlink.io?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(3000) }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.status !== 'success') return null;
+    const d = json.data ?? {};
+    return {
+      title: d.title as string | undefined,
+      description: d.description as string | undefined,
+      image: (d.image?.url ?? null) as string | null,
+    };
+  } catch { return null; }
 }
 
 function formatCount(n: number): string {
@@ -29,11 +72,13 @@ function formatCount(n: number): string {
 }
 
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return '';
-  }
+  try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  catch { return ''; }
+}
+
+function getDomain(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); }
+  catch { return url; }
 }
 
 export async function generateMetadata(
@@ -60,6 +105,14 @@ export default async function EmbedPage({ params }: { params: Promise<{ postId: 
     );
   }
 
+  const poll = (post.poll as { options: string[]; end_date: string } | null) ?? null;
+
+  const [pollVotes, quotedPost, linkMeta] = await Promise.all([
+    poll ? fetchPollVotes(postId) : Promise.resolve({} as Record<number, number>),
+    post.quote_post_id ? fetchQuotedPost(post.quote_post_id) : Promise.resolve(null),
+    post.url ? fetchLinkMeta(post.url) : Promise.resolve(null),
+  ]);
+
   const author = post.author as any;
   const handle = ((author?.handle ?? '') || '').replace(/^@/, '');
   const images: string[] = Array.isArray(post.images) ? post.images : [];
@@ -67,10 +120,13 @@ export default async function EmbedPage({ params }: { params: Promise<{ postId: 
   const nonVideoImages = images.filter(u => !isVideo(u));
   const postUrl = `${baseUrl}/post/${postId}`;
 
-  // Avatar initials fallback
   const initials = (author?.display_name || handle || '?').slice(0, 1).toUpperCase();
   const avatarColors = ['#7c3aed', '#6d28d9', '#5b21b6', '#4c1d95'];
   const colorIdx = initials.charCodeAt(0) % avatarColors.length;
+
+  // Poll totals
+  const totalVotes = poll ? Object.values(pollVotes).reduce((s, c) => s + c, 0) : 0;
+  const pollEnded = poll ? new Date(poll.end_date) <= new Date() : false;
 
   return (
     <div style={{ background: '#1c1228', minHeight: '100vh', padding: '0', margin: '0' }}>
@@ -84,9 +140,9 @@ export default async function EmbedPage({ params }: { params: Promise<{ postId: 
         color: '#f0f4f8',
         maxWidth: '550px',
       }}>
-        {/* Post header */}
+        {/* Header */}
         <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-          <a href={`${baseUrl}/${handle}`} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, textDecoration: 'none' }}>
+          <a href={`${baseUrl}/profile/${handle}`} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, textDecoration: 'none' }}>
             {author?.profile_picture ? (
               <img
                 src={author.profile_picture}
@@ -106,7 +162,7 @@ export default async function EmbedPage({ params }: { params: Promise<{ postId: 
           </a>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <a href={`${baseUrl}/${handle}`} target="_blank" rel="noopener noreferrer"
+              <a href={`${baseUrl}/profile/${handle}`} target="_blank" rel="noopener noreferrer"
                 style={{ fontWeight: '600', fontSize: '15px', color: '#f0f4f8', textDecoration: 'none' }}>
                 {author?.display_name || handle}
               </a>
@@ -126,6 +182,65 @@ export default async function EmbedPage({ params }: { params: Promise<{ postId: 
             {post.content}
           </div>
         )}
+
+        {/* Poll */}
+        {poll && (
+          <div style={{ margin: '0 16px 12px', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.04)' }}>
+            <div style={{ padding: '10px 12px 6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#aca3b8" strokeWidth="2">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              <span style={{ fontSize: '12px', color: '#aca3b8' }}>
+                {pollEnded ? 'Poll ended' : `Ends ${new Date(poll.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                {totalVotes > 0 && ` · ${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`}
+              </span>
+            </div>
+            <div style={{ padding: '4px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {poll.options.map((option, i) => {
+                const count = pollVotes[i] ?? 0;
+                const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                return (
+                  <div key={i} style={{ position: 'relative', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'rgba(124,58,237,0.25)', borderRadius: '7px', transition: 'width 0.3s' }} />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 10px', fontSize: '13px', fontWeight: '500' }}>
+                      <span style={{ color: '#f0f4f8' }}>{option}</span>
+                      {totalVotes > 0 && <span style={{ color: '#aca3b8', fontSize: '12px' }}>{pct}%</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Quoted post */}
+        {quotedPost && (() => {
+          const qa = quotedPost.author as any;
+          const qHandle = ((qa?.handle ?? '') || '').replace(/^@/, '');
+          const qImages: string[] = Array.isArray(quotedPost.images) ? quotedPost.images : [];
+          const qNonVideo = qImages.filter((u: string) => !isVideo(u));
+          return (
+            <a
+              href={`${baseUrl}/post/${quotedPost.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'block', margin: '0 16px 12px', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '12px', padding: '12px', background: 'rgba(255,255,255,0.04)', textDecoration: 'none', color: 'inherit' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontWeight: '600', fontSize: '13px', color: '#f0f4f8' }}>{qa?.display_name || qHandle}</span>
+                <span style={{ fontSize: '12px', color: '#aca3b8' }}>@{qHandle}</span>
+              </div>
+              {quotedPost.content && (
+                <p style={{ margin: 0, fontSize: '13px', color: '#d4cfe0', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
+                  {quotedPost.content}
+                </p>
+              )}
+              {qNonVideo.length > 0 && (
+                <img src={qNonVideo[0]} alt="" style={{ marginTop: '8px', width: '100%', borderRadius: '8px', objectFit: 'cover', maxHeight: '160px', display: 'block' }} />
+              )}
+            </a>
+          );
+        })()}
 
         {/* Images */}
         {nonVideoImages.length > 0 && (
@@ -154,6 +269,29 @@ export default async function EmbedPage({ params }: { params: Promise<{ postId: 
             }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="#aca3b8"><path d="M8 5v14l11-7z" /></svg>
             </div>
+          </div>
+        )}
+
+        {/* URL preview card */}
+        {post.url && (
+          <div style={{ margin: '0 16px 12px' }}>
+            {linkMeta ? (
+              <a href={post.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '12px', overflow: 'hidden', textDecoration: 'none', color: 'inherit', background: 'rgba(255,255,255,0.03)' }}>
+                {linkMeta.image && (
+                  <img src={linkMeta.image} alt="" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }} />
+                )}
+                <div style={{ padding: '10px 12px' }}>
+                  {linkMeta.title && <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: '600', color: '#f0f4f8', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{linkMeta.title}</p>}
+                  {linkMeta.description && <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#aca3b8', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{linkMeta.description}</p>}
+                  <span style={{ fontSize: '11px', color: '#aca3b8' }}>{getDomain(post.url)}</span>
+                </div>
+              </a>
+            ) : (
+              <a href={post.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '99px', background: 'rgba(255,255,255,0.04)', fontSize: '12px', color: '#aca3b8', textDecoration: 'none' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                {getDomain(post.url)}
+              </a>
+            )}
           </div>
         )}
 

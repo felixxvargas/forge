@@ -1,6 +1,9 @@
 import type { StorybookConfig } from '@storybook/nextjs-vite';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Handles `import Foo from '*.svg?react'` in Storybook (Vite 8 / rolldown).
 // vite-plugin-svgr emits JSX which rolldown can't parse; this plugin instead
@@ -52,6 +55,13 @@ const config: StorybookConfig = {
   },
   async viteFinal(config) {
     config.plugins = [...(config.plugins ?? []), svgReactPlugin];
+    config.resolve = {
+      ...config.resolve,
+      alias: {
+        ...(config.resolve?.alias ?? {}),
+        'motion/react': resolve(__dirname, './mocks/motion.tsx'),
+      },
+    };
     return config;
   },
 };
