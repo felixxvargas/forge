@@ -1,6 +1,8 @@
 import { useNavigate } from '@/compat/router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Bookmark, BookOpen } from 'lucide-react';
+import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Bookmark, BookOpen, ExternalLink } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { getStoredLinkPreference, storeLinkPreference, clearLinkPreference, type LinkPreference } from '../utils/openExternalLink';
 import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
@@ -27,6 +29,7 @@ export function Settings() {
   const [showManageAccounts, setShowManageAccounts] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [linkPref, setLinkPref] = useState<LinkPreference | null>(() => getStoredLinkPreference());
   const qrRef = useRef<SVGSVGElement>(null);
   const [onboardingDismissCount, setOnboardingDismissCount] = useState(() => {
     try { return JSON.parse(localStorage.getItem('forge-onboarding-v1') ?? '{}').dismissCount ?? 0; } catch { return 0; }
@@ -340,6 +343,45 @@ export function Settings() {
                 <p className="text-sm text-muted-foreground">Share your profile with others</p>
               </div>
             </button>
+          </div>
+        </div>
+
+        {/* App Behavior */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">App Behavior</h2>
+          <div className="bg-card rounded-xl overflow-hidden">
+            <div className="px-4 py-4">
+              <div className="flex items-center gap-3 mb-3">
+                <ExternalLink className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">External Links</p>
+                  <p className="text-sm text-muted-foreground">How platform profile links open</p>
+                </div>
+              </div>
+              <div className="flex rounded-lg overflow-hidden border border-border text-sm">
+                {(['ask', 'inapp', 'browser'] as const).map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      if (opt === 'ask') { clearLinkPreference(); setLinkPref(null); }
+                      else { storeLinkPreference(opt as LinkPreference); setLinkPref(opt as LinkPreference); }
+                    }}
+                    className={`flex-1 py-2 font-medium transition-colors ${
+                      (opt === 'ask' ? linkPref === null : linkPref === opt)
+                        ? 'bg-accent text-background'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {opt === 'ask' ? 'Ask me' : opt === 'inapp' ? 'In Forge' : 'Browser'}
+                  </button>
+                ))}
+              </div>
+              {Capacitor.isNativePlatform() ? (
+                <p className="text-xs text-muted-foreground/60 mt-2">"In Forge" uses Chrome Custom Tabs — keeps you in the app.</p>
+              ) : (
+                <p className="text-xs text-muted-foreground/60 mt-2">"In Forge" uses Chrome Custom Tabs on the Android app.</p>
+              )}
+            </div>
           </div>
         </div>
 

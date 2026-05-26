@@ -6,6 +6,9 @@ import { UserBadgeIcons } from '../components/UserBadgeIcons';
 import { isMentorHandle } from '../utils/mentors';
 import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
 import { ShareModal } from '../components/ShareModal';
+import { LinkOpenModal } from '../components/LinkOpenModal';
+import { getPlatformUrl } from '../utils/platformLinks';
+import { getStoredLinkPreference, openLink } from '../utils/openExternalLink';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
 import { ProfileSkeleton } from '../components/ProfileSkeleton';
@@ -113,6 +116,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [pendingLinkUrl, setPendingLinkUrl] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(() => {
     const id = userId || '';
     return id ? followingIds.has(id) : false;
@@ -403,6 +407,13 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   const handlePlatformTagClick = async (platform: string, fullHandle: string) => {
     if (!canViewHandles) return;
+    const url = getPlatformUrl(platform, fullHandle);
+    if (url) {
+      const pref = getStoredLinkPreference();
+      if (pref) { await openLink(url, pref); return; }
+      setPendingLinkUrl(url);
+      return;
+    }
     const label = getHandleLabel(platform);
     const toCopy = platform === 'nintendo' ? fullHandle.replace(/-/g, '') : fullHandle;
     try { await navigator.clipboard.writeText(toCopy); } catch {}
@@ -568,12 +579,21 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               {platformsWithHandles.map(platform => {
                 const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
                 const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
-                return (
-                  <div key={platform} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]">
+                const linkUrl = canViewHandles && handle ? getPlatformUrl(platform, handle) : null;
+                const chip = (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]">
                     <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
                     <span className="font-medium shrink-0">{getSocialPlatformLabel(platform)}</span>
-                    {showHandle && handle && <span className="text-muted-foreground truncate">· @{handle}</span>}
+                    {showHandle && handle && <span className="text-muted-foreground truncate">· {handle.startsWith('@') ? handle : `@${handle}`}</span>}
+                    {linkUrl && <ExternalLink className="w-3 h-3 text-muted-foreground/50 shrink-0" />}
                   </div>
+                );
+                return linkUrl ? (
+                  <button key={platform} onClick={() => handlePlatformTagClick(platform, handle)} className="cursor-pointer hover:opacity-80 transition-opacity">
+                    {chip}
+                  </button>
+                ) : (
+                  <div key={platform}>{chip}</div>
                 );
               })}
             </div>
@@ -1944,6 +1964,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         onClose={() => setShareModalOpen(false)}
         user={profileUser}
       />
+
+      {/* Link open preference modal */}
+      {pendingLinkUrl && (
+        <LinkOpenModal
+          url={pendingLinkUrl}
+          onClose={() => setPendingLinkUrl(null)}
+        />
+      )}
 
       {/* Report Modal */}
       {/* 4-list limit tray */}

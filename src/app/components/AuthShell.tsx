@@ -25,7 +25,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
       </Link>
 
       {/* Ambient glow orbs */}
-      <div className="pointer-events-none absolute inset-0 -z-0" aria-hidden="true">
+      <div className="pointer-events-none absolute inset-0 -z-0 overflow-hidden" aria-hidden="true">
         <div className="absolute top-[-15%] left-[5%] w-[700px] h-[700px] rounded-full"
           style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.35) 0%, transparent 70%)', filter: 'blur(60px)' }} />
         <div className="absolute bottom-[-10%] right-[0%] w-[600px] h-[600px] rounded-full"
