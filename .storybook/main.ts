@@ -57,10 +57,13 @@ const config: StorybookConfig = {
     config.plugins = [...(config.plugins ?? []), svgReactPlugin];
     config.resolve = {
       ...config.resolve,
-      alias: {
-        ...(config.resolve?.alias ?? {}),
-        'motion/react': resolve(__dirname, './mocks/motion.tsx'),
-      },
+      alias: [
+        { find: /^@\/compat\/router$/, replacement: resolve(__dirname, './mocks/compat-router.tsx') },
+        { find: 'motion/react', replacement: resolve(__dirname, './mocks/motion.tsx') },
+        ...(Array.isArray(config.resolve?.alias)
+          ? config.resolve.alias
+          : Object.entries(config.resolve?.alias ?? {}).map(([find, replacement]) => ({ find, replacement: replacement as string }))),
+      ],
     };
     return config;
   },
