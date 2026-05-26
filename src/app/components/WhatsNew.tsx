@@ -16,12 +16,11 @@ export const RELEASES: Release[] = [
     title: "What's New in Forge",
     summary: "Forge AI Insights, community-voted game wiki, pull-to-refresh, and the Forge Blog.",
     highlights: [
-      'Forge AI Insights: ask any question about a game and get an instant AI-powered answer via Gemini.',
-      'Submit insights to that game\'s Insights / Wiki tab for community review — 70% approval after 24 hours makes it permanent.',
-      'New Insights / Wiki tab on every game page; vote on pending insights to help grow the knowledge base.',
-      '"Search with Forge AI" now appears at the top of Explore search results — 50 AI queries per day.',
+      'Forge Insights: ask any question about a game and get answers via Google Gemini.',
+      'Submit insights to that game\'s Insights tab for community review',
+      'New Insights tab on every game page; vote on pending insights to help grow the knowledge base.',
       'Pull-to-refresh: drag down on the feed to load new posts.',
-      'Forge Blog is live at forge-social.app/blog — product updates, roadmap, and announcements.',
+      'Forge Blog is live at forge-social.app/blog; product updates, roadmap, and announcements.',
     ],
   },
   {
