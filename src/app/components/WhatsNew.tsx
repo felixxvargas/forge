@@ -11,6 +11,20 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.3.8',
+    date: 'May 2026',
+    title: "What's New in Forge",
+    summary: "Forge AI Insights, community-voted game wiki, pull-to-refresh, and the Forge Blog.",
+    highlights: [
+      'Forge AI Insights: ask any question about a game and get an instant AI-powered answer via Gemini.',
+      'Submit insights to that game\'s Insights / Wiki tab for community review — 70% approval after 24 hours makes it permanent.',
+      'New Insights / Wiki tab on every game page; vote on pending insights to help grow the knowledge base.',
+      '"Search with Forge AI" now appears at the top of Explore search results — 50 AI queries per day.',
+      'Pull-to-refresh: drag down on the feed to load new posts.',
+      'Forge Blog is live at forge-social.app/blog — product updates, roadmap, and announcements.',
+    ],
+  },
+  {
     version: 'v0.3.7',
     date: 'May 2026',
     title: "What's New in Forge",
