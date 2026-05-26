@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import useSWR from 'swr';
-import { ArrowRight, Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
+import useSWR, { useSWRConfig } from 'swr';
+import { ArrowRight, Check, ChevronDown, Gamepad2, RefreshCw, Sparkles, TrendingUp, Users, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from '@/compat/router';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
@@ -55,7 +55,8 @@ function isUsableTopicPost(p: any): boolean {
 }
 
 export function Feed() {
-  const { posts: contextPosts, currentUser, isAuthenticated, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading, topicPostsReady, followedGameIds, signInWithGoogle } = useAppData() as any;
+  const { posts: contextPosts, currentUser, isAuthenticated, groups, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, deletePost, blockedUsers, mutedUsers, isLoading, topicPostsReady, followedGameIds, signInWithGoogle, refreshFeed, refreshFeedPosts } = useAppData() as any;
+  const { mutate } = useSWRConfig();
   const [searchParams] = useSearchParams();
   const [feedMode, setFeedMode] = useState<FeedMode>(() => {
     const tab = searchParams.get('tab');
@@ -85,6 +86,51 @@ export function Feed() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Pull-to-refresh
+  const PTR_THRESHOLD = 72;
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const pulling = useRef(false);
+
+  useEffect(() => {
+    const onTouchStart = (e: TouchEvent) => {
+      if (window.scrollY > 0) return;
+      touchStartY.current = e.touches[0].clientY;
+      pulling.current = true;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pulling.current || isRefreshing) return;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy <= 0) { pulling.current = false; return; }
+      setPullY(Math.min(dy * 0.45, PTR_THRESHOLD));
+    };
+    const onTouchEnd = async () => {
+      if (!pulling.current) return;
+      pulling.current = false;
+      setPullY(prev => {
+        if (prev >= PTR_THRESHOLD * 0.85) {
+          setIsRefreshing(true);
+          Promise.all([
+            refreshFeed?.(),
+            refreshFeedPosts?.(),
+            mutate(() => true, undefined, { revalidate: true }),
+          ]).finally(() => { setIsRefreshing(false); setPullY(0); });
+          return PTR_THRESHOLD * 0.55;
+        }
+        return 0;
+      });
+    };
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isRefreshing, refreshFeed, refreshFeedPosts, mutate]);
 
   // Persist the selected feed mode for the rest of the day so it survives page reloads
   useEffect(() => {
@@ -577,8 +623,22 @@ export function Feed() {
   );
 
   return (
-    <div className={`min-h-screen ${!isAuthenticated ? 'pb-36 md:pb-20' : 'pb-20'}`}>
+    <div className={`min-h-screen ${!isAuthenticated ? 'pb-36 md:pb-20' : 'pb-20'}`} style={{ overscrollBehaviorY: 'none' }}>
       <Header />
+
+      {/* Pull-to-refresh indicator */}
+      {(pullY > 0 || isRefreshing) && (
+        <div
+          className="fixed left-0 right-0 flex justify-center z-30 pointer-events-none"
+          style={{ top: 56, transform: `translateY(${isRefreshing ? 16 : pullY - PTR_THRESHOLD * 0.55}px)`, transition: isRefreshing ? 'transform 0.15s ease-out' : undefined }}
+        >
+          <div className="w-9 h-9 rounded-full bg-accent shadow-lg flex items-center justify-center"
+            style={{ opacity: isRefreshing ? 1 : pullY / PTR_THRESHOLD }}>
+            <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`}
+              style={{ transform: isRefreshing ? undefined : `rotate(${(pullY / PTR_THRESHOLD) * 360}deg)` }} />
+          </div>
+        </div>
+      )}
 
       {/* Group feed sticky navigation banner */}
       {typeof feedMode === 'object' && feedMode.type === 'group' && (() => {

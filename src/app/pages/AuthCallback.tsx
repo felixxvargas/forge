@@ -108,7 +108,7 @@ export function AuthCallback() {
           toast.info('You already have a Forge account. Welcome back!');
           analytics.login(method);
           navigate('/feed');
-        } else if (!profile?.handle) {
+        } else if (!profile?.handle || profile.handle === 'user' || profile.handle === '') {
           analytics.signUp(method);
           navigate('/onboarding');
         } else {

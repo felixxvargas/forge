@@ -251,7 +251,7 @@ export function AccountSettings() {
       {/* Suspend — Step 1 */}
       {accountActionStep === 'suspend-confirm1' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold">Suspend your account?</h2>
             <p className="text-sm text-muted-foreground">
               Your profile, posts, and lists will be hidden. You can unsuspend at any time by signing back in and turning suspension off in Settings.
@@ -267,7 +267,7 @@ export function AccountSettings() {
       {/* Suspend — Step 2 */}
       {accountActionStep === 'suspend-confirm2' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold">Are you sure?</h2>
             <p className="text-sm text-muted-foreground">
               You'll be signed out and your account will be suspended until you log back in and re-enable it.
@@ -289,7 +289,7 @@ export function AccountSettings() {
       {/* Delete — Step 1 */}
       {accountActionStep === 'delete-confirm1' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold text-destructive">Delete your account?</h2>
             <p className="text-sm text-muted-foreground">
               This will permanently delete your profile, posts, game lists, and all activity. <strong>This cannot be undone.</strong>
@@ -305,7 +305,7 @@ export function AccountSettings() {
       {/* Delete — Step 2 */}
       {accountActionStep === 'delete-confirm2' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold text-destructive">Final warning</h2>
             <p className="text-sm text-muted-foreground">
               Every post, list, follower, and piece of activity tied to your account will be gone forever. There is no recovery option.
@@ -321,7 +321,7 @@ export function AccountSettings() {
       {/* Delete — Step 3: type DELETE */}
       {accountActionStep === 'delete-confirm3' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-sidebar rounded-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold text-destructive">Confirm deletion</h2>
             <p className="text-sm text-muted-foreground">
               Type <strong>DELETE</strong> below to permanently delete your account.

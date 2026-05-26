@@ -834,7 +834,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
             </div>
             <p className="text-sm text-foreground/80 line-clamp-3 whitespace-pre-wrap">{qp.content}</p>
             {qp.images && qp.images.length > 0 && (
-              <img src={qp.images[0]} alt="" className="mt-2 w-full rounded-lg" />
+              <img src={qp.images[0]} alt="" loading="lazy" className="mt-2 w-full rounded-lg" />
             )}
           </div>
         );

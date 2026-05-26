@@ -130,7 +130,7 @@ export function Layout({ children }: { children?: ReactNode }) {
     || location.pathname === '/profile';
   if (!isAuthenticated && needsAuth) {
     return (
-      <div className="min-h-dvh relative">
+      <div className="min-h-dvh relative bg-background">
         <Link
           to="/feed"
           className="fixed top-4 right-4 z-50 p-2 bg-card/80 backdrop-blur-sm rounded-full border border-border hover:bg-secondary transition-colors inline-flex items-center justify-center"

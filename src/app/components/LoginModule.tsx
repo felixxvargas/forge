@@ -277,7 +277,7 @@ export function LoginModule({ variant = 'page', onSuccess }: Props) {
   );
 
   return (
-    <div className="min-h-dvh flex">
+    <div className="min-h-dvh flex bg-background">
       {/* Left panel — desktop branding (hidden on mobile) */}
       <div className="hidden md:flex flex-col justify-between w-[45%] shrink-0 p-12 relative overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
         {/* Subtle background glow */}

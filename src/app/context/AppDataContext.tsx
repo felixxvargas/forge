@@ -115,7 +115,7 @@ function normalizeProfile(profile: any): any {
   return {
     ...profile,
     display_name: profile.display_name || profile.handle || 'Gamer',
-    handle: profile.handle || 'user',
+    handle: profile.handle ?? '',
     profile_picture: profile.profile_picture ?? null,
   };
 }
