@@ -219,7 +219,7 @@ function RoadmapContent() {
           src={`/embed/post/${POLL_POST_ID}`}
           width="100%"
           style={{ border: 'none', borderRadius: '12px', display: 'block', maxWidth: '550px' }}
-          height="280"
+          height="420"
           title="Forge community poll"
           scrolling="no"
         />
