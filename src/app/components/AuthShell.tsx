@@ -68,7 +68,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Form column */}
-        <div className="w-full max-w-md flex-1 lg:flex-none flex flex-col justify-center">
+        <div className="w-full max-w-md flex-1 lg:flex-none flex flex-col justify-center lg:pt-16">
           <div className="text-center mb-8">
             <div className="relative flex items-center justify-center gap-2.5 mb-2">
               <ForgeSVG width="32" height="26" aria-hidden="true" />

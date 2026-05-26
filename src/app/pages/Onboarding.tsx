@@ -149,12 +149,16 @@ export function Onboarding() {
   const handleUsernameComplete = async (username: string, displayName: string, pronouns: string) => {
     // Helper to save profile and go to feed
     const finishOnboarding = async (userId: string) => {
-      await profiles.update(userId, {
+      // Use upsert so the profile row is created if it doesn't exist yet
+      // (can happen if the AuthCallback upsert raced or the row was never inserted)
+      const { error: upsertErr } = await supabase.from('profiles').upsert({
+        id: userId,
         handle: username,
         display_name: displayName,
         ...(pronouns ? { pronouns } : {}),
         interests: selectedInterests,
-      });
+      }, { onConflict: 'id' });
+      if (upsertErr) throw new Error(upsertErr.message);
       if (following.length > 0) {
         await Promise.all(following.map(id => profiles.follow(userId, id)));
       }

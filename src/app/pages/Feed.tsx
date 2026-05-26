@@ -7,7 +7,6 @@ import { PostCard } from '../components/PostCard';
 import { GroupIcon } from '../components/GroupIcon';
 import { WritePostButton } from '../components/WritePostButton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { LoginModule } from '../components/LoginModule';
 import { useAppData } from '../context/AppDataContext';
 import { useColumnCount, splitToColumns } from '../hooks/useColumnCount';
 import { posts as postsAPI } from '../utils/supabase';
@@ -141,18 +140,6 @@ export function Feed() {
     }
   }, [feedMode]);
 
-  // Guest: first-visit popup
-  const [showGuestPopup, setShowGuestPopup] = useState(false);
-  useEffect(() => {
-    if (!isAuthenticated && !localStorage.getItem('forge-guest-seen')) {
-      const t = setTimeout(() => setShowGuestPopup(true), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [isAuthenticated]);
-  const dismissGuestPopup = () => {
-    localStorage.setItem('forge-guest-seen', '1');
-    setShowGuestPopup(false);
-  };
 
   // Fetch new post counts for each group feed when dropdown opens
   useEffect(() => {
@@ -754,18 +741,6 @@ export function Feed() {
         </div>
       )}
 
-      {/* First-visit overlay for md desktop guests (right rail handles xl+) */}
-      {!isAuthenticated && showGuestPopup && (
-        <div className="hidden md:block xl:hidden fixed inset-0 z-50 overflow-y-auto">
-          <button
-            onClick={dismissGuestPopup}
-            className="absolute top-4 right-4 z-10 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          <LoginModule variant="page" onSuccess={dismissGuestPopup} />
-        </div>
-      )}
     </div>
   );
 }
