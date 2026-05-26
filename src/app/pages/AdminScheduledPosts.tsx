@@ -18,9 +18,13 @@ interface ScheduledPost {
   author?: { handle: string; display_name: string } | null;
 }
 
+async function getToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
 export function AdminScheduledPosts() {
   const navigate = useNavigate();
-  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[] | null>(null);
   const [spLoading, setSpLoading] = useState(false);
@@ -34,9 +38,11 @@ export function AdminScheduledPosts() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ content: '', scheduled_at: '', url: '' });
 
-  const loadScheduledPosts = async (tok: string) => {
+  const loadScheduledPosts = async () => {
     setSpLoading(true); setSpError('');
     try {
+      const tok = await getToken();
+      if (!tok) { navigate('/'); return; }
       const r = await fetch('/api/admin/scheduled-posts', { headers: { Authorization: `Bearer ${tok}`, 'Cache-Control': 'no-cache' } });
       if (r.ok) setScheduledPosts(await r.json());
       else setSpError('Failed to load scheduled posts');
@@ -48,9 +54,11 @@ export function AdminScheduledPosts() {
   };
 
   const saveEditedPost = async (id: string) => {
+    const tok = await getToken();
+    if (!tok) { navigate('/'); return; }
     await fetch(`/api/admin/scheduled-posts?id=${id}`, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content: editDraft.content,
         scheduled_at: new Date(editDraft.scheduled_at).toISOString(),
@@ -58,21 +66,23 @@ export function AdminScheduledPosts() {
       }),
     });
     setEditingPostId(null);
-    loadScheduledPosts(token);
+    loadScheduledPosts();
   };
 
   const triggerPublish = async () => {
     setTriggeringNow(true);
     try {
+      const tok = await getToken();
+      if (!tok) { navigate('/'); return; }
       const r = await fetch('/api/admin/scheduled-posts', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'trigger' }),
       });
       const data = await r.json();
       setTriggerMsg(data.published > 0 ? `Published ${data.published} post${data.published > 1 ? 's' : ''}` : 'Nothing due yet');
       setTimeout(() => setTriggerMsg(''), 4000);
-      loadScheduledPosts(token);
+      loadScheduledPosts();
     } finally {
       setTriggeringNow(false);
     }
@@ -81,9 +91,11 @@ export function AdminScheduledPosts() {
   const createScheduledPost = async () => {
     setComposing(true);
     try {
+      const tok = await getToken();
+      if (!tok) { navigate('/'); return; }
       await fetch('/api/admin/scheduled-posts', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'create',
           content: compose.content,
@@ -95,27 +107,27 @@ export function AdminScheduledPosts() {
       });
       setCompose({ content: '', scheduled_at: '', game_ids: '', game_titles: '', url: '' });
       setShowCompose(false);
-      loadScheduledPosts(token);
+      loadScheduledPosts();
     } finally {
       setComposing(false);
     }
   };
 
   const deleteScheduledPost = async (id: string) => {
+    const tok = await getToken();
+    if (!tok) { navigate('/'); return; }
     await fetch(`/api/admin/scheduled-posts?id=${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${tok}` },
     });
-    loadScheduledPosts(token);
+    loadScheduledPosts();
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getToken().then(tok => {
       setLoading(false);
-      const tok = session?.access_token;
       if (!tok) { navigate('/'); return; }
-      setToken(tok);
-      loadScheduledPosts(tok);
+      loadScheduledPosts();
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -161,7 +173,7 @@ export function AdminScheduledPosts() {
               {triggeringNow ? '…' : '▶'} Run Now
             </button>
             <button
-              onClick={() => loadScheduledPosts(token)}
+              onClick={() => loadScheduledPosts()}
               className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
