@@ -13,61 +13,29 @@ async function getAuthUser(token: string): Promise<{ id: string } | null> {
   return res.json();
 }
 
-async function sbGet<T>(path: string): Promise<T> {
+async function sbFetch(method: string, path: string, authToken: string, body?: object, prefer?: string): Promise<any> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    method,
     headers: {
       apikey: SERVICE_KEY,
-      Authorization: `Bearer ${SERVICE_KEY}`,
+      Authorization: `Bearer ${authToken}`,
       Accept: 'application/json',
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(text);
-  return text ? JSON.parse(text) : [];
-}
-
-async function sbPost(path: string, body: object, prefer = ''): Promise<any> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
-    method: 'POST',
-    headers: {
-      apikey: SERVICE_KEY,
-      Authorization: `Bearer ${SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...(prefer ? { Prefer: prefer } : {}),
     },
-    body: JSON.stringify(body),
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(text);
-  return text ? JSON.parse(text) : null;
+  return text ? JSON.parse(text) : (method === 'GET' ? [] : null);
 }
 
-async function sbPatch(path: string, body: object): Promise<void> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SERVICE_KEY,
-      Authorization: `Bearer ${SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text);
-  }
-}
-
-async function checkAndIncrementUsage(userId: string): Promise<{ allowed: boolean; used: number }> {
+async function checkAndIncrementUsage(userId: string, userToken: string): Promise<{ allowed: boolean; used: number }> {
   const today = new Date().toISOString().split('T')[0];
-  const rows = await sbGet<Array<{ id: string; query_count: number }>>(
-    `/gemini_usage?user_id=eq.${userId}&usage_date=eq.${today}&limit=1`
-  );
+  const rows = await sbFetch('GET', `/gemini_usage?user_id=eq.${userId}&usage_date=eq.${today}&limit=1`, userToken) as Array<{ id: string; query_count: number }>;
 
   if (rows.length === 0) {
-    await sbPost('/gemini_usage', { user_id: userId, usage_date: today, query_count: 1 }, 'return=minimal');
+    await sbFetch('POST', '/gemini_usage', userToken, { user_id: userId, usage_date: today, query_count: 1 }, 'return=minimal');
     return { allowed: true, used: 1 };
   }
 
@@ -76,7 +44,7 @@ async function checkAndIncrementUsage(userId: string): Promise<{ allowed: boolea
     return { allowed: false, used: row.query_count };
   }
 
-  await sbPatch(`/gemini_usage?user_id=eq.${userId}&usage_date=eq.${today}`, {
+  await sbFetch('PATCH', `/gemini_usage?user_id=eq.${userId}&usage_date=eq.${today}`, userToken, {
     query_count: row.query_count + 1,
     updated_at: new Date().toISOString(),
   });
@@ -139,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!gameTitle) return res.status(400).json({ error: 'gameTitle is required' });
 
   try {
-    const usage = await checkAndIncrementUsage(user.id);
+    const usage = await checkAndIncrementUsage(user.id, token);
     if (!usage.allowed) {
       return res.status(429).json({
         error: `Daily limit reached (${DAILY_LIMIT} queries per day). Try again tomorrow.`,
