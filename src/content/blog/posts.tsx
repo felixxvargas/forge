@@ -124,6 +124,134 @@ function AndroidBetaContent() {
 }
 
 // ---------------------------------------------------------------------------
+// Post 4 — June 10, 2026
+// ---------------------------------------------------------------------------
+
+function GamingTimelineContent() {
+  return (
+    <article>
+      <p>
+        The votes are in. Gaming Timeline is the feature the community wants most, and we're building it.
+      </p>
+
+      <h2>What the poll was asking</h2>
+      <p>
+        In our last update we asked what Forge should prioritize next: a Gaming Timeline, a Showcase
+        feature for highlighting your top moments, deeper fediverse integration, or an AI-powered
+        insights layer. Thousands of votes came in. Gaming Timeline won by a wide margin.
+      </p>
+
+      <h2>What Gaming Timeline actually is</h2>
+      <p>
+        The idea is simple: a chronological record of your gaming life. Month by month, you'll be able
+        to see which games you were playing, when you added them to your library, and how your taste
+        has shifted over time. Think of it like a receipt for every game that has held your attention —
+        a record you actually want to exist.
+      </p>
+      <p>
+        It will live on your profile, visible to your followers. You'll be able to scroll back through
+        your own history and share specific months as posts.
+      </p>
+
+      <h2>We've already started collecting the data</h2>
+      <p>
+        Here's the part that matters right now: every time you add a game to your Recently Played list,
+        we log it. The timestamp, the game, all of it. We started doing this quietly because we knew
+        this feature was coming — and we didn't want to build it and then tell you that your history
+        only goes back to launch day.
+      </p>
+      <p>
+        If you've been using Forge, your timeline is already taking shape in the background. When the
+        feature ships, it won't start from zero — it'll start from whenever you first logged something
+        to Recently Played.
+      </p>
+
+      <h2>When is it coming</h2>
+      <p>
+        We don't have a firm date yet. The data layer is in place; now we're working on the display.
+        We'll share more when we have something to show. In the meantime: keep playing. Every game
+        you log is a data point in a timeline that will eventually be yours to explore.
+      </p>
+
+      <p className="author-close">The Forge Team</p>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Post 5 — June 17, 2026
+// ---------------------------------------------------------------------------
+
+function ForgeInsightsContent() {
+  return (
+    <article>
+      <p>
+        We've started building something we're calling Forge Insights. It's early, and we want to
+        be honest about what it is right now versus what we believe it can become.
+      </p>
+
+      <h2>What it does today</h2>
+      <p>
+        There's a search bar at the top of the Forge feed. You can ask it anything about a game —
+        "how do I beat the final boss," "what's the best build for late game," "where do I find X."
+        Tag the game, ask the question, and Forge AI pulls an answer from Gemini in seconds.
+      </p>
+      <p>
+        That's the first half. The second half is what happens after. If the answer is good, you can
+        submit it to the community as an Insight. Other users on Forge vote on it — approve or reject.
+        If enough people approve it over a 24-hour period, the Insight gets marked as community-approved
+        and surfaces on the game's page for anyone who comes looking.
+      </p>
+      <p>
+        The result is AI-generated, community-vetted game knowledge that lives on Forge.
+      </p>
+
+      <h2>Why we're building this</h2>
+      <p>
+        Gaming knowledge is scattered. It lives in Reddit threads that are three years old, in YouTube
+        videos that take ten minutes to get to the answer, in Discord servers you have to already be
+        in. There's no single place to find a reliable, concise answer to a specific question about a
+        specific game.
+      </p>
+      <p>
+        We want Forge to be that place. Not by scraping or indexing content from other platforms —
+        but by building it ourselves, piece by piece, with the people who play these games. The
+        community votes on what's accurate. Low-quality answers get rejected. Good ones stick around
+        and become part of the game's permanent knowledge base on Forge.
+      </p>
+
+      <h2>Where this is going</h2>
+      <p>
+        The Insights system is a foundation. Once we have enough approved content for a game, we can
+        start organizing it: beginner guides, boss strategies, build recommendations, lore breakdowns.
+        Structured content built from real questions real players asked, verified by the people who
+        play the game most.
+      </p>
+      <p>
+        We don't know exactly what the end state looks like yet. That's intentional. We want to let
+        the data tell us what shape the knowledge wants to take before we try to force it into a
+        structure. What we do know: we want it to be useful, we want it to be community-owned, and
+        we want it to live on Forge.
+      </p>
+
+      <h2>How to try it</h2>
+      <p>
+        Open Forge on the web, find the search bar at the top of your feed, tag a game with the
+        controller icon or by typing <code>@</code>, and ask your question. If you get an answer
+        worth keeping, submit it. Vote on other people's submissions. That's the whole thing for now.
+      </p>
+      <p>
+        The more you use it, the better it gets. Not in a vague AI-learns-from-you way — in the
+        direct sense that every approved Insight is a real piece of content that will still be there
+        six months from now.
+      </p>
+
+      <p className="author-close">The Forge Team</p>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Post 3 — May 19, 2026
 // ---------------------------------------------------------------------------
 
@@ -239,6 +367,26 @@ function RoadmapContent() {
 // ---------------------------------------------------------------------------
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: 'forge-insights',
+    title: 'Forge Insights: Building a Gaming Knowledge Base from the Ground Up',
+    date: '2026-06-17',
+    author: 'The Forge Team',
+    excerpt:
+      "We're building toward a place where all gaming knowledge lives on Forge. It starts with AI-powered answers, community vetting, and a long-term bet on user-generated game guides.",
+    tags: ['AI', 'Feature', 'Insights'],
+    content: ForgeInsightsContent,
+  },
+  {
+    slug: 'gaming-timeline',
+    title: 'Gaming Timeline Wins the Poll — and the Data Collection Has Already Begun',
+    date: '2026-06-10',
+    author: 'The Forge Team',
+    excerpt:
+      "Gaming Timeline won the community poll. Here's what it is, when it's coming, and why the data you're logging to Recently Played right now already matters.",
+    tags: ['Feature', 'Community'],
+    content: GamingTimelineContent,
+  },
   {
     slug: 'roadmap-2026',
     title: '2026 Product Roadmap: Where We\'ve Been and Where We\'re Going',
