@@ -31,9 +31,7 @@ async function supabase<T = unknown>(method: string, path: string, body?: object
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = req.headers['authorization'];
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  console.log(`[cron] auth_len=${auth?.length ?? 0} expected_len=${expected.length} match=${auth === expected} secret_set=${!!process.env.CRON_SECRET}`);
-  if (auth !== expected) {
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
