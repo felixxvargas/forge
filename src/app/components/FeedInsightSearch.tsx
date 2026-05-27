@@ -177,6 +177,32 @@ export function FeedInsightSearch() {
     askGemini(query, selectedGame);
   };
 
+  const handleTagButtonClick = () => {
+    const ta = textareaRef.current;
+    const cursorPos = ta?.selectionStart ?? query.length;
+    const prefix = query.slice(0, cursorPos);
+    const suffix = query.slice(cursorPos);
+    const needsSpace = prefix.length > 0 && !prefix.endsWith(' ');
+    const insertion = needsSpace ? ' @' : '@';
+    const newQuery = prefix + insertion + suffix;
+    const atIndex = prefix.length + (needsSpace ? 1 : 0);
+
+    setQuery(newQuery);
+    mentionStartRef.current = atIndex;
+    setAtMode(true);
+    setAtGameQuery('');
+    setShowGameSearch(true);
+    setGameResults([]);
+
+    setTimeout(() => {
+      if (ta) {
+        ta.focus();
+        const pos = atIndex + 1;
+        ta.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -290,12 +316,7 @@ export function FeedInsightSearch() {
                 </div>
               ) : (
                 <button
-                  onClick={() => {
-                    const next = !showGameSearch;
-                    setAtMode(false);
-                    setShowGameSearch(next);
-                    if (!next) { setGameQuery(''); setGameResults([]); }
-                  }}
+                  onClick={handleTagButtonClick}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
                 >
                   <Gamepad2 className="w-3 h-3" />
@@ -386,7 +407,7 @@ export function FeedInsightSearch() {
       {state === 'loading' && (
         <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center gap-3">
           <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-muted-foreground">Asking Forge AI...</span>
+          <span className="text-sm text-muted-foreground">Asking Forge...</span>
         </div>
       )}
 

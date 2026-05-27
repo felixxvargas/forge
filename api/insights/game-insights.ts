@@ -11,6 +11,23 @@ async function getAuthUser(token: string): Promise<{ id: string } | null> {
   return res.json();
 }
 
+async function sbAsUser<T = unknown>(method: string, path: string, userToken: string, body?: object): Promise<T> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    method,
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${userToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${method} ${path}: ${text}`);
+  return text ? JSON.parse(text) : ([] as unknown as T);
+}
+
 async function sb<T = unknown>(method: string, path: string, body?: object): Promise<T> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
     method,
@@ -91,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'gameId, gameTitle, query, and content are required' });
     }
 
-    const [insight] = await sb<any[]>('POST', '/game_insights', {
+    const [insight] = await sbAsUser<any[]>('POST', '/game_insights', token, {
       user_id: user.id,
       game_id: gameId,
       game_title: gameTitle,
