@@ -69,7 +69,7 @@ Provide a clear, helpful answer in 2-4 paragraphs. Use plain text without markdo
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 512,
+          maxOutputTokens: 1024,
         },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
