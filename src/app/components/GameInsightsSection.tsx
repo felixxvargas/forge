@@ -18,6 +18,7 @@ interface Insight {
   reject_count: number;
   submitted_at: string;
   approved_at: string | null;
+  title: string | null;
   myVote: 'approve' | 'reject' | null;
   author: { id: string; handle: string; display_name: string; profile_picture: string | null } | null;
 }
@@ -156,8 +157,13 @@ export function GameInsightsSection({ gameId, gameTitle, coverUrl, initialTab = 
                   )}
                 </div>
 
-                {/* Query preview */}
-                <p className="text-sm font-medium leading-snug line-clamp-2 mb-3">{insight.query}</p>
+                {/* Headline (if available) + query */}
+                {insight.title && (
+                  <p className="text-sm font-semibold leading-snug mb-1">{insight.title}</p>
+                )}
+                <p className={`leading-snug line-clamp-2 mb-3 ${insight.title ? 'text-xs text-muted-foreground' : 'text-sm font-medium'}`}>
+                  {insight.query}
+                </p>
 
                 {/* Vote progress bar for pending */}
                 {insight.status === 'pending' && total > 0 && (

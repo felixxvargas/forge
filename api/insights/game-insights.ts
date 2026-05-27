@@ -103,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(token);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { gameId, gameTitle, query, content } = req.body ?? {};
+    const { gameId, gameTitle, query, content, title } = req.body ?? {};
     if (!gameId || !gameTitle || !query?.trim() || !content?.trim()) {
       return res.status(400).json({ error: 'gameId, gameTitle, query, and content are required' });
     }
@@ -114,6 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       game_title: gameTitle,
       query: query.trim(),
       content: content.trim(),
+      title: title?.trim() || null,
       status: 'pending',
     });
 

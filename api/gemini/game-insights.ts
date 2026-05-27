@@ -51,14 +51,17 @@ async function checkAndIncrementUsage(userId: string, userToken: string): Promis
   return { allowed: true, used: row.query_count + 1 };
 }
 
-async function queryGemini(question: string, gameTitle: string): Promise<string> {
+async function queryGemini(question: string, gameTitle: string): Promise<{ answer: string; title: string }> {
   const prompt = `You are a gaming expert helping players with the game "${gameTitle}".
 Answer the following question concisely and accurately. Focus on practical, actionable information.
 If the question is not relevant to gaming or "${gameTitle}", say so briefly.
 
 Question: ${question}
 
-Provide a clear, helpful answer in 2-4 paragraphs. Use plain text without markdown formatting.`;
+Format your response EXACTLY like this — no deviation:
+Line 1: A SHORT HEADLINE for this insight (4-6 words, Title Case — e.g. "Fia's Champions Boss Strategy")
+Line 2: ---
+Remaining: Your answer in 2-4 paragraphs. Plain text, no markdown.`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -85,9 +88,12 @@ Provide a clear, helpful answer in 2-4 paragraphs. Use plain text without markdo
   }
 
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No response from Gemini');
-  return text.trim();
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+  if (!raw) throw new Error('No response from Gemini');
+  const delimIdx = raw.indexOf('\n---\n');
+  const title = delimIdx > 0 ? raw.slice(0, delimIdx).trim() : '';
+  const answer = delimIdx > 0 ? raw.slice(delimIdx + 5).trim() : raw;
+  return { answer, title };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -116,11 +122,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const answer = await queryGemini(question.trim(), gameTitle);
+    const { answer, title } = await queryGemini(question.trim(), gameTitle);
 
     res.setHeader('Cache-Control', 'no-store');
     return res.json({
       answer,
+      title,
       used: usage.used,
       limit: DAILY_LIMIT,
       remaining: DAILY_LIMIT - usage.used,

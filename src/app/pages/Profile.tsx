@@ -1522,7 +1522,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   )}
 
                   {isOwnProfile && (
-                    <div className="lg:hidden mt-4 mb-1 px-4">
+                    <div className="lg:hidden mt-2 mb-3 px-4">
                       <button
                         onClick={() => navigate('/create-flare')}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/80 transition-all"

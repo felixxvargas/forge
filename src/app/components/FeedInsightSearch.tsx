@@ -16,8 +16,16 @@ interface SelectedGame {
 
 interface GeminiResult {
   answer: string;
+  title?: string;
   remaining: number;
 }
+
+const CLAMP_STYLE: React.CSSProperties = {
+  display: '-webkit-box',
+  WebkitLineClamp: 8,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+};
 
 export function FeedInsightSearch() {
   const { isAuthenticated } = useAppData() as any;
@@ -29,6 +37,7 @@ export function FeedInsightSearch() {
   const [result, setResult] = useState<GeminiResult | null>(null);
   const [insightId, setInsightId] = useState<string | null>(null);
 
+  const [expanded, setExpanded] = useState(false);
   const [editingQuery, setEditingQuery] = useState(false);
   const [editQueryText, setEditQueryText] = useState('');
   const [editingResponse, setEditingResponse] = useState(false);
@@ -162,7 +171,7 @@ export function FeedInsightSearch() {
       }
 
       const data = await res.json();
-      setResult({ answer: data.answer, remaining: data.remaining });
+      setResult({ answer: data.answer, title: data.title, remaining: data.remaining });
       setState('result');
     } catch (err: any) {
       toast.error(err.message || 'Failed to get answer');
@@ -230,6 +239,7 @@ export function FeedInsightSearch() {
           gameTitle: selectedGame.title,
           query: finalQuery.trim(),
           content: finalAnswer,
+          title: result?.title || null,
         }),
       });
 
@@ -267,6 +277,7 @@ export function FeedInsightSearch() {
     setInsightId(null);
     setEditingQuery(false);
     setEditingResponse(false);
+    setExpanded(false);
   };
 
   const saveEditQuery = () => {
@@ -279,6 +290,7 @@ export function FeedInsightSearch() {
   const saveEditResponse = () => {
     if (result) setResult({ ...result, answer: editResponseText });
     setEditingResponse(false);
+    setExpanded(false);
   };
 
   const isDisabled = !query.trim();
@@ -455,10 +467,13 @@ export function FeedInsightSearch() {
 
           {/* Response card */}
           <div className="bg-card border rounded-xl p-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>
-            <div className="flex items-center gap-1.5 mb-3">
+            <div className="flex items-center gap-1.5 mb-2">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
               <span className="text-xs font-semibold text-accent uppercase tracking-wide">Forge AI</span>
             </div>
+            {result.title && (
+              <p className="text-sm font-semibold leading-snug mb-3">{result.title}</p>
+            )}
 
             {editingResponse ? (
               <div className="space-y-2">
@@ -484,7 +499,22 @@ export function FeedInsightSearch() {
               </div>
             ) : (
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 flex-1">{result.answer}</p>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
+                    style={expanded ? undefined : CLAMP_STYLE}
+                  >
+                    {result.answer}
+                  </p>
+                  {result.answer.length > 400 && (
+                    <button
+                      onClick={() => setExpanded(e => !e)}
+                      className="mt-1 text-xs text-accent hover:text-accent/70 transition-colors"
+                    >
+                      {expanded ? 'Read less' : 'Read more'}
+                    </button>
+                  )}
+                </div>
                 {state === 'result' && (
                   <button
                     onClick={() => { setEditResponseText(result.answer); setEditingResponse(true); }}

@@ -29,6 +29,7 @@ interface Insight {
   approved_at: string | null;
   re_review_requested_at: string | null;
   linked_post_id: string | null;
+  title: string | null;
   myVote: 'approve' | 'reject' | null;
   author: InsightAuthor | null;
 }
@@ -271,6 +272,11 @@ export function InsightDetail() {
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending</span>
           )}
         </div>
+
+        {/* Title (auto-generated headline) */}
+        {insight.title && (
+          <h1 className="text-xl font-bold leading-snug mb-3">{insight.title}</h1>
+        )}
 
         {/* Query */}
         <div className="bg-card border border-border rounded-xl p-5 mb-3">
