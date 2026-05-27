@@ -38,10 +38,13 @@ export function FeedInsightSearch() {
   const [gameQuery, setGameQuery] = useState('');
   const [gameResults, setGameResults] = useState<any[]>([]);
   const [gameSearching, setGameSearching] = useState(false);
+  const [atGameQuery, setAtGameQuery] = useState('');
+  const [atMode, setAtMode] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gameSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameSearchContainerRef = useRef<HTMLDivElement>(null);
+  const mentionStartRef = useRef<number>(-1);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -58,6 +61,11 @@ export function FeedInsightSearch() {
         setShowGameSearch(false);
         setGameQuery('');
         setGameResults([]);
+        if (mentionStartRef.current >= 0) {
+          mentionStartRef.current = -1;
+          setAtMode(false);
+          setAtGameQuery('');
+        }
       }
     };
     if (showGameSearch) document.addEventListener('mousedown', handler);
@@ -84,11 +92,49 @@ export function FeedInsightSearch() {
     gameSearchTimerRef.current = setTimeout(() => searchGames(val), 300);
   };
 
+  const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setQuery(val);
+
+    const cursorPos = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, cursorPos);
+    const mentionMatch = before.match(/@([\w\s\-']*)$/);
+
+    if (mentionMatch) {
+      const startIdx = before.lastIndexOf('@');
+      mentionStartRef.current = startIdx;
+      const q = mentionMatch[1];
+      setAtGameQuery(q);
+      setAtMode(true);
+      setShowGameSearch(true);
+      if (gameSearchTimerRef.current) clearTimeout(gameSearchTimerRef.current);
+      gameSearchTimerRef.current = setTimeout(() => searchGames(q), 300);
+    } else if (mentionStartRef.current >= 0) {
+      mentionStartRef.current = -1;
+      setAtMode(false);
+      setAtGameQuery('');
+      setShowGameSearch(false);
+      setGameResults([]);
+    }
+  };
+
   const selectGame = (game: any) => {
+    if (mentionStartRef.current >= 0) {
+      const atStart = mentionStartRef.current;
+      const afterAt = query.slice(atStart + 1);
+      const mentionText = afterAt.match(/^([\w\s\-']*)/)?.[1] ?? '';
+      const atEnd = atStart + 1 + mentionText.length;
+      const cleaned = query.slice(0, atStart) + query.slice(atEnd);
+      setQuery(cleaned.trimEnd());
+      mentionStartRef.current = -1;
+      setAtMode(false);
+      setAtGameQuery('');
+    }
     setSelectedGame({ id: String(game.id), title: game.title });
     setShowGameSearch(false);
     setGameQuery('');
     setGameResults([]);
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const askGemini = async (q: string, game: SelectedGame) => {
@@ -209,20 +255,24 @@ export function FeedInsightSearch() {
     setEditingResponse(false);
   };
 
+  const isDisabled = !query.trim();
   const isResultActive = state === 'result' || state === 'submitting' || state === 'submitted';
 
   return (
     <div className="mb-4">
       {/* Input area — idle only */}
       {state === 'idle' && (
-        <div className="bg-card border border-border rounded-xl overflow-visible hover:border-accent/30 transition-colors">
+        <div
+          ref={gameSearchContainerRef}
+          className="relative bg-card border border-border rounded-xl overflow-visible hover:border-accent/30 transition-colors"
+        >
           <div className="px-4 pt-3 pb-2">
             <textarea
               ref={textareaRef}
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={handleQueryChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask Forge AI about any game..."
+              placeholder="Ask Forge about any game"
               rows={1}
               className="w-full bg-transparent text-sm placeholder-muted-foreground resize-none focus:outline-none leading-6"
               style={{ minHeight: '1.5rem', maxHeight: 'calc(1.5rem * 4 + 1rem)', overflowY: 'hidden' }}
@@ -239,81 +289,96 @@ export function FeedInsightSearch() {
                   </button>
                 </div>
               ) : (
-                <div className="relative" ref={gameSearchContainerRef}>
-                  <button
-                    onClick={() => setShowGameSearch(!showGameSearch)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                  >
-                    <Gamepad2 className="w-3 h-3" />
-                    Tag a game
-                  </button>
-
-                  {showGameSearch && (
-                    <div className="absolute bottom-full mb-2 left-0 w-72 bg-sidebar border border-border rounded-xl shadow-xl z-50">
-                      <div className="p-2">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                          <input
-                            type="text"
-                            placeholder="Search for a game..."
-                            value={gameQuery}
-                            onChange={e => handleGameQueryChange(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 bg-secondary border border-border rounded-lg text-sm placeholder-muted-foreground focus:outline-none focus:border-accent"
-                            autoFocus
-                          />
-                        </div>
-                      </div>
-
-                      {gameSearching && (
-                        <div className="flex justify-center py-3">
-                          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-
-                      {gameResults.length > 0 && (
-                        <div className="max-h-52 overflow-y-auto pb-2">
-                          {gameResults.map(game => {
-                            const cover = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
-                            return (
-                              <button
-                                key={game.id}
-                                onClick={() => selectGame(game)}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-secondary/80 transition-colors text-left"
-                              >
-                                {cover ? (
-                                  <img src={cover} alt={game.title} className="w-7 h-9 rounded object-cover shrink-0" />
-                                ) : (
-                                  <div className="w-7 h-9 rounded bg-secondary flex items-center justify-center shrink-0">
-                                    <Gamepad2 className="w-3 h-3 text-muted-foreground/40" />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">{game.title}</p>
-                                  {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {gameQuery.trim() && !gameSearching && gameResults.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-3 pb-4">No games found</p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    const next = !showGameSearch;
+                    setAtMode(false);
+                    setShowGameSearch(next);
+                    if (!next) { setGameQuery(''); setGameResults([]); }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                >
+                  <Gamepad2 className="w-3 h-3" />
+                  Tag a game
+                </button>
               )}
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={!query.trim()}
-              className="shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-accent disabled:opacity-35 hover:bg-accent/80 transition-colors"
+              disabled={isDisabled}
+              className={isDisabled
+                ? 'shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-transparent border border-emerald-500/50 transition-colors'
+                : 'shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-accent hover:bg-accent/80 transition-colors'
+              }
             >
-              <Send className="w-3.5 h-3.5 text-white" />
+              <Send className={`w-3.5 h-3.5 ${isDisabled ? 'text-emerald-400' : 'text-white'}`} />
             </button>
           </div>
+
+          {/* Game search dropdown — downward, full card width */}
+          {!selectedGame && showGameSearch && (
+            <div className="absolute top-full mt-1 left-0 right-0 bg-sidebar border border-border rounded-xl shadow-xl z-50">
+              {atMode ? (
+                atGameQuery && (
+                  <p className="px-3 pt-2.5 pb-1 text-xs text-muted-foreground">
+                    Searching for &ldquo;{atGameQuery}&rdquo;
+                  </p>
+                )
+              ) : (
+                <div className="p-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search for a game..."
+                      value={gameQuery}
+                      onChange={e => handleGameQueryChange(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-secondary border border-border rounded-lg text-sm placeholder-muted-foreground focus:outline-none focus:border-accent"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              )}
+
+              {gameSearching && (
+                <div className="flex justify-center py-3">
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {gameResults.length > 0 && (
+                <div className="max-h-72 overflow-y-auto pb-2">
+                  {gameResults.map(game => {
+                    const cover = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
+                    return (
+                      <button
+                        key={game.id}
+                        onClick={() => selectGame(game)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-secondary/80 transition-colors text-left"
+                      >
+                        {cover ? (
+                          <img src={cover} alt={game.title} className="w-10 h-[52px] rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="w-10 h-[52px] rounded bg-secondary flex items-center justify-center shrink-0">
+                            <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{game.title}</p>
+                          {game.year && <p className="text-xs text-muted-foreground">{game.year}</p>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {(atMode ? atGameQuery : gameQuery).trim() && !gameSearching && gameResults.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3 pb-4">No games found</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -14,7 +14,7 @@ export const RELEASES: Release[] = [
     version: 'v0.3.8',
     date: 'May 2026',
     title: "What's New in Forge",
-    summary: "Forge AI Insights, community-voted game wiki, pull-to-refresh, and the Forge Blog.",
+    summary: "Forge Insights, community-voted game wiki, pull-to-refresh, and the Forge Blog.",
     highlights: [
       'Forge Insights: ask any question about a game and get answers via Google Gemini.',
       'Submit insights to that game\'s Insights tab for community review',
