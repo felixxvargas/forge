@@ -133,6 +133,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Ref to capture the users array loaded during refreshFeed, used by the init effect
   // to detect topic accounts in the follows table without relying on async state updates
   const lastLoadedUsersRef = useRef<any[]>([]);
+  const groupsLoadedRef = useRef(false);
   // Refs for sync access to user interaction sets (used for cache writes)
   const likedPostsRef = useRef<string[]>([]);
   const repostedPostsRef = useRef<string[]>([]);
@@ -300,8 +301,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       userId
         ? postsAPI.getFollowingFeed(userId, 50, 0, followedGameIdsRef.current, memberGroupIdsRef.current)
         : postsAPI.getFeed(50),
-      profiles.getAll(),
-      groupsAPI.getAll(),
+      lastLoadedUsersRef.current.length > 0 ? Promise.resolve(null) : profiles.getAll(),
+      groupsLoadedRef.current ? Promise.resolve(null) : groupsAPI.getAll(),
     ]);
     let loadedPosts: any[] = [];
     let loadedUsers: any[] = [];
@@ -310,15 +311,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       loadedPosts = feedResult.value;
       setPostList(loadedPosts);
     } else { console.error('Error loading feed:', feedResult.reason); }
-    if (usersResult.status === 'fulfilled') {
+    if (usersResult.status === 'fulfilled' && usersResult.value !== null) {
       loadedUsers = usersResult.value.map(normalizeProfile);
       lastLoadedUsersRef.current = loadedUsers;
       setUsers(loadedUsers);
-    } else { console.error('Error loading users:', usersResult.reason); }
-    if (groupsResult.status === 'fulfilled') {
+    }
+    if (groupsResult.status === 'fulfilled' && groupsResult.value !== null) {
       loadedGroups = groupsResult.value;
+      groupsLoadedRef.current = true;
       setGroupsList(loadedGroups);
-    } else { console.error('[AppData] Error loading groups:', groupsResult.reason); }
+    }
     return { posts: loadedPosts, users: loadedUsers, groups: loadedGroups };
   }, []);
 

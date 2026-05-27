@@ -12,7 +12,8 @@ function isChunkError(msg: string) {
   return (
     msg.includes('dynamically imported module') ||
     msg.includes('Importing a module script failed') ||
-    msg.includes("Cannot read properties of undefined (reading 'call')")
+    msg.includes("Cannot read properties of undefined (reading 'call')") ||
+    (msg.includes('is not an object') && msg.includes('.call'))
   );
 }
 
@@ -26,12 +27,25 @@ export function Providers({ children }: { children: ReactNode }) {
     }
     initAnalytics();
 
-    // Reload when a stale chunk from a previous deployment can't be fetched
+    // Reload once when a stale or race-conditioned chunk can't be loaded
+    const reloadOnce = () => {
+      if (!sessionStorage.getItem('chunk-reload')) {
+        sessionStorage.setItem('chunk-reload', '1');
+        window.location.reload();
+      }
+    };
     const handleRejection = (e: PromiseRejectionEvent) => {
-      if (isChunkError(e.reason?.message ?? '')) window.location.reload();
+      if (isChunkError(e.reason?.message ?? '')) reloadOnce();
+    };
+    const handleError = (e: ErrorEvent) => {
+      if (isChunkError(e.message ?? '')) reloadOnce();
     };
     window.addEventListener('unhandledrejection', handleRejection);
-    return () => window.removeEventListener('unhandledrejection', handleRejection);
+    window.addEventListener('error', handleError);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleRejection);
+      window.removeEventListener('error', handleError);
+    };
   }, []);
 
   return (

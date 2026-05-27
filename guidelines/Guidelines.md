@@ -402,7 +402,7 @@ interface ScheduledPost {
   game_ids: string[];
   game_titles: string[];
   scheduled_at: string;      // UTC timestamp to publish
-  status: 'pending' | 'published';
+  status: 'pending' | 'published' | 'failed';
   published_post_id: string | null;  // FK → posts(id) after publish
   created_at: string;
 }
@@ -503,6 +503,9 @@ npx supabase functions deploy notify-dm \
 | `GET /api/admin/stats` | Admin-only: returns user, post, game, community, onboarding, engagement metrics |
 | `POST /api/push/register-token` | Upsert FCM device token for a user into `device_tokens` table |
 | `GET /api/cron/publish-scheduled-posts` | Publish pending @forge scheduled posts; secured with `Authorization: Bearer CRON_SECRET` |
+| `POST /api/gemini/game-insights` | Ask Gemini a game question; rate-limited to 50 queries/day per user (`gemini_usage` table) |
+| `GET\|POST\|PATCH\|DELETE /api/admin/scheduled-posts` | Admin CRUD for scheduled posts (create, edit content/time/URL, delete pending/failed) |
+| `POST /api/insights/game-insights` | Submit a Forge AI answer as a community insight for game review |
 
 All are Vercel Edge Functions (`export const config = { runtime: 'edge' }`).
 
@@ -775,7 +778,8 @@ To cut a named release: GitHub → Releases → Draft a new release → tag `v1.
 | `TWITCH_CLIENT_ID` | Supabase secrets | Twitch API — used in `twitch-vod-archive` edge function |
 | `TWITCH_CLIENT_SECRET` | Supabase secrets | Twitch API — used in `twitch-vod-archive` edge function |
 | `FCM_SERVICE_ACCOUNT` | Supabase secrets | Full Firebase service account JSON for FCM HTTP v1 push notifications |
-| `CRON_SECRET` | Vercel env vars | Secures `GET /api/cron/publish-scheduled-posts` (Bearer token) |
+| `CRON_SECRET` | Vercel env vars + GitHub Actions secret | Secures `GET /api/cron/publish-scheduled-posts` (Bearer token); set via `gh secret set CRON_SECRET` |
+| `GEMINI_API` | Vercel env vars (server-side) | Google Gemini API key for `api/gemini/game-insights.ts`; get from aistudio.google.com |
 
 ---
 
@@ -920,15 +924,25 @@ Static OG image (`/og-image.png`) is used for all non-UGC pages (Feed, Explore, 
 
 ---
 
-**Last Updated**: May 20, 2026
-**Version**: v0.3.7
+**Last Updated**: May 26, 2026
+**Version**: v0.3.8
 **Maintainer**: Forge Development Team
 
 ---
 
 ## Changelog
 
-### v0.3.7 — May 2026 (current)
+### v0.3.8 — May 2026 (current)
+
+- **Forge AI Insights**: `FeedInsightSearch` component at the top of the Feed lets authenticated users ask Gemini a game question. Tag a game via `@` mention in the textarea or the chip button. Result can be edited, submitted as a community insight, or shared as a post. Rate-limited to 50 queries/day per user (`gemini_usage` table). Game Insights tab on `GameDetail` via `GameInsightsSection.tsx` and `InsightDetail.tsx`. Backend: `api/gemini/game-insights.ts` (Gemini call) + `api/insights/game-insights.ts` (community submit).
+- **Toast theming**: Sonner toasts now use Forge CSS custom properties (`--card`, `--border`, `--card-foreground`, `--muted-foreground`) instead of hardcoded dark-gray values. Toast component added to Figma design system (node 4-3) with Default/Success/Error/Warning variants.
+- **Forge AI UX polish**: Submit button shows accent stroke + lime icon when disabled; fills with accent when text is present. Game search dropdown opens downward at full card width. Placeholder text: "Ask Forge about any game".
+- **Scheduled posts: failed-post recovery**: Failed scheduled posts can now be edited (content, time, URL) and deleted from the admin panel. Editing a failed post resets its status to `pending` so the cron retries it. Saving enforces a future-time constraint (cannot schedule in the past).
+- **CRON_SECRET sync**: `CRON_SECRET` env var set in both Vercel dashboard and GitHub Actions (`gh secret set CRON_SECRET`). Both must match for the `publish-scheduled-posts` cron to authenticate.
+- **Sentry: chunk error recovery** — `Providers.tsx` global handlers reload the page once (sessionStorage loop guard) when a webpack chunk fails to load due to stale deployment or race condition. Added Safari webkit error variant and a synchronous `error` event listener alongside the existing `unhandledrejection` handler.
+- **Sentry: game cover batching** — `gameCoverPromises` are now registered during Feed's render phase (`useMemo`) so PostCard children see them before their own effects fire, eliminating per-post individual IGDB calls. Subsequent feed refreshes skip re-fetching the already-loaded users and groups lists.
+
+### v0.3.7 — May 2026
 - **Handle-based profile URLs**: Profiles are accessible at `forge-social.app/yourhandle`. The `/profile/:userId` route server-redirects to the handle URL. `profilePath()` utility in `src/app/utils/profilePath.ts` handles all internal navigation.
 - **Alpha Tester badge**: Founding members who joined during alpha get a ruby flask badge on their profile.
 - **Reply tray animation**: Tapping the comment icon on a post opens the reply tray with a smooth slide-up animation.

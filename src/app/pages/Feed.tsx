@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ArrowRight, Check, ChevronDown, Gamepad2, RefreshCw, Sparkles, TrendingUp, Users, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from '@/compat/router';
@@ -77,6 +77,7 @@ export function Feed() {
   // Scroll direction for group banner hide/show
   const [scrolledDown, setScrolledDown] = useState(false);
   const lastScrollY = useRef(0);
+  const coverResolversRef = useRef<Map<string, (url: string | null) => void>>(new Map());
   useEffect(() => {
     const onScroll = () => {
       const current = window.scrollY;
@@ -316,36 +317,44 @@ export function Feed() {
   const visiblePosts = filteredPosts.filter(post => !mutedUsers.has(post.user_id));
   const mutedFilteredPosts = filteredPosts.filter(post => mutedUsers.has(post.user_id) && !showMutedPosts.has(post.id));
 
-  // Batch-fetch game covers for all visible posts — reduces N individual edge fn calls to 1
-  useEffect(() => {
+  // Register gameCoverPromises during render so PostCard children see them before their effects fire
+  const coverDepsKey = visiblePosts.slice(0, 30).map((p: any) => p.id).join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useMemo(() => {
     const gameIds = [...new Set(
       (visiblePosts as any[]).flatMap(p =>
         (p.game_ids?.length > 0 ? p.game_ids : p.game_id ? [p.game_id] : []) as string[]
       )
     )].filter(id => !gameCoverCache.has(id) && !gameCoverPromises.has(id));
-    if (gameIds.length === 0) return;
-
-    const resolvers = new Map<string, (url: string | null) => void>();
     gameIds.forEach(id => {
-      gameCoverPromises.set(id, new Promise<string | null>(resolve => resolvers.set(id, resolve)));
+      gameCoverPromises.set(id, new Promise<string | null>(resolve => {
+        coverResolversRef.current.set(id, resolve);
+      }));
     });
+  }, [coverDepsKey]);
 
-    gamesAPI.getGames(gameIds).then((data: any) => {
+  // Batch-fetch game covers for all visible posts — one call instead of N individual IGDB calls
+  useEffect(() => {
+    const pending = [...coverResolversRef.current.keys()];
+    if (pending.length === 0) return;
+    const resolvers = new Map(coverResolversRef.current);
+    coverResolversRef.current = new Map();
+    gamesAPI.getGames(pending).then((data: any) => {
       const games: any[] = Array.isArray(data) ? data : (data?.games ?? []);
       const byId = new Map(games.map((g: any) => [String(g.id), g]));
-      gameIds.forEach(id => {
+      pending.forEach(id => {
         const game = byId.get(id);
         const url = game?.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game?.artwork?.[0]?.url ?? null;
         gameCoverCache.set(id, url);
         resolvers.get(id)?.(url);
       });
     }).catch(() => {
-      gameIds.forEach(id => resolvers.get(id)?.(null));
+      pending.forEach(id => resolvers.get(id)?.(null));
     }).finally(() => {
-      gameIds.forEach(id => gameCoverPromises.delete(id));
+      pending.forEach(id => gameCoverPromises.delete(id));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visiblePosts.slice(0, 30).map((p: any) => p.id).join(',')]);
+  }, [coverDepsKey]);
 
   const getSelectedName = (): string => {
     if (feedMode === 'following') return 'Following';
