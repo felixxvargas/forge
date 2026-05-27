@@ -312,7 +312,7 @@ export function FeedInsightSearch() {
                 : 'shrink-0 group flex items-center justify-center w-8 h-8 rounded-xl bg-transparent border border-accent hover:bg-accent/15 transition-colors'
               }
             >
-              <Send className={`w-3.5 h-3.5 transition-colors ${isDisabled ? 'text-muted-foreground/50' : 'text-accent group-hover:text-violet-500'}`} />
+              <Send className={`w-3.5 h-3.5 transition-colors ${isDisabled ? 'text-muted-foreground/50' : 'text-[var(--accent)] group-hover:text-violet-500'}`} />
             </button>
           </div>
 
