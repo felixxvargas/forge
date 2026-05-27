@@ -86,6 +86,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json(await r.json());
     }
 
+    if (action === 'run_selected') {
+      const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids : [];
+      if (!ids.length) return res.status(400).json({ error: 'ids required' });
+
+      let published = 0;
+      for (const id of ids) {
+        try {
+          const [post] = await sb<Array<{
+            user_id: string; content: string; game_ids: string[];
+            game_titles: string[]; images: string[]; url: string | null; status: string;
+          }>>('GET', `/scheduled_posts?id=eq.${id}&status=eq.pending&select=*&limit=1`);
+          if (!post) continue;
+
+          const gameIds = post.game_ids ?? [];
+          const gameTitles = post.game_titles ?? [];
+          const [newPost] = await sb<Array<{ id: string }>>('POST', '/posts', {
+            user_id: post.user_id,
+            content: post.content,
+            images: post.images ?? [],
+            image_alts: [],
+            game_ids: gameIds,
+            game_titles: gameTitles,
+            game_id: gameIds[0] ?? null,
+            game_title: gameTitles[0] ?? null,
+            url: post.url ?? null,
+          });
+          await sb('PATCH', `/scheduled_posts?id=eq.${id}`, {
+            status: 'published',
+            published_post_id: newPost.id,
+          });
+          published++;
+        } catch (err) {
+          console.error(`Failed to run_selected post ${id}:`, err);
+        }
+      }
+      return res.json({ published });
+    }
+
     if (action === 'create') {
       if (!content || !scheduled_at) return res.status(400).json({ error: 'content and scheduled_at are required' });
       const { url } = req.body ?? {};

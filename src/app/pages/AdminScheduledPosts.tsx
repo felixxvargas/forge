@@ -38,6 +38,9 @@ export function AdminScheduledPosts() {
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ content: '', scheduled_at: '', url: '' });
+  const [runMode, setRunMode] = useState(false);
+  const [runOrder, setRunOrder] = useState<string[]>([]);
+  const [running, setRunning] = useState(false);
 
   const loadScheduledPosts = async () => {
     setSpLoading(true); setSpError('');
@@ -95,6 +98,27 @@ export function AdminScheduledPosts() {
       loadScheduledPosts();
     } finally {
       setTriggeringNow(false);
+    }
+  };
+
+  const runSelected = async () => {
+    setRunning(true);
+    try {
+      const tok = await getToken();
+      if (!tok) { navigate('/'); return; }
+      const r = await fetch('/api/admin/scheduled-posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'run_selected', ids: runOrder }),
+      });
+      const data = await r.json();
+      setTriggerMsg(`Published ${data.published} post${data.published !== 1 ? 's' : ''}`);
+      setTimeout(() => setTriggerMsg(''), 4000);
+      setRunMode(false);
+      setRunOrder([]);
+      loadScheduledPosts();
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -175,12 +199,20 @@ export function AdminScheduledPosts() {
           </div>
           <div className="flex items-center gap-2">
             {triggerMsg && <span className="text-xs text-accent font-medium">{triggerMsg}</span>}
+            {runMode && runOrder.length > 0 && (
+              <button
+                onClick={runSelected}
+                disabled={running}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {running ? '…' : `Run ${runOrder.length} post${runOrder.length !== 1 ? 's' : ''} now`}
+              </button>
+            )}
             <button
-              onClick={triggerPublish}
-              disabled={triggeringNow}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              onClick={() => { setRunMode(v => !v); setRunOrder([]); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${runMode ? 'bg-secondary text-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
             >
-              {triggeringNow ? '…' : '▶'} Run Now
+              {runMode ? '✕ Cancel' : '▶ Run'}
             </button>
             <button
               onClick={() => loadScheduledPosts()}
@@ -276,7 +308,24 @@ export function AdminScheduledPosts() {
           {!spLoading && !spError && scheduledPosts && scheduledPosts.length > 0 && (
             <ul className="divide-y divide-border">
               {scheduledPosts.map(post => (
-                <li key={post.id} className="flex items-start gap-4 px-5 py-3">
+                <li
+                  key={post.id}
+                  className={`flex items-start gap-4 px-5 py-3 ${runMode && post.status === 'pending' ? 'cursor-pointer hover:bg-secondary/30 transition-colors' : ''}`}
+                  onClick={runMode && post.status === 'pending' ? () => setRunOrder(o =>
+                    o.includes(post.id) ? o.filter(x => x !== post.id) : [...o, post.id]
+                  ) : undefined}
+                >
+                  {runMode && post.status === 'pending' && (
+                    <div
+                      className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full border text-xs font-bold transition-colors mt-0.5"
+                      style={runOrder.includes(post.id)
+                        ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--accent-foreground)' }
+                        : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }
+                      }
+                    >
+                      {runOrder.includes(post.id) ? runOrder.indexOf(post.id) + 1 : ''}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -357,7 +406,7 @@ export function AdminScheduledPosts() {
                       </>
                     )}
                   </div>
-                  {(post.status === 'pending' || post.status === 'failed') && editingPostId !== post.id && (
+                  {!runMode && (post.status === 'pending' || post.status === 'failed') && editingPostId !== post.id && (
                     <div className="flex items-center gap-2 shrink-0 pt-0.5">
                       <button
                         onClick={() => {
