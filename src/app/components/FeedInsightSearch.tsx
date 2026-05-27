@@ -308,11 +308,11 @@ export function FeedInsightSearch() {
               onClick={handleSubmit}
               disabled={isDisabled}
               className={isDisabled
-                ? 'shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-transparent border border-emerald-500/50 transition-colors'
-                : 'shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-accent hover:bg-accent/80 transition-colors'
+                ? 'shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-transparent border border-muted-foreground/35 transition-colors'
+                : 'shrink-0 group flex items-center justify-center w-8 h-8 rounded-xl bg-transparent border border-emerald-400 hover:bg-emerald-400/15 transition-colors'
               }
             >
-              <Send className={`w-3.5 h-3.5 ${isDisabled ? 'text-emerald-400' : 'text-white'}`} />
+              <Send className={`w-3.5 h-3.5 transition-colors ${isDisabled ? 'text-muted-foreground/50' : 'text-emerald-400 group-hover:text-accent'}`} />
             </button>
           </div>
 

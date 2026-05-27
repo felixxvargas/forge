@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { ArrowRight, Check, ChevronDown, Gamepad2, RefreshCw, Sparkles, TrendingUp, Users, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Gamepad2, Sparkles, TrendingUp, Users, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from '@/compat/router';
 import { Header } from '../components/Header';
 import { PostCard } from '../components/PostCard';
@@ -89,7 +89,8 @@ export function Feed() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Pull-to-refresh
+  // Pull-to-refresh (Capacitor/native only — web browsers handle PTR natively)
+  const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
   const PTR_THRESHOLD = 72;
   const [pullY, setPullY] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -97,6 +98,7 @@ export function Feed() {
   const pulling = useRef(false);
 
   useEffect(() => {
+    if (!isCapacitor) return;
     const onTouchStart = (e: TouchEvent) => {
       if (window.scrollY > 0) return;
       touchStartY.current = e.touches[0].clientY;
@@ -132,7 +134,8 @@ export function Feed() {
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     };
-  }, [isRefreshing, refreshFeed, refreshFeedPosts, mutate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCapacitor, isRefreshing, refreshFeed, refreshFeedPosts, mutate]);
 
   // Persist the selected feed mode for the rest of the day so it survives page reloads
   useEffect(() => {
@@ -583,20 +586,33 @@ export function Feed() {
   );
 
   return (
-    <div className={`min-h-screen ${!isAuthenticated ? 'pb-36 md:pb-20' : 'pb-20'}`} style={{ overscrollBehaviorY: 'none' }}>
+    <div className={`min-h-screen ${!isAuthenticated ? 'pb-36 md:pb-20' : 'pb-20'}`} style={isCapacitor ? { overscrollBehaviorY: 'none' } : undefined}>
       <Header />
 
-      {/* Pull-to-refresh indicator */}
-      {(pullY > 0 || isRefreshing) && (
+      {/* Pull-to-refresh indicator — iOS-style radial spinner, Capacitor only */}
+      {isCapacitor && (pullY > 0 || isRefreshing) && (
         <div
           className="fixed left-0 right-0 flex justify-center z-30 pointer-events-none"
           style={{ top: 56, transform: `translateY(${isRefreshing ? 16 : pullY - PTR_THRESHOLD * 0.55}px)`, transition: isRefreshing ? 'transform 0.15s ease-out' : undefined }}
         >
-          <div className="w-9 h-9 rounded-full bg-accent shadow-lg flex items-center justify-center"
-            style={{ opacity: isRefreshing ? 1 : pullY / PTR_THRESHOLD }}>
-            <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`}
-              style={{ transform: isRefreshing ? undefined : `rotate(${(pullY / PTR_THRESHOLD) * 360}deg)` }} />
-          </div>
+          <svg
+            width="28" height="28" viewBox="0 0 28 28"
+            className={isRefreshing ? 'animate-spin' : undefined}
+            style={{
+              opacity: isRefreshing ? 1 : pullY / PTR_THRESHOLD,
+              ...(!isRefreshing ? { transform: `rotate(${(pullY / PTR_THRESHOLD) * 360}deg)` } : {}),
+            }}
+          >
+            {Array.from({ length: 12 }).map((_, i) => (
+              <rect
+                key={i}
+                x="13" y="3" width="2" height="7" rx="1"
+                fill="white"
+                opacity={(i + 1) / 12}
+                transform={`rotate(${(i / 12) * 360} 14 14)`}
+              />
+            ))}
+          </svg>
         </div>
       )}
 
