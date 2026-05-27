@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from '@/compat/router';
 import { supabase } from '../utils/supabase';
+import { toast } from 'sonner';
 import { RefreshCw, Pencil, ArrowRight } from 'lucide-react';
 
 interface ScheduledPost {
@@ -54,9 +55,13 @@ export function AdminScheduledPosts() {
   };
 
   const saveEditedPost = async (id: string) => {
+    if (new Date(editDraft.scheduled_at) <= new Date()) {
+      toast.error('Scheduled time must be in the future');
+      return;
+    }
     const tok = await getToken();
     if (!tok) { navigate('/'); return; }
-    await fetch(`/api/admin/scheduled-posts?id=${id}`, {
+    const r = await fetch(`/api/admin/scheduled-posts?id=${id}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -65,6 +70,11 @@ export function AdminScheduledPosts() {
         url: editDraft.url || null,
       }),
     });
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      toast.error(data.error ?? 'Failed to save changes');
+      return;
+    }
     setEditingPostId(null);
     loadScheduledPosts();
   };
@@ -297,6 +307,7 @@ export function AdminScheduledPosts() {
                             type="datetime-local"
                             className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
                             value={editDraft.scheduled_at}
+                            min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
                             onChange={e => setEditDraft(d => ({ ...d, scheduled_at: e.target.value }))}
                           />
                           <input
@@ -346,7 +357,7 @@ export function AdminScheduledPosts() {
                       </>
                     )}
                   </div>
-                  {post.status === 'pending' && editingPostId !== post.id && (
+                  {(post.status === 'pending' || post.status === 'failed') && editingPostId !== post.id && (
                     <div className="flex items-center gap-2 shrink-0 pt-0.5">
                       <button
                         onClick={() => {

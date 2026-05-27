@@ -1,21 +1,26 @@
-import { useTheme as useForgeTheme } from '../../context/ThemeContext';
 import { Toaster as Sonner, ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme } = useForgeTheme();
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
       className="toaster group"
       position="top-center"
       toastOptions={{
         style: {
-          background: 'rgb(17, 24, 39)',
-          color: 'rgb(255, 255, 255)',
-          border: '1px solid rgb(55, 65, 81)',
+          background: 'var(--card)',
+          color: 'var(--card-foreground)',
+          border: '1px solid var(--border)',
+          borderRadius: '0.75rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          fontSize: '0.875rem',
         },
-        className: 'font-sans',
+        classNames: {
+          title: 'font-medium',
+          description: 'text-muted-foreground',
+          closeButton: 'text-muted-foreground hover:text-foreground',
+        },
       }}
       {...props}
     />

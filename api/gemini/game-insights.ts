@@ -138,22 +138,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!gameId) return res.status(400).json({ error: 'gameId is required — link a game before searching' });
   if (!gameTitle) return res.status(400).json({ error: 'gameTitle is required' });
 
-  const usage = await checkAndIncrementUsage(user.id);
-  if (!usage.allowed) {
-    return res.status(429).json({
-      error: `Daily limit reached (${DAILY_LIMIT} queries per day). Try again tomorrow.`,
+  try {
+    const usage = await checkAndIncrementUsage(user.id);
+    if (!usage.allowed) {
+      return res.status(429).json({
+        error: `Daily limit reached (${DAILY_LIMIT} queries per day). Try again tomorrow.`,
+        used: usage.used,
+        limit: DAILY_LIMIT,
+      });
+    }
+
+    const answer = await queryGemini(question.trim(), gameTitle);
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({
+      answer,
       used: usage.used,
       limit: DAILY_LIMIT,
+      remaining: DAILY_LIMIT - usage.used,
     });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message ?? 'Internal error' });
   }
-
-  const answer = await queryGemini(question.trim(), gameTitle);
-
-  res.setHeader('Cache-Control', 'no-store');
-  return res.json({
-    answer,
-    used: usage.used,
-    limit: DAILY_LIMIT,
-    remaining: DAILY_LIMIT - usage.used,
-  });
 }
