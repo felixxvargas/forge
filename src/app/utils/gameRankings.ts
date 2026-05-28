@@ -37,9 +37,10 @@ export async function loadRankMapOnly(): Promise<void> {
 
   rankMapPromise = (async () => {
     try {
-      const [postRes, listRes] = await Promise.all([
+      const [postRes, listRes, insightRes] = await Promise.all([
         supabase.from('posts').select('game_id').not('game_id', 'is', null),
         supabase.from('user_games').select('game_id, user_id'),
+        supabase.from('game_insights').select('game_id, status'),
       ]);
       const scoredMap: Record<string, number> = {};
       for (const row of postRes.data ?? []) {
@@ -53,6 +54,10 @@ export async function loadRankMapOnly(): Promise<void> {
       }
       for (const [gId, users] of Object.entries(byGame)) {
         scoredMap[gId] = (scoredMap[gId] ?? 0) + users.size;
+      }
+      for (const row of insightRes.data ?? []) {
+        if (!row.game_id) continue;
+        scoredMap[row.game_id] = (scoredMap[row.game_id] ?? 0) + (row.status === 'approved' ? 5 : 1);
       }
       // Roll up expansion scores to parent games
       const scoredIds = Object.keys(scoredMap).filter(id => scoredMap[id] > 0);
@@ -92,9 +97,10 @@ export async function loadTrendingRankings(): Promise<RankedGame[]> {
 
   loadPromise = (async () => {
     try {
-      const [postRes, listRes] = await Promise.all([
+      const [postRes, listRes, insightRes] = await Promise.all([
         supabase.from('posts').select('game_id').not('game_id', 'is', null),
         supabase.from('user_games').select('game_id, user_id'),
+        supabase.from('game_insights').select('game_id, status'),
       ]);
 
       // Compute scores per game from activity data
@@ -110,6 +116,10 @@ export async function loadTrendingRankings(): Promise<RankedGame[]> {
       }
       for (const [gId, users] of Object.entries(byGame)) {
         scoredMap[gId] = (scoredMap[gId] ?? 0) + users.size;
+      }
+      for (const row of insightRes.data ?? []) {
+        if (!row.game_id) continue;
+        scoredMap[row.game_id] = (scoredMap[row.game_id] ?? 0) + (row.status === 'approved' ? 5 : 1);
       }
 
       // Roll up expansion scores to parent games

@@ -108,9 +108,13 @@ export function NewPost() {
     postsAPI.getById(replyTo).then(setReplyToPost).catch(() => {});
   }, [replyTo]);
 
+  const prefillParam = searchParams.get('prefill') ?? '';
+  const urlGameId = searchParams.get('gameId') ?? '';
+  const urlGameTitle = searchParams.get('gameTitle') ?? '';
+
   const autoDraft = useRef<DraftData>(parseAutoDraft());
 
-  const [content, setContent] = useState(autoDraft.current.content);
+  const [content, setContent] = useState(prefillParam || autoDraft.current.content);
   const [imageUrls, setImageUrls] = useState<string[]>(autoDraft.current.imageUrls);
   const [imageAlts, setImageAlts] = useState<string[]>([]);
   const [activeAltIndex, setActiveAltIndex] = useState<number | null>(null);
@@ -124,6 +128,7 @@ export function NewPost() {
   const [selectedGames, setSelectedGames] = useState<{ id: string; title: string }[]>(() => {
     if (autoDraft.current.games.length > 0) return autoDraft.current.games;
     if (stateGameId && stateGameTitle) return [{ id: stateGameId, title: stateGameTitle }];
+    if (urlGameId && urlGameTitle) return [{ id: urlGameId, title: urlGameTitle }];
     return [];
   });
   const [isSearchingGames, setIsSearchingGames] = useState(false);

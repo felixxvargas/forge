@@ -570,14 +570,22 @@ export function FeedInsightSearch() {
                   <span className="text-xs font-medium">Submitted for community review</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Would you like to share this to the feed?</p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={handleShareAsPost}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-accent/15 text-accent rounded-lg hover:bg-accent/25 transition-colors"
                   >
                     <Sparkles className="w-3 h-3" />
                     Add commentary + Post
                   </button>
+                  {selectedGame && insightId && (
+                    <button
+                      onClick={() => { navigate(`/game/${selectedGame.id}?tab=insights`); reset(); }}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                    >
+                      View pending insight
+                    </button>
+                  )}
                   <button
                     onClick={reset}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-2"

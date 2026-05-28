@@ -120,13 +120,15 @@ export function GameInsightsSection({ gameId, gameTitle, coverUrl, initialTab = 
         <div className="bg-card rounded-xl p-6 text-center">
           <Sparkles className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground mb-3">
-            {tab === 'approved' ? 'No approved insights yet.' : 'No insights pending review.'}
+            {tab === 'approved'
+              ? 'No approved insights yet — check the Pending Review tab for insights awaiting community votes.'
+              : 'No insights pending review.'}
           </p>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={tab === 'approved' ? () => setTab('pending') : () => setShowModal(true)}
             className="text-sm text-accent hover:text-accent/80 font-medium transition-colors"
           >
-            Be the first to add an insight
+            {tab === 'approved' ? 'View pending insights' : 'Be the first to add an insight'}
           </button>
         </div>
       )}

@@ -60,7 +60,7 @@ function LinkifyMentions({ text }: { text: string }) {
   );
 }
 
-type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media' | 'timeline';
+type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media' | 'timeline' | 'insights';
 
 // List type selection state type
 type ListTypeOption = 'recently-played' | 'favorite' | 'wishlist' | 'library';
@@ -288,6 +288,19 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       .then(setProfileLikedPosts)
       .catch(() => setProfileLikedPosts([]))
       .finally(() => setLikesLoading(false));
+  }, [activeTab, profileUser?.id]);
+
+  // Insights tab
+  const [userInsights, setUserInsights] = useState<any[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  useEffect(() => {
+    if (activeTab !== 'insights' || !profileUser?.id) return;
+    setInsightsLoading(true);
+    fetch(`/api/insights/game-insights?userId=${encodeURIComponent(profileUser.id)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setUserInsights)
+      .catch(() => setUserInsights([]))
+      .finally(() => setInsightsLoading(false));
   }, [activeTab, profileUser?.id]);
 
   // Must be called before any early returns to satisfy rules of hooks
@@ -1242,6 +1255,16 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             </button>
           )}
           <button
+            onClick={() => setActiveTab('insights')}
+            className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
+              effectiveTab === 'insights'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Insights
+          </button>
+          <button
             onClick={() => setActiveTab('about')}
             className={`lg:hidden shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
               effectiveTab === 'about'
@@ -1864,6 +1887,51 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               </div>
             )}
             <GameTimeline userId={profileUser.id} />
+          </div>
+        )}
+
+        {effectiveTab === 'insights' && (
+          <div className="px-4 pb-24">
+            {insightsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(n => (
+                  <div key={n} className="bg-card rounded-xl p-4 animate-pulse">
+                    <div className="h-4 bg-muted/40 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-muted/30 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : userInsights.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-sm">No insights submitted yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {userInsights.map((insight: any) => (
+                  <button
+                    key={insight.id}
+                    onClick={() => navigate(`/game/${insight.game_id}/insight/${insight.id}`)}
+                    className="w-full text-left bg-card rounded-xl p-4 hover:border-accent/30 transition-colors"
+                    style={{ border: insight.status === 'approved' ? '1px solid rgba(34,197,94,0.15)' : insight.status === 'rejected' ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(139,92,246,0.1)' }}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      {insight.status === 'approved' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 uppercase tracking-wide">Approved</span>
+                      )}
+                      {insight.status === 'pending' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending</span>
+                      )}
+                      {insight.status === 'rejected' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 uppercase tracking-wide">Rejected</span>
+                      )}
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium truncate max-w-[160px]">{insight.game_title}</span>
+                    </div>
+                    {insight.title && <p className="text-sm font-semibold leading-snug mb-1">{insight.title}</p>}
+                    <p className={`line-clamp-2 leading-snug ${insight.title ? 'text-xs text-muted-foreground' : 'text-sm font-medium'}`}>{insight.query}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

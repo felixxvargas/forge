@@ -63,9 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const token = req.headers['authorization']?.replace('Bearer ', '');
 
-  // GET — fetch insight(s) by insightId or by gameId+status
+  // GET — fetch insight(s) by insightId, by gameId+status, or by userId
   if (req.method === 'GET') {
-    const { gameId, status, insightId: qInsightId } = req.query;
+    const { gameId, status, insightId: qInsightId, userId } = req.query;
 
     let insights: any[];
     if (qInsightId) {
@@ -73,8 +73,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'GET',
         `/game_insights?id=eq.${encodeURIComponent(qInsightId as string)}&limit=1&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
       );
+    } else if (userId) {
+      const statusFilter = status ? `&status=eq.${status}` : '';
+      insights = await sb<any[]>(
+        'GET',
+        `/game_insights?user_id=eq.${encodeURIComponent(userId as string)}${statusFilter}&order=submitted_at.desc&limit=100&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+      );
     } else {
-      if (!gameId) return res.status(400).json({ error: 'gameId or insightId is required' });
+      if (!gameId) return res.status(400).json({ error: 'gameId, insightId, or userId is required' });
       const statusFilter = status ? `&status=eq.${status}` : '';
       insights = await sb<any[]>(
         'GET',
