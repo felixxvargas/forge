@@ -1,6 +1,6 @@
 'use client';
 import { useParams, useNavigate, useLocation, useSearchParams } from '@/compat/router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X, Sparkles, LayoutGrid, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useAppData } from '../context/AppDataContext';
@@ -8,7 +8,8 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { PostCard } from '../components/PostCard';
 import { Header } from '../components/Header';
 import { ShareModal } from '../components/ShareModal';
-import { GameInsightsSection } from '../components/GameInsightsSection';
+import Dock from '../components/Dock';
+import { GameWikiView } from '../components/GameWikiView';
 
 import { posts as postsAPI, userGamesAPI, lfgFlares as lfgFlaresAPI } from '../utils/supabase';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ export function GameDetail() {
   const gameId = rawGameId ? decodeURIComponent(rawGameId) : rawGameId;
   const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeedPosts, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
 
+  const [gameView, setGameView] = useState<'overview' | 'wiki'>(() => searchParams.get('view') === 'wiki' ? 'wiki' : 'overview');
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [postSort, setPostSort] = useState<PostSort>('latest');
 
@@ -456,7 +458,7 @@ export function GameDetail() {
   };
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-24">
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-5xl mx-auto px-4 pt-4">
@@ -478,6 +480,7 @@ export function GameDetail() {
         </div>
       </div>
 
+      {gameView === 'overview' && <>
       {/* Hero: blurred background + portrait cover */}
       <div className="relative w-full max-w-2xl lg:max-w-5xl mx-auto mb-6 rounded-2xl overflow-hidden">
         {bgUrl ? (
@@ -767,7 +770,7 @@ export function GameDetail() {
           </button>
           <div className="w-px h-10 bg-border shrink-0" />
           <button
-            onClick={() => navigate(`/game/${gameId}?tab=insights`)}
+            onClick={() => setGameView('wiki')}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
           >
             <p className="text-2xl font-bold">{insightCount === null ? '…' : insightCount}</p>
@@ -994,18 +997,41 @@ export function GameDetail() {
             </div>
           </div>
         )}
-        {/* Insights / Wiki section */}
-        {game && gameId && (
-          <GameInsightsSection
-            gameId={gameId}
-            gameTitle={game.title}
-            coverUrl={coverUrl ?? undefined}
-            initialTab={searchParams.get('tab') === 'insights' ? 'pending' : 'approved'}
-          />
-        )}
-
         </div>{/* end right column */}
         </div>{/* end lg:flex wrapper */}
+      </div>
+      </>}{/* end overview */}
+
+      {/* Wiki view — full-width below the layout when active */}
+      {gameView === 'wiki' && game && gameId && (
+        <GameWikiView
+          gameId={gameId}
+          gameTitle={game.title}
+          coverUrl={coverUrl ?? undefined}
+        />
+      )}
+
+      {/* Dock — fixed bottom navigation between Overview and Insights */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+        <Dock
+          panelHeight={56}
+          baseItemSize={44}
+          magnification={58}
+          items={[
+            {
+              icon: <LayoutGrid className="w-5 h-5" />,
+              label: 'Overview',
+              onClick: () => setGameView('overview'),
+              active: gameView === 'overview',
+            },
+            {
+              icon: <BookOpen className="w-5 h-5" />,
+              label: 'Insights',
+              onClick: () => setGameView('wiki'),
+              active: gameView === 'wiki',
+            },
+          ]}
+        />
       </div>
 
       {/* Add to List tray */}
@@ -1102,8 +1128,8 @@ export function GameDetail() {
         />
       )}
 
-      {/* Floating compose button — logged-in users only */}
-      {session?.user && game && (
+      {/* Floating compose button — logged-in users only, overview mode only */}
+      {session?.user && game && gameView === 'overview' && (
         <button
           onClick={() => navigate('/new-post', { state: { gameId: String(gameId), gameTitle: game.title } })}
           className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-accent text-accent-foreground rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110 flex items-center justify-center md:bottom-8"

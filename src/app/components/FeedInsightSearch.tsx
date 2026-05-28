@@ -144,7 +144,14 @@ export function FeedInsightSearch() {
     setShowGameSearch(false);
     setGameQuery('');
     setGameResults([]);
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus();
+        const end = ta.value.length;
+        ta.setSelectionRange(end, end);
+      }
+    }, 0);
   };
 
   const askGemini = async (q: string, game: SelectedGame) => {
@@ -467,10 +474,6 @@ export function FeedInsightSearch() {
 
           {/* Response card */}
           <div className="bg-card border rounded-xl p-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span className="text-xs font-semibold text-accent uppercase tracking-wide">Forge AI</span>
-            </div>
             {result.title && (
               <p className="text-sm font-semibold leading-snug mb-3">{result.title}</p>
             )}

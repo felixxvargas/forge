@@ -83,9 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         if (!gameId) return res.status(400).json({ error: 'gameId, insightId, or userId is required' });
         const statusFilter = status ? `&status=eq.${status}` : '';
+        const { category } = req.query;
+        const categoryFilter = category && category !== 'all' ? `&category=eq.${encodeURIComponent(category as string)}` : '';
         insights = await sb<any[]>(
           'GET',
-          `/game_insights?game_id=eq.${encodeURIComponent(gameId as string)}${statusFilter}&order=submitted_at.desc&limit=50&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+          `/game_insights?game_id=eq.${encodeURIComponent(gameId as string)}${statusFilter}${categoryFilter}&order=submitted_at.desc&limit=50&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
         );
       }
 
@@ -113,10 +115,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(token);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { gameId, gameTitle, query, content, title } = req.body ?? {};
+    const { gameId, gameTitle, query, content, title, category } = req.body ?? {};
     if (!gameId || !gameTitle || !query?.trim() || !content?.trim()) {
       return res.status(400).json({ error: 'gameId, gameTitle, query, and content are required' });
     }
+    const validCategories = ['characters', 'objects', 'locations', 'extras'];
+    const safeCategory = validCategories.includes(category) ? category : 'extras';
 
     const [insight] = await sbAsUser<any[]>('POST', '/game_insights', token, {
       user_id: user.id,
@@ -125,6 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       query: query.trim(),
       content: content.trim(),
       title: title?.trim() || null,
+      category: safeCategory,
       status: 'pending',
     });
 

@@ -9,7 +9,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.svg" alt="" width={28} height={28} className="rounded-lg shrink-0" />
+            <img src="/forge-logo.svg" alt="Forge" width={28} height={22} className="shrink-0" />
             <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-accent transition-colors">Forge</span>
           </Link>
 
