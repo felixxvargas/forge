@@ -152,6 +152,9 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   // Local override for displayed_communities (About tab group visibility toggles)
   const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
 
+  // Insight contributor badge — state only; effect placed after profileUser is declared below
+  const [hasInsightContribution, setHasInsightContribution] = useState(false);
+
 
   // Scroll to top only when navigating to a different profile, not on remount of the same one
   useEffect(() => {
@@ -195,6 +198,17 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     bio: profileUser?.bio ?? undefined,
     profilePicture: profilePicture ?? undefined,
   });
+
+  // Insight contributor badge fetch
+  useEffect(() => {
+    const uid = (profileUser as any)?.id;
+    if (!uid || (profileUser as any)?.account_type === 'topic') return;
+    setHasInsightContribution(false);
+    import('../utils/supabase').then(({ supabase }) => {
+      supabase.from('game_insights').select('id', { count: 'exact', head: true }).eq('user_id', uid)
+        .then(({ count }) => { if ((count ?? 0) > 0) setHasInsightContribution(true); });
+    });
+  }, [(profileUser as any)?.id]);
 
   // Sync follow state from followingIds. For topic accounts, followingIds stores the synthetic ID
   // (e.g. "user-ign") rather than the UUID, so we check both.
@@ -690,7 +704,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         const isMentor = isMentorHandle(profileUser.handle || '');
         const ALPHA_CUTOFF = new Date('2026-05-19');
         const isAlphaTester = !!profileUser.created_at && (profileUser as any).account_type !== 'topic' && new Date(profileUser.created_at) < ALPHA_CUTOFF;
-        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester) return null;
+        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester && !hasInsightContribution) return null;
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
             {isAlphaTester && (
@@ -724,6 +738,12 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
                 </svg>
                 <span className="text-xs font-semibold text-amber-400">Mentor</span>
+              </div>
+            )}
+            {hasInsightContribution && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/30 rounded-full">
+                <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span className="text-xs font-semibold text-accent">Insight Author</span>
               </div>
             )}
           </div>

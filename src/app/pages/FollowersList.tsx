@@ -59,10 +59,7 @@ export function FollowersList() {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="font-semibold">Followers</h1>
-            {targetHandle && <p className="text-sm text-muted-foreground">{targetHandle}</p>}
-          </div>
+          <h1 className="font-semibold">{targetHandle || 'Followers'}</h1>
         </div>
       </div>
 
@@ -101,6 +98,9 @@ export function FollowersList() {
           </div>
         ) : (
           <div className="space-y-3">
+            <p className="text-xs text-muted-foreground/60 px-0.5 pb-1">
+              {sortedFollowers.length.toLocaleString()} {sortedFollowers.length === 1 ? 'follower' : 'followers'}
+            </p>
             {sortedFollowers.map((user, idx) => {
               const isFirstNonFollowing =
                 highlightFollowing &&

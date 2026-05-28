@@ -54,10 +54,7 @@ export function FollowingList() {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="font-semibold">Following</h1>
-            {targetHandle && <p className="text-sm text-muted-foreground">{targetHandle}</p>}
-          </div>
+          <h1 className="font-semibold">{targetHandle || 'Following'}</h1>
         </div>
       </div>
 
@@ -89,6 +86,9 @@ export function FollowingList() {
           </div>
         ) : (
           <div className="space-y-3">
+            <p className="text-xs text-muted-foreground/60 px-0.5 pb-1">
+              {following.length.toLocaleString()} following
+            </p>
             {following.map(user => (
               <div key={user.id} className="bg-card rounded-xl p-4 flex items-center gap-3">
                 <div onClick={() => navigate(profilePath(user))} className="cursor-pointer">
