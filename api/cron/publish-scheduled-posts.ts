@@ -56,19 +56,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const gameIds: string[] = item.game_ids ?? [];
       const gameTitles: string[] = item.game_titles ?? [];
-      const postBody: Record<string, unknown> = {
-        user_id: item.user_id,
-        content: item.content,
-        images: item.images ?? [],
-        image_alts: [],
-        game_ids: gameIds,
-        game_titles: gameTitles,
-        game_id: gameIds[0] ?? null,
-        game_title: gameTitles[0] ?? null,
-        url: item.url ?? null,
-      };
 
-      const [newPost] = await supabase<Array<{ id: string }>>('POST', '/posts', postBody);
+      const [newPost] = await supabase<Array<{ id: string }>>('POST', '/rpc/create_scheduled_post', {
+        p_user_id: item.user_id,
+        p_content: item.content,
+        p_images: item.images ?? [],
+        p_image_alts: [],
+        p_game_ids: gameIds,
+        p_game_titles: gameTitles,
+        p_game_id: gameIds[0] ?? null,
+        p_game_title: gameTitles[0] ?? null,
+        p_url: item.url ?? null,
+      });
 
       await supabase('PATCH', `/scheduled_posts?id=eq.${item.id}`, {
         status: 'published',

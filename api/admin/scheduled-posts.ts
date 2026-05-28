@@ -102,16 +102,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const gameIds = post.game_ids ?? [];
           const gameTitles = post.game_titles ?? [];
-          const [newPost] = await sb<Array<{ id: string }>>('POST', '/posts', {
-            user_id: post.user_id,
-            content: post.content,
-            images: post.images ?? [],
-            image_alts: [],
-            game_ids: gameIds,
-            game_titles: gameTitles,
-            game_id: gameIds[0] ?? null,
-            game_title: gameTitles[0] ?? null,
-            url: post.url ?? null,
+          const [newPost] = await sb<Array<{ id: string }>>('POST', '/rpc/create_scheduled_post', {
+            p_user_id: post.user_id,
+            p_content: post.content,
+            p_images: post.images ?? [],
+            p_image_alts: [],
+            p_game_ids: gameIds,
+            p_game_titles: gameTitles,
+            p_game_id: gameIds[0] ?? null,
+            p_game_title: gameTitles[0] ?? null,
+            p_url: post.url ?? null,
           });
           await sb('PATCH', `/scheduled_posts?id=eq.${id}`, {
             status: 'published',
