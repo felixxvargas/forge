@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList, Users, BarChart2 } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon, ArrowLeft, Gamepad2, Search, MessageCircle, Repeat2, Plus, BookMarked, MoreHorizontal, PenSquare, LayoutList, Users, BarChart2, Sparkles } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,6 +98,10 @@ export function NewPost() {
     'completed': 'Completed Games', 'custom': 'Custom List', 'lfg': 'Looking for Group',
   };
 
+  const urlGameId = searchParams.get('gameId') ?? '';
+  const urlGameTitle = searchParams.get('gameTitle') ?? '';
+  const urlInsightId = searchParams.get('insightId') ?? '';
+
   // Scroll to top when compose screen opens
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -108,13 +112,17 @@ export function NewPost() {
     postsAPI.getById(replyTo).then(setReplyToPost).catch(() => {});
   }, [replyTo]);
 
-  const prefillParam = searchParams.get('prefill') ?? '';
-  const urlGameId = searchParams.get('gameId') ?? '';
-  const urlGameTitle = searchParams.get('gameTitle') ?? '';
+  useEffect(() => {
+    if (!urlInsightId) return;
+    fetch(`/api/insights/game-insights?insightId=${encodeURIComponent(urlInsightId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setLinkedInsight(data); })
+      .catch(() => {});
+  }, [urlInsightId]);
 
   const autoDraft = useRef<DraftData>(parseAutoDraft());
 
-  const [content, setContent] = useState(prefillParam || autoDraft.current.content);
+  const [content, setContent] = useState(autoDraft.current.content);
   const [imageUrls, setImageUrls] = useState<string[]>(autoDraft.current.imageUrls);
   const [imageAlts, setImageAlts] = useState<string[]>([]);
   const [activeAltIndex, setActiveAltIndex] = useState<number | null>(null);
@@ -170,6 +178,8 @@ export function NewPost() {
   const [pickedListUserId, setPickedListUserId] = useState<string | undefined>(attachListUserId);
   // Parent post when replying
   const [replyToPost, setReplyToPost] = useState<any>(null);
+  // Linked insight (from /new-post?insightId=...)
+  const [linkedInsight, setLinkedInsight] = useState<any>(null);
 
   // Build attached list snapshot from state (set either via URL params or in-compose picker)
   const attachedListData = useCallback((): object | undefined => {
@@ -642,6 +652,7 @@ export function NewPost() {
         content, images, effectiveLinkUrl, imageAltsFinal, activeCommunityId,
         gameIds[0], gameTitles[0], gameIds, gameTitles, undefined,
         disableComments, disableReposts, replyTo, quotePostId, attachedListData(), pollData,
+        urlInsightId || undefined,
       );
       // Chain thread continuation posts as replies to the previous post
       for (const threadContent of threadPosts.filter(p => p.trim())) {
@@ -1512,6 +1523,26 @@ export function NewPost() {
               </button>
             )}
             <LinkPreview url={detectedUrl} noImage={detectedUrlDismissedFor === detectedUrl} />
+          </div>
+        )}
+
+        {/* Linked insight preview */}
+        {linkedInsight && (
+          <div className="mt-3 rounded-xl bg-card border border-accent/20 p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <span className="text-xs font-semibold text-accent uppercase tracking-wide">Insight</span>
+              {linkedInsight.status === 'pending' && (
+                <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending Review</span>
+              )}
+              {linkedInsight.status === 'approved' && (
+                <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 uppercase tracking-wide">Approved</span>
+              )}
+            </div>
+            {linkedInsight.title && (
+              <p className="text-sm font-semibold leading-snug mb-1">{linkedInsight.title}</p>
+            )}
+            <p className={`leading-snug line-clamp-2 text-muted-foreground ${linkedInsight.title ? 'text-xs' : 'text-sm'}`}>{linkedInsight.query}</p>
           </div>
         )}
 

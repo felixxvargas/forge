@@ -629,6 +629,7 @@ export const posts = {
     quotePostId?: string;
     attachedList?: object;
     poll?: object;
+    insightId?: string;
   } = {}) {
     // Content moderation check
     if (content && content.trim().length >= 3) {
@@ -661,6 +662,7 @@ export const posts = {
         ...(options.quotePostId ? { quote_post_id: options.quotePostId } : {}),
         ...(options.attachedList ? { attached_list: options.attachedList } : {}),
         ...(options.poll ? { poll: options.poll } : {}),
+        ...(options.insightId ? { insight_id: options.insightId } : {}),
       })
       .select(`
         *,

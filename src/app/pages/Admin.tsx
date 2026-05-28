@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus, Sparkles, PenLine } from 'lucide-react';
 
 interface OnboardingFunnelData {
   started: number;
@@ -29,6 +29,7 @@ interface AdminStats {
     groupCreations: { last30Days: number; last90Days: number; last365Days: number };
     posts: { last30Days: number; last90Days: number; last365Days: number };
   };
+  insights?: { total: number; edits: number; authors: number; contributors: number };
   recentUsers: { handle: string; display_name: string; created_at: string }[];
   generatedAt: string;
 }
@@ -307,6 +308,47 @@ export function Admin() {
             />
           </div>
         </section>
+
+        {/* Insights */}
+        {stats.insights && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Game Insights</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Total Insights</span>
+                </div>
+                <div className="text-3xl font-bold tabular-nums">{stats.insights.total.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">Including subtopics</div>
+              </div>
+              <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <PenLine className="w-4 h-4" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Edit Proposals</span>
+                </div>
+                <div className="text-3xl font-bold tabular-nums">{stats.insights.edits.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">All-time submissions</div>
+              </div>
+              <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="w-4 h-4" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Authors</span>
+                </div>
+                <div className="text-3xl font-bold tabular-nums">{stats.insights.authors.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">Unique insight creators</div>
+              </div>
+              <div className="bg-card rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users2 className="w-4 h-4" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Contributors</span>
+                </div>
+                <div className="text-3xl font-bold tabular-nums">{stats.insights.contributors.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">Unique accepted editors</div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* User Actions */}
         {stats.userActions && (

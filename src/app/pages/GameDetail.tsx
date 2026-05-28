@@ -1,6 +1,6 @@
 'use client';
 import { useParams, useNavigate, useLocation, useSearchParams } from '@/compat/router';
-import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useAppData } from '../context/AppDataContext';
@@ -60,6 +60,7 @@ export function GameDetail() {
   const [expansions, setExpansions] = useState<any[]>([]);
   const [parentGame, setParentGame] = useState<any | null>(null);
   const [listCount, setListCount] = useState<number | null>(null);
+  const [insightCount, setInsightCount] = useState<number | null>(null);
 
   const [gameRank, setGameRank] = useState<number | null>(null);
   const [showAddToListTray, setShowAddToListTray] = useState(false);
@@ -173,6 +174,17 @@ export function GameDetail() {
       userGamesAPI.getListCount(gameId)
         .then(count => { setListCount(count); gdSet(`listCount:${gameId}`, count); })
         .catch(() => setListCount(0));
+    }
+    const cachedInsights = gdGet<number>(`insightCount:${gameId}`);
+    if (cachedInsights !== null) { setInsightCount(cachedInsights); }
+    else {
+      import('../utils/supabase').then(({ supabase }) => {
+        supabase.from('game_insights').select('id', { count: 'exact', head: true }).eq('game_id', gameId)
+          .then(
+            ({ count }) => { const n = count ?? 0; setInsightCount(n); gdSet(`insightCount:${gameId}`, n); },
+            () => setInsightCount(0),
+          );
+      });
     }
   }, [gameId]);
 
@@ -752,13 +764,13 @@ export function GameDetail() {
           </button>
           <div className="w-px h-10 bg-border shrink-0" />
           <button
-            onClick={() => navigate(`/game/${gameId}/players`)}
+            onClick={() => navigate(`/game/${gameId}?tab=insights`)}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
           >
-            <p className="text-2xl font-bold">{loadingPlayers ? '…' : friendCount}</p>
+            <p className="text-2xl font-bold">{insightCount === null ? '…' : insightCount}</p>
             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
-              <Users className="w-3.5 h-3.5" />
-              <span className="text-xs">Friends</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="text-xs">Insights</span>
             </div>
           </button>
           <div className="w-px h-10 bg-border shrink-0" />

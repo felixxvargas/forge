@@ -67,40 +67,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     const { gameId, status, insightId: qInsightId, userId } = req.query;
 
-    let insights: any[];
-    if (qInsightId) {
-      insights = await sb<any[]>(
-        'GET',
-        `/game_insights?id=eq.${encodeURIComponent(qInsightId as string)}&limit=1&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
-      );
-    } else if (userId) {
-      const statusFilter = status ? `&status=eq.${status}` : '';
-      insights = await sb<any[]>(
-        'GET',
-        `/game_insights?user_id=eq.${encodeURIComponent(userId as string)}${statusFilter}&order=submitted_at.desc&limit=100&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
-      );
-    } else {
-      if (!gameId) return res.status(400).json({ error: 'gameId, insightId, or userId is required' });
-      const statusFilter = status ? `&status=eq.${status}` : '';
-      insights = await sb<any[]>(
-        'GET',
-        `/game_insights?game_id=eq.${encodeURIComponent(gameId as string)}${statusFilter}&order=submitted_at.desc&limit=50&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
-      );
-    }
-
-    // If authenticated, fetch current user's votes
-    let myVotes: Record<string, string> = {};
-    if (token) {
-      const user = await getAuthUser(token);
-      if (user && insights.length > 0) {
-        const insightIds = insights.map((i: any) => i.id).join(',');
-        const votes = await sb<any[]>('GET', `/game_insight_votes?insight_id=in.(${insightIds})&user_id=eq.${user.id}&select=insight_id,vote`);
-        for (const v of votes) myVotes[v.insight_id] = v.vote;
+    try {
+      let insights: any[];
+      if (qInsightId) {
+        insights = await sb<any[]>(
+          'GET',
+          `/game_insights?id=eq.${encodeURIComponent(qInsightId as string)}&limit=1&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+        );
+      } else if (userId) {
+        const statusFilter = status ? `&status=eq.${status}` : '';
+        insights = await sb<any[]>(
+          'GET',
+          `/game_insights?user_id=eq.${encodeURIComponent(userId as string)}${statusFilter}&order=submitted_at.desc&limit=100&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+        );
+      } else {
+        if (!gameId) return res.status(400).json({ error: 'gameId, insightId, or userId is required' });
+        const statusFilter = status ? `&status=eq.${status}` : '';
+        insights = await sb<any[]>(
+          'GET',
+          `/game_insights?game_id=eq.${encodeURIComponent(gameId as string)}${statusFilter}&order=submitted_at.desc&limit=50&select=*,author:profiles!user_id(id,handle,display_name,profile_picture)`
+        );
       }
-    }
 
-    const result = insights.map((i: any) => ({ ...i, myVote: myVotes[i.id] ?? null }));
-    return res.json(qInsightId ? result[0] ?? null : result);
+      // If authenticated, fetch current user's votes
+      let myVotes: Record<string, string> = {};
+      if (token) {
+        const user = await getAuthUser(token);
+        if (user && insights.length > 0) {
+          const insightIds = insights.map((i: any) => i.id).join(',');
+          const votes = await sb<any[]>('GET', `/game_insight_votes?insight_id=in.(${insightIds})&user_id=eq.${user.id}&select=insight_id,vote`);
+          for (const v of votes) myVotes[v.insight_id] = v.vote;
+        }
+      }
+
+      const result = insights.map((i: any) => ({ ...i, myVote: myVotes[i.id] ?? null }));
+      return res.json(qInsightId ? result[0] ?? null : result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message ?? 'Failed to fetch insights' });
+    }
   }
 
   // POST — submit a new insight

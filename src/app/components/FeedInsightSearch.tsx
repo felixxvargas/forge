@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Search, Sparkles, Send, X, Pencil, Check, Gamepad2 } from 'lucide-react';
+import { GlowBorder } from './GlowBorder';
 import { toast } from 'sonner';
 import { supabase } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
@@ -260,11 +261,8 @@ export function FeedInsightSearch() {
 
   const handleShareAsPost = () => {
     if (!selectedGame) return;
-    const finalQuery = editingQuery ? editQueryText : query;
-    const finalAnswer = result ? (editingResponse ? editResponseText : result.answer) : '';
-    const prefill = `${finalQuery}\n\n${finalAnswer}`;
     navigate(
-      `/new-post?prefill=${encodeURIComponent(prefill)}&gameId=${selectedGame.id}&gameTitle=${encodeURIComponent(selectedGame.title)}${insightId ? `&insightId=${insightId}` : ''}`
+      `/new-post?gameId=${selectedGame.id}&gameTitle=${encodeURIComponent(selectedGame.title)}${insightId ? `&insightId=${insightId}` : ''}`
     );
     reset();
   };
@@ -417,10 +415,12 @@ export function FeedInsightSearch() {
 
       {/* Loading spinner */}
       {state === 'loading' && (
-        <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center gap-3">
-          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-muted-foreground">Asking Forge...</span>
-        </div>
+        <GlowBorder active={true}>
+          <div className="bg-card rounded-xl p-6 flex items-center justify-center gap-3">
+            <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground">Asking Forge...</span>
+          </div>
+        </GlowBorder>
       )}
 
       {/* Result cards */}

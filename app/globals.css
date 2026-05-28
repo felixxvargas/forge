@@ -29,3 +29,26 @@ input, textarea, select { font-size: max(16px, 1em); }
 @media (min-width: 768px) {
   #__next { width: 100%; }
 }
+
+/* Forge glow border — rotating conic gradient animation */
+@property --forge-glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes forge-glow-rotate {
+  to { --forge-glow-angle: 360deg; }
+}
+
+.forge-glow-border {
+  background: conic-gradient(
+    from var(--forge-glow-angle),
+    #7c3aed,
+    #a855f7,
+    #ec4899,
+    #a855f7,
+    #7c3aed
+  );
+  animation: forge-glow-rotate 4s linear infinite;
+}

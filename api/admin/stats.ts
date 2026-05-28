@@ -134,6 +134,8 @@ export default async function handler(req: Request): Promise<Response> {
     follows30, follows90, follows365,
     groupJoins30, groupJoins90, groupJoins365,
     groupCreations30, groupCreations90, groupCreations365,
+    totalInsights, totalEdits,
+    insightAuthorRows, insightContribRows,
   ] = await Promise.all([
     countTable('profiles'), countTable('profiles', t7), countTable('profiles', t30),
     countTable('profiles', t90), countTable('profiles', t365),
@@ -149,7 +151,14 @@ export default async function handler(req: Request): Promise<Response> {
     countTable('follows', t30), countTable('follows', t90), countTable('follows', t365),
     countTable('community_members', t30), countTable('community_members', t90), countTable('community_members', t365),
     countTable('communities', t30), countTable('communities', t90), countTable('communities', t365),
+    countTable('game_insights'),
+    countTable('insight_edits'),
+    fetch(`${SUPABASE_URL}/rest/v1/game_insights?select=user_id`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${SUPABASE_URL}/rest/v1/insight_edits?select=user_id&status=eq.accepted`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }).then(r => r.ok ? r.json() : []).catch(() => []),
   ]);
+
+  const insightAuthors = new Set((insightAuthorRows as { user_id: string }[]).map(r => r.user_id)).size;
+  const insightContributors = new Set((insightContribRows as { user_id: string }[]).map(r => r.user_id)).size;
 
   const [recentRes, mauRes, sessionRes] = await Promise.all([
     fetch(
@@ -194,6 +203,7 @@ export default async function handler(req: Request): Promise<Response> {
     communities: { total: totalCommunities },
     flares: { total: totalFlares, last30Days: flares30, last90Days: flares90, last365Days: flares365 },
     lists: listStats,
+    insights: { total: totalInsights, edits: totalEdits, authors: insightAuthors, contributors: insightContributors },
     onboarding: { allTime: onboardingAll, last30Days: onboarding30 },
     engagement: { mau, wau, dau, avgSessionDurationS, platformSplit },
     userActions: {
