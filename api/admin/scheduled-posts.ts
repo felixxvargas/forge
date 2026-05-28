@@ -91,13 +91,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!ids.length) return res.status(400).json({ error: 'ids required' });
 
       let published = 0;
+      const errors: string[] = [];
       for (const id of ids) {
         try {
           const [post] = await sb<Array<{
             user_id: string; content: string; game_ids: string[];
             game_titles: string[]; images: string[]; url: string | null; status: string;
           }>>('GET', `/scheduled_posts?id=eq.${id}&status=in.(pending,failed)&select=*&limit=1`);
-          if (!post) continue;
+          if (!post) { errors.push(`${id}: not found or wrong status`); continue; }
 
           const gameIds = post.game_ids ?? [];
           const gameTitles = post.game_titles ?? [];
@@ -118,10 +119,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           published++;
         } catch (err) {
-          console.error(`Failed to run_selected post ${id}:`, err);
+          const msg = String(err);
+          console.error(`Failed to run_selected post ${id}:`, msg);
+          errors.push(`${id}: ${msg}`);
         }
       }
-      return res.json({ published });
+      return res.json({ published, errors });
     }
 
     if (action === 'create') {
