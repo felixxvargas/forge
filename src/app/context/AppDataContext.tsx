@@ -738,6 +738,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTopicPosts([]);
     setLikedPosts(new Set());
     setRepostedPosts(new Set());
+    // Clear forge auth keys so a subsequent signup on this device is treated as a new account
+    ['forge-access-token', 'forge-refresh-token', 'forge-user-id', 'forge-logged-in'].forEach(k => localStorage.removeItem(k));
   };
 
   const updateCurrentUser = async (data: Partial<any>) => {

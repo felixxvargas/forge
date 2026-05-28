@@ -17,10 +17,20 @@ interface Insight {
   approve_count: number;
   reject_count: number;
   submitted_at: string;
+  updated_at: string | null;
   approved_at: string | null;
   title: string | null;
   myVote: 'approve' | 'reject' | null;
   author: { id: string; handle: string; display_name: string; profile_picture: string | null } | null;
+}
+
+function insightDateLabel(submitted_at: string, updated_at: string | null): string {
+  const sub = new Date(submitted_at).getTime();
+  const upd = updated_at ? new Date(updated_at).getTime() : sub;
+  const isEdited = upd - sub > 60_000;
+  const d = new Date(isEdited ? updated_at! : submitted_at);
+  const label = isEdited ? 'Edited' : 'Submitted';
+  return `${label} ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
 interface GameInsightsSectionProps {
@@ -192,6 +202,9 @@ export function GameInsightsSection({ gameId, gameTitle, coverUrl, initialTab = 
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
                 </div>
+                <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+                  {insightDateLabel(insight.submitted_at, insight.updated_at)}
+                </p>
               </button>
             );
           })}

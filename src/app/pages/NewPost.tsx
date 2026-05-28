@@ -1529,9 +1529,9 @@ export function NewPost() {
         {/* Linked insight preview */}
         {linkedInsight && (
           <div className="mt-3 rounded-xl bg-card border border-accent/20 p-4">
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span className="text-xs font-semibold text-accent uppercase tracking-wide">Insight</span>
+              <span className="text-xs font-semibold text-accent uppercase tracking-wide">Game Insight</span>
               {linkedInsight.status === 'pending' && (
                 <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending Review</span>
               )}
@@ -1539,10 +1539,15 @@ export function NewPost() {
                 <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 uppercase tracking-wide">Approved</span>
               )}
             </div>
+            {(linkedInsight.game_title || urlGameTitle) && (
+              <p className="text-xs text-muted-foreground leading-snug mb-1">{linkedInsight.game_title || urlGameTitle}</p>
+            )}
             {linkedInsight.title && (
               <p className="text-sm font-semibold leading-snug mb-1">{linkedInsight.title}</p>
             )}
-            <p className={`leading-snug line-clamp-2 text-muted-foreground ${linkedInsight.title ? 'text-xs' : 'text-sm'}`}>{linkedInsight.query}</p>
+            <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
+              {linkedInsight.content || linkedInsight.query}
+            </p>
           </div>
         )}
 

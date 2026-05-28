@@ -2029,7 +2029,18 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium truncate max-w-[160px]">{insight.game_title}</span>
                     </div>
                     {insight.title && <p className="text-sm font-semibold leading-snug mb-1">{insight.title}</p>}
-                    <p className={`line-clamp-2 leading-snug ${insight.title ? 'text-xs text-muted-foreground' : 'text-sm font-medium'}`}>{insight.query}</p>
+                    <p className={`line-clamp-2 leading-snug mb-1.5 ${insight.title ? 'text-xs text-muted-foreground' : 'text-sm font-medium'}`}>{insight.query}</p>
+                    {insight.submitted_at && (
+                      <p className="text-[10px] text-muted-foreground/50">
+                        {(() => {
+                          const sub = new Date(insight.submitted_at).getTime();
+                          const upd = insight.updated_at ? new Date(insight.updated_at).getTime() : sub;
+                          const isEdited = upd - sub > 60_000;
+                          const d = new Date(isEdited ? insight.updated_at : insight.submitted_at);
+                          return `${isEdited ? 'Edited' : 'Submitted'} ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                        })()}
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>

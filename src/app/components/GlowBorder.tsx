@@ -9,16 +9,13 @@ interface GlowBorderProps {
 }
 
 export function GlowBorder({ active, children, className = '', radius = 12 }: GlowBorderProps) {
+  if (!active) return <>{children}</>;
   return (
-    <div className={`relative ${className}`}>
-      {active && (
-        <div
-          className="forge-glow-border absolute -inset-[1.5px]"
-          style={{ borderRadius: `${radius + 1.5}px`, zIndex: 0 }}
-          aria-hidden="true"
-        />
-      )}
-      <div className="relative" style={{ zIndex: 1 }}>
+    <div
+      className={`forge-glow-border ${className}`}
+      style={{ padding: '1.5px', borderRadius: `${radius + 1.5}px` }}
+    >
+      <div style={{ borderRadius: `${radius}px`, overflow: 'hidden' }}>
         {children}
       </div>
     </div>

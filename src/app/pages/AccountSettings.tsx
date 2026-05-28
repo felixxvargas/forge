@@ -21,6 +21,7 @@ export function AccountSettings() {
   const [accountActionStep, setAccountActionStep] = useState<AccountActionStep>('none');
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [accountActionLoading, setAccountActionLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const userEmail = session?.user?.email || currentUser?.email || 'Not available';
 
@@ -39,11 +40,21 @@ export function AccountSettings() {
   const handleDeleteAccount = async () => {
     if (!currentUser?.id || deleteConfirmText !== 'DELETE') return;
     setAccountActionLoading(true);
+    setDeleteError('');
     try {
-      await supabase.rpc('delete_user_account');
+      const { error } = await supabase.rpc('delete_user_account');
+      if (error) throw error;
+      // Clear all forge-specific localStorage so a fresh signup on this device is treated as new
+      const userId = currentUser.id;
+      [
+        'forge-access-token', 'forge-refresh-token', 'forge-user-id', 'forge-logged-in',
+        'forge-onboarding-complete', 'forge-linked-accounts', 'forge-oauth-intent',
+        'forge-linking-account', 'forge-save-linked-account', `forge-feed-${userId}`,
+      ].forEach(k => localStorage.removeItem(k));
       await signOut();
-      navigate('/feed');
-    } catch {
+      navigate('/login');
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Deletion failed. Please try again or contact support.');
       setAccountActionLoading(false);
     }
   };
@@ -329,10 +340,11 @@ export function AccountSettings() {
             <input
               type="text"
               value={deleteConfirmText}
-              onChange={e => setDeleteConfirmText(e.target.value)}
+              onChange={e => { setDeleteConfirmText(e.target.value); setDeleteError(''); }}
               placeholder="Type DELETE"
               className="w-full px-4 py-2.5 bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-destructive text-sm"
             />
+            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
             <div className="flex gap-3">
               <button onClick={() => setAccountActionStep('none')} className="flex-1 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors text-sm">Cancel</button>
               <button

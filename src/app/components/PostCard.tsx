@@ -128,6 +128,15 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [showRepostTray, setShowRepostTray] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [insightData, setInsightData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!post.insight_id) return;
+    fetch(`/api/insights/game-insights?insightId=${encodeURIComponent(post.insight_id)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setInsightData(d); })
+      .catch(() => {});
+  }, [post.insight_id]);
 
   // Poll state
   const currentUser = (context as any)?.currentUser;
@@ -600,18 +609,32 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
             ) : null}
             {isInsightPost && post.game_id ? (
               <button
-                onClick={e => { e.stopPropagation(); navigate(`/game/${post.game_id}?tab=insights`); }}
+                onClick={e => { e.stopPropagation(); navigate(`/game/${post.game_id}/insight/${post.insight_id}`); }}
                 className="w-full text-left rounded-xl p-3.5 mb-3 hover:opacity-90 transition-opacity"
                 style={{ border: '1px solid rgba(139,92,246,0.35)', background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(109,40,217,0.05) 100%)' }}
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1.5 mb-1.5">
                   <Sparkles className="w-3 h-3 text-accent" />
-                  <span className="text-xs font-semibold text-accent uppercase tracking-wide">AI Insight</span>
+                  <span className="text-xs font-semibold text-accent uppercase tracking-wide">Game Insight</span>
                 </div>
                 {post.game_title && (
-                  <p className="text-sm font-medium leading-snug">{post.game_title}</p>
+                  <p className="text-xs text-muted-foreground leading-snug mb-1">{post.game_title}</p>
                 )}
-                <p className="text-xs text-accent mt-2 font-medium">View Insight →</p>
+                {insightData ? (
+                  <>
+                    {insightData.title && (
+                      <p className="text-sm font-semibold leading-snug mb-1">{insightData.title}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
+                      {insightData.content || insightData.query}
+                    </p>
+                  </>
+                ) : (
+                  <div className="space-y-1.5 mt-1">
+                    <div className="h-3 bg-muted/40 rounded w-3/4 animate-pulse" />
+                    <div className="h-3 bg-muted/30 rounded w-1/2 animate-pulse" />
+                  </div>
+                )}
               </button>
             ) : previewUrl ? (
               <LinkPreview url={previewUrl} />

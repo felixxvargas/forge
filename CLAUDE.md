@@ -115,3 +115,32 @@ npm run build:android  # vite build → dist/, then npx cap sync android
 - **Sentry**: `@sentry/react` is initialized in `src/main.tsx` (Android/Vite only). Web/Next.js currently has no Sentry init — migrate to `@sentry/nextjs` for full coverage.
 - **Stripe**: Payment intent server-side in `api/stripe/create-payment-intent.ts`; fulfilled via webhook in `api/stripe/webhook.ts`.
 - **hCaptcha**: Bot protection on signup; site key is `VITE_HCAPTCHA_SITE_KEY`.
+
+### Game Insights System
+- Tables: `game_insights` (id, user_id → `public.profiles`, game_id, game_title, query, title, content, status, approve_count, reject_count, submitted_at, updated_at, approved_at), `insight_comments`, `game_insight_votes`
+- `game_insights.user_id` FK references `public.profiles(id)` — NOT `auth.users`. PostgREST embedded joins require the FK to point to the public schema.
+- API routes in `api/insights/`: `game-insights.ts` (GET by gameId/insightId/userId; POST creates insight via Gemini), `game-insight-votes.ts`, `game-insight-comments.ts`
+- Components: `src/app/components/GameInsightsSection.tsx` (Approved / Pending Review tabs), `src/app/pages/InsightDetail.tsx`
+- Detail route: `app/(app)/game/[gameId]/insight/[insightId]/page.tsx`
+- `badge_insight_author_at` on `profiles` is set server-side in the POST handler when a user submits their first insight
+
+### Badge System
+- Badge fields on `profiles` table: `badge_early_access_at`, `badge_insight_author_at`, `badge_bug_basher_at` (all `timestamptz`)
+- `badge_bug_basher_at` is set client-side in `FeedbackPage.tsx` via `updateCurrentUser` on first bug report submission
+- Badge UI: `BadgeChip` buttons in `src/app/pages/Profile.tsx` → `BadgeModal` at `src/app/components/BadgeModal.tsx`
+- `BadgeModal` props: `name`, `earnedAt: Date | null`, `description`, `icon: React.ReactNode`, `onClose`; clicking outside closes it
+
+### Admin Dashboard
+- Stats endpoint: `api/admin/stats.ts` — Promise.all of count queries; returns `{ users, posts, insights: { total, edits, authors, contributors }, ... }`
+- UI: `src/app/pages/Admin.tsx` — "Game Insights" stat section with 4 cards after the Content section
+
+### Account Deletion RPC
+- Migration: `supabase/migrations/20260528000007_delete_user_account.sql` — SECURITY DEFINER function `public.delete_user_account()` deletes all user rows across tables then removes the `auth.users` record
+- Called via `supabase.rpc('delete_user_account')` from `src/app/pages/Settings.tsx`
+
+### GlowBorder Component
+- `src/app/components/GlowBorder.tsx` — animating conic-gradient border (purple → pink, 4s rotation)
+- Padding approach: outer div has `.forge-glow-border` class + `padding: 1.5px`; inner div uses `overflow: hidden` + matching `borderRadius`; children's `bg-card` covers the gradient interior so only the 1.5px strip shows as the border
+- When `active=false`, renders children unwrapped (no wrapper div)
+- CSS lives in `app/globals.css`: `@property --forge-glow-angle`, `@keyframes forge-glow-rotate`, `.forge-glow-border`
+- Used in `src/app/components/FeedInsightSearch.tsx` to animate the Gemini loading state
