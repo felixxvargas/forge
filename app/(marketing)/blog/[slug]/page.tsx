@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { blogPosts, getPost } from '@/content/blog/posts';
 import './blog-post.css';
 
+export const revalidate = 3600;
+
 export function generateStaticParams() {
   return blogPosts.map(p => ({ slug: p.slug }));
 }
@@ -13,7 +15,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const post = getPost(slug);
-  if (!post) return { title: 'Post | Forge Blog' };
+  if (!post || new Date(post.date) > new Date()) return { title: 'Post | Forge Blog' };
   return {
     title: `${post.title} | Forge Blog`,
     description: post.excerpt,
@@ -39,7 +41,7 @@ function formatDate(iso: string): string {
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = getPost(slug);
-  if (!post) notFound();
+  if (!post || new Date(post.date) > new Date()) notFound();
 
   const Content = post.content;
 

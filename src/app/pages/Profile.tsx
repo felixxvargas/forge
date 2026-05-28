@@ -482,7 +482,13 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   // so the empty Lists section (including "No game lists yet") is never shown.
   const _glCheck = (profileUser as any)?.game_lists ?? (profileUser as any)?.gameLists ?? {};
   const profileHasLists = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
-  const timelineVisible = isOwnProfile || (profileUser as any)?.show_gaming_timeline !== false;
+  const _timelineUnlocked = (() => {
+    const now = Date.now();
+    const premiumDate = Date.UTC(2026, 5, 1); // June 1, 2026
+    const allDate = Date.UTC(2026, 7, 1);     // August 1, 2026
+    return now >= allDate || (now >= premiumDate && !!(currentUser as any)?.is_premium);
+  })();
+  const timelineVisible = _timelineUnlocked && (isOwnProfile || (profileUser as any)?.show_gaming_timeline !== false);
   const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists')
     ? 'posts'
     : (!timelineVisible && activeTab === 'timeline')

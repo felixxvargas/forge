@@ -96,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const [post] = await sb<Array<{
             user_id: string; content: string; game_ids: string[];
             game_titles: string[]; images: string[]; url: string | null; status: string;
-          }>>('GET', `/scheduled_posts?id=eq.${id}&status=eq.pending&select=*&limit=1`);
+          }>>('GET', `/scheduled_posts?id=eq.${id}&status=in.(pending,failed)&select=*&limit=1`);
           if (!post) continue;
 
           const gameIds = post.game_ids ?? [];

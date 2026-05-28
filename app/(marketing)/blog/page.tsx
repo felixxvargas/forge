@@ -21,6 +21,9 @@ function formatDate(iso: string): string {
 }
 
 export default function BlogIndexPage() {
+  const now = new Date();
+  const visiblePosts = blogPosts.filter(p => new Date(p.date) <= now);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       {/* Header */}
@@ -31,7 +34,7 @@ export default function BlogIndexPage() {
 
       {/* Post list */}
       <div className="space-y-6">
-        {blogPosts.map((post) => (
+        {visiblePosts.map((post) => (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}

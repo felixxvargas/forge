@@ -245,6 +245,7 @@ export function AdminScheduledPosts() {
                 <input
                   type="datetime-local"
                   className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                  style={{ colorScheme: 'dark' }}
                   value={compose.scheduled_at}
                   onChange={e => setCompose(c => ({ ...c, scheduled_at: e.target.value }))}
                 />
@@ -310,12 +311,12 @@ export function AdminScheduledPosts() {
               {scheduledPosts.map(post => (
                 <li
                   key={post.id}
-                  className={`flex items-start gap-4 px-5 py-3 ${runMode && post.status === 'pending' ? 'cursor-pointer hover:bg-secondary/30 transition-colors' : ''}`}
-                  onClick={runMode && post.status === 'pending' ? () => setRunOrder(o =>
+                  className={`flex items-start gap-4 px-5 py-3 ${runMode && (post.status === 'pending' || post.status === 'failed') ? 'cursor-pointer hover:bg-secondary/30 transition-colors' : ''}`}
+                  onClick={runMode && (post.status === 'pending' || post.status === 'failed') ? () => setRunOrder(o =>
                     o.includes(post.id) ? o.filter(x => x !== post.id) : [...o, post.id]
                   ) : undefined}
                 >
-                  {runMode && post.status === 'pending' && (
+                  {runMode && (post.status === 'pending' || post.status === 'failed') && (
                     <div
                       className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full border text-xs font-bold transition-colors mt-0.5"
                       style={runOrder.includes(post.id)
@@ -328,14 +329,14 @@ export function AdminScheduledPosts() {
                   )}
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {post.author?.handle && (
+                        <span className="text-sm font-semibold">@{post.author.handle}</span>
+                      )}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         post.status === 'pending' ? 'bg-amber-400/10 text-amber-400' :
                         post.status === 'published' ? 'bg-accent/10 text-accent' :
                         'bg-red-400/10 text-red-400'
                       }`}>{post.status}</span>
-                      {post.author?.handle && (
-                        <span className="text-xs text-muted-foreground/60">@{post.author.handle}</span>
-                      )}
                       <span className="text-xs text-muted-foreground">
                         {new Date(post.scheduled_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                       </span>
@@ -355,6 +356,7 @@ export function AdminScheduledPosts() {
                           <input
                             type="datetime-local"
                             className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                            style={{ colorScheme: 'dark' }}
                             value={editDraft.scheduled_at}
                             min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
                             onChange={e => setEditDraft(d => ({ ...d, scheduled_at: e.target.value }))}
