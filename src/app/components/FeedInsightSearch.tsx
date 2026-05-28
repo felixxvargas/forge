@@ -13,6 +13,7 @@ type SearchState = 'idle' | 'loading' | 'result' | 'submitting' | 'submitted';
 interface SelectedGame {
   id: string;
   title: string;
+  coverUrl?: string;
 }
 
 interface GeminiResult {
@@ -28,7 +29,7 @@ const CLAMP_STYLE: React.CSSProperties = {
   overflow: 'hidden',
 };
 
-export function FeedInsightSearch() {
+export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active: boolean) => void }) {
   const { isAuthenticated } = useAppData() as any;
   const navigate = useNavigate();
 
@@ -39,6 +40,9 @@ export function FeedInsightSearch() {
   const [insightId, setInsightId] = useState<string | null>(null);
 
   const [expanded, setExpanded] = useState(false);
+  const [followUp, setFollowUp] = useState('');
+  const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user'|'assistant'; content: string; timestamp: string}>>([]);
   const [editingQuery, setEditingQuery] = useState(false);
   const [editQueryText, setEditQueryText] = useState('');
   const [editingResponse, setEditingResponse] = useState(false);
@@ -50,6 +54,9 @@ export function FeedInsightSearch() {
   const [gameSearching, setGameSearching] = useState(false);
   const [atGameQuery, setAtGameQuery] = useState('');
   const [atMode, setAtMode] = useState(false);
+
+  const answerRef = useRef<HTMLParagraphElement>(null);
+  const [isClamped, setIsClamped] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gameSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,6 +88,18 @@ export function FeedInsightSearch() {
     if (showGameSearch) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showGameSearch]);
+
+  useEffect(() => {
+    const active = state !== 'idle' || query.trim().length > 0;
+    onActiveChange?.(active);
+  }, [state, query, onActiveChange]);
+
+  useEffect(() => {
+    if (expanded) return;
+    const el = answerRef.current;
+    if (!el) return;
+    setIsClamped(el.scrollHeight > el.clientHeight);
+  }, [result?.answer, expanded]);
 
   const searchGames = useCallback(async (q: string) => {
     if (!q.trim()) { setGameResults([]); return; }
@@ -140,7 +159,8 @@ export function FeedInsightSearch() {
       setAtMode(false);
       setAtGameQuery('');
     }
-    setSelectedGame({ id: String(game.id), title: game.title });
+    const cover = game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url ?? game.artwork?.[0]?.url;
+    setSelectedGame({ id: String(game.id), title: game.title, coverUrl: cover });
     setShowGameSearch(false);
     setGameQuery('');
     setGameResults([]);
@@ -283,6 +303,9 @@ export function FeedInsightSearch() {
     setEditingQuery(false);
     setEditingResponse(false);
     setExpanded(false);
+    setFollowUp('');
+    setFollowUpLoading(false);
+    setConversationHistory([]);
   };
 
   const saveEditQuery = () => {
@@ -296,6 +319,44 @@ export function FeedInsightSearch() {
     if (result) setResult({ ...result, answer: editResponseText });
     setEditingResponse(false);
     setExpanded(false);
+  };
+
+  const sendFollowUp = async () => {
+    if (!followUp.trim() || !selectedGame || followUpLoading || !result) return;
+    const followUpText = followUp.trim();
+    setFollowUp('');
+    setFollowUpLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const now = new Date().toISOString();
+      const baseHistory = conversationHistory.length === 0 ? [
+        { role: 'user' as const, content: query, timestamp: now },
+        { role: 'assistant' as const, content: result.answer, timestamp: now },
+      ] : conversationHistory;
+      const messages = [...baseHistory, { role: 'user' as const, content: followUpText, timestamp: now }];
+
+      const res = await fetch('/api/gemini/game-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ question: followUpText, gameId: selectedGame.id, gameTitle: selectedGame.title, messages }),
+      });
+
+      if (res.status === 429) { toast.error((await res.json()).error || 'Daily limit reached'); return; }
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to get answer');
+
+      const data = await res.json();
+      setConversationHistory([...messages, { role: 'assistant' as const, content: data.answer, timestamp: new Date().toISOString() }]);
+      setResult(prev => prev ? { ...prev, answer: data.answer, remaining: data.remaining } : prev);
+      setIsClamped(false);
+      setExpanded(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to get follow-up answer');
+    } finally {
+      setFollowUpLoading(false);
+    }
   };
 
   const isDisabled = !query.trim();
@@ -326,6 +387,9 @@ export function FeedInsightSearch() {
             <div className="flex-1 min-w-0">
               {selectedGame ? (
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/15 rounded-full text-xs font-medium text-accent">
+                  {selectedGame.coverUrl
+                    ? <img src={selectedGame.coverUrl} alt="" className="w-4 h-[22px] rounded object-cover shrink-0" />
+                    : <Gamepad2 className="w-3 h-3 shrink-0" />}
                   <span className="truncate max-w-[160px]">{selectedGame.title}</span>
                   <button onClick={() => setSelectedGame(null)} className="shrink-0 hover:text-accent/70 transition-colors">
                     <X className="w-3 h-3" />
@@ -504,12 +568,13 @@ export function FeedInsightSearch() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p
+                    ref={answerRef}
                     className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
                     style={expanded ? undefined : CLAMP_STYLE}
                   >
                     {result.answer}
                   </p>
-                  {result.answer.length > 400 && (
+                  {(isClamped || expanded) && (
                     <button
                       onClick={() => setExpanded(e => !e)}
                       className="mt-1 text-xs text-accent hover:text-accent/70 transition-colors"
@@ -534,7 +599,9 @@ export function FeedInsightSearch() {
               <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/50 flex-wrap">
                 {selectedGame && (
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 rounded-full text-xs font-medium text-accent">
-                    <Gamepad2 className="w-3 h-3" />
+                    {selectedGame.coverUrl
+                      ? <img src={selectedGame.coverUrl} alt="" className="w-4 h-[22px] rounded object-cover shrink-0" />
+                      : <Gamepad2 className="w-3 h-3 shrink-0" />}
                     <span className="truncate max-w-[130px]">{selectedGame.title}</span>
                   </div>
                 )}
@@ -583,7 +650,7 @@ export function FeedInsightSearch() {
                   </button>
                   {selectedGame && insightId && (
                     <button
-                      onClick={() => { navigate(`/game/${selectedGame.id}?tab=insights`); reset(); }}
+                      onClick={() => { navigate(`/game/${selectedGame.id}`); reset(); }}
                       className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
                     >
                       View pending insight
@@ -599,6 +666,30 @@ export function FeedInsightSearch() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Follow-up input */}
+      {state === 'result' && result && !editingResponse && !editingQuery && (
+        <div className="bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
+          <input
+            type="text"
+            value={followUp}
+            onChange={e => setFollowUp(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendFollowUp(); } }}
+            placeholder="Ask a follow-up..."
+            className="flex-1 bg-transparent text-sm placeholder-muted-foreground focus:outline-none"
+            disabled={followUpLoading}
+          />
+          <button
+            onClick={sendFollowUp}
+            disabled={!followUp.trim() || followUpLoading}
+            className="shrink-0 flex items-center justify-center w-7 h-7 rounded-lg border border-accent/50 hover:bg-accent/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {followUpLoading
+              ? <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              : <Send className="w-3.5 h-3.5 text-accent" />}
+          </button>
         </div>
       )}
 

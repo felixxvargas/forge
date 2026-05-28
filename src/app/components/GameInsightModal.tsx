@@ -408,7 +408,7 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
                     Share as Post
                   </button>
                   <button
-                    onClick={() => { navigate(`/game/${selectedGame.id}?tab=insights`); onClose(); }}
+                    onClick={() => { navigate(`/game/${selectedGame.id}`); onClose(); }}
                     className="w-full h-10 rounded-xl bg-secondary text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
                   >
                     View in {selectedGame.title} Wiki

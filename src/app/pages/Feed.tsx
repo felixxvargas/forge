@@ -19,6 +19,7 @@ import ForgeSVG from '../../assets/forge-logo.svg?react';
 import { BetaTag } from '../components/ui/BetaTag';
 import { FeedInsightSearch } from '../components/FeedInsightSearch';
 import { PostCardSkeleton } from '../components/PostCardSkeleton';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Reverse map: Bluesky handle → topic account (built once at module level)
 const BSKY_HANDLE_TO_TOPIC: Record<string, any> = {};
@@ -70,6 +71,7 @@ export function Feed() {
   const [dynamicPosts, setDynamicPosts] = useState<any[] | null>(null);
   const [groupNewPostCounts, setGroupNewPostCounts] = useState<Record<string, number>>({});
   const navigate = useNavigate();
+  const [searchActive, setSearchActive] = useState(false);
 
   // Populate profileCache for topic accounts so avatars load for all users (including guests)
   useTopicAccountProfiles(topicAccounts.map(a => a.id));
@@ -404,8 +406,16 @@ export function Feed() {
   const feedContent = (
     <div className="w-full px-4 lg:px-6 py-3 lg:py-6">
       {/* AI Insight Search Bar */}
-      {isAuthenticated && <FeedInsightSearch />}
+      {isAuthenticated && <FeedInsightSearch onActiveChange={setSearchActive} />}
 
+      <AnimatePresence>
+        {!searchActive && (
+          <motion.div
+            key="feed-main"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ opacity: 0, y: -6, transition: { duration: 0.18, ease: 'easeIn' } }}
+          >
       {/* Feed selector */}
       <div className="mb-3 lg:mb-6 relative">
         <button
@@ -582,6 +592,9 @@ export function Feed() {
           </p>
         </div>
       )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 
