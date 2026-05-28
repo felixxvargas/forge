@@ -268,7 +268,7 @@ export function InsightDetail() {
         {/* Game title + badge */}
         <div className="flex items-center gap-2 mb-4">
           <button
-            onClick={() => navigate(`/game/${gameId}?tab=insights`)}
+            onClick={() => navigate(`/game/${gameId}`)}
             className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
           >
             {insight.game_title}
@@ -288,19 +288,30 @@ export function InsightDetail() {
 
         {/* Title (auto-generated headline) */}
         {insight.title && (
-          <h1 className="text-xl font-bold leading-snug mb-3">{insight.title}</h1>
+          <h1 className="text-xl font-bold leading-snug mb-1">{insight.title}</h1>
         )}
 
-        {/* Query */}
-        <div className="bg-card border border-border rounded-xl p-5 mb-3">
-          {insight.author && (
-            <div className="flex items-center gap-2 mb-3">
-              <ProfileAvatar username={insight.author.handle} profilePicture={insight.author.profile_picture ?? undefined} size="sm" />
-              <span className="text-xs text-muted-foreground">@{insight.author.handle}</span>
-            </div>
-          )}
-          <p className="text-base font-semibold leading-snug">{insight.query}</p>
-        </div>
+        {/* Approved byline — author + date, no query exposed */}
+        {insight.status === 'approved' && insight.author && (
+          <p className="text-xs text-muted-foreground mb-4">
+            by @{insight.author.handle}
+            {' · '}
+            {new Date(insight.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+        )}
+
+        {/* Query card — pending only, so reviewers see what was asked */}
+        {insight.status === 'pending' && (
+          <div className="bg-card border border-border rounded-xl p-5 mb-3">
+            {insight.author && (
+              <div className="flex items-center gap-2 mb-3">
+                <ProfileAvatar username={insight.author.handle} profilePicture={insight.author.profile_picture ?? undefined} size="sm" />
+                <span className="text-xs text-muted-foreground">@{insight.author.handle}</span>
+              </div>
+            )}
+            <p className="text-base font-semibold leading-snug">{insight.query}</p>
+          </div>
+        )}
 
         {/* Response */}
         <div className="bg-card border rounded-xl p-5 mb-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>

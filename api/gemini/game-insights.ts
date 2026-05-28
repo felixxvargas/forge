@@ -55,9 +55,10 @@ async function checkAndIncrementUsage(userId: string, userToken: string): Promis
 
 // Single-turn: initial question → headline + category + answer
 async function queryGeminiFirst(question: string, gameTitle: string): Promise<{ answer: string; title: string; category: string }> {
-  const prompt = `You are a gaming expert helping players with the game "${gameTitle}".
+  const safeTitle = gameTitle.replace(/"/g, "'");
+  const prompt = `You are a gaming expert helping players with the game "${safeTitle}".
 Answer the following question concisely and accurately. Focus on practical, actionable information.
-If the question is not relevant to gaming or "${gameTitle}", say so briefly.
+If the question is not relevant to gaming or "${safeTitle}", say so briefly.
 
 Question: ${question}
 
@@ -80,11 +81,12 @@ async function queryGeminiContinue(
   gameTitle: string,
   history: ConversationMessage[]
 ): Promise<string> {
+  const safeTitle = gameTitle.replace(/"/g, "'");
   const historyText = history
     .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
     .join('\n\n');
 
-  const prompt = `You are a gaming expert helping develop a detailed insight about "${gameTitle}".
+  const prompt = `You are a gaming expert helping develop a detailed insight about "${safeTitle}".
 Your goal is to help the user refine and expand their insight through conversation. Keep each response focused, factual, and 2-4 paragraphs. Plain text, no markdown. Build naturally on the prior conversation.
 
 ${historyText}
@@ -106,8 +108,10 @@ async function callGeminiAPI(prompt: string): Promise<string> {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
         safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HARASSMENT',       threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
         ],
       }),
     }
@@ -156,6 +160,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!question?.trim()) return res.status(400).json({ error: 'question is required' });
   if (!gameId) return res.status(400).json({ error: 'gameId is required — link a game before searching' });
   if (!gameTitle) return res.status(400).json({ error: 'gameTitle is required' });
+  if (question.length > 500) return res.status(400).json({ error: 'Question must be under 500 characters' });
+  if (gameTitle.length > 100) return res.status(400).json({ error: 'Game title too long' });
 
   const isMultiTurn = Array.isArray(messages) && messages.length > 0;
 

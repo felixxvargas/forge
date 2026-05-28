@@ -41,8 +41,10 @@ async function callGemini(prompt: string): Promise<string> {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
         safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HARASSMENT',       threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
         ],
       }),
     }
@@ -55,11 +57,12 @@ async function callGemini(prompt: string): Promise<string> {
 }
 
 function buildContinuationPrompt(gameTitle: string, history: ConversationMessage[], newMessage: string): string {
+  const safeTitle = gameTitle.replace(/"/g, "'");
   const historyText = history
     .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
     .join('\n\n');
 
-  return `You are a gaming expert helping develop a detailed insight about "${gameTitle}".
+  return `You are a gaming expert helping develop a detailed insight about "${safeTitle}".
 Help the user refine and expand their insight through conversation. Keep each response focused, factual, and 2-4 paragraphs. Plain text, no markdown. Build naturally on the prior conversation.
 
 ${historyText}
@@ -100,10 +103,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!gameId || !gameTitle || !message?.trim()) {
       return res.status(400).json({ error: 'gameId, gameTitle, and message are required' });
     }
+    if (message.length > 500) return res.status(400).json({ error: 'Message must be under 500 characters' });
+    if (gameTitle.length > 100) return res.status(400).json({ error: 'Game title too long' });
+
+    const safeTitle = gameTitle.replace(/"/g, "'");
 
     try {
       // Build a first-turn prompt (identical to the existing single-turn prompt so the insight can be published from message 1)
-      const firstPrompt = `You are a gaming expert helping players with the game "${gameTitle}".
+      const firstPrompt = `You are a gaming expert helping players with the game "${safeTitle}".
 Answer the following question concisely and accurately. Focus on practical, actionable information.
 
 Question: ${message.trim()}
@@ -166,6 +173,12 @@ Category guide: characters = NPCs, enemies, bosses, companions; objects = items,
 
       // Status transitions: publish or abandon
       if (action === 'publish') {
+        if (insightId) {
+          const linked = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
+          if (!linked[0] || linked[0].user_id !== user.id) {
+            return res.status(403).json({ error: 'Insight not yours' });
+          }
+        }
         await sb('PATCH', `/insight_conversations?id=eq.${conversationId}`, {
           status: 'published',
           insight_id: insightId ?? null,

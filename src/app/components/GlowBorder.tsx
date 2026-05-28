@@ -15,7 +15,7 @@ export function GlowBorder({ active, children, className = '', radius = 12 }: Gl
       className={`forge-glow-border ${className}`}
       style={{ padding: '1.5px', borderRadius: `${radius + 1.5}px` }}
     >
-      <div style={{ borderRadius: `${radius}px`, overflow: 'hidden' }}>
+      <div style={{ borderRadius: `${radius}px`, overflow: 'hidden', background: 'var(--background)' }}>
         {children}
       </div>
     </div>
