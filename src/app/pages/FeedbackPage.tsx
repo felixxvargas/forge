@@ -19,7 +19,7 @@ function escapeHtml(s: string): string {
 export function FeedbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentUser } = useAppData();
+  const { currentUser, updateCurrentUser } = useAppData() as any;
   const [type, setType] = useState<FeedbackType>(() => {
     const param = searchParams.get('type');
     if (param === 'bug' || param === 'general') return param;
@@ -52,6 +52,10 @@ export function FeedbackPage() {
         created_at: new Date().toISOString(),
       });
       setSubmitted(true);
+      // Grant Bug Basher badge on first-ever bug report
+      if (type === 'bug' && currentUser?.id && !(currentUser as any).badge_bug_basher_at) {
+        updateCurrentUser?.({ badge_bug_basher_at: new Date().toISOString() });
+      }
       // Fire-and-forget email notification
       fetch('/api/emails/send-notification', {
         method: 'POST',

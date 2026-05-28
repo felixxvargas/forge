@@ -543,12 +543,15 @@ export function GameDetail() {
           {game.description && (
             <div>
               <div className="relative">
-                <p className={`text-sm text-muted-foreground leading-relaxed ${descExpanded ? '' : 'line-clamp-4'}`}>
+                <p
+                  className={`text-sm text-muted-foreground leading-relaxed ${descExpanded ? '' : 'line-clamp-4'}`}
+                  style={!descExpanded ? {
+                    WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                    maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                  } : undefined}
+                >
                   {game.description}
                 </p>
-                {!descExpanded && (
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-                )}
               </div>
               <button
                 type="button"

@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from '@/compat/router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon, FlaskConical } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon, FlaskConical, Bug } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
+import { BadgeModal } from '../components/BadgeModal';
 import { isMentorHandle } from '../utils/mentors';
 import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
 import { ShareModal } from '../components/ShareModal';
@@ -154,6 +155,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   // Insight contributor badge — state only; effect placed after profileUser is declared below
   const [hasInsightContribution, setHasInsightContribution] = useState(false);
+  const [activeBadge, setActiveBadge] = useState<{ name: string; earnedAt: Date | null; description: string; icon: React.ReactNode } | null>(null);
 
 
   // Scroll to top only when navigating to a different profile, not on remount of the same one
@@ -699,22 +701,60 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
       {(() => {
         const isForgeSprite = (profileUser as any)?.onboarding_complete;
-        const joinYear = profileUser?.created_at ? new Date(profileUser.created_at).getFullYear() : null;
+        const joinDate = profileUser?.created_at ? new Date(profileUser.created_at) : null;
+        const joinYear = joinDate?.getFullYear() ?? null;
         const isEarlyAdopter = joinYear === 2026;
         const isMentor = isMentorHandle(profileUser.handle || '');
         const ALPHA_CUTOFF = new Date('2026-05-19');
         const isAlphaTester = !!profileUser.created_at && (profileUser as any).account_type !== 'topic' && new Date(profileUser.created_at) < ALPHA_CUTOFF;
-        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester && !hasInsightContribution) return null;
+        const bugBasherAt = (profileUser as any)?.badge_bug_basher_at ? new Date((profileUser as any).badge_bug_basher_at) : null;
+        const hasBugBasher = !!bugBasherAt;
+        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester && !hasInsightContribution && !hasBugBasher) return null;
+
+        const BadgeChip = ({ onClick, color, children }: { onClick: () => void; color: string; children: React.ReactNode }) => (
+          <button
+            onClick={onClick}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition-opacity hover:opacity-80 ${color}`}
+          >
+            {children}
+          </button>
+        );
+
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
             {isAlphaTester && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-fuchsia-500/10 border border-fuchsia-500/30 rounded-full">
+              <BadgeChip
+                color="bg-fuchsia-500/10 border-fuchsia-500/30"
+                onClick={() => setActiveBadge({
+                  name: 'Alpha Tester',
+                  earnedAt: joinDate,
+                  description: 'Joined Forge during the closed alpha before public launch. Alpha Testers helped shape the app by exploring early features and reporting issues before anyone else.',
+                  icon: <FlaskConical className="w-6 h-6 text-fuchsia-300" />,
+                })}
+              >
                 <FlaskConical className="w-3.5 h-3.5 text-fuchsia-300" />
                 <span className="text-xs font-semibold text-fuchsia-300">Alpha Tester</span>
-              </div>
+              </BadgeChip>
             )}
             {isForgeSprite && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 rounded-full">
+              <BadgeChip
+                color="bg-violet-500/10 border-violet-500/30"
+                onClick={() => setActiveBadge({
+                  name: 'Forge Sprite',
+                  earnedAt: joinDate,
+                  description: 'Completed the full Forge onboarding experience. Forge Sprites have personalized their profile and are fully set up to connect with the gaming community.',
+                  icon: (
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-violet-300">
+                      <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
+                      <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
+                      <path d="M11 12c-2 2-6 6-3 8 2 1 4-3 3-8z" opacity="0.7"/>
+                      <path d="M13 12c2 2 6 6 3 8-2 1-4-3-3-8z" opacity="0.7"/>
+                      <ellipse cx="12" cy="13" rx="1.2" ry="2.5"/>
+                      <circle cx="12" cy="9" r="1.8"/>
+                    </svg>
+                  ),
+                })}
+              >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-violet-300 shrink-0">
                   <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
                   <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
@@ -724,27 +764,69 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   <circle cx="12" cy="9" r="1.8"/>
                 </svg>
                 <span className="text-xs font-semibold text-violet-300">Forge Sprite</span>
-              </div>
+              </BadgeChip>
             )}
             {isEarlyAdopter && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
+              <BadgeChip
+                color="bg-amber-500/10 border-amber-500/30"
+                onClick={() => setActiveBadge({
+                  name: 'Early Adopter',
+                  earnedAt: joinDate,
+                  description: "Joined Forge in its first year. Early Adopters were among the first to discover and believe in the community, helping it grow from the very beginning.",
+                  icon: <Sparkles className="w-6 h-6 text-amber-400" />,
+                })}
+              >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-xs font-semibold text-amber-400">Early Adopter</span>
-              </div>
+              </BadgeChip>
             )}
             {isMentor && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
+              <BadgeChip
+                color="bg-amber-500/10 border-amber-500/30"
+                onClick={() => setActiveBadge({
+                  name: 'Mentor',
+                  earnedAt: joinDate,
+                  description: 'Recognized as a Forge Mentor for guiding new members. Mentors volunteer their time to help newcomers get oriented and feel welcome in the community.',
+                  icon: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-amber-400">
+                      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                    </svg>
+                  ),
+                })}
+              >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-amber-400 shrink-0">
                   <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
                 </svg>
                 <span className="text-xs font-semibold text-amber-400">Mentor</span>
-              </div>
+              </BadgeChip>
             )}
             {hasInsightContribution && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/30 rounded-full">
+              <BadgeChip
+                color="bg-accent/10 border-accent/30"
+                onClick={() => setActiveBadge({
+                  name: 'Insight Author',
+                  earnedAt: joinDate,
+                  description: 'Contributed at least one Game Insight to the Forge knowledge base. Insight Authors share their gaming expertise to help the whole community learn and discover.',
+                  icon: <Sparkles className="w-6 h-6 text-accent" />,
+                })}
+              >
                 <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" />
                 <span className="text-xs font-semibold text-accent">Insight Author</span>
-              </div>
+              </BadgeChip>
+            )}
+            {hasBugBasher && (
+              <BadgeChip
+                color="bg-red-500/10 border-red-500/30"
+                onClick={() => setActiveBadge({
+                  name: 'Bug Basher',
+                  earnedAt: bugBasherAt,
+                  description: 'Reported a bug to help improve Forge. Bug Bashers take the time to identify and document issues, making the app better for every player.',
+                  icon: <Bug className="w-6 h-6 text-red-400" />,
+                })}
+              >
+                <Bug className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <span className="text-xs font-semibold text-red-400">Bug Basher</span>
+              </BadgeChip>
             )}
           </div>
         );
@@ -2193,6 +2275,16 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             </button>
           )}
         </div>
+      )}
+
+      {activeBadge && (
+        <BadgeModal
+          name={activeBadge.name}
+          earnedAt={activeBadge.earnedAt}
+          description={activeBadge.description}
+          icon={activeBadge.icon}
+          onClose={() => setActiveBadge(null)}
+        />
       )}
     </div>
   );

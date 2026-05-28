@@ -308,7 +308,7 @@ export function FeedInsightSearch() {
               value={query}
               onChange={handleQueryChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask Forge about any game"
+              placeholder={selectedGame ? `Ask Forge about ${selectedGame.title}` : 'Ask Forge about any game'}
               rows={1}
               className="w-full bg-transparent text-sm placeholder-muted-foreground resize-none focus:outline-none leading-6"
               style={{ minHeight: '1.5rem', maxHeight: 'calc(1.5rem * 4 + 1rem)', overflowY: 'hidden' }}
