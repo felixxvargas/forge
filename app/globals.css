@@ -30,7 +30,7 @@ input, textarea, select { font-size: max(16px, 1em); }
   #__next { width: 100%; }
 }
 
-/* Forge glow border — rotating conic gradient animation */
+/* Forge AI thinking border — sepia sweep animation inspired by BorderGlow (React Bits) */
 @property --forge-glow-angle {
   syntax: '<angle>';
   inherits: false;
@@ -41,14 +41,54 @@ input, textarea, select { font-size: max(16px, 1em); }
   to { --forge-glow-angle: 360deg; }
 }
 
+/* Outer wrapper: drives the sweep via CSS variable */
 .forge-glow-border {
-  background: conic-gradient(
-    from var(--forge-glow-angle),
-    #7c3aed,
-    #E7FFC4,
-    #7c3aed,
-    #E7FFC4,
-    #7c3aed
+  position: relative;
+  isolation: isolate;
+  border: 1px solid hsl(38deg 70% 60% / 28%);
+  border-radius: var(--forge-glow-radius, 12px);
+  animation: forge-glow-rotate 3s linear infinite;
+}
+
+/* Edge-light span: extends 20px outside the card, masked to a narrow sweep cone */
+.forge-glow-border > .forge-glow-edge-light {
+  position: absolute;
+  inset: -20px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  mask-image: conic-gradient(
+    from var(--forge-glow-angle) at center,
+    black 2.5%,
+    transparent 11%,
+    transparent 89%,
+    black 97.5%
   );
-  animation: forge-glow-rotate 4s linear infinite;
+  mix-blend-mode: plus-lighter;
+}
+
+/* The actual glow lives on ::before, which sits at the card boundary */
+.forge-glow-border > .forge-glow-edge-light::before {
+  content: "";
+  position: absolute;
+  inset: 20px;
+  border-radius: var(--forge-glow-radius, 12px);
+  box-shadow:
+    inset 0 0 0 1px   hsl(38deg 75% 68% / 100%),
+    inset 0 0 2px  0  hsl(38deg 75% 68% / 65%),
+    inset 0 0 6px  0  hsl(38deg 75% 68% / 45%),
+    inset 0 0 14px 0  hsl(38deg 75% 68% / 28%),
+    inset 0 0 30px 2px hsl(38deg 75% 68% / 14%),
+    0 0 1px  0   hsl(38deg 75% 68% / 65%),
+    0 0 5px  0   hsl(38deg 75% 68% / 42%),
+    0 0 14px 0   hsl(38deg 75% 68% / 24%),
+    0 0 30px 2px hsl(38deg 75% 68% / 12%);
+}
+
+/* Inner content sits above the edge-light layer */
+.forge-glow-border > .forge-glow-inner {
+  position: relative;
+  z-index: 2;
+  border-radius: var(--forge-glow-radius, 12px);
+  overflow: hidden;
 }

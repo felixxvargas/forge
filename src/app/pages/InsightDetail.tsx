@@ -347,7 +347,7 @@ export function InsightDetail() {
         {/* Game title + badge */}
         <div className="flex items-center gap-2 mb-4">
           <button
-            onClick={() => navigate(`/game/${gameId}`)}
+            onClick={() => navigate(`/game/${gameId}?view=wiki`)}
             className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
           >
             {insight.game_title}

@@ -596,7 +596,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
         const isInsightPost = !!(post.insight_id);
         return (
           <>
-            {post.content ? (
+            {post.content?.trim() ? (
               <p className="mb-3 whitespace-pre-wrap">
                 <LinkifyMentions
                   text={post.content}
@@ -622,7 +622,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                       <p className="text-sm font-semibold leading-snug mb-1">{insightData.title}</p>
                     )}
                     <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
-                      {insightData.content || insightData.query}
+                      {(insightData.content || insightData.query)?.trim()}
                     </p>
                   </>
                 ) : (

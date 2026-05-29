@@ -13,9 +13,10 @@ export function GlowBorder({ active, children, className = '', radius = 12 }: Gl
   return (
     <div
       className={`forge-glow-border ${className}`}
-      style={{ padding: '1.5px', borderRadius: `${radius + 1.5}px` }}
+      style={{ '--forge-glow-radius': `${radius}px` } as React.CSSProperties}
     >
-      <div style={{ borderRadius: `${radius}px`, overflow: 'hidden', background: 'var(--background)' }}>
+      <span className="forge-glow-edge-light" />
+      <div className="forge-glow-inner">
         {children}
       </div>
     </div>
