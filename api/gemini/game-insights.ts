@@ -75,27 +75,62 @@ Category guide: characters = NPCs, companions, story characters; enemies = enemy
   return parseFirstTurnResponse(raw);
 }
 
-// Multi-turn: continue a conversation with full history
+// Multi-turn: continue a conversation; decide whether the reply warrants updating the main insight
 async function queryGeminiContinue(
   newMessage: string,
   gameTitle: string,
   history: ConversationMessage[]
-): Promise<string> {
+): Promise<{ updatedInsight: string | null; reply: string }> {
   const safeTitle = gameTitle.replace(/"/g, "'");
   const historyText = history
     .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
     .join('\n\n');
 
-  const prompt = `You are a gaming expert helping develop a detailed insight about "${safeTitle}".
-Your goal is to help the user refine and expand their insight through conversation. Keep each response focused, factual, and 2-4 paragraphs. Plain text, no markdown. Build naturally on the prior conversation.
+  const prompt = `You are a gaming expert helping develop a lore insight document about "${safeTitle}".
 
+Conversation so far:
 ${historyText}
 
 User: ${newMessage}
 
-Respond directly to the user's latest message:`;
+Your task has two parts:
 
-  return callGeminiAPI(prompt);
+PART 1 — Decide if this follow-up warrants updating the main insight document.
+- Update it ONLY if the user's message adds new factual lore, corrects a significant error, or expands the documented information in a meaningful way.
+- If the follow-up is conversational ("thanks", "what about X mechanic?", clarifying questions, tangents not useful to document), do NOT update the insight.
+- If you update, rewrite the FULL insight body (not just the new part) as a polished, informational lore entry. Plain text, no markdown. 2-5 paragraphs.
+
+PART 2 — A brief conversational reply to the user's message. 1-3 sentences. Acknowledge what changed or answer their question directly. Plain text.
+
+Format your response EXACTLY like this:
+UPDATE_INSIGHT: [the complete rewritten insight text, or the word "none" if no update]
+---SPLIT---
+CHAT_REPLY: [your brief conversational reply]`;
+
+  const raw = await callGeminiAPI(prompt);
+  return parseContinueResponse(raw);
+}
+
+function parseContinueResponse(raw: string): { updatedInsight: string | null; reply: string } {
+  const parts = raw.split('---SPLIT---');
+  let updatedInsight: string | null = null;
+  let reply = raw.trim();
+
+  if (parts.length >= 2) {
+    const insightLine = parts[0].trim();
+    const replyLine = parts[1].trim();
+
+    const insightMatch = insightLine.match(/^UPDATE_INSIGHT:\s*([\s\S]*)/i);
+    if (insightMatch) {
+      const val = insightMatch[1].trim();
+      updatedInsight = val.toLowerCase() === 'none' ? null : val;
+    }
+
+    const replyMatch = replyLine.match(/^CHAT_REPLY:\s*([\s\S]*)/i);
+    reply = replyMatch ? replyMatch[1].trim() : replyLine;
+  }
+
+  return { updatedInsight, reply };
 }
 
 async function callGeminiAPI(prompt: string): Promise<string> {
@@ -190,8 +225,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Cache-Control', 'no-store');
 
     if (isMultiTurn) {
-      const answer = await queryGeminiContinue(question.trim(), gameTitle, messages as ConversationMessage[]);
-      return res.json({ answer, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
+      const { updatedInsight, reply } = await queryGeminiContinue(question.trim(), gameTitle, messages as ConversationMessage[]);
+      return res.json({ updatedInsight, reply, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
     }
 
     const { answer, title, category } = await queryGeminiFirst(question.trim(), gameTitle);

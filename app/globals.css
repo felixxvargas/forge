@@ -41,22 +41,23 @@ input, textarea, select { font-size: max(16px, 1em); }
   to { --forge-glow-angle: 360deg; }
 }
 
-/* Outer wrapper: drives the sweep via CSS variable */
+/* Outer wrapper: positions the stacking context and sepia border */
 .forge-glow-border {
   position: relative;
   isolation: isolate;
   border: 1px solid hsl(38deg 70% 60% / 28%);
   border-radius: var(--forge-glow-radius, 12px);
-  animation: forge-glow-rotate 3s linear infinite;
 }
 
-/* Edge-light span: extends 20px outside the card, masked to a narrow sweep cone */
+/* Edge-light span: extends 20px outside the card, masked to a narrow sweep cone.
+   Animation lives here so --forge-glow-angle is animated on the same element that reads it. */
 .forge-glow-border > .forge-glow-edge-light {
   position: absolute;
   inset: -20px;
   border-radius: inherit;
   pointer-events: none;
   z-index: 1;
+  animation: forge-glow-rotate 4s linear infinite;
   mask-image: conic-gradient(
     from var(--forge-glow-angle) at center,
     black 2.5%,

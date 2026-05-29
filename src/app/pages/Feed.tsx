@@ -92,7 +92,7 @@ export function Feed() {
   }, []);
 
   // Pull-to-refresh (Capacitor/native only — web browsers handle PTR natively)
-  const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+  const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
   const PTR_THRESHOLD = 72;
   const [pullY, setPullY] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);

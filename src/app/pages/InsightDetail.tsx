@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useParams, useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
@@ -64,6 +64,10 @@ export function InsightDetail() {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [changingCategory, setChangingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [editingInsight, setEditingInsight] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const [backPath, setBackPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -239,6 +243,41 @@ export function InsightDetail() {
     }
   };
 
+  const handleEditInsight = async () => {
+    if (!insight || savingEdit) return;
+    const trimmedTitle = editTitle.trim();
+    const trimmedContent = editContent.trim();
+    if (!trimmedTitle && !trimmedContent) return;
+    setSavingEdit(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch('/api/insights/game-insights', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ insightId: insight.id, action: 'edit-content', title: trimmedTitle || undefined, content: trimmedContent || undefined }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save edit');
+      }
+      setInsight(i => i ? {
+        ...i,
+        ...(trimmedTitle ? { title: trimmedTitle } : {}),
+        ...(trimmedContent ? { content: trimmedContent } : {}),
+        approve_count: 0,
+        reject_count: 0,
+      } : i);
+      setEditingInsight(false);
+      toast.success('Resubmitted — votes cleared, review timer restarted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save edit');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !isAuthenticated || submittingComment) return;
     setSubmittingComment(true);
@@ -363,6 +402,20 @@ export function InsightDetail() {
           {insight.status === 'pending' && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending</span>
           )}
+          {insight.category && (() => {
+            const catColors: Record<string, string> = {
+              characters: 'bg-blue-400/20 text-blue-400',
+              objects: 'bg-amber-400/20 text-amber-400',
+              locations: 'bg-emerald-400/20 text-emerald-400',
+              extras: 'bg-purple-400/20 text-purple-400',
+              enemies: 'bg-red-400/20 text-red-400',
+            };
+            return (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${catColors[insight.category] ?? 'bg-muted text-muted-foreground'}`}>
+                {insight.category}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Title (auto-generated headline) */}
@@ -394,7 +447,58 @@ export function InsightDetail() {
 
         {/* Response */}
         <div className="bg-card border rounded-xl p-5 mb-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{insight.content}</p>
+          {editingInsight ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  className="w-full bg-secondary rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  placeholder="Insight headline…"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Content</label>
+                <textarea
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  className="w-full bg-secondary rounded-lg px-3 py-2 text-sm leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  rows={8}
+                  autoFocus
+                />
+              </div>
+              <p className="text-[11px] text-amber-400/80">Resubmitting will clear all votes and restart the 24h review timer.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEditInsight}
+                  disabled={savingEdit || (!editTitle.trim() && !editContent.trim())}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors disabled:opacity-40"
+                >
+                  <Check className="w-3 h-3" />
+                  {savingEdit ? 'Saving…' : 'Resubmit'}
+                </button>
+                <button onClick={() => setEditingInsight(false)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2">
+                  <X className="w-3 h-3" />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{insight.content}</p>
+              {isOwn && insight.status === 'pending' && (
+                <button
+                  onClick={() => { setEditTitle(insight.title ?? ''); setEditContent(insight.content); setEditingInsight(true); }}
+                  className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Edit &amp; Resubmit
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Voting (pending insights) */}

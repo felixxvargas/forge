@@ -266,6 +266,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true });
     }
 
+    // Edit-content action — owner edits a pending insight, clears votes, restarts timer
+    if (action === 'edit-content') {
+      const { title, content } = req.body ?? {};
+      if (!title?.trim() && !content?.trim()) return res.status(400).json({ error: 'title or content is required' });
+      const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
+      if (!insight) return res.status(404).json({ error: 'Insight not found' });
+      if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can edit this insight' });
+      if (insight.status !== 'pending') return res.status(400).json({ error: 'Only pending insights can be edited — use re-review for approved insights' });
+      const now = new Date().toISOString();
+      await sb('DELETE', `/game_insight_votes?insight_id=eq.${insightId}`);
+      const updates: Record<string, any> = { approve_count: 0, reject_count: 0, submitted_at: now, updated_at: now };
+      if (title?.trim()) updates.title = title.trim();
+      if (content?.trim()) updates.content = content.trim();
+      await sb('PATCH', `/game_insights?id=eq.${insightId}`, updates);
+      return res.json({ success: true });
+    }
+
     // Re-review action — owner resets an approved insight back to pending
     if (action === 're-review') {
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);

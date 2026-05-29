@@ -43,6 +43,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
   const [followUp, setFollowUp] = useState('');
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user'|'assistant'; content: string; timestamp: string}>>([]);
+  const [followUpThread, setFollowUpThread] = useState<Array<{question: string; reply: string}>>([]);
   const [editingResponse, setEditingResponse] = useState(false);
   const [editResponseText, setEditResponseText] = useState('');
   const [tagSearchActive, setTagSearchActive] = useState(false);
@@ -304,6 +305,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
     setFollowUp('');
     setFollowUpLoading(false);
     setConversationHistory([]);
+    setFollowUpThread([]);
   };
 
   const saveEditResponse = () => {
@@ -339,10 +341,17 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to get answer');
 
       const data = await res.json();
-      setConversationHistory([...messages, { role: 'assistant' as const, content: data.answer, timestamp: new Date().toISOString() }]);
-      setResult(prev => prev ? { ...prev, answer: data.answer, remaining: data.remaining } : prev);
-      setIsClamped(false);
-      setExpanded(false);
+      const reply: string = data.reply ?? data.answer ?? '';
+      const updatedInsight: string | null = data.updatedInsight ?? null;
+      setConversationHistory([...messages, { role: 'assistant' as const, content: reply, timestamp: new Date().toISOString() }]);
+      if (updatedInsight) {
+        setResult(prev => prev ? { ...prev, answer: updatedInsight, remaining: data.remaining } : prev);
+        setIsClamped(false);
+        setExpanded(false);
+      } else {
+        setResult(prev => prev ? { ...prev, remaining: data.remaining } : prev);
+      }
+      setFollowUpThread(prev => [...prev, { question: followUpText, reply }]);
     } catch (err: any) {
       toast.error(err.message || 'Failed to get follow-up answer');
     } finally {
@@ -641,9 +650,25 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
         </div>
       )}
 
+      {/* Follow-up thread — replies stacked below main response */}
+      {state === 'result' && followUpThread.length > 0 && (
+        <div className="space-y-2 mt-2">
+          {followUpThread.map((entry, i) => (
+            <div key={i} className="space-y-1">
+              <div className="bg-card border border-border rounded-xl px-4 py-3">
+                <p className="text-xs font-semibold text-muted-foreground">{entry.question}</p>
+              </div>
+              <div className="bg-card border border-border/50 rounded-xl px-4 py-3">
+                <p className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">{entry.reply}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Follow-up input */}
       {state === 'result' && result && !editingResponse && (
-        <div className="bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <div className="mt-3 bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
           <input
             type="text"
             value={followUp}
