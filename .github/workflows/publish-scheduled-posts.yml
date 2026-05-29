@@ -23,3 +23,18 @@ jobs:
             echo "Cron endpoint returned $code — failing step"
             exit 1
           fi
+
+      - name: Auto-approve insights older than 24h
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://www.forge-social.app/api/insights/cron-approve)
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "Status: $code"
+          echo "Body: $body"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "Auto-approve endpoint returned $code — failing step"
+            exit 1
+          fi
