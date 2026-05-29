@@ -404,7 +404,7 @@ export function Feed() {
   const feedGap = numCols === 1 ? 'gap-3' : numCols === 2 ? 'gap-4' : 'gap-6';
 
   const feedContent = (
-    <div className="w-full px-4 lg:px-6 py-3 lg:py-6">
+    <div className="w-full px-4 lg:px-6 py-4 lg:py-6">
       {/* AI Insight Search Bar */}
       {isAuthenticated && <FeedInsightSearch onActiveChange={setSearchActive} />}
 
