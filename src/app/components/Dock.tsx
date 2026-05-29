@@ -21,9 +21,11 @@ interface DockItemProps {
   magnification: number;
   baseItemSize: number;
   isHovered?: ReturnType<typeof useMotionValue<number>>;
+  active?: boolean;
+  activeColor?: string;
 }
 
-function DockItem({ children, className = '', onClick, mouseX, spring, distance, magnification, baseItemSize }: DockItemProps) {
+function DockItem({ children, className = '', onClick, mouseX, spring, distance, magnification, baseItemSize, active, activeColor }: DockItemProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isHovered = useMotionValue(0);
 
@@ -35,10 +37,15 @@ function DockItem({ children, className = '', onClick, mouseX, spring, distance,
   const targetSize = useTransform(mouseDistance, [-distance, 0, distance], [baseItemSize, magnification, baseItemSize]);
   const size = useSpring(targetSize, spring);
 
+  const activeStyle = active && activeColor ? {
+    backgroundColor: activeColor + '26',
+    borderColor: activeColor + '66',
+  } : undefined;
+
   return (
     <motion.div
       ref={ref}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, ...activeStyle }}
       onHoverStart={() => isHovered.set(1)}
       onHoverEnd={() => isHovered.set(0)}
       onFocus={() => isHovered.set(1)}
@@ -83,8 +90,8 @@ export function DockLabel({ children, className = '', ...rest }: { children: Rea
   );
 }
 
-export function DockIcon({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`dock-icon ${className}`}>{children}</div>;
+export function DockIcon({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <div className={`dock-icon ${className}`} style={style}>{children}</div>;
 }
 
 interface DockProps {
@@ -96,6 +103,7 @@ interface DockProps {
   panelHeight?: number;
   dockHeight?: number;
   baseItemSize?: number;
+  activeColor?: string;
 }
 
 export default function Dock({
@@ -107,6 +115,7 @@ export default function Dock({
   panelHeight = 68,
   dockHeight = 256,
   baseItemSize = 50,
+  activeColor,
 }: DockProps) {
   const mouseX = useMotionValue(Infinity);
   const isHovered = useMotionValue(0);
@@ -133,14 +142,16 @@ export default function Dock({
           <DockItem
             key={index}
             onClick={item.onClick}
-            className={item.active ? 'dock-item-active' : ''}
+            className={item.active && !activeColor ? 'dock-item-active' : ''}
+            active={item.active}
+            activeColor={activeColor}
             mouseX={mouseX}
             spring={spring}
             distance={distance}
             magnification={magnification}
             baseItemSize={baseItemSize}
           >
-            <DockIcon>{item.icon}</DockIcon>
+            <DockIcon style={item.active && activeColor ? { color: activeColor } : undefined}>{item.icon}</DockIcon>
             <DockLabel>{item.label}</DockLabel>
           </DockItem>
         ))}

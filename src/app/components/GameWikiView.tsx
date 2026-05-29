@@ -118,17 +118,20 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #0d0b14 0%, #110f1a 100%)' }}>
       {/* Wiki header */}
-      <div className="px-4 pt-6 pb-4 border-b border-white/5">
-        <div className="flex items-center gap-2 mb-0.5">
-          <Sparkles className="w-4 h-4 text-violet-400" />
-          <span className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Insights Wiki</span>
+      <div className="border-b border-white/5">
+        <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-4">
+          <div className="flex items-center gap-2 mb-0.5">
+            <Sparkles className="w-4 h-4 text-violet-400" />
+            <span className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Insights Wiki</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white leading-tight">{gameTitle}</h2>
+          <p className="text-xs text-white/40 mt-1">{insights.length > 0 ? `${insights.length} approved insight${insights.length !== 1 ? 's' : ''}` : 'Community-sourced game knowledge'}</p>
         </div>
-        <h2 className="text-2xl font-bold text-white leading-tight">{gameTitle}</h2>
-        <p className="text-xs text-white/40 mt-1">{insights.length > 0 ? `${insights.length} approved insight${insights.length !== 1 ? 's' : ''}` : 'Community-sourced game knowledge'}</p>
       </div>
 
       {/* Category tabs */}
-      <div className="sticky top-0 z-10 px-4 py-3 flex gap-2 overflow-x-auto scrollbar-none" style={{ background: 'rgba(13,11,20,0.85)', backdropFilter: 'blur(12px)' }}>
+      <div className="sticky top-0 z-10" style={{ background: 'rgba(13,11,20,0.85)', backdropFilter: 'blur(12px)' }}>
+      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto scrollbar-none">
         {CATEGORIES.map(cat => (
           <button
             key={cat.id}
@@ -142,9 +145,10 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
           </button>
         ))}
       </div>
+      </div>
 
       {/* Content */}
-      <div className="px-4 py-4 pb-24">
+      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-4 pb-24">
         {loading && (
           <div className="space-y-3">
             {[1, 2, 3].map(n => (

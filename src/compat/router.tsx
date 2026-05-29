@@ -19,8 +19,14 @@ export function useNavigate() {
   const pathname = usePathname();
   return (to: string | number, opts?: { replace?: boolean; state?: any }) => {
     if (typeof to === 'number') { router.back(); return; }
-    // Save current path before every push so detail pages can navigate back correctly
-    try { sessionStorage.setItem('forge_prev_path', pathname); } catch {}
+    if (!opts?.replace) {
+      // Save full path+search before pushes so detail pages can navigate back correctly.
+      // Skipped for replace navigations (tab switches) so they don't overwrite the real prev page.
+      try {
+        const fullPath = pathname + (typeof window !== 'undefined' ? window.location.search : '');
+        sessionStorage.setItem('forge_prev_path', fullPath);
+      } catch {}
+    }
     if (opts?.replace) router.replace(to as string);
     else router.push(to as string);
   };

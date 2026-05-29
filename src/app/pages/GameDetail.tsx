@@ -1,7 +1,7 @@
 'use client';
 import { useParams, useNavigate, useLocation, useSearchParams } from '@/compat/router';
 import { ArrowLeft, Users, MessageSquare, Gamepad2, Library, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, TrendingUp, Clock, List, Flame, ExternalLink, Star, StarOff, Plus, Check, Upload, X, Sparkles, LayoutGrid, BookOpen } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -38,6 +38,12 @@ export function GameDetail() {
   const { currentUser, session, followingIds, followedGameIds, followGame, unfollowGame, refreshFeedPosts, likedPosts, likePost, unlikePost, repostedPosts, repostPost, unrepostPost, updateGameList } = useAppData();
 
   const [gameView, setGameView] = useState<'overview' | 'wiki'>(() => searchParams.get('view') === 'wiki' ? 'wiki' : 'overview');
+
+  const switchTab = useCallback((view: 'overview' | 'wiki') => {
+    setGameView(view);
+    navigate(view === 'wiki' ? `/game/${rawGameId}?view=wiki` : `/game/${rawGameId}`, { replace: true });
+  }, [navigate, rawGameId]);
+
   const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
   const [postSort, setPostSort] = useState<PostSort>('latest');
 
@@ -770,7 +776,7 @@ export function GameDetail() {
           </button>
           <div className="w-px h-10 bg-border shrink-0" />
           <button
-            onClick={() => setGameView('wiki')}
+            onClick={() => switchTab('wiki')}
             className="flex-1 flex flex-col items-center hover:bg-secondary/50 rounded-xl py-2 transition-colors"
           >
             <p className="text-2xl font-bold">{insightCount === null ? '…' : insightCount}</p>
@@ -1017,17 +1023,18 @@ export function GameDetail() {
           panelHeight={56}
           baseItemSize={44}
           magnification={58}
+          activeColor="#E7FFC4"
           items={[
             {
               icon: <LayoutGrid className="w-5 h-5" />,
               label: 'Overview',
-              onClick: () => setGameView('overview'),
+              onClick: () => switchTab('overview'),
               active: gameView === 'overview',
             },
             {
               icon: <BookOpen className="w-5 h-5" />,
               label: 'Insights',
-              onClick: () => setGameView('wiki'),
+              onClick: () => switchTab('wiki'),
               active: gameView === 'wiki',
             },
           ]}
