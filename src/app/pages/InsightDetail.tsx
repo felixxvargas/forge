@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { useParams, useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
@@ -30,6 +30,7 @@ interface Insight {
   re_review_requested_at: string | null;
   linked_post_id: string | null;
   title: string | null;
+  category: string;
   myVote: 'approve' | 'reject' | null;
   author: InsightAuthor | null;
 }
@@ -59,6 +60,10 @@ export function InsightDetail() {
   const [submittingComment, setSubmittingComment] = useState(false);
 
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const overflowRef = useRef<HTMLDivElement>(null);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const [changingCategory, setChangingCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const fetchInsight = useCallback(async () => {
     if (!insightId) return;
@@ -101,6 +106,17 @@ export function InsightDetail() {
     fetchInsight();
     fetchComments();
   }, [fetchInsight, fetchComments]);
+
+  useEffect(() => {
+    if (!overflowOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [overflowOpen]);
 
   const handleVote = async (vote: 'approve' | 'reject') => {
     if (!insight || !isAuthenticated || voting) return;
@@ -189,6 +205,32 @@ export function InsightDetail() {
     else toast.error('Failed to delete insight');
   };
 
+  const handleChangeCategory = async (category: string) => {
+    if (!insight || savingCategory) return;
+    setSavingCategory(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch('/api/insights/game-insights', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ insightId: insight.id, action: 'set-category', category }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update category');
+      }
+      setInsight(i => i ? { ...i, category } as any : i);
+      setChangingCategory(false);
+      toast.success('Category updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update category');
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !isAuthenticated || submittingComment) return;
     setSubmittingComment(true);
@@ -257,13 +299,42 @@ export function InsightDetail() {
       <Header />
       <div className="max-w-2xl mx-auto px-4 py-4 pb-24">
         {/* Back nav */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4 text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          {isOwn && (
+            <div ref={overflowRef} className="relative">
+              <button
+                onClick={() => setOverflowOpen(o => !o)}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors rounded-lg"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+              {overflowOpen && (
+                <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                  <button
+                    onClick={() => { setOverflowOpen(false); setChangingCategory(true); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors text-left"
+                  >
+                    Change category
+                  </button>
+                  <div className="h-px bg-border mx-2" />
+                  <button
+                    onClick={() => { setOverflowOpen(false); setTimeout(handleDeleteInsight, 0); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left"
+                  >
+                    Delete insight
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Game title + badge */}
         <div className="flex items-center gap-2 mb-4">
@@ -376,15 +447,8 @@ export function InsightDetail() {
             )}
 
             {isOwn && (
-              <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-border/50">
                 <p className="text-xs text-muted-foreground">Your submission — waiting for community review</p>
-                <button
-                  onClick={handleDeleteInsight}
-                  className="flex items-center gap-1.5 text-xs text-destructive/70 hover:text-destructive transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete
-                </button>
               </div>
             )}
 
@@ -537,6 +601,48 @@ export function InsightDetail() {
           )}
         </div>
       </div>
+
+      {/* Category picker bottom sheet */}
+      {changingCategory && (
+        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setChangingCategory(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative w-full max-w-2xl mx-auto bg-popover border-t border-border rounded-t-2xl p-4 pb-8"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold mb-4 text-center">Change Category</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'characters', label: 'Characters', color: 'text-blue-400 bg-blue-400/10 border-blue-400/30' },
+                { id: 'objects', label: 'Objects', color: 'text-amber-400 bg-amber-400/10 border-amber-400/30' },
+                { id: 'locations', label: 'Locations', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30' },
+                { id: 'extras', label: 'Extras', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30' },
+                { id: 'enemies', label: 'Enemies', color: 'text-red-400 bg-red-400/10 border-red-400/30' },
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleChangeCategory(cat.id)}
+                  disabled={savingCategory}
+                  className={`px-4 py-3 rounded-xl border text-sm font-medium transition-colors disabled:opacity-50 ${
+                    insight?.category === cat.id
+                      ? cat.color
+                      : 'border-border text-muted-foreground hover:bg-secondary'
+                  }`}
+                >
+                  {cat.label}
+                  {insight?.category === cat.id && <span className="ml-1.5 text-xs opacity-70">✓ current</span>}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setChangingCategory(false)}
+              className="mt-4 w-full py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

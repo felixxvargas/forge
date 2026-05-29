@@ -45,6 +45,23 @@ async function sb<T = unknown>(method: string, path: string, body?: object): Pro
   return text ? JSON.parse(text) : ([] as unknown as T);
 }
 
+async function sbAdmin<T = unknown>(method: string, path: string, body?: object): Promise<T> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    method,
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=minimal',
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${method} ${path}: ${text}`);
+  return text ? JSON.parse(text) : ([] as unknown as T);
+}
+
 async function createNotification(userId: string, actorId: string, type: string, insightId: string) {
   try {
     await sb('POST', '/notifications', {
@@ -55,6 +72,80 @@ async function createNotification(userId: string, actorId: string, type: string,
       read: false,
     });
   } catch { /* notifications are best-effort */ }
+}
+
+const GEMINI_API_KEY = process.env.GEMINI_API ?? process.env.GEMINI_API_KEY ?? '';
+
+async function callGeminiExtract(prompt: string): Promise<string> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+}
+
+async function extractAndUpsertEntities(insight: { id: string; game_id: string; game_title: string; title: string; content: string; category: string }): Promise<void> {
+  const prompt = `You are extracting named entities from a game wiki insight about "${insight.game_title}".
+
+Insight title: ${insight.title}
+Insight content: ${insight.content}
+
+Extract up to 5 notable named entities (characters, locations, items, mechanics, or lore concepts) mentioned or described in this insight. For each entity, provide a brief description (1-2 sentences) based only on what the insight says.
+
+Respond with a JSON array (no markdown, no code fences, just the raw array):
+[
+  { "name": "Entity Name", "type": "character|location|item|mechanic|lore", "description": "Brief description." },
+  ...
+]
+
+Only include entities that are clearly named and meaningfully described. If none qualify, respond with an empty array: []`;
+
+  const raw = await callGeminiExtract(prompt);
+
+  let entities: Array<{ name: string; type: string; description: string }> = [];
+  try {
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    entities = JSON.parse(cleaned);
+    if (!Array.isArray(entities)) entities = [];
+  } catch {
+    return;
+  }
+
+  const validTypes = new Set(['character', 'location', 'item', 'mechanic', 'lore']);
+
+  for (const entity of entities.slice(0, 5)) {
+    if (!entity.name?.trim() || !validTypes.has(entity.type)) continue;
+    try {
+      // Upsert via POST with on-conflict ignore (duplicate = already exists, skip)
+      await fetch(`${SUPABASE_URL}/rest/v1/game_wiki_entities`, {
+        method: 'POST',
+        headers: {
+          apikey: SERVICE_KEY,
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Prefer: 'resolution=ignore-duplicates,return=minimal',
+        },
+        body: JSON.stringify({
+          game_id: insight.game_id,
+          game_title: insight.game_title,
+          name: entity.name.trim(),
+          type: entity.type,
+          description: entity.description?.trim() ?? '',
+          source_insight_id: insight.id,
+        }),
+      });
+    } catch { /* ignore per-entity errors */ }
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -102,6 +193,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
+      // Zero-vote auto-approval: pending insights with no votes after 24h get approved on next read
+      const now = Date.now();
+      for (const i of insights) {
+        if (i.status === 'pending' && i.approve_count + i.reject_count === 0) {
+          const hours = (now - new Date(i.submitted_at).getTime()) / 3600000;
+          if (hours >= 24) {
+            const approvedAt = new Date().toISOString();
+            sb('PATCH', `/game_insights?id=eq.${i.id}`, {
+              status: 'approved',
+              approved_at: approvedAt,
+              updated_at: approvedAt,
+            }).catch(() => {});
+            i.status = 'approved';
+            i.approved_at = approvedAt;
+          }
+        }
+      }
+
       const result = insights.map((i: any) => ({ ...i, myVote: myVotes[i.id] ?? null }));
       return res.json(qInsightId ? result[0] ?? null : result);
     } catch (err: any) {
@@ -119,7 +228,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!gameId || !gameTitle || !query?.trim() || !content?.trim()) {
       return res.status(400).json({ error: 'gameId, gameTitle, query, and content are required' });
     }
-    const validCategories = ['characters', 'objects', 'locations', 'extras'];
+    const validCategories = ['characters', 'objects', 'locations', 'extras', 'enemies'];
     const safeCategory = validCategories.includes(category) ? category : 'extras';
 
     const [insight] = await sbAsUser<any[]>('POST', '/game_insights', token, {
@@ -144,6 +253,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { insightId, vote, action } = req.body ?? {};
     if (!insightId) return res.status(400).json({ error: 'insightId is required' });
+
+    // Set-category action — owner changes the category of their own insight
+    if (action === 'set-category') {
+      const { category } = req.body ?? {};
+      const validCategories = ['characters', 'objects', 'locations', 'extras', 'enemies'];
+      if (!validCategories.includes(category)) return res.status(400).json({ error: 'Invalid category' });
+      const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
+      if (!insight) return res.status(404).json({ error: 'Insight not found' });
+      if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can change category' });
+      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { category, updated_at: new Date().toISOString() });
+      return res.json({ success: true });
+    }
 
     // Re-review action — owner resets an approved insight back to pending
     if (action === 're-review') {
@@ -212,6 +333,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(approvedAt !== insight.approved_at ? { approved_at: approvedAt } : {}),
       updated_at: new Date().toISOString(),
     });
+
+    // Extract wiki entities from the newly approved insight
+    if (newStatus === 'approved' && insight.status === 'pending') {
+      extractAndUpsertEntities(insight).catch(() => { /* non-critical */ });
+    }
 
     // Send approval notification to submitter + all voters
     if (newStatus === 'approved' && insight.status === 'pending') {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight, Tv2, PlayCircle, Bookmark, Sparkles } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat2, Upload, MoreHorizontal, BellOff, Bell, Gamepad2, ExternalLink, Pin, PinOff, Flame, CornerUpLeft, Users, X as XIcon, BarChart2, ChevronLeft, ChevronRight, Tv2, PlayCircle, Bookmark } from 'lucide-react';
 
 import { useNavigate } from '@/compat/router';
 import type { Post, User, SocialPlatform } from '../data/data';
@@ -613,10 +613,6 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                 className="w-full text-left rounded-xl p-3.5 mb-3 hover:opacity-90 transition-opacity"
                 style={{ border: '1px solid rgba(139,92,246,0.35)', background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(109,40,217,0.05) 100%)' }}
               >
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Sparkles className="w-3 h-3 text-accent" />
-                  <span className="text-xs font-semibold text-accent uppercase tracking-wide">Game Insight</span>
-                </div>
                 {post.game_title && (
                   <p className="text-xs text-muted-foreground leading-snug mb-1">{post.game_title}</p>
                 )}
@@ -721,7 +717,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       )}
 
       {/* Game tags */}
-      {taggedGames.length > 0 && (
+      {taggedGames.length > 0 && !post.insight_id && (
         <div className="mb-3 flex flex-wrap gap-2">
           {taggedGames.map(g => {
             const cover = gameCovers.get(g.id) ?? null;

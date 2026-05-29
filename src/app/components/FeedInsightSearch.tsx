@@ -43,10 +43,9 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
   const [followUp, setFollowUp] = useState('');
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user'|'assistant'; content: string; timestamp: string}>>([]);
-  const [editingQuery, setEditingQuery] = useState(false);
-  const [editQueryText, setEditQueryText] = useState('');
   const [editingResponse, setEditingResponse] = useState(false);
   const [editResponseText, setEditResponseText] = useState('');
+  const [tagSearchActive, setTagSearchActive] = useState(false);
 
   const [showGameSearch, setShowGameSearch] = useState(false);
   const [gameQuery, setGameQuery] = useState('');
@@ -78,6 +77,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
         setShowGameSearch(false);
         setGameQuery('');
         setGameResults([]);
+        setTagSearchActive(false);
         if (mentionStartRef.current >= 0) {
           mentionStartRef.current = -1;
           setAtMode(false);
@@ -90,9 +90,8 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
   }, [showGameSearch]);
 
   useEffect(() => {
-    const active = state !== 'idle' || query.trim().length > 0;
-    onActiveChange?.(active);
-  }, [state, query, onActiveChange]);
+    onActiveChange?.(state !== 'idle');
+  }, [state, onActiveChange]);
 
   useEffect(() => {
     if (expanded) return;
@@ -164,6 +163,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
     setShowGameSearch(false);
     setGameQuery('');
     setGameResults([]);
+    setTagSearchActive(false);
     setTimeout(() => {
       const ta = textareaRef.current;
       if (ta) {
@@ -251,7 +251,6 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
     if (!result || !selectedGame) return;
     setState('submitting');
 
-    const finalQuery = editingQuery ? editQueryText : query;
     const finalAnswer = editingResponse ? editResponseText : result.answer;
 
     try {
@@ -265,7 +264,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
         body: JSON.stringify({
           gameId: selectedGame.id,
           gameTitle: selectedGame.title,
-          query: finalQuery.trim(),
+          query: query.trim(),
           content: finalAnswer,
           title: result?.title || null,
         }),
@@ -300,19 +299,11 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
     setSelectedGame(null);
     setResult(null);
     setInsightId(null);
-    setEditingQuery(false);
     setEditingResponse(false);
     setExpanded(false);
     setFollowUp('');
     setFollowUpLoading(false);
     setConversationHistory([]);
-  };
-
-  const saveEditQuery = () => {
-    const newQuery = editQueryText;
-    setQuery(newQuery);
-    setEditingQuery(false);
-    if (selectedGame) askGemini(newQuery, selectedGame);
   };
 
   const saveEditResponse = () => {
@@ -363,7 +354,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
   const isResultActive = state === 'result' || state === 'submitting' || state === 'submitted';
 
   return (
-    <div className="mb-4">
+    <div>
       {/* Input area — idle only */}
       {state === 'idle' && (
         <div
@@ -395,9 +386,22 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                     <X className="w-3 h-3" />
                   </button>
                 </div>
+              ) : tagSearchActive ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-accent/40 rounded-full text-xs">
+                  <Gamepad2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <input
+                    type="text"
+                    value={gameQuery}
+                    onChange={e => { handleGameQueryChange(e.target.value); setShowGameSearch(true); }}
+                    onKeyDown={e => { if (e.key === 'Escape') { setTagSearchActive(false); setShowGameSearch(false); setGameQuery(''); setGameResults([]); } }}
+                    placeholder="Search for a game..."
+                    className="bg-transparent text-xs placeholder-muted-foreground focus:outline-none w-32"
+                    autoFocus
+                  />
+                </div>
               ) : (
                 <button
-                  onClick={handleTagButtonClick}
+                  onClick={() => { setTagSearchActive(true); setShowGameSearch(true); }}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
                 >
                   <Gamepad2 className="w-3 h-3" />
@@ -419,7 +423,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
           </div>
 
           {/* Game search dropdown — downward, full card width */}
-          {!selectedGame && showGameSearch && (
+          {!selectedGame && showGameSearch && (atMode ? !!atGameQuery : (tagSearchActive ? gameQuery.trim().length > 0 : true)) && (
             <div className="absolute top-full mt-1 left-0 right-0 bg-sidebar border border-border rounded-xl shadow-xl z-50">
               {atMode ? (
                 atGameQuery && (
@@ -427,7 +431,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                     Searching for &ldquo;{atGameQuery}&rdquo;
                   </p>
                 )
-              ) : (
+              ) : !tagSearchActive ? (
                 <div className="p-2">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -441,7 +445,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                     />
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {gameSearching && (
                 <div className="flex justify-center py-3">
@@ -499,41 +503,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
         <div className="space-y-3">
           {/* Query card */}
           <div className="bg-card border border-border rounded-xl p-4">
-            {editingQuery ? (
-              <div className="space-y-2">
-                <textarea
-                  value={editQueryText}
-                  onChange={e => setEditQueryText(e.target.value)}
-                  className="w-full bg-secondary rounded-lg px-3 py-2 text-sm font-semibold resize-none focus:outline-none focus:ring-1 focus:ring-accent/50"
-                  rows={2}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={saveEditQuery}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
-                  >
-                    <Check className="w-3 h-3" />
-                    Re-ask
-                  </button>
-                  <button onClick={() => setEditingQuery(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold leading-snug">{query}</p>
-                {state === 'result' && (
-                  <button
-                    onClick={() => { setEditQueryText(query); setEditingQuery(true); }}
-                    className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
+            <p className="text-sm font-semibold leading-snug">{query}</p>
           </div>
 
           {/* Response card */}
@@ -577,7 +547,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                   {(isClamped || expanded) && (
                     <button
                       onClick={() => setExpanded(e => !e)}
-                      className="mt-1 text-xs text-accent hover:text-accent/70 transition-colors"
+                      className="mt-1 text-xs text-white/70 hover:text-white/90 transition-colors"
                     >
                       {expanded ? 'Read less' : 'Read more'}
                     </button>
@@ -595,7 +565,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
             )}
 
             {/* Actions — result */}
-            {state === 'result' && !editingResponse && !editingQuery && (
+            {state === 'result' && !editingResponse && (
               <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/50 flex-wrap">
                 {selectedGame && (
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 rounded-full text-xs font-medium text-accent">
@@ -670,7 +640,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
       )}
 
       {/* Follow-up input */}
-      {state === 'result' && result && !editingResponse && !editingQuery && (
+      {state === 'result' && result && !editingResponse && (
         <div className="bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
           <input
             type="text"

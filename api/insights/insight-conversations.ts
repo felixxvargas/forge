@@ -49,7 +49,19 @@ async function callGemini(prompt: string): Promise<string> {
       }),
     }
   );
-  if (!res.ok) throw new Error(`Gemini error: ${await res.text()}`);
+  if (!res.ok) {
+    let friendly = 'Something went wrong with Forge AI. Please try again.';
+    try {
+      const errData = await res.json();
+      const status = errData?.error?.status ?? '';
+      if (res.status === 503 || status === 'UNAVAILABLE') {
+        friendly = 'Forge AI is experiencing high demand right now. Please try again in a moment.';
+      } else if (res.status === 429 || status === 'RESOURCE_EXHAUSTED') {
+        friendly = 'Forge AI rate limit reached. Please wait a moment and try again.';
+      }
+    } catch { /* use default message */ }
+    throw new Error(friendly);
+  }
   const data = await res.json();
   const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
   if (!raw) throw new Error('No response from Gemini');
@@ -118,11 +130,11 @@ Question: ${message.trim()}
 Format your response EXACTLY like this:
 Line 1: A SHORT HEADLINE (4-6 words, Title Case)
 Line 2: ---
-Line 3: CATEGORY: characters|objects|locations|extras
+Line 3: CATEGORY: characters|objects|locations|extras|enemies
 Line 4: ---
 Remaining: Your answer in 2-4 paragraphs. Plain text, no markdown.
 
-Category guide: characters = NPCs, enemies, bosses, companions; objects = items, weapons, gear, collectibles; locations = areas, maps, zones, dungeons; extras = mechanics, lore, cinematics, concept art, music, deleted content, everything else.`;
+Category guide: characters = NPCs, companions, story characters; enemies = enemy types, bosses, hostile NPCs, mob groups, mini-bosses; objects = items, weapons, gear, collectibles; locations = areas, maps, zones, dungeons; extras = mechanics, lore, cinematics, concept art, music, deleted content, everything else.`;
 
       const raw = await callGemini(firstPrompt);
 
@@ -133,7 +145,7 @@ Category guide: characters = NPCs, enemies, bosses, companions; objects = items,
       let answer = raw;
       if (parts.length >= 3) {
         title = parts[0].trim();
-        const catMatch = parts[1].trim().match(/^CATEGORY:\s*(characters|objects|locations|extras)/i);
+        const catMatch = parts[1].trim().match(/^CATEGORY:\s*(characters|objects|locations|extras|enemies)/i);
         if (catMatch) category = catMatch[1].toLowerCase();
         answer = parts.slice(2).join('\n---\n').trim();
       } else if (parts.length === 2) {

@@ -22,8 +22,13 @@ export function BottomNav() {
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/');
 
+  const feedActive = isActive('/feed') || location.pathname === '/';
+  const exploreActive = isActive('/explore');
+  const messagesActive = isActive('/messages');
+  const profileActive = isActive('/profile');
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 md:hidden" style={{ backgroundColor: 'var(--sidebar, #2d1f47)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 bg-sidebar border-t border-white/10 z-50 md:hidden" style={{ backgroundColor: 'var(--sidebar, #2d1f47)' }}>
       <div className="w-full max-w-2xl mx-auto flex justify-around items-center h-16 px-6">
         <button
           onMouseEnter={() => router.prefetch('/feed')}
@@ -35,35 +40,33 @@ export function BottomNav() {
               navigate('/feed');
             }
           }}
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/feed') || location.pathname === '/'
-              ? 'text-accent'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className="flex flex-col items-center justify-center transition-colors"
         >
-          <Home className="w-6 h-6" />
+          <div className={`p-2 rounded-xl transition-colors ${feedActive ? 'bg-accent/15' : ''}`}>
+            <Home className={`w-6 h-6 ${feedActive ? 'text-accent' : 'text-muted-foreground'}`} />
+          </div>
         </button>
 
         <Link
           to="/explore"
           onMouseEnter={() => router.prefetch('/explore')}
           onTouchStart={() => router.prefetch('/explore')}
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/explore') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className="flex flex-col items-center justify-center transition-colors"
         >
-          <Search className="w-6 h-6" />
+          <div className={`p-2 rounded-xl transition-colors ${exploreActive ? 'bg-accent/15' : ''}`}>
+            <Search className={`w-6 h-6 ${exploreActive ? 'text-accent' : 'text-muted-foreground'}`} />
+          </div>
         </Link>
 
         <button
           onMouseEnter={() => router.prefetch('/messages')}
           onTouchStart={() => router.prefetch('/messages')}
           onClick={() => navigate('/messages')}
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/messages') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className="flex flex-col items-center justify-center transition-colors"
         >
-          <MessageCircle className="w-6 h-6" />
+          <div className={`p-2 rounded-xl transition-colors ${messagesActive ? 'bg-accent/15' : ''}`}>
+            <MessageCircle className={`w-6 h-6 ${messagesActive ? 'text-accent' : 'text-muted-foreground'}`} />
+          </div>
         </button>
 
         <button
@@ -76,20 +79,20 @@ export function BottomNav() {
               navigate('/profile');
             }
           }}
-          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-            isActive('/profile') ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className="flex flex-col items-center justify-center transition-colors"
         >
-          {currentUser ? (
-            <ProfileAvatar
-              username={currentUser.display_name || currentUser.handle || '?'}
-              profilePicture={currentUser.profile_picture}
-              size="sm"
-              userId={currentUser.id}
-            />
-          ) : (
-            <User className="w-6 h-6" />
-          )}
+          <div className={`p-1.5 rounded-xl transition-colors ${profileActive ? 'bg-accent/15' : ''}`}>
+            {currentUser ? (
+              <ProfileAvatar
+                username={currentUser.display_name || currentUser.handle || '?'}
+                profilePicture={currentUser.profile_picture}
+                size="sm"
+                userId={currentUser.id}
+              />
+            ) : (
+              <User className={`w-6 h-6 ${profileActive ? 'text-accent' : 'text-muted-foreground'}`} />
+            )}
+          </div>
         </button>
       </div>
       {/* Safe-area extension */}

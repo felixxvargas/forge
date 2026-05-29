@@ -252,7 +252,7 @@ export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProp
               )}
 
               {/* Social Media Shares */}
-              <div className="flex gap-2">
+              <div className="mt-2 flex gap-2">
                 {/* Bluesky */}
                 <button
                   onClick={() => window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(title + '\n' + url)}`, '_blank')}
