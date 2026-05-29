@@ -354,7 +354,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
   const isResultActive = state === 'result' || state === 'submitting' || state === 'submitted';
 
   return (
-    <div>
+    <div className="mb-4">
       {/* Input area — idle only */}
       {state === 'idle' && (
         <div

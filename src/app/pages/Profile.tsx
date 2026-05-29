@@ -1,15 +1,11 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from '@/compat/router';
-import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon, FlaskConical, Bug } from 'lucide-react';
+import { Edit2, ArrowLeft, Upload, Crown, Shield, MoreHorizontal, Ban, BellOff, Bell, UserX, UserCheck, Flag, Trophy, Gamepad2, Monitor, Mail, Swords, Plus, Minus, Trash2, GripVertical, Flame, ExternalLink, PlayCircle, Image as ImageIcon, Eye, EyeOff, Users, Sparkles, Tv2, Star, Copy, X as XIcon, FlaskConical } from 'lucide-react';
 import { UserBadgeIcons } from '../components/UserBadgeIcons';
-import { BadgeModal } from '../components/BadgeModal';
 import { isMentorHandle } from '../utils/mentors';
 import { Top8Friends, Top8Games, AddTopFriendPanel, ManageTopGamesPanel } from '../components/Top8Section';
 import { ShareModal } from '../components/ShareModal';
-import { LinkOpenModal } from '../components/LinkOpenModal';
-import { getPlatformUrl } from '../utils/platformLinks';
-import { getStoredLinkPreference, openLink } from '../utils/openExternalLink';
 import { useProfileMeta } from '../hooks/useProfileMeta';
 import { Header } from '../components/Header';
 import { ProfileSkeleton } from '../components/ProfileSkeleton';
@@ -61,7 +57,7 @@ function LinkifyMentions({ text }: { text: string }) {
   );
 }
 
-type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media' | 'timeline' | 'insights';
+type ProfileTab = 'lists' | 'posts' | 'likes' | 'about' | 'media' | 'timeline';
 
 // List type selection state type
 type ListTypeOption = 'recently-played' | 'favorite' | 'wishlist' | 'library';
@@ -70,10 +66,7 @@ const BIO_MAX_LENGTH = 150;
 
 export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const navigate = useNavigate();
-  const { userId: _userId, handle: _handle, slug: _slug } = useParams();
-  const _isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(_slug || '');
-  const userId = _userId || (_isUUID ? _slug : undefined);
-  const handle = _handle || (!_isUUID && _slug ? _slug : undefined);
+  const { userId, handle } = useParams();
   const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds, addToVIPList, removeFromVIPList, vipListIds } = useAppData() as any;
   const normalizedHandle = handle ? handle.replace(/^@/, '').toLowerCase() : null;
   const { data: swrHandleProfile } = useSWR(
@@ -117,7 +110,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [activeTab, setActiveTab] = useState<ProfileTab>('lists');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [pendingLinkUrl, setPendingLinkUrl] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(() => {
     const id = userId || '';
     return id ? followingIds.has(id) : false;
@@ -152,10 +144,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   // Local override for displayed_communities (About tab group visibility toggles)
   const [localDisplayedIds, setLocalDisplayedIds] = useState<string[] | null | undefined>(undefined);
-
-  // Insight contributor badge — state only; effect placed after profileUser is declared below
-  const [hasInsightContribution, setHasInsightContribution] = useState(false);
-  const [activeBadge, setActiveBadge] = useState<{ name: string; earnedAt: Date | null; description: string; icon: React.ReactNode } | null>(null);
 
 
   // Scroll to top only when navigating to a different profile, not on remount of the same one
@@ -200,17 +188,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     bio: profileUser?.bio ?? undefined,
     profilePicture: profilePicture ?? undefined,
   });
-
-  // Insight contributor badge fetch
-  useEffect(() => {
-    const uid = (profileUser as any)?.id;
-    if (!uid || (profileUser as any)?.account_type === 'topic') return;
-    setHasInsightContribution(false);
-    import('../utils/supabase').then(({ supabase }) => {
-      supabase.from('game_insights').select('id', { count: 'exact', head: true }).eq('user_id', uid)
-        .then(({ count }) => { if ((count ?? 0) > 0) setHasInsightContribution(true); });
-    });
-  }, [(profileUser as any)?.id]);
 
   // Sync follow state from followingIds. For topic accounts, followingIds stores the synthetic ID
   // (e.g. "user-ign") rather than the UUID, so we check both.
@@ -304,19 +281,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       .then(setProfileLikedPosts)
       .catch(() => setProfileLikedPosts([]))
       .finally(() => setLikesLoading(false));
-  }, [activeTab, profileUser?.id]);
-
-  // Insights tab
-  const [userInsights, setUserInsights] = useState<any[]>([]);
-  const [insightsLoading, setInsightsLoading] = useState(false);
-  useEffect(() => {
-    if (activeTab !== 'insights' || !profileUser?.id) return;
-    setInsightsLoading(true);
-    fetch(`/api/insights/game-insights?userId=${encodeURIComponent(profileUser.id)}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(setUserInsights)
-      .catch(() => setUserInsights([]))
-      .finally(() => setInsightsLoading(false));
   }, [activeTab, profileUser?.id]);
 
   // Must be called before any early returns to satisfy rules of hooks
@@ -436,13 +400,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
   const handlePlatformTagClick = async (platform: string, fullHandle: string) => {
     if (!canViewHandles) return;
-    const url = getPlatformUrl(platform, fullHandle);
-    if (url) {
-      const pref = getStoredLinkPreference();
-      if (pref) { await openLink(url, pref); return; }
-      setPendingLinkUrl(url);
-      return;
-    }
     const label = getHandleLabel(platform);
     const toCopy = platform === 'nintendo' ? fullHandle.replace(/-/g, '') : fullHandle;
     try { await navigator.clipboard.writeText(toCopy); } catch {}
@@ -511,13 +468,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   // so the empty Lists section (including "No game lists yet") is never shown.
   const _glCheck = (profileUser as any)?.game_lists ?? (profileUser as any)?.gameLists ?? {};
   const profileHasLists = ['recentlyPlayed', 'playedBefore', 'favorites', 'wishlist', 'library'].some(k => (_glCheck[k] ?? []).length > 0);
-  const _timelineUnlocked = (() => {
-    const now = Date.now();
-    const premiumDate = Date.UTC(2026, 5, 1); // June 1, 2026
-    const allDate = Date.UTC(2026, 7, 1);     // August 1, 2026
-    return now >= allDate || (now >= premiumDate && !!(currentUser as any)?.is_premium);
-  })();
-  const timelineVisible = _timelineUnlocked && (isOwnProfile || (profileUser as any)?.show_gaming_timeline !== false);
+  const timelineVisible = isOwnProfile || (profileUser as any)?.show_gaming_timeline !== false;
   const effectiveTab = (!isOwnProfile && !profileHasLists && activeTab === 'lists')
     ? 'posts'
     : (!timelineVisible && activeTab === 'timeline')
@@ -614,21 +565,12 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               {platformsWithHandles.map(platform => {
                 const handle = profileUser.socialHandles?.[platform] ?? (profileUser as any).social_handles?.[platform];
                 const showHandle = profileUser.showSocialHandles?.[platform] ?? (profileUser as any).show_social_handles?.[platform];
-                const linkUrl = canViewHandles && handle ? getPlatformUrl(platform, handle) : null;
-                const chip = (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]">
+                return (
+                  <div key={platform} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full text-sm max-w-[220px]">
                     <PlatformIcon platform={platform} className="w-4 h-4 shrink-0" />
                     <span className="font-medium shrink-0">{getSocialPlatformLabel(platform)}</span>
-                    {showHandle && handle && <span className="text-muted-foreground truncate">· {handle.startsWith('@') ? handle : `@${handle}`}</span>}
-                    {linkUrl && <ExternalLink className="w-3 h-3 text-muted-foreground/50 shrink-0" />}
+                    {showHandle && handle && <span className="text-muted-foreground truncate">· @{handle}</span>}
                   </div>
-                );
-                return linkUrl ? (
-                  <button key={platform} onClick={() => handlePlatformTagClick(platform, handle)} className="cursor-pointer hover:opacity-80 transition-opacity">
-                    {chip}
-                  </button>
-                ) : (
-                  <div key={platform}>{chip}</div>
                 );
               })}
             </div>
@@ -701,60 +643,22 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
       {(() => {
         const isForgeSprite = (profileUser as any)?.onboarding_complete;
-        const joinDate = profileUser?.created_at ? new Date(profileUser.created_at) : null;
-        const joinYear = joinDate?.getFullYear() ?? null;
+        const joinYear = profileUser?.created_at ? new Date(profileUser.created_at).getFullYear() : null;
         const isEarlyAdopter = joinYear === 2026;
         const isMentor = isMentorHandle(profileUser.handle || '');
         const ALPHA_CUTOFF = new Date('2026-05-19');
         const isAlphaTester = !!profileUser.created_at && (profileUser as any).account_type !== 'topic' && new Date(profileUser.created_at) < ALPHA_CUTOFF;
-        const bugBasherAt = (profileUser as any)?.badge_bug_basher_at ? new Date((profileUser as any).badge_bug_basher_at) : null;
-        const hasBugBasher = !!bugBasherAt;
-        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester && !hasInsightContribution && !hasBugBasher) return null;
-
-        const BadgeChip = ({ onClick, color, children }: { onClick: () => void; color: string; children: React.ReactNode }) => (
-          <button
-            onClick={onClick}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition-opacity hover:opacity-80 ${color}`}
-          >
-            {children}
-          </button>
-        );
-
+        if (!isForgeSprite && !isEarlyAdopter && !isMentor && !isAlphaTester) return null;
         return (
           <div className="mt-6 pt-4 border-t border-border/50 flex flex-wrap gap-2">
             {isAlphaTester && (
-              <BadgeChip
-                color="bg-fuchsia-500/10 border-fuchsia-500/30"
-                onClick={() => setActiveBadge({
-                  name: 'Alpha Tester',
-                  earnedAt: joinDate,
-                  description: 'Joined Forge during the closed alpha before public launch. Alpha Testers helped shape the app by exploring early features and reporting issues before anyone else.',
-                  icon: <FlaskConical className="w-6 h-6 text-fuchsia-300" />,
-                })}
-              >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-fuchsia-500/10 border border-fuchsia-500/30 rounded-full">
                 <FlaskConical className="w-3.5 h-3.5 text-fuchsia-300" />
                 <span className="text-xs font-semibold text-fuchsia-300">Alpha Tester</span>
-              </BadgeChip>
+              </div>
             )}
             {isForgeSprite && (
-              <BadgeChip
-                color="bg-violet-500/10 border-violet-500/30"
-                onClick={() => setActiveBadge({
-                  name: 'Forge Sprite',
-                  earnedAt: joinDate,
-                  description: 'Completed the full Forge onboarding experience. Forge Sprites have personalized their profile and are fully set up to connect with the gaming community.',
-                  icon: (
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-violet-300">
-                      <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
-                      <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
-                      <path d="M11 12c-2 2-6 6-3 8 2 1 4-3 3-8z" opacity="0.7"/>
-                      <path d="M13 12c2 2 6 6 3 8-2 1-4-3-3-8z" opacity="0.7"/>
-                      <ellipse cx="12" cy="13" rx="1.2" ry="2.5"/>
-                      <circle cx="12" cy="9" r="1.8"/>
-                    </svg>
-                  ),
-                })}
-              >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 rounded-full">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-violet-300 shrink-0">
                   <path d="M11 11c-2-4-9-3-7 2 1 3 6 2 7 0z" opacity="0.9"/>
                   <path d="M13 11c2-4 9-3 7 2-1 3-6 2-7 0z" opacity="0.9"/>
@@ -764,69 +668,21 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   <circle cx="12" cy="9" r="1.8"/>
                 </svg>
                 <span className="text-xs font-semibold text-violet-300">Forge Sprite</span>
-              </BadgeChip>
+              </div>
             )}
             {isEarlyAdopter && (
-              <BadgeChip
-                color="bg-amber-500/10 border-amber-500/30"
-                onClick={() => setActiveBadge({
-                  name: 'Early Adopter',
-                  earnedAt: joinDate,
-                  description: "Joined Forge in its first year. Early Adopters were among the first to discover and believe in the community, helping it grow from the very beginning.",
-                  icon: <Sparkles className="w-6 h-6 text-amber-400" />,
-                })}
-              >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-xs font-semibold text-amber-400">Early Adopter</span>
-              </BadgeChip>
+              </div>
             )}
             {isMentor && (
-              <BadgeChip
-                color="bg-amber-500/10 border-amber-500/30"
-                onClick={() => setActiveBadge({
-                  name: 'Mentor',
-                  earnedAt: joinDate,
-                  description: 'Recognized as a Forge Mentor for guiding new members. Mentors volunteer their time to help newcomers get oriented and feel welcome in the community.',
-                  icon: (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-amber-400">
-                      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
-                    </svg>
-                  ),
-                })}
-              >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-amber-400 shrink-0">
                   <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
                 </svg>
                 <span className="text-xs font-semibold text-amber-400">Mentor</span>
-              </BadgeChip>
-            )}
-            {hasInsightContribution && (
-              <BadgeChip
-                color="bg-accent/10 border-accent/30"
-                onClick={() => setActiveBadge({
-                  name: 'Insight Author',
-                  earnedAt: joinDate,
-                  description: 'Contributed at least one Game Insight to the Forge knowledge base. Insight Authors share their gaming expertise to help the whole community learn and discover.',
-                  icon: <Sparkles className="w-6 h-6 text-accent" />,
-                })}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" />
-                <span className="text-xs font-semibold text-accent">Insight Author</span>
-              </BadgeChip>
-            )}
-            {hasBugBasher && (
-              <BadgeChip
-                color="bg-red-500/10 border-red-500/30"
-                onClick={() => setActiveBadge({
-                  name: 'Bug Basher',
-                  earnedAt: bugBasherAt,
-                  description: 'Reported a bug to help improve Forge. Bug Bashers take the time to identify and document issues, making the app better for every player.',
-                  icon: <Bug className="w-6 h-6 text-red-400" />,
-                })}
-              >
-                <Bug className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                <span className="text-xs font-semibold text-red-400">Bug Basher</span>
-              </BadgeChip>
+              </div>
             )}
           </div>
         );
@@ -839,7 +695,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
       <Header />
 
       <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
-        <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:pl-12 lg:pr-6 overflow-hidden lg:overflow-visible">
+        <div className="lg:flex lg:gap-6 lg:items-start lg:pt-8 lg:pl-12 lg:pr-6">
         {/* LEFT COLUMN — profile header + about (desktop) */}
         <div className="lg:w-[340px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start">
         {/* Profile Header */}
@@ -1301,7 +1157,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
               <button
                 onClick={() => setActiveTab('lists')}
                 className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                  effectiveTab === 'lists'
+                  activeTab === 'lists'
                     ? 'border-accent text-accent'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
@@ -1313,7 +1169,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           <button
             onClick={() => setActiveTab('posts')}
             className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-              effectiveTab === 'posts'
+              activeTab === 'posts'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
@@ -1324,7 +1180,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             <button
               onClick={() => setActiveTab('likes')}
               className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                effectiveTab === 'likes'
+                activeTab === 'likes'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -1336,7 +1192,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             <button
               onClick={() => setActiveTab('media')}
               className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                effectiveTab === 'media'
+                activeTab === 'media'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -1348,7 +1204,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             <button
               onClick={() => setActiveTab('timeline')}
               className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-                effectiveTab === 'timeline'
+                activeTab === 'timeline'
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -1357,19 +1213,9 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             </button>
           )}
           <button
-            onClick={() => setActiveTab('insights')}
-            className={`shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-              effectiveTab === 'insights'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Insights
-          </button>
-          <button
             onClick={() => setActiveTab('about')}
             className={`lg:hidden shrink-0 px-4 py-3 font-medium transition-colors border-b-2 ${
-              effectiveTab === 'about'
+              activeTab === 'about'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
@@ -1653,7 +1499,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   )}
 
                   {isOwnProfile && (
-                    <div className="lg:hidden mt-2 mb-3 px-4">
+                    <div className="lg:hidden mt-4 mb-1">
                       <button
                         onClick={() => navigate('/create-flare')}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/80 transition-all"
@@ -1666,7 +1512,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
                   {/* Posts below lists */}
                   {profileUserPosts.length > 0 && (
-                    <div className="mt-4 px-4">
+                    <div className="mt-4">
                       <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Recent Posts</h3>
                       <div className="flex flex-col gap-3 sm:gap-6">
                       {(() => {
@@ -1702,16 +1548,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
 
                   {/* LFG List — only render when there are games */}
                   {((gameLists as any).lfg ?? []).length > 0 && (
-                    <div className="px-4">
-                      <GameList
-                        key="lfg"
-                        listType="lfg"
-                        title="Looking for Group"
-                        games={(gameLists as any).lfg}
-                        onEdit={isOwnProfile ? () => handleOpenGameListEdit('lfg') : undefined}
-                        onDelete={isOwnProfile ? () => updateGameList('lfg', []) : undefined}
-                      />
-                    </div>
+                    <GameList
+                      key="lfg"
+                      listType="lfg"
+                      title="Looking for Group"
+                      games={(gameLists as any).lfg}
+                      onEdit={isOwnProfile ? () => handleOpenGameListEdit('lfg') : undefined}
+                      onDelete={isOwnProfile ? () => updateGameList('lfg', []) : undefined}
+                    />
                   )}
 
                   {/* Custom Lists — only render when lists exist */}
@@ -1992,62 +1836,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
           </div>
         )}
 
-        {effectiveTab === 'insights' && (
-          <div className="px-4 pb-24">
-            {insightsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(n => (
-                  <div key={n} className="bg-card rounded-xl p-4 animate-pulse">
-                    <div className="h-4 bg-muted/40 rounded w-3/4 mb-2" />
-                    <div className="h-3 bg-muted/30 rounded w-1/2" />
-                  </div>
-                ))}
-              </div>
-            ) : userInsights.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground text-sm">No insights submitted yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {userInsights.map((insight: any) => (
-                  <button
-                    key={insight.id}
-                    onClick={() => navigate(`/game/${insight.game_id}/insight/${insight.id}`)}
-                    className="w-full text-left bg-card rounded-xl p-4 hover:border-accent/30 transition-colors"
-                    style={{ border: insight.status === 'approved' ? '1px solid rgba(34,197,94,0.15)' : insight.status === 'rejected' ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(139,92,246,0.1)' }}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      {insight.status === 'approved' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 uppercase tracking-wide">Approved</span>
-                      )}
-                      {insight.status === 'pending' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending</span>
-                      )}
-                      {insight.status === 'rejected' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 uppercase tracking-wide">Rejected</span>
-                      )}
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium truncate max-w-[160px]">{insight.game_title}</span>
-                    </div>
-                    {insight.title && <p className="text-sm font-semibold leading-snug mb-1">{insight.title}</p>}
-                    <p className={`line-clamp-2 leading-snug mb-1.5 ${insight.title ? 'text-xs text-muted-foreground' : 'text-sm font-medium'}`}>{insight.query}</p>
-                    {insight.submitted_at && (
-                      <p className="text-[10px] text-muted-foreground/50">
-                        {(() => {
-                          const sub = new Date(insight.submitted_at).getTime();
-                          const upd = insight.updated_at ? new Date(insight.updated_at).getTime() : sub;
-                          const isEdited = upd - sub > 60_000;
-                          const d = new Date(isEdited ? insight.updated_at : insight.submitted_at);
-                          return `${isEdited ? 'Edited' : 'Submitted'} ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-                        })()}
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {effectiveTab === 'about' && (
           <div className="lg:hidden px-4 pb-24">
             {renderAboutContent()}
@@ -2151,14 +1939,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
         onClose={() => setShareModalOpen(false)}
         user={profileUser}
       />
-
-      {/* Link open preference modal */}
-      {pendingLinkUrl && (
-        <LinkOpenModal
-          url={pendingLinkUrl}
-          onClose={() => setPendingLinkUrl(null)}
-        />
-      )}
 
       {/* Report Modal */}
       {/* 4-list limit tray */}
@@ -2286,16 +2066,6 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
             </button>
           )}
         </div>
-      )}
-
-      {activeBadge && (
-        <BadgeModal
-          name={activeBadge.name}
-          earnedAt={activeBadge.earnedAt}
-          description={activeBadge.description}
-          icon={activeBadge.icon}
-          onClose={() => setActiveBadge(null)}
-        />
       )}
     </div>
   );
