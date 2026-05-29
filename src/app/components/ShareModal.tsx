@@ -180,7 +180,7 @@ export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProp
             </div>
 
             {/* Share options */}
-            <div className="space-y-2">
+            <div className="space-y-4">
               {/* Native Share (if supported) */}
               {navigator.share && (
                 <button
@@ -197,62 +197,65 @@ export function ShareModal({ isOpen, onClose, post, user, game }: ShareModalProp
                 </button>
               )}
 
-              {/* Copy Link */}
-              <button
-                onClick={handleCopyLink}
-                disabled={copied}
-                className="w-full flex items-center gap-3 p-3 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
-                  {copied ? (
-                    <Check className="w-5 h-5 text-accent" />
-                  ) : (
-                    <LinkIcon className="w-5 h-5 text-accent" />
-                  )}
-                </div>
-                <div className="flex-1 text-left min-w-0 overflow-hidden">
-                  <p className="font-medium">{copied ? 'Link copied!' : 'Copy link'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{url}</p>
-                </div>
-              </button>
+              {/* Copy Link + Embed grouped together */}
+              <div className="space-y-2">
+                {/* Copy Link */}
+                <button
+                  onClick={handleCopyLink}
+                  disabled={copied}
+                  className="w-full flex items-center gap-3 p-3 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+                    {copied ? (
+                      <Check className="w-5 h-5 text-accent" />
+                    ) : (
+                      <LinkIcon className="w-5 h-5 text-accent" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0 overflow-hidden">
+                    <p className="font-medium">{copied ? 'Link copied!' : 'Copy link'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{url}</p>
+                  </div>
+                </button>
 
-              {/* Embed code (posts only) */}
-              {embedCode && (
-                <div>
-                  <button
-                    onClick={() => setShowEmbed(v => !v)}
-                    className="w-full flex items-center gap-3 p-3 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
-                      <Code className="w-5 h-5 text-accent" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="font-medium">Embed post</p>
-                      <p className="text-xs text-muted-foreground">Copy iframe code for your website</p>
-                    </div>
-                  </button>
-                  {showEmbed && (
-                    <div className="mt-2 rounded-lg bg-black/30 border border-border overflow-hidden">
-                      <pre className="px-3 py-2.5 text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
-                        {embedCode}
-                      </pre>
-                      <button
-                        onClick={handleCopyEmbed}
-                        className="w-full px-3 py-2 border-t border-border text-xs font-medium text-center transition-colors hover:bg-white/5 flex items-center justify-center gap-1.5"
-                      >
-                        {embedCopied ? (
-                          <><Check className="w-3.5 h-3.5 text-accent" /><span className="text-accent">Copied!</span></>
-                        ) : (
-                          <><Code className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">Copy embed code</span></>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                {/* Embed code (posts only) */}
+                {embedCode && (
+                  <div>
+                    <button
+                      onClick={() => setShowEmbed(v => !v)}
+                      className="w-full flex items-center gap-3 p-3 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
+                    >
+                      <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+                        <Code className="w-5 h-5 text-accent" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="font-medium">Embed post</p>
+                        <p className="text-xs text-muted-foreground">Copy iframe code for your website</p>
+                      </div>
+                    </button>
+                    {showEmbed && (
+                      <div className="mt-2 rounded-lg bg-black/30 border border-border overflow-hidden">
+                        <pre className="px-3 py-2.5 text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+                          {embedCode}
+                        </pre>
+                        <button
+                          onClick={handleCopyEmbed}
+                          className="w-full px-3 py-2 border-t border-border text-xs font-medium text-center transition-colors hover:bg-white/5 flex items-center justify-center gap-1.5"
+                        >
+                          {embedCopied ? (
+                            <><Check className="w-3.5 h-3.5 text-accent" /><span className="text-accent">Copied!</span></>
+                          ) : (
+                            <><Code className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">Copy embed code</span></>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Social Media Shares */}
-              <div className="mt-2 flex gap-2">
+              <div className="flex gap-2">
                 {/* Bluesky */}
                 <button
                   onClick={() => window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(title + '\n' + url)}`, '_blank')}

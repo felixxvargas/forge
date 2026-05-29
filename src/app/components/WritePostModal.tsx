@@ -458,6 +458,7 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
                   onChange={(e) => handleGameSearch(e.target.value)}
                   placeholder="Search for a game..."
                   className="w-full pl-9 pr-3 py-2 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                  style={{ fontSize: '12px' }}
                   autoFocus
                 />
               </div>

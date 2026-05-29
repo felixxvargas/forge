@@ -396,6 +396,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                     onKeyDown={e => { if (e.key === 'Escape') { setTagSearchActive(false); setShowGameSearch(false); setGameQuery(''); setGameResults([]); } }}
                     placeholder="Search for a game..."
                     className="bg-transparent text-xs placeholder-muted-foreground focus:outline-none w-44"
+                    style={{ fontSize: '12px' }}
                     autoFocus
                   />
                 </div>
@@ -441,6 +442,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                       value={gameQuery}
                       onChange={e => handleGameQueryChange(e.target.value)}
                       className="w-full pl-8 pr-3 py-2 bg-secondary border border-border rounded-lg text-xs placeholder-muted-foreground focus:outline-none focus:border-accent"
+                      style={{ fontSize: '12px' }}
                       autoFocus
                     />
                   </div>

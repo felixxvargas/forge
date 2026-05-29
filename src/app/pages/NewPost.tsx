@@ -1310,7 +1310,9 @@ export function NewPost() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input type="text" value={gameQuery} onChange={(e) => handleGameSearch(e.target.value)}
                   placeholder="Search for a game…"
-                  className="w-full pl-9 pr-3 py-2 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm" autoFocus />
+                  className="w-full pl-9 pr-3 py-2 bg-background rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                  style={{ fontSize: '12px' }}
+                  autoFocus />
               </div>
               {isSearchingGames && <p className="text-xs text-muted-foreground">Searching…</p>}
               {gameResults.length > 0 && (

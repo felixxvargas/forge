@@ -676,7 +676,8 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
 
   // Use actual loaded reply count once available (overrides potentially stale DB value)
   const actualCommentCount = isLoadingReplies ? activePost.comment_count : Math.max(activePost.comment_count ?? 0, replies.length);
-  const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount, repost_count: liveRepostCount };
+  const liveLikeCount = likers.length > 0 ? likers.length : (activePost.like_count ?? 0);
+  const detailPost = { ...activePost, repostedBy: undefined, comment_count: actualCommentCount, repost_count: liveRepostCount, like_count: liveLikeCount };
 
   const parentUser = parentPost ? (parentPost.author ?? getUserById(parentPost.user_id)) : null;
 
@@ -1229,6 +1230,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                         onChange={(e) => handleReplyGameSearch(e.target.value)}
                         placeholder="Search for a game…"
                         className="w-full pl-8 pr-3 py-1.5 bg-secondary rounded-lg outline-none focus:ring-2 focus:ring-accent text-sm"
+                        style={{ fontSize: '12px' }}
                         autoFocus
                       />
                     </div>
@@ -1688,7 +1690,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
       {/* Sticky reply bar — mobile only, sits above the bottom nav bar */}
       {currentUser && !isExternalPost && !activePost.comments_disabled && (
         <div
-          className={`sm:hidden fixed bottom-16 left-0 right-0 z-40 bg-background border-t border-border px-4 py-2.5 transition-opacity duration-150 ${showReplyTray ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          className={`sm:hidden fixed bottom-16 left-0 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-border px-4 py-2.5 transition-opacity duration-150 ${showReplyTray ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
         >
           <div className="flex gap-3 items-center">
