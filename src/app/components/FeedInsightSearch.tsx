@@ -361,7 +361,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
           ref={gameSearchContainerRef}
           className="relative bg-card border border-border rounded-xl overflow-visible hover:border-accent/30 transition-colors"
         >
-          <div className="px-4 pt-3 pb-2">
+          <div className="px-4 pt-4 pb-2">
             <textarea
               ref={textareaRef}
               value={query}

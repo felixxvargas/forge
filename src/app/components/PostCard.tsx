@@ -621,7 +621,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                     {insightData.title && (
                       <p className="text-sm font-semibold leading-snug mb-1">{insightData.title}</p>
                     )}
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-snug max-h-[2.75em] overflow-hidden">
                       {(insightData.content || insightData.query)?.trim()}
                     </p>
                   </>
