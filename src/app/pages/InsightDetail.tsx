@@ -64,6 +64,14 @@ export function InsightDetail() {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [changingCategory, setChangingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [backPath, setBackPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const prev = sessionStorage.getItem('forge_prev_path');
+      if (prev) setBackPath(prev);
+    } catch {}
+  }, []);
 
   const fetchInsight = useCallback(async () => {
     if (!insightId) return;
@@ -282,7 +290,7 @@ export function InsightDetail() {
         <Header />
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
           <p className="text-muted-foreground">Insight not found.</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-accent text-sm hover:underline">Go back</button>
+          <button onClick={() => backPath ? navigate(backPath) : navigate(`/game/${gameId}`)} className="mt-4 text-accent text-sm hover:underline">Go back</button>
         </div>
       </div>
     );
@@ -301,7 +309,7 @@ export function InsightDetail() {
         {/* Back nav */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => backPath ? navigate(backPath) : navigate(`/game/${gameId}`)}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />

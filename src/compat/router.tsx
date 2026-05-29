@@ -16,8 +16,11 @@ import { useEffect, type ComponentProps, type ReactNode } from 'react';
 // useNavigate — returns a function matching React Router's signature
 export function useNavigate() {
   const router = useRouter();
+  const pathname = usePathname();
   return (to: string | number, opts?: { replace?: boolean; state?: any }) => {
     if (typeof to === 'number') { router.back(); return; }
+    // Save current path before every push so detail pages can navigate back correctly
+    try { sessionStorage.setItem('forge_prev_path', pathname); } catch {}
     if (opts?.replace) router.replace(to as string);
     else router.push(to as string);
   };
