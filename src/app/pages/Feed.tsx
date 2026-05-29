@@ -417,7 +417,7 @@ export function Feed() {
             exit={{ opacity: 0, y: -6, transition: { duration: 0.18, ease: 'easeIn' } }}
           >
       {/* Feed selector */}
-      <div className="mb-3 lg:mb-6 relative">
+      <div className="mt-6 lg:mt-9 mb-3 lg:mb-6 relative">
         <button
           onClick={() => isAuthenticated && setShowDropdown(!showDropdown)}
           className={`flex items-center gap-2 text-2xl font-extrabold transition-colors ${isAuthenticated ? 'hover:text-accent cursor-pointer' : 'cursor-default'}`}
