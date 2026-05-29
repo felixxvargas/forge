@@ -622,7 +622,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                   </button>
                   {selectedGame && insightId && (
                     <button
-                      onClick={() => { navigate(`/game/${selectedGame.id}`); reset(); }}
+                      onClick={() => { navigate(`/game/${selectedGame.id}/insight/${insightId}`); reset(); }}
                       className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
                     >
                       View pending insight

@@ -422,12 +422,12 @@ export function InsightDetail() {
               </div>
             )}
 
-            {!isOwn && isAuthenticated && (
+            {isAuthenticated && (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleVote('approve')}
-                  disabled={voting}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  onClick={isOwn ? undefined : () => handleVote('approve')}
+                  disabled={voting || isOwn}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${isOwn ? 'opacity-40 cursor-not-allowed' : ''} ${
                     insight.myVote === 'approve'
                       ? 'bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/40'
                       : 'bg-secondary text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10'
@@ -437,9 +437,9 @@ export function InsightDetail() {
                   <span>{insight.approve_count}</span>
                 </button>
                 <button
-                  onClick={() => handleVote('reject')}
-                  disabled={voting}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  onClick={isOwn ? undefined : () => handleVote('reject')}
+                  disabled={voting || isOwn}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${isOwn ? 'opacity-40 cursor-not-allowed' : ''} ${
                     insight.myVote === 'reject'
                       ? 'bg-red-500/20 text-red-400 border-2 border-red-500/40'
                       : 'bg-secondary text-muted-foreground hover:text-red-400 hover:bg-red-500/10'
@@ -448,7 +448,7 @@ export function InsightDetail() {
                   <ThumbsDown className="w-4 h-4" />
                   <span>{insight.reject_count}</span>
                 </button>
-                {insight.myVote && (
+                {!isOwn && insight.myVote && (
                   <span className="text-xs text-muted-foreground">You {insight.myVote === 'approve' ? 'approved' : 'rejected'}</span>
                 )}
               </div>

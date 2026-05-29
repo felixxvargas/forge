@@ -142,7 +142,7 @@ export default function Dock({
           <DockItem
             key={index}
             onClick={item.onClick}
-            className={item.active && !activeColor ? 'dock-item-active' : ''}
+            className={item.active ? 'dock-item-active' : ''}
             active={item.active}
             activeColor={activeColor}
             mouseX={mouseX}

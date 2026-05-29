@@ -274,7 +274,7 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
       {/* FAB */}
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-24 right-4 z-30 flex items-center gap-2 px-4 py-3 rounded-full font-medium text-sm shadow-lg transition-colors"
+        className="fixed bottom-24 right-4 md:bottom-8 md:right-6 z-30 flex items-center gap-2 px-4 py-3 rounded-full font-medium text-sm shadow-lg transition-colors"
         style={{ background: '#E7FFC4', color: '#2d1f47', backdropFilter: 'blur(8px)' }}
       >
         <Plus className="w-4 h-4" />
