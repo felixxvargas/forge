@@ -1,5 +1,5 @@
 ﻿'use client';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate, useSearchParams } from '@/compat/router';
@@ -1452,8 +1452,8 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
               )}
             </div>
           ) : (
-            <div className="px-3 pt-2">
-              {replies.map((reply) => {
+            <div className="mx-3 mt-2 mb-3 rounded-2xl border border-border bg-card overflow-hidden">
+              {replies.map((reply, replyIdx) => {
                 const replyUser = reply.author ?? getUserById(reply.user_id);
                 if (!replyUser) return null;
                 const subReplies = subRepliesMap[reply.id] ?? [];
@@ -1473,49 +1473,54 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                   ? (reply.comment_count ?? 0) - (bestSubReply ? 1 : 0)
                   : 0;
 
-                const hasThread = !!bestSubReply || inlineChainTargetId === reply.id;
-
                 return (
-                  <div key={reply.id}>
+                  <React.Fragment key={reply.id}>
                     {/* Top-level reply */}
-                    <PostCard
-                      post={reply}
-                      user={replyUser}
-                      onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-                      onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-                      onComment={() => navigate(`/post/${encodeURIComponent(reply.id)}#comments`)}
-                      onDelete={currentUser && reply.user_id === currentUser.id
-                        ? async (id) => setDeleteConfirmId(id)
-                        : undefined}
-                      isLiked={likedPosts.has(reply.id)}
-                      isReposted={repostedPosts.has(reply.id)}
-                      showThreadLine={hasThread}
-                    />
+                    <div>
+                      <p className="text-xs text-muted-foreground px-4 pt-3 pb-0">
+                        Replying to @{activePost?.author?.handle ?? ''}
+                      </p>
+                      <PostCard
+                        post={reply}
+                        user={replyUser}
+                        noBacker={true}
+                        onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
+                        onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
+                        onComment={() => navigate(`/post/${encodeURIComponent(reply.id)}#comments`)}
+                        onDelete={currentUser && reply.user_id === currentUser.id
+                          ? async (id) => setDeleteConfirmId(id)
+                          : undefined}
+                        isLiked={likedPosts.has(reply.id)}
+                        isReposted={repostedPosts.has(reply.id)}
+                      />
+                    </div>
 
-                    {/* Best sub-reply connected with a vertical thread line */}
+                    {/* Best sub-reply — no vertical connector, same padding as parent */}
                     {bestSubReply && (() => {
                       const subUser = bestSubReply.author ?? getUserById(bestSubReply.user_id);
                       if (!subUser) return null;
                       return (
-                        <div className="pl-3 border-l-2 border-border/50 -mt-2 mb-3">
-                          <div
-                            className="cursor-pointer"
-                            onClick={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}`)}
-                          >
-                            <PostCard
-                              post={bestSubReply}
-                              user={subUser}
-                              onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
-                              onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
-                              onComment={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}#comments`)}
-                              isLiked={likedPosts.has(bestSubReply.id)}
-                              isReposted={repostedPosts.has(bestSubReply.id)}
-                            />
-                          </div>
+                        <div
+                          className="border-t border-border/40 cursor-pointer"
+                          onClick={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}`)}
+                        >
+                          <p className="text-xs text-muted-foreground px-4 pt-3 pb-0">
+                            Replying to @{(replyUser.handle ?? '').replace(/^@/, '')}
+                          </p>
+                          <PostCard
+                            post={bestSubReply}
+                            user={subUser}
+                            noBacker={true}
+                            onLike={(id) => { likedPosts.has(id) ? unlikePost(id) : likePost(id); }}
+                            onRepost={(id) => { repostedPosts.has(id) ? unrepostPost(id) : repostPost(id); }}
+                            onComment={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}#comments`)}
+                            isLiked={likedPosts.has(bestSubReply.id)}
+                            isReposted={repostedPosts.has(bestSubReply.id)}
+                          />
                           {hiddenSubReplies > 0 && (
                             <button
-                              onClick={() => navigate(`/post/${encodeURIComponent(reply.id)}`)}
-                              className="text-xs text-accent hover:underline pb-1 pl-1"
+                              onClick={e => { e.stopPropagation(); navigate(`/post/${encodeURIComponent(reply.id)}`); }}
+                              className="text-xs text-accent hover:underline px-4 pb-3 block"
                             >
                               View {hiddenSubReplies} more {hiddenSubReplies === 1 ? 'reply' : 'replies'}
                             </button>
@@ -1524,10 +1529,10 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                       );
                     })()}
 
-                    {/* Inline chain-reply form shown after the user just posted this reply */}
+                    {/* Inline chain-reply form — no border-l, flat inside the grouped card */}
                     {inlineChainTargetId === reply.id && currentUser && (
-                      <div className="pl-3 border-l-2 border-accent/40 -mt-2 mb-4">
-                        <div className="flex gap-2.5 pt-3 px-2 pb-2 bg-secondary/20 rounded-xl">
+                      <div className="border-t border-border/40 px-4 py-3">
+                        <div className="flex gap-2.5">
                           <ProfileAvatar
                             username={currentUser.display_name || currentUser.handle || '?'}
                             profilePicture={currentUser.profile_picture}
@@ -1562,7 +1567,10 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                         </div>
                       </div>
                     )}
-                  </div>
+
+                    {/* Horizontal divider between reply groups */}
+                    {replyIdx < replies.length - 1 && <hr className="border-border/50" />}
+                  </React.Fragment>
                 );
               })}
             </div>

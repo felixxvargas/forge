@@ -108,7 +108,6 @@ interface PostCardProps {
   noBacker?: boolean;
   onRemoveFromGroup?: () => void;
   hideGroupTag?: boolean;
-  showThreadLine?: boolean;
   avatarPriority?: boolean;
 }
 
@@ -116,7 +115,7 @@ function igdbThumb(url: string) {
   return url.replace(/\/t_[^/]+\//, '/t_thumb/');
 }
 
-export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, showThreadLine = false, avatarPriority = false }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, avatarPriority = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -408,7 +407,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
         isFlarePost
           ? 'relative overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-950/60 via-red-950/30 to-card'
           : noBacker ? 'bg-transparent' : 'bg-card'
-      } p-4 ${showThreadLine ? 'relative' : ''} ${!isDetailView ? 'rounded-xl cursor-pointer transition-colors' : ''} ${
+      } p-4 ${!isDetailView ? 'rounded-xl cursor-pointer transition-colors' : ''} ${
         isFlarePost && !isDetailView ? 'hover:from-orange-950/70 hover:via-red-950/40' : !isFlarePost && !isDetailView ? 'hover:bg-secondary/40' : ''
       }`}
       style={!isFlarePost && !noBacker ? {
@@ -417,12 +416,6 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       } : undefined}
       onClick={handlePostClick}
     >
-      {showThreadLine && (
-        <div
-          className="absolute w-0.5 bg-border/50 rounded-b-full pointer-events-none"
-          style={{ left: '40px', top: '64px', bottom: '-10px' }}
-        />
-      )}
       {/* Flare header banner */}
       {isFlarePost && (
         <div className="flex items-center gap-2 -mx-4 -mt-4 mb-3 px-4 py-2 bg-gradient-to-r from-orange-500/25 via-red-500/15 to-transparent border-b border-orange-500/25">
@@ -610,7 +603,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
             {isInsightPost && post.game_id ? (
               <button
                 onClick={e => { e.stopPropagation(); navigate(`/game/${post.game_id}/insight/${post.insight_id}`); }}
-                className="w-full text-left rounded-xl p-3.5 mb-3 hover:opacity-90 transition-opacity"
+                className="w-full text-left rounded-xl px-3.5 pt-3 pb-2 mb-2 hover:opacity-90 transition-opacity"
                 style={{ border: '1px solid rgba(139,92,246,0.35)', background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(109,40,217,0.05) 100%)' }}
               >
                 {post.game_title && (
