@@ -389,7 +389,9 @@ export function InsightDetail() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="max-w-2xl mx-auto px-4 py-4 pb-24">
+      <div className="max-w-6xl mx-auto px-4 py-4 pb-24">
+      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-8 items-start">
+      <div className="min-w-0">
         {/* Back nav */}
         <div className="flex items-center justify-between mb-4">
           <button
@@ -680,8 +682,11 @@ export function InsightDetail() {
           </button>
         )}
 
-        {/* Lore / Comments */}
-        <div className="mt-6">
+      </div>{/* end left column */}
+
+      {/* RIGHT — comments */}
+      <div className="lg:sticky lg:top-20 mt-8 lg:mt-0">
+        <div className="mt-0">
           <div className="flex items-center gap-2 mb-4">
             <MessageCircle className="w-4 h-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Comments</h3>
@@ -775,7 +780,9 @@ export function InsightDetail() {
             </p>
           )}
         </div>
-      </div>
+      </div>{/* end right column */}
+      </div>{/* end grid */}
+      </div>{/* end max-w-6xl */}
 
       {/* Category picker bottom sheet */}
       {changingCategory && (

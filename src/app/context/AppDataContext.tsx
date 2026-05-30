@@ -309,7 +309,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     let loadedGroups: any[] = [];
     if (feedResult.status === 'fulfilled') {
       loadedPosts = feedResult.value;
-      setPostList(loadedPosts);
+      // Keep existing posts visible if the new fetch returned nothing — prevents empty flash on token refresh
+      setPostList(prev => loadedPosts.length > 0 ? loadedPosts : prev.length > 0 ? prev : loadedPosts);
     } else { console.error('Error loading feed:', feedResult.reason); }
     if (usersResult.status === 'fulfilled' && usersResult.value !== null) {
       loadedUsers = usersResult.value.map(normalizeProfile);
@@ -554,6 +555,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const userId = session?.user?.id ?? null;
       // Skip full re-init on token refreshes — same authenticated user, data already loaded
       if (initializedUserIdRef.current === userId && userId !== null) return;
+      // Session is briefly null during Supabase token refresh — don't tear down the feed
+      if (userId === null && initializedUserIdRef.current !== null && initializedUserIdRef.current !== undefined) return;
       initializedUserIdRef.current = userId;
 
       // Seed from cache immediately so the skeleton never shows on reload

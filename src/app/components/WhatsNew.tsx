@@ -11,6 +11,20 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.3.9',
+    date: 'May 2026',
+    title: "What's New in Forge",
+    summary: "AI-powered insight editing, onboarding improvements, smarter feeds, and a wave of quality fixes.",
+    highlights: [
+      'Refine insights with Forge AI — prompt Gemini to rewrite your insight before resubmitting.',
+      'Choose your insight category before submitting to the community wiki.',
+      'Onboarding: upload a profile photo during sign-up, go back to any step, welcome screen no longer auto-skips.',
+      'Trending feed now mixes native Forge posts with gaming media so you always see both.',
+      'Feed loads 3-5× faster on mobile — parallel fetching and instant skeleton loader on all tabs.',
+      'Rate the app from Settings → Feedback (Android only).',
+    ],
+  },
+  {
     version: 'v0.3.8',
     date: 'May 2026',
     title: "What's New in Forge",
