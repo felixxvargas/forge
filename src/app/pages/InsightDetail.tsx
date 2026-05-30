@@ -71,6 +71,7 @@ export function InsightDetail() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiConversation, setAiConversation] = useState<{ question: string; reply: string }[]>([]);
   const [backPath, setBackPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -288,6 +289,7 @@ export function InsightDetail() {
 
   const handleAiRefine = async () => {
     if (!insight || !aiPrompt.trim() || aiLoading) return;
+    const question = aiPrompt.trim();
     setAiLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -297,10 +299,16 @@ export function InsightDetail() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          question: aiPrompt.trim(),
+          question,
           gameId: insight.game_id,
           gameTitle: insight.game_title,
-          messages: [{ role: 'user', content: editContent, timestamp: new Date().toISOString() }],
+          messages: [
+            { role: 'user', content: insight.content, timestamp: insight.submitted_at },
+            ...aiConversation.flatMap(c => [
+              { role: 'user',      content: c.question, timestamp: '' },
+              { role: 'assistant', content: c.reply,    timestamp: '' },
+            ]),
+          ],
         }),
       });
       if (res.status === 429) {
@@ -313,8 +321,12 @@ export function InsightDetail() {
         throw new Error(data.error || 'AI refinement failed');
       }
       const data = await res.json();
-      if (data.updatedInsight) setEditContent(data.updatedInsight);
-      else if (data.reply) setEditContent(data.reply);
+      // Update the displayed overview if Gemini rewrote the insight
+      if (data.updatedInsight) {
+        setInsight(i => i ? { ...i, content: data.updatedInsight } : i);
+      }
+      // Append the exchange to the conversation thread
+      setAiConversation(prev => [...prev, { question, reply: data.updatedInsight || data.reply || '' }]);
       setAiPrompt('');
     } catch (err: any) {
       toast.error(err.message || 'AI refinement failed');
@@ -496,24 +508,6 @@ export function InsightDetail() {
         <div className="bg-card border rounded-xl p-5 mb-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>
           {editingInsight ? (
             <div className="space-y-3">
-              {/* Gemini AI refinement prompt */}
-              <div className="flex gap-2">
-                <input
-                  value={aiPrompt}
-                  onChange={e => setAiPrompt(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAiRefine(); } }}
-                  placeholder="Ask AI to refine this insight…"
-                  disabled={aiLoading}
-                  className="flex-1 bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50 placeholder-muted-foreground/60"
-                />
-                <button
-                  onClick={handleAiRefine}
-                  disabled={!aiPrompt.trim() || aiLoading}
-                  className="shrink-0 px-3 py-2 rounded-lg bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center"
-                >
-                  {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                </button>
-              </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
                 <input
@@ -565,6 +559,47 @@ export function InsightDetail() {
             </div>
           )}
         </div>
+
+        {/* AI Refinement — owner only, between overview and community review */}
+        {isOwn && isAuthenticated && insight.status !== 'rejected' && (
+          <div className="mb-4">
+            {/* Prompt input — always at top */}
+            <div className="flex gap-2 mb-3">
+              <input
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAiRefine(); } }}
+                placeholder="Ask Forge AI to refine this insight…"
+                disabled={aiLoading}
+                className="flex-1 bg-card border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50 placeholder-muted-foreground/60"
+              />
+              <button
+                onClick={handleAiRefine}
+                disabled={!aiPrompt.trim() || aiLoading}
+                className="shrink-0 px-3 py-2.5 rounded-xl bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+              >
+                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                {!aiLoading && 'Refine'}
+              </button>
+            </div>
+
+            {/* Conversation history — bubbles below the input */}
+            {aiConversation.length > 0 && (
+              <div className="space-y-4">
+                {aiConversation.map((entry, i) => (
+                  <div key={i} className="flex flex-col gap-2">
+                    <div className="ml-auto max-w-[60%] bg-accent/20 rounded-2xl rounded-tr-sm px-4 py-3">
+                      <p className="text-sm text-foreground">{entry.question}</p>
+                    </div>
+                    <div className="mr-auto max-w-[60%] bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3">
+                      <p className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">{entry.reply}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Voting (pending insights) */}
         {insight.status === 'pending' && (
