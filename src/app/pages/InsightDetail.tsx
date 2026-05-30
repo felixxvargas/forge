@@ -1,12 +1,13 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useParams, useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { Header } from '../components/Header';
+import { clearWvCacheForGame } from '../components/GameWikiView';
 
 interface InsightAuthor {
   id: string;
@@ -68,6 +69,8 @@ export function InsightDetail() {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   const [backPath, setBackPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -213,8 +216,13 @@ export function InsightDetail() {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) { toast.success('Insight deleted'); navigate(-1); }
-    else toast.error('Failed to delete insight');
+    if (res.ok) {
+      if (gameId) clearWvCacheForGame(gameId);
+      toast.success('Insight deleted');
+      navigate(-1);
+    } else {
+      toast.error('Failed to delete insight');
+    }
   };
 
   const handleChangeCategory = async (category: string) => {
@@ -278,6 +286,43 @@ export function InsightDetail() {
     }
   };
 
+  const handleAiRefine = async () => {
+    if (!insight || !aiPrompt.trim() || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch('/api/gemini/game-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          question: aiPrompt.trim(),
+          gameId: insight.game_id,
+          gameTitle: insight.game_title,
+          messages: [{ role: 'user', content: editContent, timestamp: new Date().toISOString() }],
+        }),
+      });
+      if (res.status === 429) {
+        const data = await res.json();
+        toast.error(data.error || 'Daily AI limit reached');
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'AI refinement failed');
+      }
+      const data = await res.json();
+      if (data.updatedInsight) setEditContent(data.updatedInsight);
+      else if (data.reply) setEditContent(data.reply);
+      setAiPrompt('');
+    } catch (err: any) {
+      toast.error(err.message || 'AI refinement failed');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !isAuthenticated || submittingComment) return;
     setSubmittingComment(true);
@@ -329,7 +374,7 @@ export function InsightDetail() {
         <Header />
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
           <p className="text-muted-foreground">Insight not found.</p>
-          <button onClick={() => backPath ? navigate(backPath) : navigate(`/game/${gameId}`)} className="mt-4 text-accent text-sm hover:underline">Go back</button>
+          <button onClick={() => backPath ? navigate(-1) : navigate(`/game/${gameId}`)} className="mt-4 text-accent text-sm hover:underline">Go back</button>
         </div>
       </div>
     );
@@ -348,7 +393,7 @@ export function InsightDetail() {
         {/* Back nav */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => backPath ? navigate(backPath) : navigate(`/game/${gameId}`)}
+            onClick={() => backPath ? navigate(-1) : navigate(`/game/${gameId}`)}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -449,6 +494,24 @@ export function InsightDetail() {
         <div className="bg-card border rounded-xl p-5 mb-4" style={{ borderColor: 'rgba(139,92,246,0.25)' }}>
           {editingInsight ? (
             <div className="space-y-3">
+              {/* Gemini AI refinement prompt */}
+              <div className="flex gap-2">
+                <input
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAiRefine(); } }}
+                  placeholder="Ask AI to refine this insight…"
+                  disabled={aiLoading}
+                  className="flex-1 bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50 placeholder-muted-foreground/60"
+                />
+                <button
+                  onClick={handleAiRefine}
+                  disabled={!aiPrompt.trim() || aiLoading}
+                  className="shrink-0 px-3 py-2 rounded-lg bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center"
+                >
+                  {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                </button>
+              </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
                 <input
@@ -474,7 +537,7 @@ export function InsightDetail() {
                 <button
                   onClick={handleEditInsight}
                   disabled={savingEdit || (!editTitle.trim() && !editContent.trim())}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors disabled:opacity-40"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent text-[#2d1f47] rounded-lg hover:bg-accent/80 transition-colors disabled:opacity-40"
                 >
                   <Check className="w-3 h-3" />
                   {savingEdit ? 'Saving…' : 'Resubmit'}
@@ -488,7 +551,7 @@ export function InsightDetail() {
           ) : (
             <div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{insight.content}</p>
-              {isOwn && insight.status === 'pending' && (
+              {isOwn && insight.status !== 'rejected' && (
                 <button
                   onClick={() => { setEditTitle(insight.title ?? ''); setEditContent(insight.content); setEditingInsight(true); }}
                   className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"

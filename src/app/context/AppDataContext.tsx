@@ -575,12 +575,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Load user data first so followed game/group IDs are available for a single personalized fetch
           const loadResult = await loadUserData(session.user.id);
-          feedData = await refreshFeed();
-          if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
-          if (!cached) {
-            setIsLoading(false);
-            setIsRefreshing(true);
-          }
           const topicFollows = loadResult?.topicFollows ?? [];
           const rawFollowingIdList = loadResult?.followingIdList ?? [];
           const loadedExternalFollows = loadResult?.externalFollows ?? [];
@@ -613,8 +607,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             } catch { /* best-effort */ }
           }
 
-          // Append posts from followed topic accounts into the following feed
-          if (allTopicFollows.length > 0) {
+          // Run refreshFeed, topic account fetches, and external follow fetches in parallel.
+          // All three only need loadResult (available now) — they don't depend on each other.
+          const fetchTopicPosts = async () => {
+            if (allTopicFollows.length === 0) return;
             try {
               const fetchPairs = allTopicFollows.map((topicId: string) => {
                 const bskyHandle = TOPIC_BLUESKY_MAP[topicId] ?? topicAccountBlueskyHandles[topicId];
@@ -632,7 +628,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 const author = topicAccountById[topicId];
                 return (r as any).value
                   .filter((post: any) => {
-                    // Drop URL-only posts that have no images — they render as blank/broken
                     const hasImages = (post.images?.length ?? 0) > 0 || (post.image_urls?.length ?? 0) > 0;
                     const text = (post.content ?? '').trim();
                     const hasRealText = text.length >= 5 && !/^https?:\/\/\S+\s*$/.test(text);
@@ -647,15 +642,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                     author,
                   }));
               });
-              if (topicPosts.length > 0) {
-                setTopicPosts(topicPosts);
-              }
+              if (topicPosts.length > 0) setTopicPosts(topicPosts);
             } catch (e) {
               console.error('Error loading topic account posts for feed:', e);
             }
-          }
-          // Load posts for followed external Bluesky/Mastodon accounts
-          if (loadedExternalFollows.length > 0) {
+          };
+
+          const fetchExternalFollowPosts = async () => {
+            if (loadedExternalFollows.length === 0) return;
             try {
               const externalPosts: any[] = [];
               await Promise.allSettled(
@@ -692,6 +686,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             } catch (e) {
               console.error('Error loading external follow posts:', e);
             }
+          };
+
+          // All three run in parallel — topic/external posts stream into the feed as they arrive
+          [feedData] = await Promise.all([
+            refreshFeed(),
+            fetchTopicPosts(),
+            fetchExternalFollowPosts(),
+          ]);
+          if (userId) writeFeedCache(userId, feedData.posts, feedData.groups);
+          if (!cached) {
+            setIsLoading(false);
+            setIsRefreshing(true);
           }
         } else {
           // Unauthenticated — fetch generic feed

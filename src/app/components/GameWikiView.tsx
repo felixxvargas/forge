@@ -76,6 +76,20 @@ interface GameWikiViewProps {
   coverUrl?: string;
 }
 
+type WVEntry<T> = { data: T; ts: number };
+const _wvCache = new Map<string, WVEntry<any>>();
+const WV_TTL = 3 * 60 * 1000;
+function wvGet<T>(key: string): T | null {
+  const e = _wvCache.get(key);
+  return e && Date.now() - e.ts < WV_TTL ? e.data as T : null;
+}
+function wvSet<T>(key: string, data: T) { _wvCache.set(key, { data, ts: Date.now() }); }
+export function clearWvCacheForGame(gameId: string) {
+  for (const key of _wvCache.keys()) {
+    if (key.startsWith(`${gameId}:`)) _wvCache.delete(key);
+  }
+}
+
 export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps) {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<Category>('all');
@@ -85,6 +99,14 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
   const [showModal, setShowModal] = useState(false);
 
   const fetchData = useCallback(async (category: Category) => {
+    const cacheKey = `${gameId}:${category}`;
+    const cached = wvGet<{ insights: WikiInsight[]; entities: WikiEntity[] }>(cacheKey);
+    if (cached) {
+      setInsights(cached.insights);
+      setEntities(cached.entities.filter(e => CATEGORY_ENTITY_TYPES[category].includes(e.type)));
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -97,12 +119,11 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
         fetch(`/api/insights/game-wiki-entities?gameId=${encodeURIComponent(gameId)}`, { headers }),
       ]);
 
-      if (insightsRes.ok) setInsights(await insightsRes.json());
-      if (entitiesRes.ok) {
-        const allEntities: WikiEntity[] = await entitiesRes.json();
-        const allowedTypes = CATEGORY_ENTITY_TYPES[category];
-        setEntities(allEntities.filter(e => allowedTypes.includes(e.type)));
-      }
+      const fetchedInsights: WikiInsight[] = insightsRes.ok ? await insightsRes.json() : [];
+      const allEntities: WikiEntity[] = entitiesRes.ok ? await entitiesRes.json() : [];
+      wvSet(cacheKey, { insights: fetchedInsights, entities: allEntities });
+      setInsights(fetchedInsights);
+      setEntities(allEntities.filter(e => CATEGORY_ENTITY_TYPES[category].includes(e.type)));
     } catch {
       setInsights([]);
       setEntities([]);
@@ -226,10 +247,11 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
                   {insights.map(insight => {
                     const badge = CATEGORY_BADGE[insight.category] ?? CATEGORY_BADGE.extras;
                     return (
-                      <button
+                      <a
                         key={insight.id}
-                        onClick={() => navigate(`/game/${gameId}/insight/${insight.id}`)}
-                        className="w-full text-left rounded-xl p-4 transition-colors group"
+                        href={`/game/${gameId}/insight/${insight.id}`}
+                        onClick={e => { e.preventDefault(); navigate(`/game/${gameId}/insight/${insight.id}`); }}
+                        className="w-full text-left rounded-xl p-4 transition-colors group block"
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
@@ -261,7 +283,7 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
                           </div>
                           <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/40 transition-colors" />
                         </div>
-                      </button>
+                      </a>
                     );
                   })}
                 </div>

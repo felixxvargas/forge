@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Check, X } from 'lucide-react';
+import { Check, X, ArrowLeft } from 'lucide-react';
 import { userAPI } from '../../utils/api';
 
 interface UsernameScreenProps {
   onComplete: (username: string, displayName: string, pronouns: string) => void;
+  onBack?: () => void;
 }
 
 function getFormatError(value: string): string | null {
@@ -14,7 +15,7 @@ function getFormatError(value: string): string | null {
   return null;
 }
 
-export function UsernameScreen({ onComplete }: UsernameScreenProps) {
+export function UsernameScreen({ onComplete, onBack }: UsernameScreenProps) {
   const [handle, setHandle] = useState(() => sessionStorage.getItem('forge-onboarding-username') ?? '');
   const [displayName, setDisplayName] = useState(() => sessionStorage.getItem('forge-onboarding-display-name') ?? '');
   const [pronouns, setPronouns] = useState(() => sessionStorage.getItem('forge-onboarding-pronouns') ?? '');
@@ -101,6 +102,12 @@ export function UsernameScreen({ onComplete }: UsernameScreenProps) {
 
   return (
     <div className="fixed inset-0 bg-background overflow-y-auto">
+      {onBack && (
+        <button onClick={onBack} className="absolute top-4 left-4 z-10 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+      )}
       <div className="min-h-screen px-6 py-12 pb-8 flex flex-col justify-center">
         <div className="w-full max-w-md mx-auto">
           {/* Header */}

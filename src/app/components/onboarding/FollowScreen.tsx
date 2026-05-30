@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
+import { ArrowLeft } from 'lucide-react';
 import { ProfileAvatar } from '../ProfileAvatar';
 import { formatNumber } from '../../utils/formatNumber';
 import type { User } from '../../data/data';
@@ -7,9 +8,10 @@ import type { User } from '../../data/data';
 interface FollowScreenProps {
   users: User[];
   onComplete: (selectedUserIds: string[]) => void;
+  onBack?: () => void;
 }
 
-export function FollowScreen({ users, onComplete }: FollowScreenProps) {
+export function FollowScreen({ users, onComplete, onBack }: FollowScreenProps) {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   const toggleUser = (userId: string) => {
@@ -22,6 +24,12 @@ export function FollowScreen({ users, onComplete }: FollowScreenProps) {
 
   return (
     <div className="fixed inset-0 bg-background overflow-y-auto">
+      {onBack && (
+        <button onClick={onBack} className="absolute top-4 left-4 z-10 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+      )}
       <div className="min-h-screen px-6 py-12 pb-32">
         <div className="max-w-2xl mx-auto">
         <motion.div

@@ -535,7 +535,7 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
                 <div className="flex gap-2">
                   <button
                     onClick={saveEditResponse}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded-lg hover:bg-accent/80 transition-colors"
                   >
                     <Check className="w-3 h-3" />
                     Save
@@ -650,15 +650,17 @@ export function FeedInsightSearch({ onActiveChange }: { onActiveChange?: (active
         </div>
       )}
 
-      {/* Follow-up thread — replies stacked below main response */}
+      {/* Follow-up thread — chat bubble layout */}
       {state === 'result' && followUpThread.length > 0 && (
-        <div className="space-y-2 mt-2">
+        <div className="space-y-4 mt-4">
           {followUpThread.map((entry, i) => (
-            <div key={i} className="space-y-1">
-              <div className="bg-card border border-border rounded-xl px-4 py-3">
-                <p className="text-xs font-semibold text-muted-foreground">{entry.question}</p>
+            <div key={i} className="flex flex-col gap-2">
+              {/* User message — right-aligned bubble */}
+              <div className="ml-auto max-w-[60%] bg-accent/20 rounded-2xl rounded-tr-sm px-4 py-3">
+                <p className="text-sm text-foreground">{entry.question}</p>
               </div>
-              <div className="bg-card border border-border/50 rounded-xl px-4 py-3">
+              {/* Gemini reply — left-aligned bubble */}
+              <div className="mr-auto max-w-[60%] bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3">
                 <p className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">{entry.reply}</p>
               </div>
             </div>

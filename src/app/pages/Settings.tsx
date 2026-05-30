@@ -1,8 +1,10 @@
 import { useNavigate } from '@/compat/router';
 import { Header } from '../components/Header';
-import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Bookmark, BookOpen, ExternalLink } from 'lucide-react';
+import { Moon, Sun, Lock, Info, LogOut, Upload, Heart, Gamepad2, Share2, Filter, Crown, QrCode, X, Download, Copy, Check, Bug, Lightbulb, User, UserPlus, Users, ChevronRight, Bell, Sparkles, Headphones, Bookmark, BookOpen, ExternalLink, Star } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { getStoredLinkPreference, storeLinkPreference, clearLinkPreference, type LinkPreference } from '../utils/openExternalLink';
+import { requestAppReview } from '../utils/rateApp';
+import { OnboardingProgress } from '../components/OnboardingTooltip';
 import TwitchIcon from '../../assets/icons/twitch.svg?react';
 import { useTheme } from '../context/ThemeContext';
 import { useAppData } from '../context/AppDataContext';
@@ -152,6 +154,11 @@ export function Settings() {
       <Header showSettings={false} />
       <div className="w-full max-w-2xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+
+        {/* Onboarding progress — mobile only, desktop uses the floating tooltip */}
+        <div className="md:hidden mb-6">
+          <OnboardingProgress />
+        </div>
 
         {/* Accounts Section */}
         <div className="mb-8">
@@ -498,6 +505,19 @@ export function Settings() {
         <div className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Feedback</h2>
           <div className="bg-card rounded-xl overflow-hidden divide-y divide-border">
+            {Capacitor.getPlatform() === 'android' && (
+              <button
+                onClick={requestAppReview}
+                className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"
+              >
+                <Star className="w-5 h-5 text-muted-foreground" />
+                <div className="text-left flex-1">
+                  <p className="font-medium">Rate Forge</p>
+                  <p className="text-sm text-muted-foreground">Enjoying the app? Leave us a review</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
             <button
               onClick={() => navigate('/settings/feedback')}
               className="w-full px-4 py-4 flex items-center gap-3 hover:bg-secondary transition-colors"

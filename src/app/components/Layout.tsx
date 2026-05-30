@@ -156,7 +156,9 @@ export function Layout({ children }: { children?: ReactNode }) {
       <BottomNav />
       {isAuthenticated && <WhatsNewModal />}
       {isAuthenticated && <DraftResumeBanner />}
-      {isAuthenticated && !location.pathname.startsWith('/admin') && <OnboardingTooltip />}
+      {isAuthenticated && !location.pathname.startsWith('/admin') && (
+        <span className="hidden md:block"><OnboardingTooltip /></span>
+      )}
     </div>
   );
 }

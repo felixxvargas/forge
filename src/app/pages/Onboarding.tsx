@@ -7,15 +7,16 @@ import { SplashScreen } from '../components/onboarding/SplashScreen';
 import { InterestsScreen } from '../components/onboarding/InterestsScreen';
 import { FollowScreen } from '../components/onboarding/FollowScreen';
 import { UsernameScreen } from '../components/onboarding/UsernameScreen';
+import { ProfilePictureScreen } from '../components/onboarding/ProfilePictureScreen';
 import { topicAccounts } from '../data/data';
 import { profiles, supabase, onboardingTelemetry } from '../utils/supabase';
 import { useAppData } from '../context/AppDataContext';
 import type { User } from '../data/data';
 import type { Interest } from '../components/onboarding/InterestsScreen';
 
-type OnboardingStep = 'splash' | 'interests' | 'follow' | 'username';
+type OnboardingStep = 'splash' | 'interests' | 'follow' | 'username' | 'avatar';
 
-const MAIN_STEPS: OnboardingStep[] = ['interests', 'follow', 'username'];
+const MAIN_STEPS: OnboardingStep[] = ['interests', 'follow', 'username', 'avatar'];
 
 const stepVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
@@ -171,7 +172,8 @@ export function Onboarding() {
         hasPronouns: !!pronouns,
       });
       await refreshCurrentUser();
-      navigate('/feed');
+      setDirection(1);
+      setStep('avatar');
     };
 
     try {
@@ -266,6 +268,20 @@ export function Onboarding() {
     }
   };
 
+  const handleAvatarComplete = async (avatarUrl: string | null) => {
+    if (avatarUrl) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await profiles.update(session.user.id, { profile_picture: avatarUrl });
+        }
+      } catch { /* best-effort */ }
+    }
+    navigate('/feed');
+  };
+
+  const goBack = (to: OnboardingStep) => { setDirection(-1); setStep(to); };
+
   const stepIndex = MAIN_STEPS.indexOf(step);
 
   return (
@@ -280,21 +296,28 @@ export function Onboarding() {
           <motion.div key="interests" custom={direction} variants={stepVariants}
             initial="enter" animate="center" exit="exit" transition={slideTransition}
             className="absolute inset-0 overflow-y-auto">
-            <InterestsScreen onComplete={handleInterestsComplete} initialInterests={initialInterests} />
+            <InterestsScreen onComplete={handleInterestsComplete} initialInterests={initialInterests} onBack={() => goBack('splash')} />
           </motion.div>
         )}
         {step === 'follow' && (
           <motion.div key="follow" custom={direction} variants={stepVariants}
             initial="enter" animate="center" exit="exit" transition={slideTransition}
             className="absolute inset-0 overflow-y-auto">
-            <FollowScreen users={suggestedUsers} onComplete={handleFollowComplete} />
+            <FollowScreen users={suggestedUsers} onComplete={handleFollowComplete} onBack={() => goBack('interests')} />
           </motion.div>
         )}
         {step === 'username' && (
           <motion.div key="username" custom={direction} variants={stepVariants}
             initial="enter" animate="center" exit="exit" transition={slideTransition}
             className="absolute inset-0 overflow-y-auto">
-            <UsernameScreen onComplete={handleUsernameComplete} />
+            <UsernameScreen onComplete={handleUsernameComplete} onBack={() => goBack('follow')} />
+          </motion.div>
+        )}
+        {step === 'avatar' && (
+          <motion.div key="avatar" custom={direction} variants={stepVariants}
+            initial="enter" animate="center" exit="exit" transition={slideTransition}
+            className="absolute inset-0 overflow-y-auto">
+            <ProfilePictureScreen onComplete={handleAvatarComplete} onBack={() => goBack('username')} />
           </motion.div>
         )}
       </AnimatePresence>

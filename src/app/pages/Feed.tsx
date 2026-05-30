@@ -229,7 +229,7 @@ export function Feed() {
           postsAPI.getTrendingFeed(40),
           fetchAllGamingMediaPosts(8),
         ]);
-        const trending: any[] = trendingRes.status === 'fulfilled' ? trendingRes.value : [];
+        const native: any[] = trendingRes.status === 'fulfilled' ? trendingRes.value : [];
         const live: any[] = liveRes.status === 'fulfilled'
           ? (liveRes.value as any[]).map(p => {
               const topicAccount = BSKY_HANDLE_TO_TOPIC[p.userId];
@@ -245,9 +245,16 @@ export function Feed() {
               };
             }).filter((p): p is NonNullable<typeof p> => !!p && isUsableTopicPost(p))
           : [];
-        return [...trending, ...live].sort((a: any, b: any) =>
-          new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()
-        );
+        // Interleave: every 3 topic posts, inject 1 native Forge post so native posts are
+        // always visible regardless of engagement delta vs. fresh Bluesky content.
+        const merged: any[] = [];
+        let ni = 0;
+        live.forEach((post, i) => {
+          merged.push(post);
+          if ((i + 1) % 3 === 0 && ni < native.length) merged.push(native[ni++]);
+        });
+        while (ni < native.length) merged.push(native[ni++]);
+        return merged;
       }
       if (feedMode === 'for-you') {
         const [nativeRes, topicRes] = await Promise.allSettled([
@@ -399,7 +406,7 @@ export function Feed() {
   // during background revalidation too, so only block on first load (dynamicPosts === null).
   const loading = isLoading
     || (dynamicLoading && dynamicPosts === null)
-    || (feedMode === 'following' && isAuthenticated && !topicPostsReady && contextPosts.length === 0);
+    || (feedMode === 'following' && isAuthenticated && contextPosts.length === 0);
   const numCols = useColumnCount();
   const feedGap = numCols === 1 ? 'gap-3' : numCols === 2 ? 'gap-4' : 'gap-6';
 
@@ -408,8 +415,26 @@ export function Feed() {
       {/* AI Insight Search Bar */}
       {isAuthenticated && <FeedInsightSearch onActiveChange={setSearchActive} />}
 
+      {/* Skeleton — outside AnimatePresence so it's visible immediately at full opacity */}
+      {loading && !searchActive && (
+        <div className="mt-6 lg:mt-9">
+          <p className="text-2xl font-extrabold mb-3 lg:mb-6">{getSelectedName()}</p>
+          <div className={`flex ${feedGap} items-start`}>
+            <div className={`flex flex-1 flex-col ${feedGap} min-w-0`}>
+              {[false, true, false, false].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
+            </div>
+            <div className={`hidden md:flex flex-1 flex-col ${feedGap} min-w-0`}>
+              {[true, false, false, true].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
+            </div>
+            <div className={`hidden lg:flex flex-1 flex-col ${feedGap} min-w-0`}>
+              {[false, false, true, false].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
+            </div>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
-        {!searchActive && (
+        {!searchActive && !loading && (
           <motion.div
             key="feed-main"
             initial={{ opacity: 0, y: 8 }}
@@ -503,22 +528,7 @@ export function Feed() {
       </div>
 
 
-      {loading && (
-        <div className={`flex ${feedGap} items-start`}>
-          <div className={`flex flex-1 flex-col ${feedGap} min-w-0`}>
-            {[false, true, false, false].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
-          </div>
-          <div className={`hidden md:flex flex-1 flex-col ${feedGap} min-w-0`}>
-            {[true, false, false, true].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
-          </div>
-          <div className={`hidden lg:flex flex-1 flex-col ${feedGap} min-w-0`}>
-            {[false, false, true, false].map((img, i) => <PostCardSkeleton key={i} showImage={img} />)}
-          </div>
-        </div>
-      )}
-
-      {!loading && (
-        <div className={`flex ${feedGap} items-start`}>
+      <div className={`flex ${feedGap} items-start`}>
           {(() => {
             // Mark first 6 posts (above fold on 1–3 column layouts) as priority for image loading.
             const priorityIds = new Set((visiblePosts as any[]).slice(0, 6).map((p: any) => p.id));
@@ -545,9 +555,8 @@ export function Feed() {
             ));
           })()}
         </div>
-      )}
 
-      {!loading && mutedFilteredPosts.length > 0 && (
+      {mutedFilteredPosts.length > 0 && (
         <div className="mt-4">
           <div className="text-sm text-muted-foreground mb-2">Muted Posts</div>
           <div className={`flex ${feedGap} items-start`}>
@@ -656,7 +665,13 @@ export function Feed() {
       })()}
 
       {/* Desktop layout: 2-col grid for guests (sign-up rail on right), single centered column for auth */}
-      <div className={!isAuthenticated ? "xl:grid xl:grid-cols-[1fr_320px]" : ""}>
+      <div
+        className={!isAuthenticated ? "xl:grid xl:grid-cols-[1fr_320px]" : ""}
+        style={isCapacitor && (pullY > 0 || isRefreshing) ? {
+          paddingTop: isRefreshing ? PTR_THRESHOLD * 0.55 : pullY,
+          transition: isRefreshing ? 'padding-top 0.15s ease-out' : undefined,
+        } : undefined}
+      >
         <div className="min-w-0">
           {feedContent}
         </div>

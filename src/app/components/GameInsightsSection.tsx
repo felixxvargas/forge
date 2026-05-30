@@ -150,10 +150,11 @@ export function GameInsightsSection({ gameId, gameTitle, coverUrl, initialTab = 
             const approvalPct = total > 0 ? Math.round((insight.approve_count / total) * 100) : 0;
 
             return (
-              <button
+              <a
                 key={insight.id}
-                onClick={() => navigate(`/game/${gameId}/insight/${insight.id}`)}
-                className="w-full text-left bg-card rounded-xl p-4 hover:border-accent/30 transition-colors"
+                href={`/game/${gameId}/insight/${insight.id}`}
+                onClick={e => { e.preventDefault(); navigate(`/game/${gameId}/insight/${insight.id}`); }}
+                className="w-full text-left bg-card rounded-xl p-4 hover:border-accent/30 transition-colors block"
                 style={{ border: insight.status === 'approved' ? '1px solid rgba(34,197,94,0.15)' : '1px solid rgba(139,92,246,0.1)' }}
               >
                 {/* Status + author */}
@@ -205,7 +206,7 @@ export function GameInsightsSection({ gameId, gameTitle, coverUrl, initialTab = 
                 <p className="text-[10px] text-muted-foreground/50 mt-1.5">
                   {insightDateLabel(insight.submitted_at, insight.updated_at)}
                 </p>
-              </button>
+              </a>
             );
           })}
         </div>

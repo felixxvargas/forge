@@ -389,7 +389,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&user_id=eq.${user.id}&limit=1`);
     if (!insight) return res.status(404).json({ error: 'Insight not found or not yours' });
 
-    await sb('DELETE', `/game_insights?id=eq.${insightId}`);
+    const deleted = await sb<any[]>('DELETE', `/game_insights?id=eq.${insightId}&user_id=eq.${user.id}`);
+    if (!Array.isArray(deleted) || deleted.length === 0) {
+      return res.status(500).json({ error: 'Delete failed — no rows removed' });
+    }
     return res.status(204).end();
   }
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Search, Sparkles, Send, ThumbsUp, ThumbsDown, Gamepad2, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
+import { X, Search, Sparkles, Send, ThumbsUp, ThumbsDown, Gamepad2, AlertCircle, CheckCircle2, ChevronRight, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from '../utils/supabase';
@@ -21,6 +21,21 @@ interface GeminiResult {
   used: number;
   remaining: number;
   limit: number;
+  category?: string;
+  videoLinks?: string[];
+}
+
+const CATEGORIES = [
+  { id: 'characters', label: 'Characters', color: 'text-blue-400 border-blue-400/40 bg-blue-400/10' },
+  { id: 'objects',    label: 'Objects',    color: 'text-amber-400 border-amber-400/40 bg-amber-400/10' },
+  { id: 'locations',  label: 'Locations',  color: 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10' },
+  { id: 'enemies',    label: 'Enemies',    color: 'text-red-400 border-red-400/40 bg-red-400/10' },
+  { id: 'extras',     label: 'Extras',     color: 'text-purple-400 border-purple-400/40 bg-purple-400/10' },
+] as const;
+
+function getYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
 }
 
 interface SelectedGame {
@@ -42,6 +57,9 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
   const [result, setResult] = useState<GeminiResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [insightId, setInsightId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('extras');
+  const [videoLinks, setVideoLinks] = useState<string[]>([]);
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const gameSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const questionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -128,6 +146,8 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
 
       const data = await res.json();
       setResult(data);
+      setSelectedCategory(data.category ?? 'extras');
+      setVideoLinks(data.videoLinks ?? []);
       setStep('result');
     } catch (err: any) {
       toast.error(err.message || 'Failed to get answer from Gemini');
@@ -152,6 +172,7 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
           gameTitle: selectedGame.title,
           query: question.trim(),
           content: result.answer,
+          category: selectedCategory,
         }),
       });
 
@@ -357,6 +378,91 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
                   </div>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{result.answer}</p>
                 </div>
+
+                {/* Category picker */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Category</p>
+                  <div className="flex flex-wrap gap-2">
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                          selectedCategory === cat.id
+                            ? cat.color
+                            : 'text-muted-foreground border-border/40 bg-transparent hover:bg-secondary'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* YouTube video cards */}
+                {videoLinks.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Related Videos <span className="font-normal opacity-60">(AI-suggested — verify before sharing)</span></p>
+                    <div className="space-y-2">
+                      {videoLinks.map(url => {
+                        const vid = getYouTubeId(url);
+                        if (!vid) return null;
+                        return (
+                          <div key={url} className="relative rounded-xl overflow-hidden border border-border/40 group">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 hover:bg-secondary/60 transition-colors">
+                              <div className="relative w-24 h-14 shrink-0 rounded-lg overflow-hidden bg-black">
+                                <img
+                                  src={`https://img.youtube.com/vi/${vid}/mqdefault.jpg`}
+                                  alt="Video thumbnail"
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <Play className="w-5 h-5 text-white fill-white" />
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-muted-foreground truncate">youtube.com/watch?v={vid}</p>
+                                <p className="text-[10px] text-muted-foreground/50 mt-0.5">Opens YouTube</p>
+                              </div>
+                            </a>
+                            <button
+                              onClick={() => setRemoveConfirm(url)}
+                              className="absolute top-2 right-2 w-5 h-5 rounded-full bg-background/80 border border-border flex items-center justify-center hover:bg-destructive hover:border-destructive hover:text-white transition-colors"
+                              title="Remove video"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Remove video confirmation dialog */}
+                {removeConfirm && (
+                  <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => setRemoveConfirm(null)} />
+                    <div className="relative w-full max-w-xs bg-sidebar border border-border rounded-2xl p-5 shadow-xl">
+                      <h3 className="font-semibold mb-1">Remove video?</h3>
+                      <p className="text-sm text-muted-foreground mb-4">There's no way to add it back once removed.</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setVideoLinks(v => v.filter(u => u !== removeConfirm)); setRemoveConfirm(null); }}
+                          className="flex-1 py-2 rounded-xl bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"
+                        >
+                          Remove
+                        </button>
+                        <button
+                          onClick={() => setRemoveConfirm(null)}
+                          className="flex-1 py-2 rounded-xl bg-secondary text-sm hover:bg-secondary/80 transition-colors"
+                        >
+                          Keep it
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-start gap-2 p-3 bg-blue-500/10 rounded-xl">
                   <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />

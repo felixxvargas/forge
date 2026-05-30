@@ -30,6 +30,7 @@ export interface Interest {
 interface InterestsScreenProps {
   onComplete: (interests: Interest[]) => void;
   initialInterests?: Interest[];
+  onBack?: () => void;
 }
 
 const interestOptions: { category: string; icon: any; interests: Interest[] }[] = [
@@ -110,7 +111,7 @@ const iconMap: { [key: string]: any } = {
   Monitor, Gamepad2, Globe, Trophy
 };
 
-export function InterestsScreen({ onComplete, initialInterests }: InterestsScreenProps) {
+export function InterestsScreen({ onComplete, initialInterests, onBack }: InterestsScreenProps) {
   const navigate = useNavigate();
   const [selectedInterests, setSelectedInterests] = useState<Interest[]>(initialInterests ?? []);
 
@@ -145,6 +146,12 @@ export function InterestsScreen({ onComplete, initialInterests }: InterestsScree
 
   return (
     <div className="fixed inset-0 bg-background overflow-y-auto z-50">
+      {onBack && (
+        <button onClick={onBack} className="absolute top-4 left-4 z-10 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+      )}
       <div className="min-h-screen px-6 py-12 pb-32">
         <div className="max-w-2xl mx-auto">
         <motion.div

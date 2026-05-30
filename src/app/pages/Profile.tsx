@@ -16,6 +16,7 @@ import { PlatformIcon, getHandleLabel, getPlatformName } from '../components/Pla
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { FollowButton } from '../components/FollowButton';
 import { WritePostButton } from '../components/WritePostButton';
+import { OnboardingProgress } from '../components/OnboardingTooltip';
 import { GameTimeline } from '../components/GameTimeline';
 import { useAppData } from '../context/AppDataContext';
 import type { User, SocialPlatform, GameListType } from '../data/data';
@@ -1499,7 +1500,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   )}
 
                   {isOwnProfile && (
-                    <div className="lg:hidden mt-4 mb-1">
+                    <div className="lg:hidden mt-4 mb-1 px-4 space-y-3">
                       <button
                         onClick={() => navigate('/create-flare')}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/80 transition-all"
@@ -1507,12 +1508,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                         <Flame className="w-4 h-4" />
                         {activeFlares.length > 0 ? 'Add another LFG Flare' : 'Create LFG Flare'}
                       </button>
+                      {/* Onboarding progress — mobile only */}
+                      <OnboardingProgress />
                     </div>
                   )}
 
                   {/* Posts below lists */}
                   {profileUserPosts.length > 0 && (
-                    <div className="mt-4">
+                    <div className="mt-4 px-4">
                       <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-3">Recent Posts</h3>
                       <div className="flex flex-col gap-3 sm:gap-6">
                       {(() => {

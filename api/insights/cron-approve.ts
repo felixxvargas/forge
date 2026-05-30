@@ -47,22 +47,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Auto-approve pending entity edits with 0 votes submitted more than 24h ago
-    const edits = await sb<any[]>('GET',
-      `/game_wiki_entity_edits?status=eq.pending&approve_count=eq.0&reject_count=eq.0&submitted_at=lt.${encodeURIComponent(cutoff)}&select=id,entity_id,content`,
-      undefined, 'return=representation'
-    );
-    for (const e of edits) {
-      await sb('PATCH', `/game_wiki_entity_edits?id=eq.${e.id}`, {
-        status: 'approved', approved_at: now, updated_at: now,
-      }, 'return=minimal');
-      if (e.entity_id && e.content && typeof e.content === 'object') {
-        await sb('PATCH', `/game_wiki_entities?id=eq.${e.entity_id}`, {
-          ...e.content, updated_at: now,
+    let approvedEdits = 0;
+    try {
+      const edits = await sb<any[]>('GET',
+        `/game_wiki_entity_edits?status=eq.pending&approve_count=eq.0&reject_count=eq.0&submitted_at=lt.${encodeURIComponent(cutoff)}&select=id,entity_id,content`,
+        undefined, 'return=representation'
+      );
+      for (const e of edits) {
+        await sb('PATCH', `/game_wiki_entity_edits?id=eq.${e.id}`, {
+          status: 'approved', approved_at: now, updated_at: now,
         }, 'return=minimal');
+        if (e.entity_id && e.content && typeof e.content === 'object') {
+          await sb('PATCH', `/game_wiki_entities?id=eq.${e.entity_id}`, {
+            ...e.content, updated_at: now,
+          }, 'return=minimal');
+        }
+        approvedEdits++;
       }
+    } catch {
+      // entity-edits table not yet provisioned — skip gracefully
     }
 
-    return res.json({ approved_insights: insights.length, approved_edits: edits.length });
+    return res.json({ approved_insights: insights.length, approved_edits: approvedEdits });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

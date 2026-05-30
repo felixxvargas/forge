@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Gamepad2, Users, Flame, Tv2 } from 'lucide-react';
 import ForgeSVG from '../../../assets/forge-logo.svg?react';
@@ -15,11 +14,6 @@ const FEATURES = [
 ];
 
 export function SplashScreen({ onComplete }: SplashScreenProps) {
-  useEffect(() => {
-    const timer = setTimeout(onComplete, 4000);
-    return () => clearTimeout(timer);
-  }, [onComplete]);
-
   return (
     <motion.div
       className="fixed inset-0 bg-background flex items-center justify-center z-50 px-6"

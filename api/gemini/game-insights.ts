@@ -68,6 +68,10 @@ Line 2: ---
 Line 3: CATEGORY: characters|objects|locations|extras|enemies
 Line 4: ---
 Remaining: Your answer in 2-4 paragraphs. Plain text, no markdown.
+VIDEOS:
+- [optional YouTube URL 1 — only real, verifiable youtube.com/watch?v= or youtu.be/ links]
+- [optional YouTube URL 2]
+(Leave VIDEOS section empty or omit it entirely if you are not confident the links exist and are relevant.)
 
 Category guide: characters = NPCs, companions, story characters; enemies = enemy types, bosses, hostile NPCs, mob groups, mini-bosses; objects = items, weapons, gear, collectibles; locations = areas, maps, zones, dungeons; extras = mechanics, lore, cinematics, concept art, music, deleted content, everything else.`;
 
@@ -171,8 +175,22 @@ async function callGeminiAPI(prompt: string): Promise<string> {
   return raw;
 }
 
-function parseFirstTurnResponse(raw: string): { answer: string; title: string; category: string } {
-  // Expected: "Headline\n---\nCATEGORY: xxx\n---\nAnswer..."
+function extractYouTubeLinks(text: string): { text: string; videoLinks: string[] } {
+  const videoLinks: string[] = [];
+  const videosSectionMatch = text.match(/\nVIDEOS:\s*\n([\s\S]*?)(?:\n\n|$)/i);
+  if (videosSectionMatch) {
+    const lines = videosSectionMatch[1].split('\n');
+    for (const line of lines) {
+      const urlMatch = line.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]{11}/);
+      if (urlMatch) videoLinks.push(urlMatch[0]);
+    }
+    text = text.replace(/\nVIDEOS:[\s\S]*?(?:\n\n|$)/i, '').trim();
+  }
+  return { text, videoLinks };
+}
+
+function parseFirstTurnResponse(raw: string): { answer: string; title: string; category: string; videoLinks: string[] } {
+  // Expected: "Headline\n---\nCATEGORY: xxx\n---\nAnswer...\nVIDEOS:\n- url"
   const parts = raw.split('\n---\n');
   let title = '';
   let category = 'extras';
@@ -189,7 +207,8 @@ function parseFirstTurnResponse(raw: string): { answer: string; title: string; c
     answer = parts[1].trim();
   }
 
-  return { answer, title, category };
+  const { text: cleanAnswer, videoLinks } = extractYouTubeLinks(answer);
+  return { answer: cleanAnswer, title, category, videoLinks };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -229,8 +248,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ updatedInsight, reply, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
     }
 
-    const { answer, title, category } = await queryGeminiFirst(question.trim(), gameTitle);
-    return res.json({ answer, title, category, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
+    const { answer, title, category, videoLinks } = await queryGeminiFirst(question.trim(), gameTitle);
+    return res.json({ answer, title, category, videoLinks, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
   } catch (err: any) {
     return res.status(500).json({ error: err.message ?? 'Internal error' });
   }
