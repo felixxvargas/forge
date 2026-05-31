@@ -601,9 +601,12 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
               </p>
             ) : null}
             {isInsightPost && post.game_id ? (
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={e => { e.stopPropagation(); navigate(`/game/${post.game_id}/insight/${post.insight_id}`); }}
-                className="w-full text-left rounded-xl px-3.5 pt-3 pb-2 mb-2 hover:opacity-90 transition-opacity"
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/game/${post.game_id}/insight/${post.insight_id}`); } }}
+                className="w-full text-left rounded-xl p-3.5 mb-3 hover:opacity-90 transition-opacity cursor-pointer"
                 style={{ border: '1px solid rgba(139,92,246,0.35)', background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(109,40,217,0.05) 100%)' }}
               >
                 {post.game_title && (
@@ -614,7 +617,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                     {insightData.title && (
                       <p className="text-sm font-semibold leading-snug mb-1">{insightData.title}</p>
                     )}
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-snug max-h-[2.75em] overflow-hidden">
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
                       {(insightData.content || insightData.query)?.trim()}
                     </p>
                   </>
@@ -624,7 +627,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
                     <div className="h-3 bg-muted/30 rounded w-1/2 animate-pulse" />
                   </div>
                 )}
-              </button>
+              </div>
             ) : previewUrl ? (
               <LinkPreview url={previewUrl} />
             ) : null}

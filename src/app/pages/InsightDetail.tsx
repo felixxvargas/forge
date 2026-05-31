@@ -450,11 +450,6 @@ export function InsightDetail() {
           >
             {insight.game_title}
           </button>
-          <span className="text-muted-foreground/40">·</span>
-          <div className="flex items-center gap-1 text-xs font-semibold text-accent">
-            <Sparkles className="w-3 h-3" />
-            Game Insight
-          </div>
           {insight.status === 'approved' && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 uppercase tracking-wide">Approved</span>
           )}
@@ -479,7 +474,7 @@ export function InsightDetail() {
 
         {/* Title (auto-generated headline) */}
         {insight.title && (
-          <h1 className="text-xl font-bold leading-snug mb-1">{insight.title}</h1>
+          <h1 className="text-xl font-bold leading-snug mb-3">{insight.title}</h1>
         )}
 
         {/* Approved byline — author + date, no query exposed */}
@@ -766,7 +761,7 @@ export function InsightDetail() {
                   onKeyDown={handleCommentKeyDown}
                   placeholder="Add a comment..."
                   rows={1}
-                  className="w-full bg-secondary rounded-xl px-3 py-2.5 pr-10 text-sm placeholder-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-accent/50 leading-5"
+                  className="w-full bg-secondary rounded-xl px-3 py-2.5 pr-10 text-sm placeholder-muted-foreground placeholder:text-xs resize-none focus:outline-none focus:ring-1 focus:ring-accent/50 leading-5"
                   style={{ minHeight: '2.5rem' }}
                 />
                 <button

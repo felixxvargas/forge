@@ -813,8 +813,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const deletePost = async (postId: string) => {
-    await postsAPI.delete(postId);
-    setPostList(prev => prev.filter(p => p.id !== postId));
+    try {
+      await postsAPI.delete(postId);
+      setPostList(prev => prev.filter(p => p.id !== postId));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete post');
+    }
   };
 
   const likePost = async (postId: string) => {

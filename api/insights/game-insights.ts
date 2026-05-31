@@ -212,6 +212,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const result = insights.map((i: any) => ({ ...i, myVote: myVotes[i.id] ?? null }));
+      res.setHeader('Cache-Control', 'no-store');
       return res.json(qInsightId ? result[0] ?? null : result);
     } catch (err: any) {
       return res.status(500).json({ error: err?.message ?? 'Failed to fetch insights' });
@@ -262,7 +263,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
       if (!insight) return res.status(404).json({ error: 'Insight not found' });
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can change category' });
-      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { category, updated_at: new Date().toISOString() });
+      const updated = await sb<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, { category, updated_at: new Date().toISOString() });
+      if (!Array.isArray(updated) || updated.length === 0) {
+        return res.status(500).json({ error: 'Category update did not match any rows' });
+      }
       return res.json({ success: true });
     }
 
