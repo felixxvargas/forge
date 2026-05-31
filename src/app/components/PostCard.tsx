@@ -307,7 +307,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
     }
   };
 
-  const sourceUrl = post.external_url || post.externalUrl;
+  const sourceUrl = !post.insight_id && (post.external_url || post.externalUrl);
 
   // Flare post detection
   const flareId = post.flare_id;
@@ -742,7 +742,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       )}
 
       {/* Stream publish card */}
-      {(post as any).post_type === 'stream_publish' && (post as any).stream_archive_ids?.length > 0 && (
+      {!post.insight_id && (post as any).post_type === 'stream_publish' && (post as any).stream_archive_ids?.length > 0 && (
         <StreamPublishCard
           archiveIds={(post as any).stream_archive_ids}
           userId={post.user_id ?? post.userId}
@@ -750,7 +750,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       )}
 
       {/* Source link card for third-party posts */}
-      {sourceUrl && (
+      {!post.insight_id && sourceUrl && (
         <a
           href={sourceUrl}
           target="_blank"
@@ -773,7 +773,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       )}
 
       {/* Attached list card */}
-      {post.attached_list && (() => {
+      {!post.insight_id && post.attached_list && (() => {
         const list = post.attached_list as any;
         return (
           <div
@@ -806,7 +806,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       })()}
 
       {/* Poll */}
-      {poll && (
+      {!post.insight_id && poll && (
         <div className="mb-3 rounded-xl border border-border bg-secondary/20 overflow-hidden" onClick={e => e.stopPropagation()}>
           <div className="px-3 pt-3 pb-1 flex items-center gap-1.5">
             <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -850,7 +850,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       )}
 
       {/* Quoted post embed */}
-      {post.quotedPost && (() => {
+      {!post.insight_id && post.quotedPost && (() => {
         const qp = post.quotedPost;
         const qUser = getUserById?.(qp.user_id ?? qp.userId) ?? { handle: qp.user_id, display_name: qp.user_id } as any;
         return (
