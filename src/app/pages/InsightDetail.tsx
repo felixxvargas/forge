@@ -560,44 +560,19 @@ export function InsightDetail() {
           )}
         </div>
 
-        {/* AI Refinement — owner only, between overview and community review */}
-        {isOwn && isAuthenticated && insight.status !== 'rejected' && (
-          <div className="mb-4">
-            {/* Prompt input — always at top */}
-            <div className="flex gap-2 mb-3">
-              <input
-                value={aiPrompt}
-                onChange={e => setAiPrompt(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAiRefine(); } }}
-                placeholder="Ask Forge AI to refine this insight…"
-                disabled={aiLoading}
-                className="flex-1 bg-card border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50 placeholder-muted-foreground/60"
-              />
-              <button
-                onClick={handleAiRefine}
-                disabled={!aiPrompt.trim() || aiLoading}
-                className="shrink-0 px-3 py-2.5 rounded-xl bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
-              >
-                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                {!aiLoading && 'Refine'}
-              </button>
-            </div>
-
-            {/* Conversation history — bubbles below the input */}
-            {aiConversation.length > 0 && (
-              <div className="space-y-4">
-                {aiConversation.map((entry, i) => (
-                  <div key={i} className="flex flex-col gap-2">
-                    <div className="ml-auto max-w-[60%] bg-accent/20 rounded-2xl rounded-tr-sm px-4 py-3">
-                      <p className="text-sm text-foreground">{entry.question}</p>
-                    </div>
-                    <div className="mr-auto max-w-[60%] bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3">
-                      <p className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">{entry.reply}</p>
-                    </div>
-                  </div>
-                ))}
+        {/* AI conversation history — inline between overview and voting */}
+        {isOwn && isAuthenticated && insight.status !== 'rejected' && aiConversation.length > 0 && (
+          <div className="space-y-4 mb-4">
+            {aiConversation.map((entry, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <div className="ml-auto max-w-[60%] bg-accent/20 rounded-2xl rounded-tr-sm px-4 py-3">
+                  <p className="text-sm text-foreground">{entry.question}</p>
+                </div>
+                <div className="mr-auto max-w-[60%] bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3">
+                  <p className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">{entry.reply}</p>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
 
@@ -856,6 +831,40 @@ export function InsightDetail() {
               className="mt-4 w-full py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* AI Refine dock bar — fixed bottom, dock style, owner only */}
+      {isOwn && isAuthenticated && insight.status !== 'rejected' && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4">
+          <div
+            className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2.5"
+            style={{
+              background: 'hsl(var(--card))',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            }}
+          >
+            <Sparkles className="w-4 h-4 text-accent shrink-0" />
+            <input
+              value={aiPrompt}
+              onChange={e => setAiPrompt(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAiRefine(); } }}
+              placeholder="Ask Forge AI to refine this insight…"
+              disabled={aiLoading}
+              className="flex-1 bg-transparent text-sm focus:outline-none placeholder-muted-foreground/60 min-w-0"
+            />
+            <button
+              onClick={handleAiRefine}
+              disabled={!aiPrompt.trim() || aiLoading}
+              className="shrink-0 px-3 py-1.5 rounded-xl bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            >
+              {aiLoading
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <><Sparkles className="w-3.5 h-3.5" /> Refine</>}
             </button>
           </div>
         </div>
