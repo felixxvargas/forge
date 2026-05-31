@@ -41,6 +41,7 @@ export function AdminScheduledPosts() {
   const [runMode, setRunMode] = useState(false);
   const [runOrder, setRunOrder] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
+  const [activeTab, setActiveTab] = useState<'pending' | 'published'>('pending');
 
   const loadScheduledPosts = async () => {
     setSpLoading(true); setSpError('');
@@ -173,9 +174,12 @@ export function AdminScheduledPosts() {
     );
   }
 
-  const pending = scheduledPosts?.filter(p => p.status === 'pending').length ?? 0;
-  const published = scheduledPosts?.filter(p => p.status === 'published').length ?? 0;
+  const pendingPosts = scheduledPosts?.filter(p => p.status === 'pending' || p.status === 'failed') ?? [];
+  const publishedPosts = scheduledPosts?.filter(p => p.status === 'published') ?? [];
+  const pending = pendingPosts.length;
+  const published = publishedPosts.length;
   const failed = scheduledPosts?.filter(p => p.status === 'failed').length ?? 0;
+  const visiblePosts = activeTab === 'pending' ? pendingPosts : publishedPosts;
 
   return (
     <div className="min-h-screen pb-16">
@@ -189,12 +193,8 @@ export function AdminScheduledPosts() {
             </Link>
             <span className="text-muted-foreground/40">/</span>
             <h1 className="text-2xl font-bold">Scheduled Posts</h1>
-            {scheduledPosts && (
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-medium">Pending {pending}</span>
-                <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">Published {published}</span>
-                {failed > 0 && <span className="px-2 py-0.5 rounded-full bg-red-400/10 text-red-400 font-medium">Failed {failed}</span>}
-              </div>
+            {failed > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-red-400/10 text-red-400 text-xs font-medium">{failed} failed</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -299,24 +299,42 @@ export function AdminScheduledPosts() {
           </div>
         )}
 
+        {/* Tabs */}
+        <div className="flex items-center gap-1 border-b border-border">
+          <button
+            onClick={() => { setActiveTab('pending'); setRunMode(false); setRunOrder([]); }}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === 'pending' ? 'border-accent text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            Pending {pending > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-400 text-xs">{pending}</span>}
+          </button>
+          <button
+            onClick={() => { setActiveTab('published'); setRunMode(false); setRunOrder([]); }}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === 'published' ? 'border-accent text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            Published {published > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-xs">{published}</span>}
+          </button>
+        </div>
+
         {/* Posts list */}
         <div className="bg-card rounded-xl overflow-hidden">
           {spLoading && <p className="px-5 py-4 text-sm text-muted-foreground animate-pulse">Loading…</p>}
           {spError && <p className="px-5 py-4 text-sm text-red-400">{spError}</p>}
-          {!spLoading && !spError && scheduledPosts?.length === 0 && (
-            <p className="px-5 py-4 text-sm text-muted-foreground">No scheduled posts yet.</p>
+          {!spLoading && !spError && visiblePosts.length === 0 && (
+            <p className="px-5 py-4 text-sm text-muted-foreground">
+              {activeTab === 'published' ? 'No published posts yet.' : 'No scheduled posts yet.'}
+            </p>
           )}
-          {!spLoading && !spError && scheduledPosts && scheduledPosts.length > 0 && (
+          {!spLoading && !spError && visiblePosts.length > 0 && (
             <ul className="divide-y divide-border">
-              {scheduledPosts.map(post => (
+              {visiblePosts.map(post => (
                 <li
                   key={post.id}
-                  className={`flex items-start gap-4 px-5 py-3 ${runMode && (post.status === 'pending' || post.status === 'failed') ? 'cursor-pointer hover:bg-secondary/30 transition-colors' : ''}`}
-                  onClick={runMode && (post.status === 'pending' || post.status === 'failed') ? () => setRunOrder(o =>
+                  className={`flex items-start gap-4 px-5 py-3 ${runMode && activeTab === 'pending' ? 'cursor-pointer hover:bg-secondary/30 transition-colors' : ''}`}
+                  onClick={runMode && activeTab === 'pending' ? () => setRunOrder(o =>
                     o.includes(post.id) ? o.filter(x => x !== post.id) : [...o, post.id]
                   ) : undefined}
                 >
-                  {runMode && (post.status === 'pending' || post.status === 'failed') && (
+                  {runMode && activeTab === 'pending' && (
                     <div
                       className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full border text-xs font-bold transition-colors mt-0.5"
                       style={runOrder.includes(post.id)
@@ -332,11 +350,9 @@ export function AdminScheduledPosts() {
                       {post.author?.handle && (
                         <span className="text-sm font-semibold">@{post.author.handle}</span>
                       )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        post.status === 'pending' ? 'bg-amber-400/10 text-amber-400' :
-                        post.status === 'published' ? 'bg-accent/10 text-accent' :
-                        'bg-red-400/10 text-red-400'
-                      }`}>{post.status}</span>
+                      {post.status === 'failed' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-400/10 text-red-400">failed</span>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {new Date(post.scheduled_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                       </span>
@@ -405,32 +421,45 @@ export function AdminScheduledPosts() {
                             <span className="truncate">{post.url}</span>
                           </a>
                         )}
+                        {activeTab === 'published' && post.published_post_id && (
+                          <a
+                            href={`/post/${post.published_post_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-accent/70 hover:text-accent transition-colors"
+                          >
+                            <ArrowRight className="w-3 h-3" /> View post
+                          </a>
+                        )}
                       </>
                     )}
                   </div>
-                  {!runMode && (post.status === 'pending' || post.status === 'failed') && editingPostId !== post.id && (
+                  {!runMode && editingPostId !== post.id && (
                     <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                      <button
-                        onClick={() => {
-                          const localDt = new Date(post.scheduled_at);
-                          const offset = localDt.getTimezoneOffset();
-                          const local = new Date(localDt.getTime() - offset * 60000);
-                          setEditDraft({
-                            content: post.content,
-                            scheduled_at: local.toISOString().slice(0, 16),
-                            url: post.url ?? '',
-                          });
-                          setEditingPostId(post.id);
-                        }}
-                        className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors flex items-center gap-1"
-                      >
-                        <Pencil className="w-3 h-3" /> Edit
-                      </button>
+                      {activeTab === 'pending' && (
+                        <button
+                          onClick={() => {
+                            const localDt = new Date(post.scheduled_at);
+                            const offset = localDt.getTimezoneOffset();
+                            const local = new Date(localDt.getTime() - offset * 60000);
+                            setEditDraft({
+                              content: post.content,
+                              scheduled_at: local.toISOString().slice(0, 16),
+                              url: post.url ?? '',
+                            });
+                            setEditingPostId(post.id);
+                          }}
+                          className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors flex items-center gap-1"
+                        >
+                          <Pencil className="w-3 h-3" /> Edit
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteScheduledPost(post.id)}
                         className="text-xs text-red-400/60 hover:text-red-400 transition-colors"
+                        title={activeTab === 'published' ? 'Remove from admin log (does not delete the post)' : 'Delete scheduled post'}
                       >
-                        Delete
+                        {activeTab === 'published' ? 'Remove' : 'Delete'}
                       </button>
                     </div>
                   )}
