@@ -72,17 +72,18 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const normalizedHandle = handle ? handle.replace(/^@/, '').toLowerCase() : null;
   const { data: swrHandleProfile } = useSWR(
     normalizedHandle ? `profile-handle:${normalizedHandle}` : null,
-    async () => {
-      const cached = getUserByHandle(handle!);
-      if (cached) return cached;
-      return profiles.getByHandle(handle!).then(u => u ?? null).catch(() => null);
-    },
+    () => profiles.getByHandle(handle!).then(u => u ?? null).catch(() => null),
     {
-      fallbackData: (initialProfile && normalizedHandle === (initialProfile.handle || '').replace(/^@/, '').toLowerCase())
-        ? initialProfile
-        : undefined,
+      // Use context cache only as a placeholder while the fresh fetch runs — never as definitive data.
+      // Skipping getUserByHandle shortcut prevents stale/deleted account data from being served.
+      fallbackData: (() => {
+        const fromCtx = getUserByHandle(handle!);
+        if (fromCtx) return fromCtx;
+        if (initialProfile && normalizedHandle === (initialProfile.handle || '').replace(/^@/, '').toLowerCase()) return initialProfile;
+        return undefined;
+      })(),
+      revalidateOnMount: true,
       revalidateOnFocus: false,
-      keepPreviousData: true,
     }
   );
   const handleFetchedUser = swrHandleProfile ?? null;
@@ -1364,7 +1365,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                     <div className="px-4">
                       {addContentOpen ? (
                         <div className="bg-card/50 border border-border rounded-xl p-4">
-                          <p className="text-sm font-medium mb-3">Add content to your profile</p>
+                          <p className="text-sm font-medium mb-3">Add a list to your profile</p>
                           <div className="space-y-2">
                             {/* Top 8 Friends */}
                             <button
@@ -1446,8 +1447,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                         >
                           <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
                           <div>
-                            <p className="font-medium text-sm">Add content</p>
-                            <p className="text-xs text-muted-foreground">Top Friends, Top Games, game lists & more</p>
+                            <p className="font-medium text-sm">Create list</p>
+                            <p className="text-xs text-muted-foreground">Favorites, wishlist, custom lists & more</p>
                           </div>
                         </button>
                       )}
@@ -1501,7 +1502,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                   )}
 
                   {isOwnProfile && (
-                    <div className="lg:hidden mt-4 mb-1 px-4 space-y-3">
+                    <div className="lg:hidden mt-4 mb-4 px-4 space-y-3">
                       <button
                         onClick={() => navigate('/create-flare')}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm border-2 border-orange-500/60 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 hover:border-orange-500/80 transition-all"

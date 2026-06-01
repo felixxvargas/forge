@@ -1477,9 +1477,11 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                   <React.Fragment key={reply.id}>
                     {/* Top-level reply */}
                     <div>
-                      <p className="text-xs text-muted-foreground px-4 pt-3 pb-0">
-                        Replying to @{activePost?.author?.handle ?? ''}
-                      </p>
+                      <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
+                        <MessageCircle className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <p className="text-xs text-muted-foreground">Replying to @{activePost?.author?.handle ?? ''}</p>
+                      </div>
+                      <div className="mx-4 mt-2 border-t border-border/40" />
                       <PostCard
                         post={reply}
                         user={replyUser}
@@ -1504,9 +1506,6 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                           className="border-t border-border/40 cursor-pointer"
                           onClick={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}`)}
                         >
-                          <p className="text-xs text-muted-foreground px-4 pt-3 pb-0">
-                            Replying to @{(replyUser.handle ?? '').replace(/^@/, '')}
-                          </p>
                           <PostCard
                             post={bestSubReply}
                             user={subUser}
