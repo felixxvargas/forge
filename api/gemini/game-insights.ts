@@ -177,14 +177,17 @@ async function callGeminiAPI(prompt: string): Promise<string> {
 
 function extractYouTubeLinks(text: string): { text: string; videoLinks: string[] } {
   const videoLinks: string[] = [];
-  const videosSectionMatch = text.match(/\nVIDEOS:\s*\n([\s\S]*?)(?:\n\n|$)/i);
-  if (videosSectionMatch) {
-    const lines = videosSectionMatch[1].split('\n');
-    for (const line of lines) {
-      const urlMatch = line.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]{11}/);
-      if (urlMatch) videoLinks.push(urlMatch[0]);
+  // Find any YouTube URLs anywhere in the text first
+  const urlRegex = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]{11}/gi;
+  const videosSection = text.match(/\n?VIDEOS:\s*([\s\S]*?)$/i);
+  if (videosSection) {
+    const sectionContent = videosSection[1];
+    let match: RegExpExecArray | null;
+    while ((match = urlRegex.exec(sectionContent)) !== null) {
+      videoLinks.push(match[0]);
     }
-    text = text.replace(/\nVIDEOS:[\s\S]*?(?:\n\n|$)/i, '').trim();
+    // Always strip the VIDEOS: section regardless of whether URLs were found
+    text = text.replace(/\n?VIDEOS:[\s\S]*$/i, '').trim();
   }
   return { text, videoLinks };
 }
@@ -199,7 +202,7 @@ function parseFirstTurnResponse(raw: string): { answer: string; title: string; c
   if (parts.length >= 3) {
     title = parts[0].trim();
     const categoryLine = parts[1].trim();
-    const catMatch = categoryLine.match(/^CATEGORY:\s*(characters|objects|locations|extras|enemies)/i);
+    const catMatch = categoryLine.match(/^CATEGORY:\s*(characters|objects|locations|extras|enemies|quest)/i);
     if (catMatch) category = catMatch[1].toLowerCase();
     answer = parts.slice(2).join('\n---\n').trim();
   } else if (parts.length === 2) {

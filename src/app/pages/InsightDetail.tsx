@@ -73,6 +73,8 @@ export function InsightDetail() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiConversation, setAiConversation] = useState<{ question: string; reply: string }[]>([]);
   const [backPath, setBackPath] = useState<string | null>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockOrbitPath, setDockOrbitPath] = useState('');
 
   useEffect(() => {
     try {
@@ -80,6 +82,29 @@ export function InsightDetail() {
       if (prev) setBackPath(prev);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!aiLoading) { setDockOrbitPath(''); return; }
+    const el = dockRef.current;
+    if (!el) return;
+    const update = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        const r = 16;
+        const cr = Math.min(r, width / 2, height / 2);
+        setDockOrbitPath([
+          `M ${cr},0`, `H ${width - cr}`, `Q ${width},0 ${width},${cr}`,
+          `V ${height - cr}`, `Q ${width},${height} ${width - cr},${height}`,
+          `H ${cr}`, `Q 0,${height} 0,${height - cr}`,
+          `V ${cr}`, `Q 0,0 ${cr},0`, 'Z',
+        ].join(' '));
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [aiLoading]);
 
   const fetchInsight = useCallback(async () => {
     if (!insightId) return;
@@ -463,6 +488,7 @@ export function InsightDetail() {
               locations: 'bg-emerald-400/20 text-emerald-400',
               extras: 'bg-purple-400/20 text-purple-400',
               enemies: 'bg-red-400/20 text-red-400',
+              quest: 'bg-yellow-400/20 text-yellow-400',
             };
             return (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${catColors[insight.category] ?? 'bg-muted text-muted-foreground'}`}>
@@ -789,22 +815,23 @@ export function InsightDetail() {
       </div>{/* end grid */}
       </div>{/* end max-w-6xl */}
 
-      {/* Category picker bottom sheet */}
+      {/* Category picker modal */}
       {changingCategory && (
-        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setChangingCategory(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setChangingCategory(false)}>
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative w-full max-w-2xl mx-auto bg-popover border-t border-border rounded-t-2xl p-4 pb-8"
+            className="relative w-full max-w-sm bg-popover border border-border rounded-2xl p-5 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <p className="text-sm font-semibold mb-4 text-center">Change Category</p>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: 'characters', label: 'Characters', color: 'text-blue-400 bg-blue-400/10 border-blue-400/30' },
-                { id: 'objects', label: 'Objects', color: 'text-amber-400 bg-amber-400/10 border-amber-400/30' },
-                { id: 'locations', label: 'Locations', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30' },
-                { id: 'extras', label: 'Extras', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30' },
-                { id: 'enemies', label: 'Enemies', color: 'text-red-400 bg-red-400/10 border-red-400/30' },
+                { id: 'objects',    label: 'Objects',    color: 'text-amber-400 bg-amber-400/10 border-amber-400/30' },
+                { id: 'locations',  label: 'Locations',  color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30' },
+                { id: 'extras',     label: 'Extras',     color: 'text-purple-400 bg-purple-400/10 border-purple-400/30' },
+                { id: 'enemies',    label: 'Enemies',    color: 'text-red-400 bg-red-400/10 border-red-400/30' },
+                { id: 'quest',      label: 'Quests',     color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
               ].map(cat => (
                 <button
                   key={cat.id}
@@ -817,13 +844,13 @@ export function InsightDetail() {
                   }`}
                 >
                   {cat.label}
-                  {insight?.category === cat.id && <span className="ml-1.5 text-xs opacity-70">✓ current</span>}
+                  {insight?.category === cat.id && <span className="ml-1.5 text-xs opacity-70">✓</span>}
                 </button>
               ))}
             </div>
             <button
               onClick={() => setChangingCategory(false)}
-              className="mt-4 w-full py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="mt-4 w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
@@ -835,7 +862,8 @@ export function InsightDetail() {
       {isOwn && isAuthenticated && insight.status !== 'rejected' && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4">
           <div
-            className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2.5"
+            ref={dockRef}
+            className="relative flex items-center gap-2 rounded-2xl border border-border px-3 py-2.5"
             style={{
               background: 'hsl(var(--card))',
               backdropFilter: 'blur(12px)',
@@ -843,19 +871,31 @@ export function InsightDetail() {
               boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
             }}
           >
-            <Sparkles className="w-4 h-4 text-accent shrink-0" />
+            {dockOrbitPath && (
+              <span aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, borderRadius: 16 }}>
+                <span style={{
+                  display: 'block', width: 48, height: 5, borderRadius: 3,
+                  background: 'linear-gradient(to right, transparent 0%, hsl(38deg 75% 68% / 90%) 35%, hsl(82deg 80% 80% / 75%) 50%, hsl(38deg 75% 68% / 90%) 65%, transparent 100%)',
+                  filter: 'blur(2px)',
+                  offsetPath: `path("${dockOrbitPath}")`,
+                  offsetAnchor: '50% 50%',
+                  animation: 'forge-orbit 2.5s linear infinite',
+                } as React.CSSProperties} />
+              </span>
+            )}
+            <Sparkles className="w-4 h-4 text-accent shrink-0 relative z-10" />
             <input
               value={aiPrompt}
               onChange={e => setAiPrompt(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAiRefine(); } }}
               placeholder="Ask Forge AI to refine this insight…"
               disabled={aiLoading}
-              className="flex-1 bg-transparent text-sm focus:outline-none placeholder-muted-foreground/60 min-w-0"
+              className="flex-1 bg-transparent text-sm focus:outline-none placeholder-muted-foreground/60 min-w-0 relative z-10"
             />
             <button
               onClick={handleAiRefine}
               disabled={!aiPrompt.trim() || aiLoading}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+              className="relative z-10 shrink-0 px-3 py-1.5 rounded-xl bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
             >
               {aiLoading
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -229,7 +229,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!gameId || !gameTitle || !query?.trim() || !content?.trim()) {
       return res.status(400).json({ error: 'gameId, gameTitle, query, and content are required' });
     }
-    const validCategories = ['characters', 'objects', 'locations', 'extras', 'enemies'];
+    const validCategories = ['characters', 'objects', 'locations', 'extras', 'enemies', 'quest'];
     const safeCategory = validCategories.includes(category) ? category : 'extras';
 
     const [insight] = await sbAsUser<any[]>('POST', '/game_insights', token, {
@@ -258,7 +258,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Set-category action — owner changes the category of their own insight
     if (action === 'set-category') {
       const { category } = req.body ?? {};
-      const validCategories = ['characters', 'objects', 'locations', 'extras', 'enemies'];
+      const validCategories = ['characters', 'objects', 'locations', 'extras', 'enemies', 'quest'];
       if (!validCategories.includes(category)) return res.status(400).json({ error: 'Invalid category' });
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
       if (!insight) return res.status(404).json({ error: 'Insight not found' });

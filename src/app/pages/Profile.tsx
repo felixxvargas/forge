@@ -122,8 +122,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
-  const [freshFollowerCount, setFreshFollowerCount] = useState<number>(0);
-  const [freshFollowingCount, setFreshFollowingCount] = useState<number>(0);
+  const [freshFollowerCount, setFreshFollowerCount] = useState<number>(profileUser?.follower_count ?? 0);
+  const [freshFollowingCount, setFreshFollowingCount] = useState<number>(profileUser?.following_count ?? 0);
   const [canViewHandles, setCanViewHandles] = useState(false);
   const [handlePopup, setHandlePopup] = useState<{ platform: string; handle: string; label: string } | null>(null);
 
@@ -893,7 +893,7 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
                 onClick={() => navigate(isOwnProfile ? '/following' : `/following/${profileUser.id}`)}
                 className="text-left hover:opacity-70 transition-opacity"
               >
-                <p className="text-xl font-semibold">{isOwnProfile ? formatNumber(followingIds.size) : formatNumber(freshFollowingCount)}</p>
+                <p className="text-xl font-semibold">{formatNumber(isOwnProfile && followingIds.size > 0 ? followingIds.size : freshFollowingCount)}</p>
                 <p className="text-sm text-muted-foreground">Following</p>
               </button>
             </div>

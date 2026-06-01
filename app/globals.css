@@ -30,70 +30,8 @@ input, textarea, select { font-size: max(16px, 1em); }
   #__next { width: 100%; }
 }
 
-/* Forge AI thinking border — sepia sweep animation inspired by BorderGlow (React Bits) */
-@property --forge-glow-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes forge-glow-rotate {
-  0%      { --forge-glow-angle: 0deg; }
-  43.75%  { --forge-glow-angle: 90deg; }
-  50%     { --forge-glow-angle: 180deg; }
-  93.75%  { --forge-glow-angle: 270deg; }
-  100%    { --forge-glow-angle: 360deg; }
-}
-
-/* Outer wrapper: positions the stacking context and sepia border */
-.forge-glow-border {
-  position: relative;
-  isolation: isolate;
-  border: 1px solid hsl(55deg 70% 65% / 30%);
-  border-radius: var(--forge-glow-radius, 12px);
-}
-
-/* Edge-light span: extends 20px outside the card, masked to a narrow sweep cone.
-   Animation lives here so --forge-glow-angle is animated on the same element that reads it. */
-.forge-glow-border > .forge-glow-edge-light {
-  position: absolute;
-  inset: -20px;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 1;
-  animation: forge-glow-rotate 4s linear infinite;
-  mask-image: conic-gradient(
-    from var(--forge-glow-angle) at center,
-    black 2.5%,
-    transparent 11%,
-    transparent 89%,
-    black 97.5%
-  );
-  mix-blend-mode: plus-lighter;
-}
-
-/* The actual glow lives on ::before, which sits at the card boundary */
-.forge-glow-border > .forge-glow-edge-light::before {
-  content: "";
-  position: absolute;
-  inset: 20px;
-  border-radius: var(--forge-glow-radius, 12px);
-  box-shadow:
-    inset 0 0 0 1px   hsl(38deg 75% 68% / 80%),
-    inset 0 0 6px  0  hsl(38deg 75% 68% / 45%),
-    inset 0 0 14px 0  hsl(38deg 75% 68% / 28%),
-    0 0 5px  0   hsl(38deg 75% 68% / 42%),
-    0 0 14px 0   hsl(38deg 75% 68% / 24%),
-    inset 0 0 0 1px   hsl(82deg 80% 80% / 45%),
-    inset 0 0 8px  0  hsl(82deg 80% 80% / 22%),
-    0 0 8px  0   hsl(82deg 80% 80% / 20%),
-    0 0 20px 2px hsl(82deg 80% 80% / 10%);
-}
-
-/* Inner content sits above the edge-light layer */
-.forge-glow-border > .forge-glow-inner {
-  position: relative;
-  z-index: 2;
-  border-radius: var(--forge-glow-radius, 12px);
-  overflow: hidden;
+/* Forge AI orbit animation — 48px glow dot travels the border at constant perimeter speed */
+@keyframes forge-orbit {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
 }

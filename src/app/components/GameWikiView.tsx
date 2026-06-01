@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Plus, User, Package, MapPin, Star, ChevronRight, ThumbsUp, Cpu, BookOpen, Skull } from 'lucide-react';
+import { Sparkles, Plus, User, Package, MapPin, Star, ChevronRight, ThumbsUp, Cpu, BookOpen, Skull, Scroll } from 'lucide-react';
 import { useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
 import { GameInsightModal } from './GameInsightModal';
 
-type Category = 'all' | 'characters' | 'objects' | 'locations' | 'extras' | 'enemies';
+type Category = 'all' | 'characters' | 'objects' | 'locations' | 'extras' | 'enemies' | 'quest';
 
 interface WikiInsight {
   id: string;
@@ -34,6 +34,7 @@ const CATEGORIES: { id: Category; label: string; icon: React.ReactNode; color: s
   { id: 'locations', label: 'Locations', icon: <MapPin className="w-3.5 h-3.5" />, color: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' },
   { id: 'extras', label: 'Extras', icon: <Star className="w-3.5 h-3.5" />, color: 'text-purple-400 border-purple-400/30 bg-purple-400/10' },
   { id: 'enemies', label: 'Enemies', icon: <Skull className="w-3.5 h-3.5" />, color: 'text-red-400 border-red-400/30 bg-red-400/10' },
+  { id: 'quest', label: 'Quests', icon: <Scroll className="w-3.5 h-3.5" />, color: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' },
 ];
 
 const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
@@ -42,6 +43,7 @@ const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
   locations: { label: 'Locations', color: 'text-emerald-400 bg-emerald-400/15' },
   extras: { label: 'Extras', color: 'text-purple-400 bg-purple-400/15' },
   enemies: { label: 'Enemies', color: 'text-red-400 bg-red-400/15' },
+  quest:    { label: 'Quests',   color: 'text-yellow-400 bg-yellow-400/15' },
 };
 
 const ENTITY_TYPE_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -60,6 +62,7 @@ const CATEGORY_ENTITY_TYPES: Record<Category, string[]> = {
   locations:  ['location'],
   extras:     ['mechanic', 'lore'],
   enemies:    ['character'],
+  quest:      ['lore'],
 };
 
 function insightDateLabel(submitted_at: string, updated_at: string | null): string {
