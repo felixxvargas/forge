@@ -122,8 +122,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
-  const [freshFollowerCount, setFreshFollowerCount] = useState<number>(profileUser?.follower_count ?? 0);
-  const [freshFollowingCount, setFreshFollowingCount] = useState<number>(profileUser?.following_count ?? 0);
+  const [freshFollowerCount, setFreshFollowerCount] = useState<number>(0);
+  const [freshFollowingCount, setFreshFollowingCount] = useState<number>(0);
   const [canViewHandles, setCanViewHandles] = useState(false);
   const [handlePopup, setHandlePopup] = useState<{ platform: string; handle: string; label: string } | null>(null);
 
@@ -201,10 +201,11 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
     );
   }, [isOwnProfile, profileUser?.id, profileUser?.handle, followingIds]);
 
-  // Fetch fresh follower/following counts from the follows table (source of truth)
-  // No cache seed — the profile's stored follower_count can be stale and causes a flash
+  // Seed counts from cached profile immediately, then update from the follows table
   useEffect(() => {
     if (!profileUser?.id) return;
+    if (profileUser.follower_count != null) setFreshFollowerCount(profileUser.follower_count);
+    if ((profileUser as any).following_count != null) setFreshFollowingCount((profileUser as any).following_count);
     Promise.all([
       profiles.getFollowerCount(profileUser.id),
       profiles.getFollowingCount(profileUser.id),
