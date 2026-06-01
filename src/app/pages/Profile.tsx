@@ -67,18 +67,21 @@ const BIO_MAX_LENGTH = 150;
 
 export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const navigate = useNavigate();
-  const { userId, handle } = useParams();
+  // Route is [slug] for direct URL access (/profile/puppy) but in-app navigation uses [handle].
+  // Read both so profile loads correctly regardless of which param name Next.js provides.
+  const { userId, handle: handleParam, slug } = useParams() as any;
+  const UUID_RE_PROFILE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const handle: string | undefined = handleParam ?? (slug && !UUID_RE_PROFILE.test(slug) ? slug : undefined);
   const { currentUser, isAuthenticated, groups, updateGameList, updateCurrentUser, posts, deletePost, likePost, unlikePost, likedPosts, repostedPosts, repostPost, unrepostPost, getUserById, getUserByHandle, blockUser, unblockUser, muteUser, unmuteUser, blockedUsers, mutedUsers, followingIds, addToVIPList, removeFromVIPList, vipListIds } = useAppData() as any;
   const normalizedHandle = handle ? handle.replace(/^@/, '').toLowerCase() : null;
   const { data: swrHandleProfile } = useSWR(
     normalizedHandle ? `profile-handle:${normalizedHandle}` : null,
     () => profiles.getByHandle(handle!).then(u => u ?? null).catch(() => null),
     {
-      // Use context cache only as a placeholder while the fresh fetch runs — never as definitive data.
-      // Skipping getUserByHandle shortcut prevents stale/deleted account data from being served.
+      // Always fetch fresh from DB — never short-circuit on context cache.
+      // Prevents stale/deleted account data (e.g. old @puppy) from being served.
       fallbackData: (() => {
-        const fromCtx = getUserByHandle(handle!);
-        if (fromCtx) return fromCtx;
+        if (!handle) return undefined;
         if (initialProfile && normalizedHandle === (initialProfile.handle || '').replace(/^@/, '').toLowerCase()) return initialProfile;
         return undefined;
       })(),
