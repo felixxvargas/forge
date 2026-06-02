@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from '@/compat/router';
 import { supabase } from '../utils/supabase';
-import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus, Sparkles, PenLine, Bell } from 'lucide-react';
+import { Users, MessageSquare, Gamepad2, Users2, Flame, TrendingUp, Clock, RefreshCw, List, ArrowRight, Activity, Smartphone, Globe, UserPlus, Sparkles, PenLine } from 'lucide-react';
 
 interface OnboardingFunnelData {
   started: number;
@@ -87,12 +87,6 @@ export function Admin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('30d');
-  const [pushTitle, setPushTitle] = useState('Elden Ring was #1 on Forge in May 🎮');
-  const [pushBody, setPushBody] = useState('It was the most-posted game this month. Build your list and join the conversation.');
-  const [pushUrl, setPushUrl] = useState('/create-list');
-  const [pushSending, setPushSending] = useState(false);
-  const [pushResult, setPushResult] = useState<{ sent: number; failed: number } | null>(null);
-
   const load = async () => {
     setLoading(true);
     setError('');
@@ -112,30 +106,6 @@ export function Admin() {
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const sendPush = async () => {
-    if (!pushTitle.trim() || !pushBody.trim()) return;
-    setPushSending(true);
-    setPushResult(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const tok = session?.access_token;
-      if (!tok) return;
-      const r = await fetch('/api/admin/push-broadcast', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: pushTitle, body: pushBody, url: pushUrl }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? 'Failed');
-      setPushResult({ sent: data.sent, failed: data.failed });
-    } catch (err: any) {
-      setPushResult({ sent: -1, failed: -1 });
-      alert(err.message);
-    } finally {
-      setPushSending(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -489,57 +459,6 @@ export function Admin() {
           );
         })()}
 
-        {/* Push Broadcast */}
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-            <Bell className="w-4 h-4" /> Push Broadcast
-          </h2>
-          <div className="bg-card rounded-xl p-5 border border-border space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium">Title</label>
-              <input
-                type="text"
-                value={pushTitle}
-                onChange={e => setPushTitle(e.target.value)}
-                className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium">Body</label>
-              <textarea
-                value={pushBody}
-                onChange={e => setPushBody(e.target.value)}
-                rows={2}
-                className="w-full bg-secondary rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium">Deep link URL</label>
-              <input
-                type="text"
-                value={pushUrl}
-                onChange={e => setPushUrl(e.target.value)}
-                placeholder="/create-list"
-                className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                onClick={sendPush}
-                disabled={pushSending || !pushTitle.trim() || !pushBody.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
-              >
-                <Bell className="w-4 h-4" />
-                {pushSending ? 'Sending…' : 'Send to all Android users'}
-              </button>
-              {pushResult && pushResult.sent >= 0 && (
-                <span className="text-sm text-accent font-medium">
-                  ✓ {pushResult.sent} sent{pushResult.failed > 0 ? `, ${pushResult.failed} failed` : ''}
-                </span>
-              )}
-            </div>
-          </div>
-        </section>
 
         {/* Recent sign-ups */}
         <section className="space-y-3">

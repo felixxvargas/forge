@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from '@/compat/router';
 import { supabase } from '../utils/supabase';
 import { toast } from 'sonner';
-import { RefreshCw, Pencil, ArrowRight } from 'lucide-react';
+import { RefreshCw, Pencil, ArrowRight, Bell } from 'lucide-react';
 
 interface ScheduledPost {
   id: string;
@@ -42,6 +42,11 @@ export function AdminScheduledPosts() {
   const [runOrder, setRunOrder] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'published'>('pending');
+  const [pushTitle, setPushTitle] = useState('');
+  const [pushBody, setPushBody] = useState('');
+  const [pushUrl, setPushUrl] = useState('/create-list');
+  const [pushSending, setPushSending] = useState(false);
+  const [pushResult, setPushResult] = useState<{ sent: number; failed: number } | null>(null);
 
   const loadScheduledPosts = async () => {
     setSpLoading(true); setSpError('');
@@ -156,6 +161,29 @@ export function AdminScheduledPosts() {
       headers: { Authorization: `Bearer ${tok}` },
     });
     loadScheduledPosts();
+  };
+
+  const sendPush = async () => {
+    if (!pushTitle.trim() || !pushBody.trim()) return;
+    setPushSending(true);
+    setPushResult(null);
+    try {
+      const tok = await getToken();
+      if (!tok) return;
+      const r = await fetch('/api/admin/push-broadcast', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: pushTitle, body: pushBody, url: pushUrl }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? 'Failed');
+      setPushResult({ sent: data.sent, failed: data.failed });
+      toast.success(`Sent to ${data.sent} device${data.sent !== 1 ? 's' : ''}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send push');
+    } finally {
+      setPushSending(false);
+    }
   };
 
   useEffect(() => {
@@ -467,6 +495,58 @@ export function AdminScheduledPosts() {
               ))}
             </ul>
           )}
+        </div>
+
+        {/* Push Broadcast */}
+        <div className="bg-card rounded-xl p-5 border border-border space-y-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Bell className="w-4 h-4 text-accent" /> Push Broadcast
+          </h2>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-medium">Title</label>
+            <input
+              type="text"
+              value={pushTitle}
+              onChange={e => setPushTitle(e.target.value)}
+              placeholder="Notification title…"
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-medium">Body</label>
+            <textarea
+              value={pushBody}
+              onChange={e => setPushBody(e.target.value)}
+              rows={2}
+              placeholder="Notification body…"
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-medium">Deep link URL</label>
+            <input
+              type="text"
+              value={pushUrl}
+              onChange={e => setPushUrl(e.target.value)}
+              placeholder="/create-list"
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={sendPush}
+              disabled={pushSending || !pushTitle.trim() || !pushBody.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              <Bell className="w-4 h-4" />
+              {pushSending ? 'Sending…' : 'Send to all Android users'}
+            </button>
+            {pushResult && pushResult.sent >= 0 && (
+              <span className="text-sm text-accent font-medium">
+                ✓ {pushResult.sent} sent{pushResult.failed > 0 ? `, ${pushResult.failed} failed` : ''}
+              </span>
+            )}
+          </div>
         </div>
 
       </div>
