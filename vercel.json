@@ -11,5 +11,11 @@
       "destination": "https://www.forge-social.app/:path*",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    { "source": "/api/admin/:path*", "destination": "/api/admin" },
+    { "source": "/api/insights/:path*", "destination": "/api/insights" },
+    { "source": "/api/emails/:path*", "destination": "/api/emails" },
+    { "source": "/api/stripe/:path*", "destination": "/api/stripe" }
   ]
 }
