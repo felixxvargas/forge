@@ -17,12 +17,18 @@ export async function initPushNotifications(userId: string) {
 
   PushNotifications.addListener('registration', async (token) => {
     try {
-      await fetch('/api/push/register-token', {
+      const res = await fetch('/api/push/register-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, token: token.value, platform: 'android' }),
       });
-    } catch { /* fire-and-forget */ }
+      if (!res.ok) {
+        const err = await res.text().catch(() => res.status.toString());
+        console.error('[push] register-token failed:', err);
+      }
+    } catch (err) {
+      console.error('[push] register-token error:', err);
+    }
   });
 
   PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
