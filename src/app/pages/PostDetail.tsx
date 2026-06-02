@@ -1486,6 +1486,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                         post={reply}
                         user={replyUser}
                         noBacker={true}
+                        hideReplyIndicator={true}
                         onLike={(id) => likedPosts.has(id) ? unlikePost(id) : likePost(id)}
                         onRepost={(id) => repostedPosts.has(id) ? unrepostPost(id) : repostPost(id)}
                         onComment={() => navigate(`/post/${encodeURIComponent(reply.id)}#comments`)}
@@ -1510,6 +1511,7 @@ export function PostDetail({ initialPost }: { initialPost?: any } = {}) {
                             post={bestSubReply}
                             user={subUser}
                             noBacker={true}
+                            hideReplyIndicator={true}
                             onLike={(id) => { likedPosts.has(id) ? unlikePost(id) : likePost(id); }}
                             onRepost={(id) => { repostedPosts.has(id) ? unrepostPost(id) : repostPost(id); }}
                             onComment={() => navigate(`/post/${encodeURIComponent(bestSubReply.id)}#comments`)}

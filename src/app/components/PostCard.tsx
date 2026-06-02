@@ -105,6 +105,7 @@ interface PostCardProps {
   onUserClick?: (e: React.MouseEvent) => void;
   replyToHandle?: string;
   onReplyToClick?: () => void;
+  hideReplyIndicator?: boolean;
   noBacker?: boolean;
   onRemoveFromGroup?: () => void;
   hideGroupTag?: boolean;
@@ -115,7 +116,7 @@ function igdbThumb(url: string) {
   return url.replace(/\/t_[^/]+\//, '/t_thumb/');
 }
 
-export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, noBacker = false, onRemoveFromGroup, hideGroupTag = false, avatarPriority = false }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, user, onLike, onRepost, onComment, onDelete, onPin, isPinned = false, showDelete = false, isDetailView = false, explorePurpleMode = false, onShowMutedPost, isLiked: isLikedProp, isReposted: isRepostedProp, onUserClick, replyToHandle, onReplyToClick, hideReplyIndicator = false, noBacker = false, onRemoveFromGroup, hideGroupTag = false, avatarPriority = false }: PostCardProps) {
   const navigate = useNavigate();
   const context = useAppData();
   const isAuthenticated = (context as any)?.isAuthenticated ?? false;
@@ -449,7 +450,7 @@ export const PostCard = React.memo(function PostCard({ post, user, onLike, onRep
       )}
 
       {/* Reply indicator — hidden when the post is a repost in Feed (shown on detail page only) */}
-      {(post as any).reply_to && !post.repostedBy && (
+      {!hideReplyIndicator && (post as any).reply_to && !post.repostedBy && (
         <button
           onClick={(e) => { e.stopPropagation(); if (onReplyToClick) { onReplyToClick(); } else { navigate(`/post/${encodeURIComponent((post as any).reply_to)}`); } }}
           className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground hover:text-accent transition-colors"
