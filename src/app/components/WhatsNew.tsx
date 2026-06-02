@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface Release {
   version: string;
@@ -10,6 +10,19 @@ interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    version: 'v0.3.10',
+    date: 'June 2026',
+    title: "What's New in Forge",
+    summary: "Faster profile counts, smarter routing, cleaner post threads, and push notification support.",
+    highlights: [
+      'Follower and following counts now appear instantly on profile pages — no more flash from 0.',
+      'Liking a post on a profile page updates the counter immediately.',
+      'Fixed a bug where some profile handles could load the wrong user.',
+      'Threaded reply cards on post detail pages now show a clean header with a divider — inline labels removed.',
+      'Push notifications: device token registration now works correctly on Android.',
+    ],
+  },
   {
     version: 'v0.3.9',
     date: 'May 2026',
@@ -227,7 +240,6 @@ export function WhatsNewModal() {
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-accent" />
             <h2 className="text-lg font-semibold">{release.title}</h2>
             <span className="text-xs font-mono text-muted-foreground">{release.version}</span>
           </div>
