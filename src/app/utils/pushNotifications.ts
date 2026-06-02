@@ -17,7 +17,7 @@ export async function initPushNotifications(userId: string) {
 
   PushNotifications.addListener('registration', async (token) => {
     try {
-      const res = await fetch('/api/push/register-token', {
+      const res = await fetch('https://forge-social.app/api/push/register-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, token: token.value, platform: 'android' }),
