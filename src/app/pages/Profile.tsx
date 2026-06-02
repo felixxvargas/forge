@@ -126,8 +126,8 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [mutualFollowers, setMutualFollowers] = useState<any[]>([]);
-  const [freshFollowerCount, setFreshFollowerCount] = useState<number>(0);
-  const [freshFollowingCount, setFreshFollowingCount] = useState<number>(0);
+  const [freshFollowerCount, setFreshFollowerCount] = useState<number>((initialProfile as any)?.follower_count ?? 0);
+  const [freshFollowingCount, setFreshFollowingCount] = useState<number>((initialProfile as any)?.following_count ?? 0);
   const [canViewHandles, setCanViewHandles] = useState(false);
   const [handlePopup, setHandlePopup] = useState<{ platform: string; handle: string; label: string } | null>(null);
 
@@ -414,11 +414,14 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   };
 
   const handleLikeToggle = (postId: string) => {
-    if (likedPosts.has(postId)) {
-      unlikePost(postId);
-    } else {
-      likePost(postId);
-    }
+    const isLiked = likedPosts.has(postId);
+    if (isLiked) unlikePost(postId);
+    else likePost(postId);
+    setProfileUserPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, like_count: isLiked ? Math.max(0, (p.like_count ?? 0) - 1) : (p.like_count ?? 0) + 1 }
+        : p
+    ));
   };
 
   const handleRepostToggle = (postId: string) => {
