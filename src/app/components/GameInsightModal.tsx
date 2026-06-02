@@ -58,6 +58,7 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
   const [submitting, setSubmitting] = useState(false);
   const [insightId, setInsightId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('extras');
+  const [editTitle, setEditTitle] = useState('');
   const [videoLinks, setVideoLinks] = useState<string[]>([]);
   const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const gameSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +79,7 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
       setQuestion('');
       setResult(null);
       setInsightId(null);
+      setEditTitle('');
     }
   }, [isOpen, preselectedGame]);
 
@@ -147,6 +149,7 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
       const data = await res.json();
       setResult(data);
       setSelectedCategory(data.category ?? 'extras');
+      setEditTitle(data.title ?? '');
       setVideoLinks(data.videoLinks ?? []);
       setStep('result');
     } catch (err: any) {
@@ -172,6 +175,7 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
           gameTitle: selectedGame.title,
           query: question.trim(),
           content: result.answer,
+          title: editTitle.trim() || undefined,
           category: selectedCategory,
         }),
       });
@@ -377,6 +381,18 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
                     <span className="text-xs font-semibold text-accent uppercase tracking-wide">AI Insight</span>
                   </div>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{result.answer}</p>
+                </div>
+
+                {/* Editable title */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Title</p>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={e => setEditTitle(e.target.value)}
+                    placeholder="Give your insight a headline…"
+                    className="w-full bg-secondary rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  />
                 </div>
 
                 {/* Category picker */}

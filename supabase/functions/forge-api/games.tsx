@@ -143,6 +143,35 @@ export async function searchGames(query: string, limit = 20) {
     local = localData ?? [];
   }
 
+  // Background-heal covers for local games that have an igdb_id but no artwork.
+  // Fire-and-forget: doesn't block the search response.
+  const missingCover = local.filter((g: any) => g.igdb_id && (!g.artwork || g.artwork.length === 0));
+  if (missingCover.length > 0) {
+    (async () => {
+      try {
+        const clientId = Deno.env.get('IGDB_CLIENT_ID') ?? Deno.env.get('TWITCH_CLIENT_ID');
+        const clientSecret = Deno.env.get('IGDB_CLIENT_SECRET') ?? Deno.env.get('TWITCH_CLIENT_SECRET');
+        if (!clientId || !clientSecret) return;
+        const accessToken = await getIGDBAccessToken();
+        const ids = missingCover.map((g: any) => g.igdb_id).join(',');
+        const healRes = await fetch('https://api.igdb.com/v4/games', {
+          method: 'POST',
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'text/plain' },
+          body: `fields cover.image_id; where id = (${ids}); limit ${missingCover.length};`,
+        });
+        if (!healRes.ok) return;
+        const healData = await healRes.json() as any[];
+        await Promise.allSettled(healData.map(async (g: any) => {
+          if (!g.cover?.image_id) return;
+          const coverUrl = `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`;
+          const gameId = `igdb-${g.id}`;
+          await supabase.from('forge_game_artwork_17285bd7')
+            .upsert({ game_id: gameId, artwork_type: 'cover', url: coverUrl }, { onConflict: 'game_id,artwork_type', ignoreDuplicates: true });
+        }));
+      } catch { /* best-effort */ }
+    })();
+  }
+
   // If we have enough local results, return early
   if (local.length >= limit) return local;
 

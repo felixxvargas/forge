@@ -473,8 +473,8 @@ export function WritePostModal({ isOpen, onClose }: WritePostModalProps) {
                       onClick={() => handleSelectGame(game)}
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-sm flex items-center gap-2"
                     >
-                      {game.cover && (
-                        <img src={game.cover} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                      {(game.cover || game.artwork?.[0]?.url) && (
+                        <img src={game.cover ?? game.artwork[0].url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
                       )}
                       <span>{game.title}</span>
                       {game.year && <span className="text-muted-foreground text-xs ml-auto">{game.year}</span>}
