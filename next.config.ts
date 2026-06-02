@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
       'VITE_HCAPTCHA_SITE_KEY',
       'VITE_STRIPE_PUBLISHABLE_KEY',
       'VITE_TWITCH_CLIENT_ID',
-      'VITE_SENTRY_DSN',
+      'NEXT_PUBLIC_SENTRY_DSN',
       'VITE_RAWG_API_KEY',
     ];
     for (const key of viteKeys) {
@@ -86,8 +86,8 @@ const nextConfig: NextConfig = {
 };
 
 const sentryConfig = {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: process.env.SENTRY_ORG ?? 'forge-ck',
+  project: process.env.SENTRY_PROJECT ?? 'forge',
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: true,
   telemetry: false,

@@ -1,12 +1,12 @@
 import * as Sentry from '@sentry/nextjs';
 
-const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 if (dsn) {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV,
-    release: import.meta.env.VITE_SENTRY_RELEASE as string | undefined,
+    release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
     tracesSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.05,

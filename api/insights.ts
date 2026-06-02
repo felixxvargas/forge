@@ -159,8 +159,17 @@ async function handleGameInsights(req: VercelRequest, res: VercelResponse) {
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
       if (!insight) return res.status(404).json({ error: 'Insight not found' });
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can change category' });
-      const updated = await sb<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, { category, updated_at: new Date().toISOString() });
-      if (!Array.isArray(updated) || updated.length === 0) return res.status(500).json({ error: 'Category update did not match any rows' });
+      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { category, updated_at: new Date().toISOString() }, 'return=minimal');
+      return res.json({ success: true });
+    }
+
+    if (action === 'edit-title') {
+      const { title } = req.body ?? {};
+      if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
+      const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
+      if (!insight) return res.status(404).json({ error: 'Insight not found' });
+      if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can edit this insight' });
+      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { title: title.trim(), updated_at: new Date().toISOString() }, 'return=minimal');
       return res.json({ success: true });
     }
 

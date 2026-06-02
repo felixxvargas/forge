@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 
-const dsn = process.env.VITE_SENTRY_DSN;
+const dsn = process.env.SENTRY_DSN;
 
 if (dsn) {
   Sentry.init({

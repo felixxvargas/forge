@@ -287,10 +287,21 @@ export function InsightDetail() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error('Not authenticated');
+      // Approved insights: only title can be edited in-place (no vote reset).
+      // Pending insights: full edit-content resets votes and restarts review timer.
+      const isApproved = insight.status === 'approved';
+      const action = isApproved ? 'edit-title' : 'edit-content';
+      const body: Record<string, any> = { insightId: insight.id, action };
+      if (isApproved) {
+        body.title = trimmedTitle || insight.title;
+      } else {
+        if (trimmedTitle) body.title = trimmedTitle;
+        if (trimmedContent) body.content = trimmedContent;
+      }
       const res = await fetch('/api/insights/game-insights', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ insightId: insight.id, action: 'edit-content', title: trimmedTitle || undefined, content: trimmedContent || undefined }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -299,12 +310,11 @@ export function InsightDetail() {
       setInsight(i => i ? {
         ...i,
         ...(trimmedTitle ? { title: trimmedTitle } : {}),
-        ...(trimmedContent ? { content: trimmedContent } : {}),
-        approve_count: 0,
-        reject_count: 0,
+        ...(trimmedContent && !isApproved ? { content: trimmedContent } : {}),
+        ...(isApproved ? {} : { approve_count: 0, reject_count: 0 }),
       } : i);
       setEditingInsight(false);
-      toast.success('Resubmitted — votes cleared, review timer restarted');
+      toast.success(isApproved ? 'Title updated' : 'Resubmitted — votes cleared, review timer restarted');
     } catch (err: any) {
       toast.error(err.message || 'Failed to save edit');
     } finally {
