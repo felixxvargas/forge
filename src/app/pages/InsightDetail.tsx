@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, MessageCircle, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal, Pencil, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, ThumbsUp, ThumbsDown, Check, Send, ExternalLink, Clock, CheckCircle2, RefreshCw, MoreHorizontal, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useParams, useNavigate } from '@/compat/router';
 import { supabase } from '../utils/supabase';
@@ -492,21 +492,11 @@ export function InsightDetail() {
           {insight.status === 'pending' && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase tracking-wide">Pending</span>
           )}
-          {insight.category && (() => {
-            const catColors: Record<string, string> = {
-              characters: 'bg-blue-400/20 text-blue-400',
-              objects: 'bg-amber-400/20 text-amber-400',
-              locations: 'bg-emerald-400/20 text-emerald-400',
-              extras: 'bg-purple-400/20 text-purple-400',
-              enemies: 'bg-red-400/20 text-red-400',
-              quest: 'bg-yellow-400/20 text-yellow-400',
-            };
-            return (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${catColors[insight.category] ?? 'bg-muted text-muted-foreground'}`}>
-                {insight.category}
-              </span>
-            );
-          })()}
+          {insight.category && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide bg-violet-400/20 text-violet-400">
+              {insight.category}
+            </span>
+          )}
         </div>
 
         {/* Title (auto-generated headline) */}
@@ -730,7 +720,6 @@ export function InsightDetail() {
       <div className="lg:sticky lg:top-20 mt-8 lg:mt-0">
         <div className="mt-0">
           <div className="flex items-center gap-2 mb-4">
-            <MessageCircle className="w-4 h-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Comments</h3>
             {comments.length > 0 && (
               <span className="text-xs text-muted-foreground">({comments.length})</span>

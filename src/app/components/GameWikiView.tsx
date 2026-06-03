@@ -38,12 +38,12 @@ const CATEGORIES: { id: Category; label: string; icon: React.ReactNode; color: s
 ];
 
 const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
-  characters: { label: 'Characters', color: 'text-blue-400 bg-blue-400/15' },
-  objects: { label: 'Objects', color: 'text-amber-400 bg-amber-400/15' },
-  locations: { label: 'Locations', color: 'text-emerald-400 bg-emerald-400/15' },
-  extras: { label: 'Extras', color: 'text-purple-400 bg-purple-400/15' },
-  enemies: { label: 'Enemies', color: 'text-red-400 bg-red-400/15' },
-  quest:    { label: 'Quests',   color: 'text-yellow-400 bg-yellow-400/15' },
+  characters: { label: 'Characters', color: 'text-violet-400 bg-violet-400/15' },
+  objects:    { label: 'Objects',    color: 'text-violet-400 bg-violet-400/15' },
+  locations:  { label: 'Locations',  color: 'text-violet-400 bg-violet-400/15' },
+  extras:     { label: 'Extras',     color: 'text-violet-400 bg-violet-400/15' },
+  enemies:    { label: 'Enemies',    color: 'text-violet-400 bg-violet-400/15' },
+  quest:      { label: 'Quests',     color: 'text-violet-400 bg-violet-400/15' },
 };
 
 const ENTITY_TYPE_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -140,7 +140,7 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
   const activeCat = CATEGORIES.find(c => c.id === activeCategory)!;
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #0d0b14 0%, #110f1a 100%)' }}>
+    <div className="min-h-screen bg-background">
       {/* Wiki header */}
       <div className="border-b border-white/5">
         <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-4">
@@ -154,7 +154,7 @@ export function GameWikiView({ gameId, gameTitle, coverUrl }: GameWikiViewProps)
       </div>
 
       {/* Category tabs */}
-      <div className="sticky top-0 z-10" style={{ background: 'rgba(13,11,20,0.85)', backdropFilter: 'blur(12px)' }}>
+      <div className="sticky top-0 z-10 bg-background/85 backdrop-blur-md">
       <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto scrollbar-none">
         {CATEGORIES.map(cat => (
           <button

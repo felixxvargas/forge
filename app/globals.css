@@ -35,3 +35,10 @@ input, textarea, select { font-size: max(16px, 1em); }
   from { offset-distance: 0%; }
   to   { offset-distance: 100%; }
 }
+
+/* Prevent iOS Safari from zooming on input focus when font-size < 16px */
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}

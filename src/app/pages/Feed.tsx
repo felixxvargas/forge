@@ -72,6 +72,9 @@ export function Feed() {
   const [groupNewPostCounts, setGroupNewPostCounts] = useState<Record<string, number>>({});
   const navigate = useNavigate();
   const [searchActive, setSearchActive] = useState(false);
+  // Guarantees one skeleton frame per mount even when cache makes isLoading=false immediately
+  const [mountLoading, setMountLoading] = useState(true);
+  useEffect(() => { const t = requestAnimationFrame(() => setMountLoading(false)); return () => cancelAnimationFrame(t); }, []);
 
   // Populate profileCache for topic accounts so avatars load for all users (including guests)
   useTopicAccountProfiles(topicAccounts.map(a => a.id));
@@ -404,7 +407,8 @@ export function Feed() {
 
   // Gate skeleton on no-data-yet: SWR with keepPreviousData means dynamicLoading is true
   // during background revalidation too, so only block on first load (dynamicPosts === null).
-  const loading = isLoading
+  const loading = mountLoading
+    || isLoading
     || (dynamicLoading && dynamicPosts === null)
     || (feedMode === 'following' && isAuthenticated && contextPosts.length === 0);
   const numCols = useColumnCount();
@@ -418,6 +422,10 @@ export function Feed() {
       {/* Skeleton — outside AnimatePresence so it's visible immediately at full opacity */}
       {loading && !searchActive && (
         <div className="mt-6 lg:mt-9">
+          {/* Forge AI toolbar skeleton */}
+          {isAuthenticated && (
+            <div className="h-[72px] bg-card border border-border rounded-2xl mb-4 animate-pulse" />
+          )}
           <p className="text-2xl font-extrabold mb-3 lg:mb-6">{getSelectedName()}</p>
           <div className={`flex ${feedGap} items-start`}>
             <div className={`flex flex-1 flex-col ${feedGap} min-w-0`}>

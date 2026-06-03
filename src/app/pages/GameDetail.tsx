@@ -646,7 +646,7 @@ export function GameDetail() {
                 disabled={togglingPlayed}
                 className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-medium text-sm transition-all ${
                   isPlayed
-                    ? 'bg-emerald-500/20 border-2 border-emerald-500/60 text-emerald-400'
+                    ? 'bg-emerald-400/20 border-2 border-emerald-400/60 text-emerald-400'
                     : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
                 }`}
               >
@@ -658,7 +658,7 @@ export function GameDetail() {
                 disabled={togglingOwned}
                 className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-medium text-sm transition-all ${
                   isOwned
-                    ? 'bg-sky-500/20 border-2 border-sky-500/60 text-sky-400'
+                    ? 'bg-emerald-400/20 border-2 border-emerald-400/60 text-emerald-400'
                     : 'bg-secondary border-2 border-transparent text-foreground hover:bg-secondary/80'
                 }`}
               >

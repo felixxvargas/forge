@@ -4,6 +4,7 @@ const SUPABASE_URL = `https://${process.env.VITE_SUPABASE_PROJECT_ID}.supabase.c
 const SERVICE_KEY = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const GEMINI_API_KEY = process.env.GEMINI_API ?? process.env.GEMINI_API_KEY ?? '';
 const DAILY_LIMIT = 50;
+const PREMIUM_DAILY_LIMIT = 200;
 
 type ConversationMessage = { role: 'user' | 'assistant'; content: string; timestamp: string };
 
@@ -32,25 +33,25 @@ async function sbFetch(method: string, path: string, authToken: string, body?: o
   return text ? JSON.parse(text) : (method === 'GET' ? [] : null);
 }
 
-async function checkAndIncrementUsage(userId: string, userToken: string): Promise<{ allowed: boolean; used: number }> {
+async function checkAndIncrementUsage(userId: string, userToken: string, limit: number): Promise<{ allowed: boolean; used: number; limit: number }> {
   const today = new Date().toISOString().split('T')[0];
   const rows = await sbFetch('GET', `/gemini_usage?user_id=eq.${userId}&usage_date=eq.${today}&limit=1`, userToken) as Array<{ id: string; query_count: number }>;
 
   if (rows.length === 0) {
     await sbFetch('POST', '/gemini_usage', userToken, { user_id: userId, usage_date: today, query_count: 1 }, 'return=minimal');
-    return { allowed: true, used: 1 };
+    return { allowed: true, used: 1, limit };
   }
 
   const row = rows[0];
-  if (row.query_count >= DAILY_LIMIT) {
-    return { allowed: false, used: row.query_count };
+  if (row.query_count >= limit) {
+    return { allowed: false, used: row.query_count, limit };
   }
 
   await sbFetch('PATCH', `/gemini_usage?user_id=eq.${userId}&usage_date=eq.${today}`, userToken, {
     query_count: row.query_count + 1,
     updated_at: new Date().toISOString(),
   });
-  return { allowed: true, used: row.query_count + 1 };
+  return { allowed: true, used: row.query_count + 1, limit };
 }
 
 // Single-turn: initial question → headline + category + answer
@@ -235,12 +236,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isMultiTurn = Array.isArray(messages) && messages.length > 0;
 
   try {
-    const usage = await checkAndIncrementUsage(user.id, token);
+    const profiles = await sbFetch('GET', `/profiles?id=eq.${user.id}&select=is_premium&limit=1`, token) as Array<{ is_premium: boolean }>;
+    const isPremium = profiles[0]?.is_premium === true;
+    const dailyLimit = isPremium ? PREMIUM_DAILY_LIMIT : DAILY_LIMIT;
+
+    const usage = await checkAndIncrementUsage(user.id, token, dailyLimit);
     if (!usage.allowed) {
       return res.status(429).json({
-        error: `Daily limit reached (${DAILY_LIMIT} queries per day). Try again tomorrow.`,
+        error: `Daily limit reached (${dailyLimit} queries per day). Try again tomorrow.`,
         used: usage.used,
-        limit: DAILY_LIMIT,
+        limit: dailyLimit,
       });
     }
 
@@ -248,11 +253,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (isMultiTurn) {
       const { updatedInsight, reply } = await queryGeminiContinue(question.trim(), gameTitle, messages as ConversationMessage[]);
-      return res.json({ updatedInsight, reply, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
+      return res.json({ updatedInsight, reply, used: usage.used, limit: dailyLimit, remaining: dailyLimit - usage.used });
     }
 
     const { answer, title, category, videoLinks } = await queryGeminiFirst(question.trim(), gameTitle);
-    return res.json({ answer, title, category, videoLinks, used: usage.used, limit: DAILY_LIMIT, remaining: DAILY_LIMIT - usage.used });
+    return res.json({ answer, title, category, videoLinks, used: usage.used, limit: dailyLimit, remaining: dailyLimit - usage.used });
   } catch (err: any) {
     return res.status(500).json({ error: err.message ?? 'Internal error' });
   }
