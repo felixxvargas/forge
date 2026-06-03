@@ -14,13 +14,11 @@ export const RELEASES: Release[] = [
     version: 'v0.3.10',
     date: 'June 2026',
     title: "What's New in Forge",
-    summary: "Faster profile counts, smarter routing, cleaner post threads, and push notification support.",
+    summary: "Faster profile counts, cleaner post threads, and push notification support.",
     highlights: [
-      'Follower and following counts now appear instantly on profile pages — no more flash from 0.',
-      'Liking a post on a profile page updates the counter immediately.',
+      'Follower and following counts now appear instantly on profile pages.',
       'Fixed a bug where some profile handles could load the wrong user.',
-      'Threaded reply cards on post detail pages now show a clean header with a divider — inline labels removed.',
-      'Push notifications: device token registration now works correctly on Android.',
+      'Threaded reply cards on post detail pages now look cleaner.',
     ],
   },
   {
