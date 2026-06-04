@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { supabase } from './supabase';
 
 export async function initPushNotifications(userId: string) {
   if (!Capacitor.isNativePlatform()) return;
@@ -17,17 +18,17 @@ export async function initPushNotifications(userId: string) {
 
   PushNotifications.addListener('registration', async (token) => {
     try {
-      const res = await fetch('https://forge-social.app/api/push/register-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, token: token.value, platform: 'android' }),
-      });
-      if (!res.ok) {
-        const err = await res.text().catch(() => res.status.toString());
-        console.error('[push] register-token failed:', err);
-      }
+      // Use Supabase client directly — avoids CORS preflight against forge-social.app
+      // and uses the user's JWT so the RLS insert policy (auth.uid() = user_id) passes.
+      const { error } = await supabase
+        .from('device_tokens')
+        .upsert(
+          { user_id: userId, token: token.value, platform: 'android' },
+          { onConflict: 'user_id,platform' }
+        );
+      if (error) console.error('[push] device_tokens upsert failed:', error.message);
     } catch (err) {
-      console.error('[push] register-token error:', err);
+      console.error('[push] registration error:', err);
     }
   });
 

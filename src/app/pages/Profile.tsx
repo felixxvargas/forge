@@ -425,11 +425,18 @@ export function Profile({ initialProfile }: { initialProfile?: any } = {}) {
   };
 
   const handleRepostToggle = (postId: string) => {
-    if (repostedPosts.has(postId)) {
+    const isReposted = repostedPosts.has(postId);
+    if (isReposted) {
       unrepostPost(postId);
     } else {
       repostPost(postId);
     }
+    // profileUserPosts is local state independent of context postList, so update it here
+    setProfileUserPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, repost_count: Math.max(0, (p.repost_count ?? 0) + (isReposted ? -1 : 1)) }
+        : p
+    ));
   };
 
   const handleReport = async () => {
