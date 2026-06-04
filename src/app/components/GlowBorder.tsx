@@ -65,6 +65,7 @@ export function GlowBorder({ active, children, className = '', radius = 12 }: Gl
               filter: 'blur(2px)',
               offsetPath: `path("${orbitPath}")`,
               offsetAnchor: '50% 50%',
+              offsetRotate: 'auto',
               animation: 'forge-orbit 2.5s linear infinite',
             } as React.CSSProperties}
           />

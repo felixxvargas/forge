@@ -458,7 +458,7 @@ export function InsightDetail() {
                 <MoreHorizontal className="w-5 h-5" />
               </button>
               {overflowOpen && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-44 bg-sidebar border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
                   <button
                     onClick={() => { setOverflowOpen(false); setChangingCategory(true); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors text-left"
@@ -817,7 +817,7 @@ export function InsightDetail() {
 
       {/* Category picker — bottom tray */}
       <Drawer open={changingCategory} onOpenChange={setChangingCategory} direction="bottom">
-        <DrawerContent className="bg-popover border-border px-4 pb-8">
+        <DrawerContent className="bg-sidebar border-border px-4 pb-8">
           <DrawerHeader className="pb-2">
             <DrawerTitle className="text-center text-sm">Change Category</DrawerTitle>
           </DrawerHeader>
@@ -869,6 +869,7 @@ export function InsightDetail() {
                   filter: 'blur(2px)',
                   offsetPath: `path("${dockOrbitPath}")`,
                   offsetAnchor: '50% 50%',
+                  offsetRotate: 'auto',
                   animation: 'forge-orbit 2.5s linear infinite',
                 } as React.CSSProperties} />
               </span>

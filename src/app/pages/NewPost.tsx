@@ -120,6 +120,28 @@ export function NewPost() {
       .catch(() => {});
   }, [urlInsightId]);
 
+  // gameCoverCache is a module-level Map; mutating it doesn't trigger re-renders.
+  // This version counter forces a re-render after the cover is fetched.
+  const [, setCoverVersion] = useState(0);
+
+  // Populate cover cache for games pre-tagged via navigation state or URL params
+  // (search-selected games populate cache in handleSelectGame; pre-tagged ones don't)
+  useEffect(() => {
+    const preTaggedId = stateGameId || urlGameId;
+    if (!preTaggedId || gameCoverCache.has(preTaggedId)) return;
+    gamesAPI.getGame(preTaggedId)
+      .then((game: any) => {
+        if (!game) return;
+        const cover = game.cover
+          ?? game.artwork?.find((a: any) => a.artwork_type === 'cover')?.url
+          ?? game.artwork?.[0]?.url
+          ?? null;
+        gameCoverCache.set(preTaggedId, cover);
+        setCoverVersion(v => v + 1);
+      })
+      .catch(() => {});
+  }, [stateGameId, urlGameId]);
+
   const autoDraft = useRef<DraftData>(parseAutoDraft());
 
   const [content, setContent] = useState(autoDraft.current.content);
