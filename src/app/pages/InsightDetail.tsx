@@ -870,7 +870,7 @@ export function InsightDetail() {
                   offsetPath: `path("${dockOrbitPath}")`,
                   offsetAnchor: '50% 50%',
                   offsetRotate: 'auto',
-                  animation: 'forge-orbit 2.5s linear infinite',
+                  animation: 'forge-orbit 5s linear infinite',
                 } as React.CSSProperties} />
               </span>
             )}
