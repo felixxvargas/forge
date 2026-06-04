@@ -11,6 +11,21 @@ interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: 'v0.4.0',
+    date: 'June 2026',
+    title: "What's New in Forge",
+    summary: "Push notifications, Forge Insights upgrades, the correct app icon, and a wave of quality fixes.",
+    highlights: [
+      'Push notifications are now live — accept the prompt and get notified for likes, comments, follows, and more.',
+      'Forge Insights: editing your insight title, body, and category now saves correctly every time.',
+      'Forge AI toolbar: smoother orbit animation and a new bottom-sheet category picker on mobile.',
+      'Game tag cover art now loads when composing a post directly from an insight.',
+      'Premium members get 200 Forge AI queries per day (up from 50).',
+      'Fixed the app icon — the Forge logo now shows correctly on your home screen.',
+      'Repost counts update instantly on profile pages without a refresh.',
+    ],
+  },
+  {
     version: 'v0.3.10',
     date: 'June 2026',
     title: "What's New in Forge",

@@ -905,8 +905,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // Update count on every copy of this post (original + any existing repost copies)
         const updated = prev.map(p => p.id === postId ? { ...p, repost_count: newCount } : p);
         if (original && !original.repostedBy) {
-          // Prepend the current user's repost copy for immediate feed display
-          return [{ ...original, repost_count: newCount, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...updated];
+          // Prepend the repost copy and remove the original so only one item shows in feed
+          const withoutOriginal = updated.filter(p => !(p.id === postId && !p.repostedBy));
+          return [{ ...original, repost_count: newCount, repostedBy: session.user.id, repostedAt: new Date().toISOString() }, ...withoutOriginal];
         }
         return updated;
       });
