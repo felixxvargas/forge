@@ -159,7 +159,8 @@ async function handleGameInsights(req: VercelRequest, res: VercelResponse) {
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
       if (!insight) return res.status(404).json({ error: 'Insight not found' });
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can change category' });
-      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { category, updated_at: new Date().toISOString() }, 'return=minimal');
+      const updated = await sbAsUser<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, token, { category, updated_at: new Date().toISOString() });
+      if (!updated?.length) return res.status(500).json({ error: 'Category update did not modify any rows' });
       return res.json({ success: true });
     }
 
@@ -169,7 +170,8 @@ async function handleGameInsights(req: VercelRequest, res: VercelResponse) {
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
       if (!insight) return res.status(404).json({ error: 'Insight not found' });
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can edit this insight' });
-      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { title: title.trim(), updated_at: new Date().toISOString() }, 'return=minimal');
+      const updated = await sbAsUser<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, token, { title: title.trim(), updated_at: new Date().toISOString() });
+      if (!updated?.length) return res.status(500).json({ error: 'Title update did not modify any rows' });
       return res.json({ success: true });
     }
 
@@ -181,11 +183,13 @@ async function handleGameInsights(req: VercelRequest, res: VercelResponse) {
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can edit this insight' });
       if (insight.status !== 'pending') return res.status(400).json({ error: 'Only pending insights can be edited' });
       const now = new Date().toISOString();
-      await sb('DELETE', `/game_insight_votes?insight_id=eq.${insightId}`);
+      // Delete votes as owner (RLS policy allows insight owner to delete votes on their insights)
+      await sbAsUser('DELETE', `/game_insight_votes?insight_id=eq.${insightId}`, token);
       const updates: Record<string, any> = { approve_count: 0, reject_count: 0, submitted_at: now, updated_at: now };
       if (title?.trim()) updates.title = title.trim();
       if (content?.trim()) updates.content = content.trim();
-      await sb('PATCH', `/game_insights?id=eq.${insightId}`, updates);
+      const updated = await sbAsUser<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, token, updates);
+      if (!updated?.length) return res.status(500).json({ error: 'Edit did not modify any rows' });
       return res.json({ success: true });
     }
 
@@ -195,8 +199,9 @@ async function handleGameInsights(req: VercelRequest, res: VercelResponse) {
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can request re-review' });
       if (insight.status !== 'approved') return res.status(400).json({ error: 'Only approved insights can be re-reviewed' });
       if (insight.re_review_requested_at) return res.status(400).json({ error: 'Re-review already requested' });
-      await sb('DELETE', `/game_insight_votes?insight_id=eq.${insightId}`);
-      await sb('PATCH', `/game_insights?id=eq.${insightId}`, { status: 'pending', approve_count: 0, reject_count: 0, approved_at: null, re_review_requested_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      await sbAsUser('DELETE', `/game_insight_votes?insight_id=eq.${insightId}`, token);
+      const updated = await sbAsUser<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, token, { status: 'pending', approve_count: 0, reject_count: 0, approved_at: null, re_review_requested_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      if (!updated?.length) return res.status(500).json({ error: 'Re-review request did not modify any rows' });
       return res.json({ success: true });
     }
 
