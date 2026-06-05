@@ -176,20 +176,27 @@ async function callGeminiAPI(prompt: string): Promise<string> {
   return raw;
 }
 
+const YT_URL_RE = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s]*v=[a-zA-Z0-9_-]{11}[^\s]*|youtu\.be\/[a-zA-Z0-9_-]{11}[^\s]*)/gi;
+
 function extractYouTubeLinks(text: string): { text: string; videoLinks: string[] } {
   const videoLinks: string[] = [];
-  // Find any YouTube URLs anywhere in the text first
-  const urlRegex = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]{11}/gi;
+
+  // 1. Pull URLs out of the VIDEOS: section if present, then strip the whole section
   const videosSection = text.match(/\n?VIDEOS:\s*([\s\S]*?)$/i);
   if (videosSection) {
     const sectionContent = videosSection[1];
     let match: RegExpExecArray | null;
-    while ((match = urlRegex.exec(sectionContent)) !== null) {
+    const re = new RegExp(YT_URL_RE.source, 'gi');
+    while ((match = re.exec(sectionContent)) !== null) {
       videoLinks.push(match[0]);
     }
-    // Always strip the VIDEOS: section regardless of whether URLs were found
     text = text.replace(/\n?VIDEOS:[\s\S]*$/i, '').trim();
   }
+
+  // 2. Strip any YouTube URLs that leaked into the answer body
+  //    (Gemini sometimes embeds them inline instead of using the VIDEOS section)
+  text = text.replace(new RegExp(YT_URL_RE.source, 'gi'), '').replace(/\n{3,}/g, '\n\n').trim();
+
   return { text, videoLinks };
 }
 
