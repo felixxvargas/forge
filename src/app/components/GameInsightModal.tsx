@@ -428,9 +428,10 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
                             <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 hover:bg-secondary/60 transition-colors">
                               <div className="relative w-24 h-14 shrink-0 rounded-lg overflow-hidden bg-black">
                                 <img
-                                  src={`https://img.youtube.com/vi/${vid}/mqdefault.jpg`}
+                                  src={`https://i.ytimg.com/vi/${vid}/hqdefault.jpg`}
                                   alt="Video thumbnail"
                                   className="w-full h-full object-cover"
+                                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                                   <Play className="w-5 h-5 text-white fill-white" />
@@ -524,14 +525,8 @@ export function GameInsightModal({ isOpen, onClose, preselectedGame }: GameInsig
                 </div>
                 <div className="w-full space-y-2">
                   <button
-                    onClick={handleShareAsPost}
-                    className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-all"
-                  >
-                    Share as Post
-                  </button>
-                  <button
                     onClick={() => { navigate(`/game/${selectedGame.id}/insight/${insightId}`); onClose(); }}
-                    className="w-full h-10 rounded-xl bg-secondary text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
+                    className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-all"
                   >
                     View in {selectedGame.title} Wiki
                   </button>

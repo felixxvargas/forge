@@ -55,20 +55,25 @@ export function GlowBorder({ active, children, className = '', radius = 12 }: Gl
           aria-hidden
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, borderRadius: radius }}
         >
-          <span
-            style={{
-              display: 'block',
-              width: 48,
-              height: 5,
-              borderRadius: 3,
-              background: 'linear-gradient(to right, transparent 0%, hsl(38deg 75% 68% / 90%) 35%, hsl(82deg 80% 80% / 75%) 50%, hsl(38deg 75% 68% / 90%) 65%, transparent 100%)',
-              filter: 'blur(2px)',
-              offsetPath: `path("${orbitPath}")`,
-              offsetAnchor: '50% 50%',
-              offsetRotate: 'auto',
-              animation: 'forge-orbit 2.5s linear infinite',
-            } as React.CSSProperties}
-          />
+          <span style={{
+            display: 'block', width: 20, height: 20, borderRadius: '50%',
+            background: 'radial-gradient(circle, hsl(38deg 75% 68% / 70%) 0%, transparent 70%)',
+            filter: 'blur(5px)',
+            offsetPath: `path("${orbitPath}")`,
+            offsetAnchor: '50% 50%',
+            offsetRotate: '0deg',
+            animation: 'forge-orbit 2.5s linear infinite',
+            animationDelay: '-0.3s',
+          } as React.CSSProperties} />
+          <span style={{
+            display: 'block', width: 12, height: 12, borderRadius: '50%',
+            background: 'radial-gradient(circle, hsl(82deg 80% 85%) 0%, hsl(38deg 75% 68%) 55%, transparent 100%)',
+            filter: 'blur(2.5px)',
+            offsetPath: `path("${orbitPath}")`,
+            offsetAnchor: '50% 50%',
+            offsetRotate: '0deg',
+            animation: 'forge-orbit 2.5s linear infinite',
+          } as React.CSSProperties} />
         </span>
       )}
       <div style={{ position: 'relative', zIndex: 1 }}>

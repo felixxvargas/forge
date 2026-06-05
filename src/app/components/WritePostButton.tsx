@@ -1,7 +1,10 @@
-import { useNavigate } from '@/compat/router';
+import { useNavigate, useLocation } from '@/compat/router';
 
 export function WritePostButton() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Hide on game/insight pages — the modal and AI toolbar already occupy the bottom area
+  if (location.pathname.includes('/game/') || location.pathname.includes('/insight/')) return null;
   
   return (
     <button

@@ -863,13 +863,25 @@ export function InsightDetail() {
           >
             {dockOrbitPath && (
               <span aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, borderRadius: 16 }}>
+                {/* Trailing bloom — larger, softer, slightly behind */}
                 <span style={{
-                  display: 'block', width: 48, height: 5, borderRadius: 3,
-                  background: 'linear-gradient(to right, transparent 0%, hsl(38deg 75% 68% / 90%) 35%, hsl(82deg 80% 80% / 75%) 50%, hsl(38deg 75% 68% / 90%) 65%, transparent 100%)',
-                  filter: 'blur(2px)',
+                  display: 'block', width: 22, height: 22, borderRadius: '50%',
+                  background: 'radial-gradient(circle, hsl(38deg 75% 68% / 60%) 0%, transparent 70%)',
+                  filter: 'blur(6px)',
                   offsetPath: `path("${dockOrbitPath}")`,
                   offsetAnchor: '50% 50%',
-                  offsetRotate: 'auto',
+                  offsetRotate: '0deg',
+                  animation: 'forge-orbit 5s linear infinite',
+                  animationDelay: '-0.4s',
+                } as React.CSSProperties} />
+                {/* Lead dot — sharp core glow */}
+                <span style={{
+                  display: 'block', width: 14, height: 14, borderRadius: '50%',
+                  background: 'radial-gradient(circle, hsl(82deg 80% 85%) 0%, hsl(38deg 75% 68%) 55%, transparent 100%)',
+                  filter: 'blur(3px)',
+                  offsetPath: `path("${dockOrbitPath}")`,
+                  offsetAnchor: '50% 50%',
+                  offsetRotate: '0deg',
                   animation: 'forge-orbit 5s linear infinite',
                 } as React.CSSProperties} />
               </span>
