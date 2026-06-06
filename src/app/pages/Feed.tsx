@@ -417,14 +417,20 @@ export function Feed() {
   const feedContent = (
     <div className="w-full px-4 lg:px-6 py-4 lg:py-6">
       {/* AI Insight Search Bar */}
-      {isAuthenticated && <FeedInsightSearch onActiveChange={setSearchActive} />}
+      {isAuthenticated && (
+        <div className="2xl:w-[60%] 2xl:mx-auto">
+          <FeedInsightSearch onActiveChange={setSearchActive} />
+        </div>
+      )}
 
       {/* Skeleton — outside AnimatePresence so it's visible immediately at full opacity */}
       {loading && !searchActive && (
         <div className="mt-6 lg:mt-9">
           {/* Forge AI toolbar skeleton */}
           {isAuthenticated && (
-            <div className="h-[72px] bg-card border border-border rounded-2xl mb-4 animate-pulse" />
+            <div className="2xl:w-[60%] 2xl:mx-auto">
+              <div className="h-[72px] bg-card border border-border rounded-2xl mb-4 animate-pulse" />
+            </div>
           )}
           <p className="text-2xl font-extrabold mb-3 lg:mb-6">{getSelectedName()}</p>
           <div className={`flex ${feedGap} items-start`}>

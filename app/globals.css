@@ -30,10 +30,10 @@ input, textarea, select { font-size: max(16px, 1em); }
   #__next { width: 100%; }
 }
 
-/* Forge AI thinking animation — centered orb pulses in opacity and scale */
-@keyframes forge-glow-pulse {
-  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.85); }
-  50%       { opacity: 0.75; transform: translate(-50%, -50%) scale(1.15); }
+/* Forge AI thinking animation — glow ball travels the toolbar border */
+@keyframes forge-orbit {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
 }
 
 /* Prevent iOS Safari from zooming on input focus when font-size < 16px */
