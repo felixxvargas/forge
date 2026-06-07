@@ -293,12 +293,9 @@ export function InsightDetail() {
       const isApproved = insight.status === 'approved';
       const action = isApproved ? 'edit-title' : 'edit-content';
       const body: Record<string, any> = { insightId: insight.id, action };
-      if (isApproved) {
-        body.title = trimmedTitle || insight.title;
-      } else {
-        if (trimmedTitle) body.title = trimmedTitle;
-        if (trimmedContent) body.content = trimmedContent;
-      }
+      if (trimmedTitle) body.title = trimmedTitle;
+      if (trimmedContent) body.content = trimmedContent;
+      if (isApproved && !trimmedTitle) body.title = insight.title ?? '';
       const res = await fetch('/api/insights/game-insights', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -311,11 +308,11 @@ export function InsightDetail() {
       setInsight(i => i ? {
         ...i,
         ...(trimmedTitle ? { title: trimmedTitle } : {}),
-        ...(trimmedContent && !isApproved ? { content: trimmedContent } : {}),
-        ...(isApproved ? {} : { approve_count: 0, reject_count: 0 }),
+        ...(trimmedContent ? { content: trimmedContent } : {}),
+        ...(!isApproved ? { approve_count: 0, reject_count: 0 } : {}),
       } : i);
       setEditingInsight(false);
-      toast.success(isApproved ? 'Title updated' : 'Resubmitted — votes cleared, review timer restarted');
+      toast.success(isApproved ? 'Insight updated' : 'Resubmitted — votes cleared, review timer restarted');
     } catch (err: any) {
       toast.error(err.message || 'Failed to save edit');
     } finally {
@@ -550,7 +547,7 @@ export function InsightDetail() {
                   autoFocus
                 />
               </div>
-              <p className="text-[11px] text-amber-400/80">Resubmitting will clear all votes and restart the 24h review timer.</p>
+              {!insight.approved_at && <p className="text-[11px] text-amber-400/80">Resubmitting will clear all votes and restart the 24h review timer.</p>}
               <div className="flex gap-2">
                 <button
                   onClick={handleEditInsight}

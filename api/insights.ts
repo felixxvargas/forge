@@ -165,13 +165,16 @@ async function handleGameInsights(req: VercelRequest, res: VercelResponse) {
     }
 
     if (action === 'edit-title') {
-      const { title } = req.body ?? {};
-      if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
+      const { title, content } = req.body ?? {};
+      if (!title?.trim() && !content?.trim()) return res.status(400).json({ error: 'title or content is required' });
       const [insight] = await sb<any[]>('GET', `/game_insights?id=eq.${insightId}&limit=1`);
       if (!insight) return res.status(404).json({ error: 'Insight not found' });
       if (insight.user_id !== user.id) return res.status(403).json({ error: 'Only the author can edit this insight' });
-      const updated = await sbAsUser<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, token, { title: title.trim(), updated_at: new Date().toISOString() });
-      if (!updated?.length) return res.status(500).json({ error: 'Title update did not modify any rows' });
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (title?.trim()) updates.title = title.trim();
+      if (content?.trim()) updates.content = content.trim();
+      const updated = await sbAsUser<any[]>('PATCH', `/game_insights?id=eq.${insightId}`, token, updates);
+      if (!updated?.length) return res.status(500).json({ error: 'Edit did not modify any rows' });
       return res.json({ success: true });
     }
 
