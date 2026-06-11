@@ -1,6 +1,4 @@
-'use client';
-import { Suspense } from 'react';
-import { AndroidBeta } from '@/app/pages/AndroidBeta';
+import { permanentRedirect } from 'next/navigation';
 export default function Page() {
-  return <Suspense><AndroidBeta /></Suspense>;
+  permanentRedirect('https://play.google.com/store/apps/details?id=app.forge.social&hl=en_US');
 }

@@ -96,10 +96,10 @@ export function AuthShell({ children }: { children: ReactNode }) {
       <div className="w-full max-w-md mt-8 mb-6 relative z-10">
         <p className="text-center text-xs text-muted-foreground/50 mb-4 uppercase tracking-wide font-medium">Also available on</p>
         <div className="flex items-center justify-center gap-6 pb-4">
-          <Link to="/android-beta" className="relative group">
+          <a href="https://play.google.com/store/apps/details?id=app.forge.social&hl=en_US" target="_blank" rel="noopener noreferrer" className="relative group">
             <img src="/google-play-badge.png" alt="Get it on Google Play" className="h-10 group-hover:opacity-80 transition-opacity" />
-            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-accent tracking-wide font-medium">Join Beta</span>
-          </Link>
+            <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-accent tracking-wide font-medium">Download</span>
+          </a>
           <div className="relative opacity-40 cursor-not-allowed" title="Coming soon">
             <img src="/apple-store-badge.svg" alt="Download on the App Store" className="h-7 grayscale" />
             <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-muted-foreground tracking-wide">Coming Soon</span>
